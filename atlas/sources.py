@@ -16,6 +16,11 @@ from pathlib import Path
 
 import requests
 
+try:  # Yahoo rejects non-browser TLS handshakes with HTTP 429; curl_cffi mimics Chrome's.
+    from curl_cffi import requests as browser_requests
+except ImportError:  # pragma: no cover
+    browser_requests = None
+
 log = logging.getLogger("atlas.sources")
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -56,7 +61,10 @@ def _get(source: str, url: str, retries: int = 3, **kw) -> requests.Response:
     for attempt in range(retries + 1):
         _throttle(source)
         try:
-            r = requests.get(url, headers=headers, timeout=30, **kw)
+            if source == "yahoo" and browser_requests is not None:
+                r = browser_requests.get(url, headers={"Accept": "application/json"}, impersonate="chrome", timeout=30)
+            else:
+                r = requests.get(url, headers=headers, timeout=30, **kw)
             if r.status_code == 429 or r.status_code >= 500:
                 raise FetchError(f"HTTP {r.status_code}")
             if r.status_code != 200:
@@ -67,6 +75,12 @@ def _get(source: str, url: str, retries: int = 3, **kw) -> requests.Response:
             last = e
             if isinstance(e, FetchError) and "not retried" in str(e):
                 break
+            if attempt < retries:
+                time.sleep(1.5 * 2**attempt)
+        except Exception as e:  # curl_cffi network errors aren't requests exceptions
+            if browser_requests is None or source != "yahoo":
+                raise
+            last = e
             if attempt < retries:
                 time.sleep(1.5 * 2**attempt)
     if "429" in str(last):

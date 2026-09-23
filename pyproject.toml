@@ -3,7 +3,7 @@ name = "macro-atlas"
 version = "1.0.0"
 description = "Macro Atlas 2000–2026: monthly economic/financial/political series, events, and a self-contained dashboard"
 requires-python = ">=3.11"
-dependencies = ["pandas", "requests", "pyyaml", "jinja2"]
+dependencies = ["pandas", "requests", "curl_cffi", "pyyaml", "jinja2"]
 
 [project.optional-dependencies]
 dev = ["pytest", "playwright"]

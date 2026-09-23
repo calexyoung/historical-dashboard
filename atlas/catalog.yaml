@@ -1100,8 +1100,8 @@
   max_lag_months: 1
   note: Gold month-end close divided by the EUR/USD monthly average
   derive_yoy: false
-- {key: acwi, source: yahoo, id: ACWI, name: MSCI ACWI (ETF proxy), cat: Global markets, unit: $, agg: last, freq: M, max_lag_months: 1, note: iShares ACWI from 2008, derive_yoy: false, enabled: false}
-- {key: eem, source: yahoo, id: EEM, name: Emerging markets (EEM ETF), cat: Global markets, unit: $, agg: last, freq: M, max_lag_months: 1, note: iShares MSCI EM, derive_yoy: false, enabled: false}
+- {key: acwi, source: yahoo, id: ACWI, name: MSCI ACWI (ETF proxy), cat: Global markets, unit: $, agg: last, freq: M, max_lag_months: 1, note: iShares ACWI from 2008, derive_yoy: false}
+- {key: eem, source: yahoo, id: EEM, name: Emerging markets (EEM ETF), cat: Global markets, unit: $, agg: last, freq: M, max_lag_months: 1, note: iShares MSCI EM, derive_yoy: false}
 
 # ---------------------------------------------------------------- SPEC 10.5: sectors, factors, spreads
 - key: ndx
@@ -1151,11 +1151,11 @@
   note: Discontinued Jan 2022 with LIBOR
   derive_yoy: false
   known_truncated: 2022-01
-- {key: xle, source: yahoo, id: XLE, name: Energy sector (XLE), cat: US markets, unit: $, agg: last, freq: M, max_lag_months: 1, note: '', derive_yoy: false, enabled: false}
-- {key: xlf, source: yahoo, id: XLF, name: Financials sector (XLF), cat: US markets, unit: $, agg: last, freq: M, max_lag_months: 1, note: '', derive_yoy: false, enabled: false}
-- {key: xlk, source: yahoo, id: XLK, name: Technology sector (XLK), cat: US markets, unit: $, agg: last, freq: M, max_lag_months: 1, note: '', derive_yoy: false, enabled: false}
-- {key: sox, source: yahoo, id: ^SOX, name: Semiconductors (SOX), cat: US markets, unit: index, agg: last, freq: M, max_lag_months: 1, note: '', derive_yoy: false, enabled: false}
-- {key: tlt, source: yahoo, id: TLT, name: Long Treasuries (TLT), cat: Rates & money, unit: $, agg: last, freq: M, max_lag_months: 1, note: Total-return proxy, derive_yoy: false, enabled: false}
+- {key: xle, source: yahoo, id: XLE, name: Energy sector (XLE), cat: US markets, unit: $, agg: last, freq: M, max_lag_months: 1, note: '', derive_yoy: false}
+- {key: xlf, source: yahoo, id: XLF, name: Financials sector (XLF), cat: US markets, unit: $, agg: last, freq: M, max_lag_months: 1, note: '', derive_yoy: false}
+- {key: xlk, source: yahoo, id: XLK, name: Technology sector (XLK), cat: US markets, unit: $, agg: last, freq: M, max_lag_months: 1, note: '', derive_yoy: false}
+- {key: sox, source: yahoo, id: ^SOX, name: Semiconductors (SOX), cat: US markets, unit: index, agg: last, freq: M, max_lag_months: 1, note: '', derive_yoy: false}
+- {key: tlt, source: yahoo, id: TLT, name: Long Treasuries (TLT), cat: Rates & money, unit: $, agg: last, freq: M, max_lag_months: 1, note: Total-return proxy, derive_yoy: false}
 
 # ---------------------------------------------------------------- SPEC 10.6: inequality and social
 - key: gini
