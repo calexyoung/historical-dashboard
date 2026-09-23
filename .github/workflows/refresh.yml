@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
-    paths: ["atlas/**", "web/**", "tests/**", "Makefile", "pyproject.toml"]
+    paths: ["atlas/**", "web/**", "tests/**", ".github/**", "Makefile", "pyproject.toml", "uv.lock"]
 
 permissions:
   contents: write
