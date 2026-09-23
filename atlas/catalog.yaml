@@ -1,0 +1,1215 @@
+# Macro Atlas series catalog (SPEC section 4).
+# Fields: key, source (fred|yahoo), id, name, cat, unit, agg (mean|last), freq (M|W|D|Q|A),
+# max_lag_months (staleness threshold), note, derive_yoy (+ yoy_key, yoy_name),
+# optional range [lo, hi] (sanity check) and known_truncated (source series ends early; warn only).
+# yoy_range: sanity range for the derived y/y series.
+- key: spx
+  source: yahoo
+  id: ^GSPC
+  name: S&P 500
+  cat: US markets
+  unit: index
+  agg: last
+  freq: M
+  max_lag_months: 1
+  note: Month-end close
+  derive_yoy: false
+  range: [500, 15000]
+- key: nasdaq
+  source: yahoo
+  id: ^IXIC
+  name: Nasdaq Composite
+  cat: US markets
+  unit: index
+  agg: last
+  freq: M
+  max_lag_months: 1
+  note: Month-end close
+  derive_yoy: false
+- key: dow
+  source: yahoo
+  id: ^DJI
+  name: Dow Jones Industrial
+  cat: US markets
+  unit: index
+  agg: last
+  freq: M
+  max_lag_months: 1
+  note: Month-end close
+  derive_yoy: false
+- key: rut
+  source: yahoo
+  id: ^RUT
+  name: Russell 2000
+  cat: US markets
+  unit: index
+  agg: last
+  freq: M
+  max_lag_months: 1
+  note: Month-end close
+  derive_yoy: false
+- key: vix
+  source: yahoo
+  id: ^VIX
+  name: VIX (volatility)
+  cat: US markets
+  unit: index
+  agg: last
+  freq: M
+  max_lag_months: 1
+  note: Month-end close
+  derive_yoy: false
+  range: [8, 90]
+- key: dax
+  source: yahoo
+  id: ^GDAXI
+  name: DAX (Germany)
+  cat: Global markets
+  unit: index
+  agg: last
+  freq: M
+  max_lag_months: 1
+  note: Month-end close
+  derive_yoy: false
+- key: ftse
+  source: yahoo
+  id: ^FTSE
+  name: FTSE 100 (UK)
+  cat: Global markets
+  unit: index
+  agg: last
+  freq: M
+  max_lag_months: 1
+  note: Month-end close
+  derive_yoy: false
+- key: stoxx
+  source: yahoo
+  id: ^STOXX50E
+  name: Euro Stoxx 50
+  cat: Global markets
+  unit: index
+  agg: last
+  freq: M
+  max_lag_months: 1
+  note: Month-end close
+  derive_yoy: false
+- key: nikkei
+  source: yahoo
+  id: ^N225
+  name: Nikkei 225 (Japan)
+  cat: Global markets
+  unit: index
+  agg: last
+  freq: M
+  max_lag_months: 1
+  note: Month-end close
+  derive_yoy: false
+- key: shanghai
+  source: yahoo
+  id: 000001.SS
+  name: Shanghai Composite
+  cat: Global markets
+  unit: index
+  agg: last
+  freq: M
+  max_lag_months: 1
+  note: Month-end close
+  derive_yoy: false
+- key: hsi
+  source: yahoo
+  id: ^HSI
+  name: Hang Seng (HK)
+  cat: Global markets
+  unit: index
+  agg: last
+  freq: M
+  max_lag_months: 1
+  note: Month-end close
+  derive_yoy: false
+- key: kospi
+  source: yahoo
+  id: ^KS11
+  name: KOSPI (Korea)
+  cat: Global markets
+  unit: index
+  agg: last
+  freq: M
+  max_lag_months: 1
+  note: Month-end close
+  derive_yoy: false
+- key: sensex
+  source: yahoo
+  id: ^BSESN
+  name: Sensex (India)
+  cat: Global markets
+  unit: index
+  agg: last
+  freq: M
+  max_lag_months: 1
+  note: Month-end close
+  derive_yoy: false
+- key: tsx
+  source: yahoo
+  id: ^GSPTSE
+  name: TSX (Canada)
+  cat: Global markets
+  unit: index
+  agg: last
+  freq: M
+  max_lag_months: 1
+  note: Month-end close
+  derive_yoy: false
+- key: gold
+  source: yahoo
+  id: GC=F
+  name: Gold ($/oz)
+  cat: Commodities & energy
+  unit: $/oz
+  agg: last
+  freq: M
+  max_lag_months: 1
+  note: Month-end close
+  derive_yoy: false
+  range: [200, 6000]
+- key: copper
+  source: yahoo
+  id: HG=F
+  name: Copper ($/lb)
+  cat: Commodities & energy
+  unit: $/lb
+  agg: last
+  freq: M
+  max_lag_months: 1
+  note: Month-end close
+  derive_yoy: false
+- key: btc
+  source: yahoo
+  id: BTC-USD
+  name: Bitcoin ($)
+  cat: Commodities & energy
+  unit: $
+  agg: last
+  freq: M
+  max_lag_months: 1
+  note: Month-end close
+  derive_yoy: false
+  range: [0, 500000]
+- key: dxy
+  source: yahoo
+  id: DX-Y.NYB
+  name: US Dollar Index (DXY)
+  cat: Currencies
+  unit: index
+  agg: last
+  freq: M
+  max_lag_months: 1
+  note: Month-end close
+  derive_yoy: false
+- key: wti
+  source: fred
+  id: MCOILWTICO
+  name: Crude oil, WTI ($/bbl)
+  cat: Commodities & energy
+  unit: $/bbl
+  agg: mean
+  freq: M
+  max_lag_months: 3
+  note: ''
+  derive_yoy: false
+  range: [-40, 160]
+- key: brent
+  source: fred
+  id: MCOILBRENTEU
+  name: Crude oil, Brent ($/bbl)
+  cat: Commodities & energy
+  unit: $/bbl
+  agg: mean
+  freq: M
+  max_lag_months: 3
+  note: ''
+  derive_yoy: false
+  range: [5, 160]
+- key: gas
+  source: fred
+  id: GASREGW
+  name: US retail gasoline, regular ($/gal)
+  cat: Commodities & energy
+  unit: $/gal
+  agg: mean
+  freq: W
+  max_lag_months: 1
+  note: Weekly, averaged to monthly
+  derive_yoy: false
+  range: [0.8, 6]
+- key: natgas
+  source: fred
+  id: MHHNGSP
+  name: Natural gas, Henry Hub ($/MMBtu)
+  cat: Commodities & energy
+  unit: $/MMBtu
+  agg: mean
+  freq: M
+  max_lag_months: 3
+  note: ''
+  derive_yoy: false
+- key: eggs
+  source: fred
+  id: APU0000708111
+  name: Eggs, grade A large ($/dozen)
+  cat: Commodities & energy
+  unit: $/doz
+  agg: mean
+  freq: M
+  max_lag_months: 3
+  note: US city average
+  derive_yoy: false
+- key: unrate
+  source: fred
+  id: UNRATE
+  name: US unemployment rate
+  cat: US economy
+  unit: '%'
+  agg: mean
+  freq: M
+  max_lag_months: 3
+  note: ''
+  derive_yoy: false
+  range: [2, 16]
+- key: cpi
+  source: fred
+  id: CPIAUCSL
+  name: US CPI (index)
+  cat: US economy
+  unit: index 1982-84=100
+  agg: mean
+  freq: M
+  max_lag_months: 3
+  note: ''
+  derive_yoy: true
+  yoy_key: cpi_yoy
+  yoy_name: US inflation (CPI, y/y)
+  yoy_range: [-3, 10]
+- key: corecpi
+  source: fred
+  id: CPILFESL
+  name: US core CPI (index)
+  cat: US economy
+  unit: index
+  agg: mean
+  freq: M
+  max_lag_months: 3
+  note: ''
+  derive_yoy: true
+  yoy_key: corecpi_yoy
+  yoy_name: US core inflation (y/y)
+  yoy_range: [-1, 8]
+- key: fedfunds
+  source: fred
+  id: FEDFUNDS
+  name: Fed funds rate
+  cat: Rates & money
+  unit: '%'
+  agg: mean
+  freq: M
+  max_lag_months: 3
+  note: ''
+  derive_yoy: false
+  range: [0, 7]
+- key: gs10
+  source: fred
+  id: GS10
+  name: US 10-year Treasury yield
+  cat: Rates & money
+  unit: '%'
+  agg: mean
+  freq: M
+  max_lag_months: 3
+  note: ''
+  derive_yoy: false
+  range: [0, 8]
+- key: gs2
+  source: fred
+  id: GS2
+  name: US 2-year Treasury yield
+  cat: Rates & money
+  unit: '%'
+  agg: mean
+  freq: M
+  max_lag_months: 3
+  note: ''
+  derive_yoy: false
+  range: [0, 8]
+- key: t10y2y
+  source: fred
+  id: T10Y2Y
+  name: US yield curve (10y–2y spread)
+  cat: Rates & money
+  unit: pp
+  agg: mean
+  freq: D
+  max_lag_months: 1
+  note: Negative = inverted
+  derive_yoy: false
+  range: [-3, 4]
+- key: mortgage
+  source: fred
+  id: MORTGAGE30US
+  name: US 30-year mortgage rate
+  cat: Housing
+  unit: '%'
+  agg: mean
+  freq: W
+  max_lag_months: 1
+  note: ''
+  derive_yoy: false
+  range: [2, 10]
+- key: umcsent
+  source: fred
+  id: UMCSENT
+  name: Consumer sentiment (U. Michigan)
+  cat: Politics & sentiment
+  unit: index
+  agg: mean
+  freq: M
+  max_lag_months: 3
+  note: Survey-based
+  derive_yoy: false
+  range: [40, 115]
+- key: gdp
+  source: fred
+  id: GDPC1
+  name: US real GDP ($bn, 2017$)
+  cat: US economy
+  unit: $bn
+  agg: mean
+  freq: Q
+  max_lag_months: 7
+  note: Quarterly
+  derive_yoy: true
+  yoy_key: gdp_yoy
+  yoy_name: US real GDP growth (y/y)
+- key: gdp_qoq
+  source: fred
+  id: A191RL1Q225SBEA
+  name: US real GDP growth (annualized q/q)
+  cat: US economy
+  unit: '%'
+  agg: mean
+  freq: Q
+  max_lag_months: 7
+  note: Quarterly
+  derive_yoy: false
+- key: payems
+  source: fred
+  id: PAYEMS
+  name: US nonfarm payrolls (thousands)
+  cat: US economy
+  unit: thousands
+  agg: mean
+  freq: M
+  max_lag_months: 3
+  note: ''
+  derive_yoy: false
+- key: claims
+  source: fred
+  id: ICSA
+  name: Initial jobless claims
+  cat: US economy
+  unit: persons/week
+  agg: mean
+  freq: W
+  max_lag_months: 1
+  note: Weekly, averaged
+  derive_yoy: false
+- key: saving
+  source: fred
+  id: PSAVERT
+  name: US personal saving rate
+  cat: US economy
+  unit: '%'
+  agg: mean
+  freq: M
+  max_lag_months: 3
+  note: ''
+  derive_yoy: false
+  range: [0, 40]
+- key: m2
+  source: fred
+  id: M2SL
+  name: US M2 money supply ($bn)
+  cat: Rates & money
+  unit: $bn
+  agg: mean
+  freq: M
+  max_lag_months: 3
+  note: ''
+  derive_yoy: true
+  yoy_key: m2_yoy
+  yoy_name: M2 growth (y/y)
+- key: fedassets
+  source: fred
+  id: WALCL
+  name: Fed balance sheet ($mn)
+  cat: Rates & money
+  unit: $mn
+  agg: mean
+  freq: W
+  max_lag_months: 1
+  note: Weekly
+  derive_yoy: false
+- key: debtgdp
+  source: fred
+  id: GFDEGDQ188S
+  name: US federal debt / GDP
+  cat: US economy
+  unit: '%'
+  agg: mean
+  freq: Q
+  max_lag_months: 8
+  note: Quarterly
+  derive_yoy: false
+- key: debt
+  source: fred
+  id: GFDEBTN
+  name: US federal debt ($mn)
+  cat: US economy
+  unit: $mn
+  agg: mean
+  freq: Q
+  max_lag_months: 8
+  note: Quarterly
+  derive_yoy: false
+- key: civpart
+  source: fred
+  id: CIVPART
+  name: US labor force participation
+  cat: US economy
+  unit: '%'
+  agg: mean
+  freq: M
+  max_lag_months: 3
+  note: ''
+  derive_yoy: false
+  range: [58, 70]
+- key: wages
+  source: fred
+  id: AHETPI
+  name: US avg hourly earnings ($)
+  cat: US economy
+  unit: $/hr
+  agg: mean
+  freq: M
+  max_lag_months: 3
+  note: Production & nonsupervisory
+  derive_yoy: true
+  yoy_key: wages_yoy
+  yoy_name: US wage growth (y/y)
+- key: houst
+  source: fred
+  id: HOUST
+  name: US housing starts (thousands, SAAR)
+  cat: Housing
+  unit: thousands
+  agg: mean
+  freq: M
+  max_lag_months: 3
+  note: ''
+  derive_yoy: false
+- key: caseshiller
+  source: fred
+  id: CSUSHPINSA
+  name: Case-Shiller US home price index
+  cat: Housing
+  unit: index 2000=100
+  agg: mean
+  freq: M
+  max_lag_months: 3
+  note: ''
+  derive_yoy: true
+  yoy_key: cs_yoy
+  yoy_name: US home price growth (y/y)
+- key: medhome
+  source: fred
+  id: MSPUS
+  name: US median home sale price ($)
+  cat: Housing
+  unit: $
+  agg: mean
+  freq: Q
+  max_lag_months: 7
+  note: Quarterly
+  derive_yoy: false
+- key: rent_cpi
+  source: fred
+  id: CUSR0000SEHA
+  name: US rent CPI (index)
+  cat: Housing
+  unit: index
+  agg: mean
+  freq: M
+  max_lag_months: 3
+  note: ''
+  derive_yoy: true
+  yoy_key: rent_yoy
+  yoy_name: US rent inflation (y/y)
+- key: trade
+  source: fred
+  id: BOPGSTB
+  name: US trade balance ($mn)
+  cat: US economy
+  unit: $mn
+  agg: mean
+  freq: M
+  max_lag_months: 3
+  note: Goods & services
+  derive_yoy: false
+- key: retail
+  source: fred
+  id: RSAFS
+  name: US retail sales ($mn)
+  cat: US economy
+  unit: $mn
+  agg: mean
+  freq: M
+  max_lag_months: 3
+  note: ''
+  derive_yoy: false
+- key: indpro
+  source: fred
+  id: INDPRO
+  name: US industrial production (index)
+  cat: US economy
+  unit: index
+  agg: mean
+  freq: M
+  max_lag_months: 3
+  note: ''
+  derive_yoy: false
+- key: profits
+  source: fred
+  id: CP
+  name: US corporate profits ($bn)
+  cat: US economy
+  unit: $bn
+  agg: mean
+  freq: Q
+  max_lag_months: 7
+  note: Quarterly
+  derive_yoy: false
+- key: income
+  source: fred
+  id: MEHOINUSA672N
+  name: US real median household income ($)
+  cat: US economy
+  unit: $
+  agg: mean
+  freq: A
+  max_lag_months: 30
+  note: Annual
+  derive_yoy: false
+- key: credit
+  source: fred
+  id: TOTALSL
+  name: US consumer credit ($mn)
+  cat: Rates & money
+  unit: $mn
+  agg: mean
+  freq: M
+  max_lag_months: 3
+  note: ''
+  derive_yoy: false
+- key: delinq
+  source: fred
+  id: DRCCLACBS
+  name: US credit card delinquency rate
+  cat: Rates & money
+  unit: '%'
+  agg: mean
+  freq: Q
+  max_lag_months: 7
+  note: Quarterly
+  derive_yoy: false
+- key: usepu
+  source: fred
+  id: USEPUINDXM
+  name: US economic policy uncertainty
+  cat: Politics & sentiment
+  unit: index
+  agg: mean
+  freq: M
+  max_lag_months: 3
+  note: Baker-Bloom-Davis
+  derive_yoy: false
+- key: gepu
+  source: fred
+  id: GEPUCURRENT
+  name: Global economic policy uncertainty
+  cat: Politics & sentiment
+  unit: index
+  agg: mean
+  freq: M
+  max_lag_months: 3
+  note: Baker-Bloom-Davis
+  derive_yoy: false
+- key: usrec
+  source: fred
+  id: USREC
+  name: US recession (NBER)
+  cat: Politics & sentiment
+  unit: 0/1
+  agg: mean
+  freq: M
+  max_lag_months: 3
+  note: ''
+  derive_yoy: false
+  range: [0, 1]
+- key: ez_unemp
+  source: csv_url
+  id: une_rt_m
+  csv:
+    src_name: Eurostat
+    url: "https://ec.europa.eu/eurostat/api/dissemination/sdmx/2.1/data/une_rt_m/M.SA.TOTAL.PC_ACT.T.EA21?format=SDMX-CSV&startPeriod=1999-01"
+    date_col: TIME_PERIOD
+    value_col: OBS_VALUE
+  fallback: {source: fred, id: LRHUTTTTEZM156S}
+  name: Euro area unemployment
+  cat: Europe
+  unit: '%'
+  agg: mean
+  freq: M
+  max_lag_months: 3
+  note: Seasonally adjusted, euro area (changing composition); replaces OECD LRHUTTTTEZM156S, which ends Jan 2023
+  derive_yoy: false
+- key: ez_hicp
+  source: fred
+  id: CP0000EZ19M086NEST
+  name: Euro area HICP (index)
+  cat: Europe
+  unit: index
+  agg: mean
+  freq: M
+  max_lag_months: 3
+  note: ''
+  derive_yoy: true
+  yoy_key: ez_infl
+  yoy_name: Euro area inflation (y/y)
+- key: ecb
+  source: fred
+  id: ECBDFR
+  name: ECB deposit rate
+  cat: Europe
+  unit: '%'
+  agg: mean
+  freq: D
+  max_lag_months: 1
+  note: ''
+  derive_yoy: false
+  range: [-1, 5]
+- key: ez_gdp
+  source: fred
+  id: CLVMEURSCAB1GQEA19
+  name: Euro area real GDP (€mn)
+  cat: Europe
+  unit: €mn
+  agg: mean
+  freq: Q
+  max_lag_months: 7
+  note: Quarterly
+  derive_yoy: true
+  yoy_key: ez_gdp_yoy
+  yoy_name: Euro area GDP growth (y/y)
+- key: eurusd
+  source: fred
+  id: DEXUSEU
+  name: EUR/USD
+  cat: Currencies
+  unit: $ per €
+  agg: mean
+  freq: D
+  max_lag_months: 1
+  note: ''
+  derive_yoy: false
+  range: [0.8, 1.7]
+- key: gbpusd
+  source: fred
+  id: DEXUSUK
+  name: GBP/USD
+  cat: Currencies
+  unit: $ per £
+  agg: mean
+  freq: D
+  max_lag_months: 1
+  note: ''
+  derive_yoy: false
+- key: uk_unemp
+  source: fred
+  id: LRHUTTTTGBM156S
+  name: UK unemployment
+  cat: Europe
+  unit: '%'
+  agg: mean
+  freq: M
+  max_lag_months: 4
+  note: ''
+  derive_yoy: false
+- key: uk_cpi
+  source: csv_url
+  id: D7BT
+  csv:
+    src_name: ONS
+    url: "https://www.ons.gov.uk/generator?format=csv&uri=/economy/inflationandpriceindices/timeseries/d7bt/mm23"
+    header: false
+    date_col: 0
+    value_col: 1
+  fallback: {source: fred, id: GBRCPIALLMINMEI}
+  name: UK CPI (index)
+  cat: Europe
+  unit: index 2015=100
+  agg: mean
+  freq: M
+  max_lag_months: 3
+  note: CPI all items (MM23); replaces OECD GBRCPIALLMINMEI, which ends Mar 2025
+  derive_yoy: true
+  yoy_key: uk_infl
+  yoy_name: UK inflation (y/y)
+- key: boe
+  source: fred
+  id: IRSTCI01GBM156N
+  name: UK short-term interest rate
+  cat: Europe
+  unit: '%'
+  agg: mean
+  freq: M
+  max_lag_months: 3
+  note: Immediate interbank rate, tracks Bank Rate
+  derive_yoy: false
+- key: euepu
+  source: fred
+  id: EUEPUINDXM
+  name: Europe economic policy uncertainty
+  cat: Politics & sentiment
+  unit: index
+  agg: mean
+  freq: M
+  max_lag_months: 3
+  note: Baker-Bloom-Davis
+  derive_yoy: false
+- key: de_unemp
+  source: fred
+  id: LRHUTTTTDEM156S
+  name: Germany unemployment
+  cat: Europe
+  unit: '%'
+  agg: mean
+  freq: M
+  max_lag_months: 3
+  note: ''
+  derive_yoy: false
+- key: de10
+  source: fred
+  id: IRLTLT01DEM156N
+  name: Germany 10-year yield
+  cat: Europe
+  unit: '%'
+  agg: mean
+  freq: M
+  max_lag_months: 3
+  note: ''
+  derive_yoy: false
+- key: it10
+  source: fred
+  id: IRLTLT01ITM156N
+  name: Italy 10-year yield
+  cat: Europe
+  unit: '%'
+  agg: mean
+  freq: M
+  max_lag_months: 3
+  note: ''
+  derive_yoy: false
+- key: fr_unemp
+  source: fred
+  id: LRHUTTTTFRM156S
+  name: France unemployment
+  cat: Europe
+  unit: '%'
+  agg: mean
+  freq: M
+  max_lag_months: 3
+  note: ''
+  derive_yoy: false
+- key: jp_unemp
+  source: fred
+  id: LRHUTTTTJPM156S
+  name: Japan unemployment
+  cat: Asia & other
+  unit: '%'
+  agg: mean
+  freq: M
+  max_lag_months: 3
+  note: ''
+  derive_yoy: false
+- key: jpy
+  source: fred
+  id: DEXJPUS
+  name: USD/JPY
+  cat: Currencies
+  unit: ¥ per $
+  agg: mean
+  freq: D
+  max_lag_months: 1
+  note: ''
+  derive_yoy: false
+  range: [70, 170]
+- key: cny
+  source: fred
+  id: DEXCHUS
+  name: USD/CNY
+  cat: Currencies
+  unit: ¥ per $
+  agg: mean
+  freq: D
+  max_lag_months: 1
+  note: ''
+  derive_yoy: false
+- key: inr
+  source: fred
+  id: DEXINUS
+  name: USD/INR
+  cat: Currencies
+  unit: ₹ per $
+  agg: mean
+  freq: D
+  max_lag_months: 1
+  note: ''
+  derive_yoy: false
+- key: cad
+  source: fred
+  id: DEXCAUS
+  name: USD/CAD
+  cat: Currencies
+  unit: C$ per $
+  agg: mean
+  freq: D
+  max_lag_months: 1
+  note: ''
+  derive_yoy: false
+- key: jp10
+  source: fred
+  id: IRLTLT01JPM156N
+  name: Japan 10-year yield
+  cat: Asia & other
+  unit: '%'
+  agg: mean
+  freq: M
+  max_lag_months: 3
+  note: ''
+  derive_yoy: false
+- key: ca_unemp
+  source: fred
+  id: LRHUTTTTCAM156S
+  name: Canada unemployment
+  cat: Asia & other
+  unit: '%'
+  agg: mean
+  freq: M
+  max_lag_months: 3
+  note: ''
+  derive_yoy: false
+- key: kr_unemp
+  source: fred
+  id: LRHUTTTTKRM156S
+  name: Korea unemployment
+  cat: Asia & other
+  unit: '%'
+  agg: mean
+  freq: M
+  max_lag_months: 3
+  note: ''
+  derive_yoy: false
+- key: jp_cpi
+  source: fred
+  id: JPNCPIALLMINMEI
+  name: Japan CPI (index)
+  cat: Asia & other
+  unit: index
+  agg: mean
+  freq: M
+  max_lag_months: 3
+  note: "Source series ends mid-2021. TODO: e-Stat (needs an appId) or a Statistics Bureau CSV; OECD also ends 2021-06"
+  derive_yoy: true
+  yoy_key: jp_infl
+  yoy_name: Japan inflation (y/y)
+  known_truncated: 2021-06
+- key: cn_cpi
+  source: csv_url
+  id: CHN.CPI
+  csv:
+    src_name: OECD
+    url: "https://sdmx.oecd.org/public/rest/data/OECD.SDD.TPS,DSD_PRICES@DF_PRICES_ALL,1.0/CHN.M.N.CPI.IX._T.N._Z?startPeriod=1999-01&dimensionAtObservation=AllDimensions"
+    headers: {Accept: "application/vnd.sdmx.data+csv; charset=utf-8"}
+    date_col: TIME_PERIOD
+    value_col: OBS_VALUE
+  fallback: {source: fred, id: CHNCPIALLMINMEI}
+  name: China CPI (index)
+  cat: Asia & other
+  unit: index 2015=100
+  agg: mean
+  freq: M
+  max_lag_months: 3
+  note: OECD Prices database (from NBS); replaces the FRED copy CHNCPIALLMINMEI, which ends Apr 2025
+  derive_yoy: true
+  yoy_key: cn_infl
+  yoy_name: China inflation (y/y)
+- key: cn_gdp
+  source: fred
+  id: MKTGDPCNA646NWDB
+  name: China nominal GDP (US$)
+  cat: Asia & other
+  unit: $
+  agg: mean
+  freq: A
+  max_lag_months: 30
+  note: Annual, World Bank
+  derive_yoy: true
+  yoy_key: cn_gdp_yoy
+  yoy_name: China nominal GDP growth (y/y, US$)
+
+# ---------------------------------------------------------------- SPEC 10.4: more global data
+- key: ecb_assets
+  source: fred
+  id: ECBASSETSW
+  name: ECB balance sheet (€mn)
+  cat: Europe
+  unit: €mn
+  agg: mean
+  freq: W
+  max_lag_months: 2
+  note: Eurosystem total assets, weekly
+  derive_yoy: false
+- key: jp_rate
+  source: fred
+  id: IRSTCI01JPM156N
+  name: Japan short-term interest rate
+  cat: Asia & other
+  unit: '%'
+  agg: mean
+  freq: M
+  max_lag_months: 3
+  note: Immediate interbank (call) rate, tracks the Bank of Japan policy rate
+  derive_yoy: false
+- key: br_rate
+  source: fred
+  id: IRSTCI01BRM156N
+  name: Brazil short-term interest rate
+  cat: Asia & other
+  unit: '%'
+  agg: mean
+  freq: M
+  max_lag_months: 3
+  note: Immediate interbank rate, tracks Selic
+  derive_yoy: false
+- key: mx_rate
+  source: fred
+  id: IRSTCI01MXM156N
+  name: Mexico short-term interest rate
+  cat: Asia & other
+  unit: '%'
+  agg: mean
+  freq: M
+  max_lag_months: 3
+  note: Immediate interbank rate
+  derive_yoy: false
+- key: tr_rate
+  source: fred
+  id: IRSTCI01TRM156N
+  name: Turkey short-term interest rate
+  cat: Asia & other
+  unit: '%'
+  agg: mean
+  freq: M
+  max_lag_months: 3
+  note: Immediate interbank rate
+  derive_yoy: false
+- key: brl
+  source: fred
+  id: DEXBZUS
+  name: USD/BRL
+  cat: Currencies
+  unit: R$ per $
+  agg: mean
+  freq: D
+  max_lag_months: 1
+  note: ''
+  derive_yoy: false
+- key: mxn
+  source: fred
+  id: DEXMXUS
+  name: USD/MXN
+  cat: Currencies
+  unit: MX$ per $
+  agg: mean
+  freq: D
+  max_lag_months: 1
+  note: ''
+  derive_yoy: false
+- key: tryusd
+  source: fred
+  id: CCUSMA02TRM618N
+  name: USD/TRY
+  cat: Currencies
+  unit: ₺ per $
+  agg: mean
+  freq: M
+  max_lag_months: 3
+  note: Monthly average (OECD)
+  derive_yoy: false
+- key: usd_broad
+  source: fred
+  id: DTWEXBGS
+  name: US dollar, broad trade-weighted
+  cat: Currencies
+  unit: index Jan 2006=100
+  agg: mean
+  freq: D
+  max_lag_months: 1
+  note: Fed nominal broad index, from 2006
+  derive_yoy: false
+- key: food
+  source: fred
+  id: PFOODINDEXM
+  name: Global food price index (IMF)
+  cat: Commodities & energy
+  unit: index 2016=100
+  agg: mean
+  freq: M
+  max_lag_months: 4
+  note: IMF primary commodity prices; stands in for the FAO index (no stable CSV endpoint)
+  derive_yoy: true
+  yoy_key: food_yoy
+  yoy_name: Global food price inflation (y/y)
+- key: gold_eur
+  source: derived
+  id: gold / eurusd
+  derive: {div: [gold, eurusd]}
+  name: Gold in euros (€/oz)
+  cat: Commodities & energy
+  unit: €/oz
+  agg: mean
+  freq: M
+  max_lag_months: 1
+  note: Gold month-end close divided by the EUR/USD monthly average
+  derive_yoy: false
+- {key: acwi, source: yahoo, id: ACWI, name: MSCI ACWI (ETF proxy), cat: Global markets, unit: $, agg: last, freq: M, max_lag_months: 1, note: iShares ACWI from 2008, derive_yoy: false, enabled: false}
+- {key: eem, source: yahoo, id: EEM, name: Emerging markets (EEM ETF), cat: Global markets, unit: $, agg: last, freq: M, max_lag_months: 1, note: iShares MSCI EM, derive_yoy: false, enabled: false}
+
+# ---------------------------------------------------------------- SPEC 10.5: sectors, factors, spreads
+- key: ndx
+  source: fred
+  id: NASDAQ100
+  name: Nasdaq-100
+  cat: US markets
+  unit: index
+  agg: last
+  freq: D
+  max_lag_months: 1
+  note: Month-end close
+  derive_yoy: false
+- key: hy_spread
+  source: fred
+  id: BAMLH0A0HYM2
+  name: US high-yield spread (ICE BofA OAS)
+  cat: Rates & money
+  unit: pp
+  agg: mean
+  freq: D
+  max_lag_months: 1
+  note: FRED carries only the latest 3 years (ICE licensing)
+  derive_yoy: false
+  range: [1, 25]
+- key: sofr
+  source: fred
+  id: SOFR
+  name: SOFR (secured overnight rate)
+  cat: Rates & money
+  unit: '%'
+  agg: mean
+  freq: D
+  max_lag_months: 1
+  note: From Apr 2018
+  derive_yoy: false
+  range: [0, 7]
+- key: ted
+  source: fred
+  id: TEDRATE
+  name: TED spread (3m LIBOR − T-bill)
+  cat: Rates & money
+  unit: pp
+  agg: mean
+  freq: D
+  max_lag_months: 1
+  note: Discontinued Jan 2022 with LIBOR
+  derive_yoy: false
+  known_truncated: 2022-01
+- {key: xle, source: yahoo, id: XLE, name: Energy sector (XLE), cat: US markets, unit: $, agg: last, freq: M, max_lag_months: 1, note: '', derive_yoy: false, enabled: false}
+- {key: xlf, source: yahoo, id: XLF, name: Financials sector (XLF), cat: US markets, unit: $, agg: last, freq: M, max_lag_months: 1, note: '', derive_yoy: false, enabled: false}
+- {key: xlk, source: yahoo, id: XLK, name: Technology sector (XLK), cat: US markets, unit: $, agg: last, freq: M, max_lag_months: 1, note: '', derive_yoy: false, enabled: false}
+- {key: sox, source: yahoo, id: ^SOX, name: Semiconductors (SOX), cat: US markets, unit: index, agg: last, freq: M, max_lag_months: 1, note: '', derive_yoy: false, enabled: false}
+- {key: tlt, source: yahoo, id: TLT, name: Long Treasuries (TLT), cat: Rates & money, unit: $, agg: last, freq: M, max_lag_months: 1, note: Total-return proxy, derive_yoy: false, enabled: false}
+
+# ---------------------------------------------------------------- SPEC 10.6: inequality and social
+- key: gini
+  source: fred
+  id: SIPOVGINIUSA
+  name: US Gini index (World Bank)
+  cat: US economy
+  unit: index 0–100
+  agg: mean
+  freq: A
+  max_lag_months: 36
+  note: Annual
+  derive_yoy: false
+- key: real_wages
+  source: fred
+  id: LES1252881600Q
+  name: US real median weekly earnings
+  cat: US economy
+  unit: 1982-84 $
+  agg: mean
+  freq: Q
+  max_lag_months: 7
+  note: Full-time wage and salary workers, quarterly
+  derive_yoy: false
+- key: labor_share
+  source: fred
+  id: PRS85006173
+  name: US labor share (nonfarm business)
+  cat: US economy
+  unit: index 2017=100
+  agg: mean
+  freq: Q
+  max_lag_months: 7
+  note: Quarterly
+  derive_yoy: false
+- key: life_exp
+  source: fred
+  id: SPDYNLE00INUSA
+  name: US life expectancy at birth
+  cat: US economy
+  unit: years
+  agg: mean
+  freq: A
+  max_lag_months: 36
+  note: Annual (World Bank)
+  derive_yoy: false
+- key: births
+  source: fred
+  id: SPDYNCBRTINUSA
+  name: US birth rate
+  cat: US economy
+  unit: per 1,000
+  agg: mean
+  freq: A
+  max_lag_months: 36
+  note: Crude birth rate, annual (World Bank)
+  derive_yoy: false

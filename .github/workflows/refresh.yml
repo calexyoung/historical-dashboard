@@ -1,0 +1,66 @@
+# SPEC 10.9: weekly refresh → QA → build → tests; commit data/atlas.json + dist/index.html; publish dist/ to Pages.
+name: refresh
+
+on:
+  schedule:
+    - cron: "17 6 * * 1"   # Mondays 06:17 UTC
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ["atlas/**", "web/**", "tests/**", "Makefile", "pyproject.toml"]
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: refresh
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - uses: actions/setup-node@v4
+        with: { node-version: "22" }   # `node --check` in the build, stats tests
+      - name: Install
+        run: |
+          uv venv .venv
+          uv pip install --python .venv/bin/python -e '.[dev]'
+          .venv/bin/python -m playwright install --with-deps chromium
+      - name: Fetch
+        run: make fetch
+      - name: Build
+        run: make build     # fails soft on individual series (seed/fallback), hard on JS/size errors
+      - name: Check
+        run: make check     # non-zero exit on any data error
+      - name: Unit tests
+        run: make test
+      - name: Browser smoke test
+        run: make smoke
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: { name: snapshots, path: tests/snapshots/ }
+      - name: Commit refreshed data
+        if: github.event_name != 'pull_request'
+        run: |
+          git config user.name "macro-atlas-bot"
+          git config user.email "macro-atlas-bot@users.noreply.github.com"
+          git add data/atlas.json dist/index.html
+          git diff --cached --quiet || git commit -m "data: weekly refresh $(date -u +%Y-%m-%d)"
+          git push
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with: { path: dist }
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment: { name: github-pages, url: "${{ steps.deploy.outputs.page_url }}" }
+    steps:
+      - id: deploy
+        uses: actions/deploy-pages@v4

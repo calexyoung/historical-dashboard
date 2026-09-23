@@ -1,0 +1,411 @@
+# Events timeline (SPEC section 5). cat: political | financial | geopolitical | health | policy
+# day: day of month where a single date applies; url: citation (Wikipedia, or the primary source where one exists).
+# Citations checked 2026-09-22 (Wikipedia titles resolved via the API; primary URLs returned HTTP 200).
+- month: "2000-03"
+  day: 10
+  title: "Dot-com bubble peaks (Nasdaq top, Mar 10)"
+  cat: financial
+  url: "https://en.wikipedia.org/wiki/Dot-com_bubble"
+- month: "2000-11"
+  day: 7
+  title: "Bush v. Gore disputed election"
+  cat: political
+  url: "https://en.wikipedia.org/wiki/2000_United_States_presidential_election_recount_in_Florida"
+- month: "2001-01"
+  day: 3
+  title: "Fed begins cutting rates"
+  cat: policy
+  url: "https://www.federalreserve.gov/boarddocs/press/general/2001/20010103/"
+- month: "2001-03"
+  title: "US recession begins (dot-com bust)"
+  cat: financial
+  url: "https://www.nber.org/research/business-cycle-dating"
+- month: "2001-09"
+  day: 11
+  title: "September 11 attacks"
+  cat: geopolitical
+  url: "https://en.wikipedia.org/wiki/September_11_attacks"
+- month: "2001-10"
+  day: 7
+  title: "War in Afghanistan begins"
+  cat: geopolitical
+  url: "https://en.wikipedia.org/wiki/War_in_Afghanistan_(2001%E2%80%932021)"
+- month: "2001-12"
+  day: 2
+  title: "Enron bankruptcy"
+  cat: financial
+  url: "https://en.wikipedia.org/wiki/Enron_scandal"
+- month: "2002-07"
+  day: 21
+  title: "WorldCom collapse; Sarbanes-Oxley signed"
+  cat: financial
+  url: "https://en.wikipedia.org/wiki/WorldCom_scandal"
+- month: "2003-03"
+  day: 20
+  title: "Iraq War begins"
+  cat: geopolitical
+  url: "https://en.wikipedia.org/wiki/2003_invasion_of_Iraq"
+- month: "2003-05"
+  day: 28
+  title: "Bush tax cuts (JGTRRA)"
+  cat: policy
+  url: "https://en.wikipedia.org/wiki/Jobs_and_Growth_Tax_Relief_Reconciliation_Act_of_2003"
+- month: "2004-11"
+  day: 2
+  title: "Bush re-elected"
+  cat: political
+  url: "https://en.wikipedia.org/wiki/2004_United_States_presidential_election"
+- month: "2005-08"
+  day: 29
+  title: "Hurricane Katrina"
+  cat: health
+  url: "https://en.wikipedia.org/wiki/Hurricane_Katrina"
+- month: "2006-06"
+  day: 29
+  title: "Fed ends hiking cycle at 5.25%"
+  cat: policy
+  url: "https://www.federalreserve.gov/newsevents/pressreleases/monetary20060629a.htm"
+- month: "2006-07"
+  title: "US home prices peak"
+  cat: financial
+  url: "https://en.wikipedia.org/wiki/2000s_United_States_housing_bubble"
+- month: "2007-08"
+  day: 9
+  title: "Subprime crisis: BNP freezes funds, credit seizes"
+  cat: financial
+  url: "https://en.wikipedia.org/wiki/Subprime_mortgage_crisis"
+- month: "2007-12"
+  title: "Great Recession begins"
+  cat: financial
+  url: "https://www.nber.org/research/business-cycle-dating"
+- month: "2008-03"
+  day: 16
+  title: "Bear Stearns rescued"
+  cat: financial
+  url: "https://en.wikipedia.org/wiki/Bear_Stearns"
+- month: "2008-07"
+  day: 11
+  title: "Oil peaks near $147"
+  cat: financial
+  url: "https://en.wikipedia.org/wiki/2000s_energy_crisis"
+- month: "2008-09"
+  day: 15
+  title: "Lehman Brothers bankruptcy"
+  cat: financial
+  url: "https://en.wikipedia.org/wiki/Bankruptcy_of_Lehman_Brothers"
+- month: "2008-10"
+  day: 3
+  title: "TARP bank bailout signed"
+  cat: policy
+  url: "https://en.wikipedia.org/wiki/Emergency_Economic_Stabilization_Act_of_2008"
+- month: "2008-11"
+  day: 4
+  title: "Obama elected; Fed launches QE1"
+  cat: political
+  url: "https://en.wikipedia.org/wiki/2008_United_States_presidential_election"
+- month: "2009-02"
+  day: 17
+  title: "ARRA stimulus signed"
+  cat: policy
+  url: "https://en.wikipedia.org/wiki/American_Recovery_and_Reinvestment_Act_of_2009"
+- month: "2009-03"
+  day: 9
+  title: "Stock market bottoms (S&P 666)"
+  cat: financial
+  url: "https://en.wikipedia.org/wiki/2008_financial_crisis"
+- month: "2009-06"
+  title: "Great Recession ends"
+  cat: financial
+  url: "https://www.nber.org/research/business-cycle-dating"
+- month: "2010-03"
+  day: 23
+  title: "Affordable Care Act signed"
+  cat: policy
+  url: "https://en.wikipedia.org/wiki/Affordable_Care_Act"
+- month: "2010-04"
+  day: 20
+  title: "Deepwater Horizon spill"
+  cat: health
+  url: "https://en.wikipedia.org/wiki/Deepwater_Horizon_oil_spill"
+- month: "2010-05"
+  day: 6
+  title: "Flash crash; Greek bailout begins euro crisis"
+  cat: financial
+  url: "https://en.wikipedia.org/wiki/2010_flash_crash"
+- month: "2010-11"
+  day: 3
+  title: "Fed launches QE2"
+  cat: policy
+  url: "https://www.federalreserve.gov/newsevents/pressreleases/monetary20101103a.htm"
+- month: "2011-03"
+  day: 11
+  title: "Fukushima disaster; Arab Spring"
+  cat: geopolitical
+  url: "https://en.wikipedia.org/wiki/Fukushima_nuclear_accident"
+- month: "2011-05"
+  day: 2
+  title: "Bin Laden killed"
+  cat: geopolitical
+  url: "https://en.wikipedia.org/wiki/Killing_of_Osama_bin_Laden"
+- month: "2011-08"
+  day: 5
+  title: "S&P downgrades US credit rating"
+  cat: financial
+  url: "https://en.wikipedia.org/wiki/United_States_federal_government_credit-rating_downgrades"
+- month: "2012-07"
+  day: 26
+  title: "Draghi: 'whatever it takes'"
+  cat: policy
+  url: "https://www.ecb.europa.eu/press/key/date/2012/html/sp120726.en.html"
+- month: "2012-09"
+  day: 13
+  title: "Fed launches QE3"
+  cat: policy
+  url: "https://www.federalreserve.gov/newsevents/pressreleases/monetary20120913a.htm"
+- month: "2012-11"
+  day: 6
+  title: "Obama re-elected"
+  cat: political
+  url: "https://en.wikipedia.org/wiki/2012_United_States_presidential_election"
+- month: "2013-05"
+  day: 22
+  title: "Taper tantrum"
+  cat: financial
+  url: "https://www.federalreserve.gov/newsevents/testimony/bernanke20130522a.htm"
+- month: "2013-10"
+  day: 1
+  title: "US government shutdown (16 days)"
+  cat: political
+  url: "https://en.wikipedia.org/wiki/2013_United_States_federal_government_shutdown"
+- month: "2014-03"
+  day: 18
+  title: "Russia annexes Crimea"
+  cat: geopolitical
+  url: "https://en.wikipedia.org/wiki/2014_Russian_annexation_of_Crimea"
+- month: "2014-06"
+  title: "Oil price collapse begins (to 2016)"
+  cat: financial
+  url: "https://en.wikipedia.org/wiki/2010s_oil_glut"
+- month: "2014-10"
+  day: 29
+  title: "Fed ends QE3"
+  cat: policy
+  url: "https://www.federalreserve.gov/newsevents/pressreleases/monetary20141029a.htm"
+- month: "2015-06"
+  day: 27
+  title: "Greek referendum / bailout crisis"
+  cat: financial
+  url: "https://en.wikipedia.org/wiki/2015_Greek_bailout_referendum"
+- month: "2015-08"
+  day: 11
+  title: "China devalues yuan; global selloff"
+  cat: financial
+  url: "https://en.wikipedia.org/wiki/2015%E2%80%932016_Chinese_stock_market_turbulence"
+- month: "2015-12"
+  day: 16
+  title: "Fed's first hike since 2006"
+  cat: policy
+  url: "https://www.federalreserve.gov/newsevents/pressreleases/monetary20151216a.htm"
+- month: "2016-06"
+  day: 23
+  title: "Brexit referendum"
+  cat: political
+  url: "https://en.wikipedia.org/wiki/2016_United_Kingdom_European_Union_membership_referendum"
+- month: "2016-11"
+  day: 8
+  title: "Trump elected"
+  cat: political
+  url: "https://en.wikipedia.org/wiki/2016_United_States_presidential_election"
+- month: "2017-12"
+  day: 22
+  title: "Tax Cuts and Jobs Act"
+  cat: policy
+  url: "https://en.wikipedia.org/wiki/Tax_Cuts_and_Jobs_Act"
+- month: "2018-02"
+  day: 5
+  title: "'Volmageddon' VIX spike"
+  cat: financial
+  url: "https://en.wikipedia.org/wiki/Closing_milestones_of_the_S%26P_500"
+- month: "2018-03"
+  day: 22
+  title: "US–China trade war begins"
+  cat: geopolitical
+  url: "https://en.wikipedia.org/wiki/China%E2%80%93United_States_trade_war"
+- month: "2018-12"
+  day: 19
+  title: "Q4 selloff; Fed's last hike of cycle"
+  cat: financial
+  url: "https://www.federalreserve.gov/newsevents/pressreleases/monetary20181219a.htm"
+- month: "2019-08"
+  day: 14
+  title: "Yield curve inverts; Fed cuts"
+  cat: financial
+  url: "https://en.wikipedia.org/wiki/Inverted_yield_curve"
+- month: "2019-12"
+  day: 31
+  title: "First COVID-19 cases reported"
+  cat: health
+  url: "https://en.wikipedia.org/wiki/COVID-19_pandemic"
+- month: "2020-03"
+  day: 11
+  title: "COVID-19 pandemic; market crash; CARES Act"
+  cat: health
+  url: "https://en.wikipedia.org/wiki/2020_stock_market_crash"
+- month: "2020-04"
+  day: 20
+  title: "Oil futures go negative"
+  cat: financial
+  url: "https://en.wikipedia.org/wiki/2020_Russia%E2%80%93Saudi_Arabia_oil_price_war"
+- month: "2020-05"
+  day: 25
+  title: "George Floyd killed; nationwide protests"
+  cat: political
+  url: "https://en.wikipedia.org/wiki/Murder_of_George_Floyd"
+- month: "2020-11"
+  day: 3
+  title: "Biden elected"
+  cat: political
+  url: "https://en.wikipedia.org/wiki/2020_United_States_presidential_election"
+- month: "2020-12"
+  day: 14
+  title: "First COVID vaccines administered"
+  cat: health
+  url: "https://en.wikipedia.org/wiki/COVID-19_vaccination_in_the_United_States"
+- month: "2021-01"
+  day: 6
+  title: "Jan 6 Capitol attack; GameStop squeeze"
+  cat: political
+  url: "https://en.wikipedia.org/wiki/January_6_United_States_Capitol_attack"
+- month: "2021-03"
+  day: 11
+  title: "American Rescue Plan ($1.9T)"
+  cat: policy
+  url: "https://en.wikipedia.org/wiki/American_Rescue_Plan_Act_of_2021"
+- month: "2021-08"
+  day: 30
+  title: "US withdrawal from Afghanistan"
+  cat: geopolitical
+  url: "https://en.wikipedia.org/wiki/2020%E2%80%932021_US_troop_withdrawal_from_Afghanistan"
+- month: "2021-11"
+  day: 15
+  title: "Infrastructure Act; Bitcoin peaks ~$69k"
+  cat: policy
+  url: "https://en.wikipedia.org/wiki/Infrastructure_Investment_and_Jobs_Act"
+- month: "2022-02"
+  day: 24
+  title: "Russia invades Ukraine"
+  cat: geopolitical
+  url: "https://en.wikipedia.org/wiki/Russo-Ukrainian_war_(2022%E2%80%93present)"
+- month: "2022-03"
+  day: 16
+  title: "Fed begins hiking (0.25 → 5.25 by 2023)"
+  cat: policy
+  url: "https://www.federalreserve.gov/newsevents/pressreleases/monetary20220316a.htm"
+- month: "2022-06"
+  title: "US inflation peaks at 9.1%"
+  cat: financial
+  url: "https://en.wikipedia.org/wiki/2021%E2%80%932023_inflation_surge"
+- month: "2022-08"
+  day: 16
+  title: "Inflation Reduction Act; CHIPS Act"
+  cat: policy
+  url: "https://en.wikipedia.org/wiki/Inflation_Reduction_Act"
+- month: "2022-09"
+  day: 23
+  title: "UK gilt crisis (Truss mini-budget)"
+  cat: financial
+  url: "https://en.wikipedia.org/wiki/September_2022_United_Kingdom_mini-budget"
+- month: "2022-11"
+  day: 11
+  title: "FTX collapse; ChatGPT released"
+  cat: financial
+  url: "https://en.wikipedia.org/wiki/Bankruptcy_of_FTX"
+- month: "2023-03"
+  day: 10
+  title: "Silicon Valley Bank collapse"
+  cat: financial
+  url: "https://en.wikipedia.org/wiki/Collapse_of_Silicon_Valley_Bank"
+- month: "2023-06"
+  day: 3
+  title: "Debt ceiling deal"
+  cat: political
+  url: "https://en.wikipedia.org/wiki/2023_United_States_debt-ceiling_crisis"
+- month: "2023-10"
+  day: 7
+  title: "Israel–Hamas war begins"
+  cat: geopolitical
+  url: "https://en.wikipedia.org/wiki/Gaza_war"
+- month: "2024-03"
+  day: 19
+  title: "Bank of Japan ends negative rates"
+  cat: policy
+  url: "https://www.boj.or.jp/en/mopo/mpmdeci/mpr_2024/k240319a.pdf"
+- month: "2024-08"
+  day: 5
+  title: "Yen carry-trade unwind selloff"
+  cat: financial
+  url: "https://www.bis.org/publ/bisbull90.htm"
+- month: "2024-09"
+  day: 18
+  title: "Fed's first cut of cycle (50 bp)"
+  cat: policy
+  url: "https://www.federalreserve.gov/newsevents/pressreleases/monetary20240918a.htm"
+- month: "2024-11"
+  day: 5
+  title: "Trump elected (second term)"
+  cat: political
+  url: "https://en.wikipedia.org/wiki/2024_United_States_presidential_election"
+- month: "2025-01"
+  day: 20
+  title: "Trump inaugurated; DeepSeek AI shock"
+  cat: political
+  url: "https://en.wikipedia.org/wiki/Second_inauguration_of_Donald_Trump"
+- month: "2025-04"
+  day: 2
+  title: "'Liberation Day' tariffs; market plunge & 90-day pause"
+  cat: policy
+  url: "https://en.wikipedia.org/wiki/Liberation_Day_tariffs"
+- month: "2025-05"
+  day: 16
+  title: "Moody's downgrades US credit rating"
+  cat: financial
+  url: "https://en.wikipedia.org/wiki/United_States_federal_government_credit-rating_downgrades"
+- month: "2025-06"
+  day: 13
+  title: "Israel–Iran 12-day war"
+  cat: geopolitical
+  url: "https://en.wikipedia.org/wiki/Twelve-Day_War"
+- month: "2025-07"
+  day: 4
+  title: "One Big Beautiful Bill Act"
+  cat: policy
+  url: "https://en.wikipedia.org/wiki/One_Big_Beautiful_Bill_Act"
+- month: "2025-09"
+  day: 17
+  title: "Fed resumes rate cuts"
+  cat: policy
+  url: "https://www.federalreserve.gov/newsevents/pressreleases/monetary20250917a.htm"
+- month: "2025-10"
+  day: 1
+  title: "Longest US government shutdown (43 days)"
+  cat: political
+  url: "https://en.wikipedia.org/wiki/2025_United_States_federal_government_shutdown"
+- month: "2026-01"
+  day: 21
+  title: "Greenland crisis strains NATO ties"
+  cat: geopolitical
+  url: "https://en.wikipedia.org/wiki/Greenland_crisis"
+- month: "2026-02"
+  day: 20
+  title: "Supreme Court strikes down IEEPA tariffs"
+  cat: political
+  url: "https://en.wikipedia.org/wiki/Learning_Resources,_Inc._v._Trump"
+- month: "2026-03"
+  title: "Strait of Hormuz disruption; oil spikes"
+  cat: geopolitical
+  url: "https://en.wikipedia.org/wiki/2026_Strait_of_Hormuz_crisis"
+- month: "2026-05"
+  day: 24
+  title: "US–Iran preliminary peace deal; Powell's chair term ends"
+  cat: geopolitical
+  url: "https://en.wikipedia.org/wiki/2025%E2%80%932026_Iran%E2%80%93United_States_negotiations"

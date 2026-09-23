@@ -1,0 +1,78 @@
+# Political context (SPEC 10.3). Hand-entered; every block cites its source.
+
+# Popular vote (Democratic, Republican) by election, from each election's Wikipedia infobox (parsed 2026-09-22).
+# Plotted as two-party margin (D - R) / (D + R) x 100, placed on the election month (November).
+elections:
+  president:
+    2000: [50999897, 50456002]  # https://en.wikipedia.org/wiki/2000_United_States_presidential_election
+    2004: [59028444, 62040610]  # https://en.wikipedia.org/wiki/2004_United_States_presidential_election
+    2008: [69498516, 59948323]  # https://en.wikipedia.org/wiki/2008_United_States_presidential_election
+    2012: [65915795, 60933504]  # https://en.wikipedia.org/wiki/2012_United_States_presidential_election
+    2016: [65853514, 62984828]  # https://en.wikipedia.org/wiki/2016_United_States_presidential_election
+    2020: [81283501, 74223975]  # https://en.wikipedia.org/wiki/2020_United_States_presidential_election
+    2024: [75017613, 77302580]  # https://en.wikipedia.org/wiki/2024_United_States_presidential_election
+  house:
+    2000: [46582167, 46992383]  # https://en.wikipedia.org/wiki/2000_United_States_House_of_Representatives_elections
+    2002: [33795885, 37332552]  # https://en.wikipedia.org/wiki/2002_United_States_House_of_Representatives_elections
+    2004: [52969786, 55958144]  # https://en.wikipedia.org/wiki/2004_United_States_House_of_Representatives_elections
+    2006: [42338795, 35857334]  # https://en.wikipedia.org/wiki/2006_United_States_House_of_Representatives_elections
+    2008: [65237840, 52249491]  # https://en.wikipedia.org/wiki/2008_United_States_House_of_Representatives_elections
+    2010: [38980192, 44829751]  # https://en.wikipedia.org/wiki/2010_United_States_House_of_Representatives_elections
+    2012: [59645531, 58283314]  # https://en.wikipedia.org/wiki/2012_United_States_House_of_Representatives_elections
+    2014: [35624357, 40081282]  # https://en.wikipedia.org/wiki/2014_United_States_House_of_Representatives_elections
+    2016: [61417454, 62772225]  # https://en.wikipedia.org/wiki/2016_United_States_House_of_Representatives_elections
+    2018: [60572245, 50861970]  # https://en.wikipedia.org/wiki/2018_United_States_House_of_Representatives_elections
+    2020: [77122690, 72466576]  # https://en.wikipedia.org/wiki/2020_United_States_House_of_Representatives_elections
+    2022: [51280463, 54227992]  # https://en.wikipedia.org/wiki/2022_United_States_House_of_Representatives_elections
+    2024: [70571330, 74390864]  # https://en.wikipedia.org/wiki/2024_United_States_House_of_Representatives_elections
+
+# Background bands: [start month, end month (exclusive), label, style]. Month resolution; a change
+# mid-month is assigned to the month in which the new holder served most days.
+bands:
+  fed_chair:
+    source: "https://en.wikipedia.org/wiki/Chair_of_the_Federal_Reserve"
+    rows:
+      - ["2000-01", "2006-02", "Greenspan", "a"]
+      - ["2006-02", "2014-02", "Bernanke", "b"]
+      - ["2014-02", "2018-02", "Yellen", "a"]
+      - ["2018-02", "2026-06", "Powell", "b"]   # term as chair ended 2026-05-15; Warsh sworn in 2026-05-22
+      - ["2026-06", "2030-06", "Warsh", "a"]
+  treasury:
+    source: "https://en.wikipedia.org/wiki/United_States_Secretary_of_the_Treasury"
+    rows:
+      - ["2000-01", "2001-02", "Summers", "a"]
+      - ["2001-02", "2003-01", "O'Neill", "b"]
+      - ["2003-01", "2006-07", "Snow", "a"]      # Snow sworn in 2003-02-03 (Jan 2003 vacancy shown as Snow)
+      - ["2006-07", "2009-02", "Paulson", "b"]
+      - ["2009-02", "2013-02", "Geithner", "a"]
+      - ["2013-02", "2017-02", "Lew", "b"]
+      - ["2017-02", "2021-02", "Mnuchin", "a"]
+      - ["2021-02", "2025-02", "Yellen", "b"]
+      - ["2025-02", "2029-02", "Bessent", "a"]
+  house:
+    source: "https://en.wikipedia.org/wiki/Party_divisions_of_United_States_Congresses"
+    rows:
+      - ["2000-01", "2007-01", "R House", "R"]
+      - ["2007-01", "2011-01", "D House", "D"]
+      - ["2011-01", "2019-01", "R House", "R"]
+      - ["2019-01", "2023-01", "D House", "D"]
+      - ["2023-01", "2027-01", "R House", "R"]
+  senate:
+    source: "https://en.wikipedia.org/wiki/Party_divisions_of_United_States_Congresses"
+    rows:
+      - ["2000-01", "2001-06", "R Senate", "R"]   # 50-50 from Jan 2001; VP Cheney's tie-break from Jan 20
+      - ["2001-06", "2003-01", "D Senate", "D"]   # Jeffords switch, 2001-06-06
+      - ["2003-01", "2007-01", "R Senate", "R"]
+      - ["2007-01", "2015-01", "D Senate", "D"]
+      - ["2015-01", "2021-01", "R Senate", "R"]
+      - ["2021-01", "2025-01", "D Senate", "D"]   # 50-50 with VP Harris tie-break from 2021-01-20
+      - ["2025-01", "2027-01", "R Senate", "R"]
+  shutdowns:
+    source: "https://en.wikipedia.org/wiki/Government_shutdowns_in_the_United_States"
+    rows:
+      - ["2013-10", "2013-11", "Shutdown (16 days)", "s"]
+      - ["2018-01", "2018-02", "Shutdown (3 days)", "s"]
+      - ["2018-12", "2019-02", "Partial shutdown (35 days)", "s"]
+      - ["2025-10", "2025-12", "Shutdown (43 days)", "s"]
+      - ["2026-01", "2026-02", "Partial shutdown (4 days)", "s"]       # 2026-01-31 to 02-03
+      - ["2026-02", "2026-06", "DHS shutdown (76 days)", "s"]           # from 2026-02-14

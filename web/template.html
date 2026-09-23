@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Monthly economic, market and political series 2000–2026 with events: overlay, rebase and correlate.">
+<title>Macro Atlas 2000–2026</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,500;6..72,600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+{{ styles }}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+  <h1>Macro Atlas, 2000–2026<small id="subtitle"></small></h1>
+  <div class="top-actions">
+    <button type="button" class="btn" id="themeBtn" aria-pressed="false">Dark theme</button>
+    <button type="button" class="btn" id="csvBtn">Copy CSV</button>
+    <button type="button" class="btn" id="dlBtn">Download CSV</button>
+    <button type="button" class="btn" id="pngBtn">Chart PNG</button>
+    <button type="button" class="btn" id="allBtn" title="Every series, every month, raw values">All data CSV</button>
+    <button type="button" class="btn" id="linkBtn">Copy link</button>
+  </div>
+</header>
+
+<nav class="presets" aria-label="Presets">
+  <div class="lbl">Start from a question</div>
+  <div class="chips" id="presets"></div>
+</nav>
+
+<div class="layout">
+  <aside class="rail" id="rail" aria-label="Series picker">
+    <h2>Series <span id="selCount">0 selected</span></h2>
+    <label class="sr" for="search">Search series</label>
+    <input class="search" id="search" type="search" placeholder="Search series…" autocomplete="off">
+    <div id="groups"></div>
+    <div style="margin-top:10px;display:flex;gap:8px"><button type="button" class="btn" id="clearBtn">Clear all</button><button type="button" class="btn rail-done" id="closeRail">Done</button></div>
+  </aside>
+
+  <main class="main">
+    <section class="card" id="mainCard" aria-label="Main chart">
+      <div class="controls">
+        <label class="ctl" for="mode">Scale</label>
+        <select id="mode" class="ctl-sel">
+          <option value="rebase">Rebase to 100 at range start</option>
+          <option value="z">Z-score (std devs)</option>
+          <option value="raw">Raw values (dual axis)</option>
+          <option value="log">Raw, log scale</option>
+          <option value="yoy">Year-over-year % change</option>
+          <option value="dd">Drawdown from peak (%)</option>
+        </select>
+        <label class="ctl" for="from">From</label> <select id="from" class="ctl-sel"></select>
+        <label class="ctl" for="to">To</label> <select id="to" class="ctl-sel"></select>
+        <label class="ctl sw"><input type="checkbox" id="shRec" checked> Recessions</label>
+        <label class="ctl" for="bands">Bands</label>
+        <select id="bands" class="ctl-sel">
+          <option value="none">None</option>
+          <option value="pres">Presidential terms</option>
+          <option value="house">House control</option>
+          <option value="senate">Senate control</option>
+          <option value="fed_chair">Fed chair</option>
+          <option value="treasury">Treasury secretary</option>
+          <option value="shutdowns">Government shutdowns</option>
+        </select>
+        <label class="ctl sw"><input type="checkbox" id="shEv" checked> Event lines</label>
+        <label class="ctl sw"><input type="checkbox" id="shExt"> Max/min</label>
+        <label class="ctl" for="cmp">Compare with range from</label> <select id="cmp" class="ctl-sel"><option value="">—</option></select>
+      </div>
+      <div class="chart-wrap"><canvas id="main" role="img" aria-label="Line chart of the selected series"></canvas><div class="empty" id="emptyMsg" hidden>Pick a series from the list to start plotting.</div></div>
+      <div class="legend" id="legend"></div>
+    </section>
+
+    <section class="card">
+      <h3>Events</h3>
+      <p class="sub">Filter which kinds of events are drawn on the chart (ticks along the bottom when the range is wider than 11 years, full lines when narrower). Click one to highlight it. Hover the chart near a month to see its events.</p>
+      <div class="ev-cats" id="evCats" role="group" aria-label="Event categories"></div>
+      <div class="ev-list" id="evList"></div>
+    </section>
+
+    <div class="two">
+      <section class="card">
+        <h3>Correlation matrix</h3>
+        <p class="sub">Pearson r across the visible range. Levels of trending series correlate spuriously; monthly changes are the honest test. Quarterly and annual series have no month-to-month change, so they show “·” on that basis. Tap a cell to open it in the scatter.</p>
+        <div class="controls">
+          <label class="ctl" for="basis">Basis</label> <select id="basis" class="ctl-sel"><option value="chg">Monthly % changes</option><option value="lvl">Levels</option></select>
+        </div>
+        <div class="matrix" id="matrix"></div>
+      </section>
+      <section class="card">
+        <h3>Pairwise scatter</h3>
+        <p class="sub" id="scatterSub">Select at least two series.</p>
+        <div class="controls">
+          <label class="ctl" for="sx">X</label> <select id="sx" class="ctl-sel"></select>
+          <label class="ctl" for="sy">Y</label> <select id="sy" class="ctl-sel"></select>
+          <span class="ctl range"><label for="lag">Lag (months, X leads Y)</label> <input type="range" id="lag" min="-24" max="24" value="0"> <output id="lagV" for="lag">0</output></span>
+        </div>
+        <div class="scatter-wrap"><canvas id="scatter" role="img" aria-label="Scatter plot of the selected pair"></canvas></div>
+        <div class="r-line" id="rline" aria-live="polite"></div>
+        <div class="lag-head"><span>Correlation by lag (−24 … +24 months)</span><span id="lagPeak"></span></div>
+        <div class="lag-wrap"><canvas id="lagChart" role="img" aria-label="Bar chart of correlation at each lag"></canvas></div>
+        <div class="lag-head"><span>Rolling correlation (lag 0) <label class="sr" for="roll">Window</label><select id="roll" class="ctl-sel" style="margin-left:6px"><option value="24">24-month</option><option value="36">36-month</option></select></span><span id="rollNote"></span></div>
+        <div class="lag-wrap"><canvas id="rollChart" role="img" aria-label="Line chart of rolling correlation"></canvas></div>
+      </section>
+    </div>
+
+    <section class="card">
+      <h3>Snapshot of selected series</h3>
+      <p class="sub">Observed values at the start and end of the visible range (no forward-fill).</p>
+      <div class="tbl"><table class="snap" id="snap"></table></div>
+    </section>
+
+    <footer>
+      <div id="sources"></div>
+      <div><strong>Presidential approval is approximate:</strong> quarterly averages of Gallup readings, entered by hand — treat it as indicative. Recession shading follows NBER dates (FRED USREC). Market indices are month-end closes; economic series are monthly averages of the source frequency; quarterly and annual series are drawn as steps. Derived “y/y” series are computed here. Some OECD-sourced series on FRED end early; their end dates are shown in the picker. Built <span id="built"></span>.</div>
+    </footer>
+  </main>
+</div>
+</div>
+<button type="button" class="btn primary sheet-btn" id="openRail" aria-controls="rail" aria-expanded="false">Choose series</button>
+<div class="backdrop" id="backdrop"></div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+{{ stats }}
+</script>
+<script>
+{{ app }}
+</script>
+</body>
+</html>

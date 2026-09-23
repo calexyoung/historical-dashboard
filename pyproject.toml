@@ -1,0 +1,19 @@
+[project]
+name = "macro-atlas"
+version = "1.0.0"
+description = "Macro Atlas 2000–2026: monthly economic/financial/political series, events, and a self-contained dashboard"
+requires-python = ">=3.11"
+dependencies = ["pandas", "requests", "pyyaml", "jinja2"]
+
+[project.optional-dependencies]
+dev = ["pytest", "playwright"]
+
+[tool.setuptools]
+packages = ["atlas"]
+
+[tool.setuptools.package-data]
+atlas = ["*.yaml"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = ["smoke: headless-browser test of dist/index.html (needs network for the Chart.js CDN)"]
