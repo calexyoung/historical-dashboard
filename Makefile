@@ -3,7 +3,7 @@ PY ?= $(if $(wildcard .venv/bin/python),.venv/bin/python,python3)
 .PHONY: fetch build check test smoke serve clean setup
 
 setup:
-	uv venv .venv && uv pip install --python .venv/bin/python -e '.[dev]' && .venv/bin/python -m playwright install chromium
+	uv sync --extra dev && .venv/bin/python -m playwright install chromium
 
 fetch:
 	$(PY) -m atlas fetch
