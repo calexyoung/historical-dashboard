@@ -1,12 +1,12 @@
 // GENERATED from schema/release.schema.json by scripts/gen-schema.mjs. Do not edit.
 
-export const SCHEMA_VERSION = "0.1.0";
+export const SCHEMA_VERSION = "0.2.0";
 
 export const releaseSchema: Record<string, unknown> = {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://mydashboards.co/macro-atlas/schema/release.schema.json",
   "title": "Release",
-  "description": "Macro Atlas release contract, v0 (schema_version 0.1.0). A Release is a directory; this schema describes it gathered into one object: manifest.json, catalog.json, series/{key}.json, derived/{key}.json and content/annotations.json. It is the seam between the writer and every reader (PLAN 4.2). Conventions the schema cannot express, and the cross-file rules, are in schema/README.md. Structural validity is not authorisation: whether a series may appear on a Surface is decided by permits() and the rights register.",
+  "description": "Macro Atlas release contract, v0 (schema_version 0.2.0). A Release is a directory; this schema describes it gathered into one object: manifest.json, catalog.json, series/{key}.json, derived/{key}.json, vintages/{key}.json and content/annotations.json. It is the seam between the writer and every reader (PLAN 4.2). Conventions the schema cannot express, and the cross-file rules, are in schema/README.md. Structural validity is not authorisation: whether a series may appear on a Surface is decided by permits() and the rights register.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -14,6 +14,7 @@ export const releaseSchema: Record<string, unknown> = {
     "catalog",
     "series",
     "derived",
+    "vintages",
     "annotations"
   ],
   "properties": {
@@ -41,6 +42,16 @@ export const releaseSchema: Record<string, unknown> = {
       },
       "additionalProperties": {
         "$ref": "#/$defs/seriesFile"
+      }
+    },
+    "vintages": {
+      "description": "vintages/{key}.json: what Macro Atlas has held for a stored Series over time (ADR 0022, ADR 0024). Optional per Series; a Series without one has no as-of answer.",
+      "type": "object",
+      "propertyNames": {
+        "$ref": "#/$defs/key"
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/vintageFile"
       }
     },
     "annotations": {
@@ -152,7 +163,7 @@ export const releaseSchema: Record<string, unknown> = {
       "properties": {
         "schema_version": {
           "description": "Version of this contract. Readers refuse a version they do not know.",
-          "const": "0.1.0"
+          "const": "0.2.0"
         },
         "semantics_version": {
           "description": "Version of the engine's behaviour that wrote derived/ (ADR 0003).",
@@ -209,7 +220,7 @@ export const releaseSchema: Record<string, unknown> = {
           },
           "additionalProperties": {
             "title": "ManifestSeries",
-            "description": "sha256 is the hash of the file's exact bytes.",
+            "description": "sha256 is the hash of the file's exact bytes. vintages_sha256 is the hash of vintages/{key}.json, present exactly when that file is.",
             "type": "object",
             "additionalProperties": false,
             "required": [
@@ -228,6 +239,9 @@ export const releaseSchema: Record<string, unknown> = {
                 ]
               },
               "sha256": {
+                "$ref": "#/$defs/sha256"
+              },
+              "vintages_sha256": {
                 "$ref": "#/$defs/sha256"
               },
               "state_hash": {
@@ -957,6 +971,284 @@ export const releaseSchema: Record<string, unknown> = {
           "minItems": 1,
           "items": {
             "$ref": "#/$defs/observation"
+          }
+        }
+      }
+    },
+    "vintageRow": {
+      "title": "VintageRow",
+      "description": "One version of one Observation: what was held for a Period from recorded_from up to, not including, recorded_to (null: held now). Both are retrieval times of Captures, never the time a Release was written. deleted marks a tombstone: the Period was held, was asked about again and was no longer in a complete answer. provider_from is when the Origin published the version, where the Origin or an archive of its releases dates it; provider_precision says whether that is a day or an instant (a day is written as that day at 00:00:00Z). metadata is the hash of the metadata the version was recorded under.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "period",
+        "period_start",
+        "period_end",
+        "value",
+        "status",
+        "deleted",
+        "recorded_from",
+        "recorded_to",
+        "provider_from",
+        "provider_to",
+        "provider_precision",
+        "channel",
+        "metadata"
+      ],
+      "properties": {
+        "period": {
+          "$ref": "#/$defs/period"
+        },
+        "period_start": {
+          "$ref": "#/$defs/date"
+        },
+        "period_end": {
+          "$ref": "#/$defs/date"
+        },
+        "value": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "status": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/observationStatus"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "deleted": {
+          "type": "boolean"
+        },
+        "recorded_from": {
+          "$ref": "#/$defs/datetime"
+        },
+        "recorded_to": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/datetime"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "provider_from": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/datetime"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "provider_to": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/datetime"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "provider_precision": {
+          "enum": [
+            "date",
+            "datetime",
+            null
+          ]
+        },
+        "channel": {
+          "type": "string",
+          "minLength": 1
+        },
+        "metadata": {
+          "$ref": "#/$defs/sha256"
+        }
+      },
+      "if": {
+        "properties": {
+          "deleted": {
+            "const": true
+          }
+        },
+        "required": [
+          "deleted"
+        ]
+      },
+      "then": {
+        "properties": {
+          "value": {
+            "type": "null"
+          },
+          "status": {
+            "type": "null"
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "status": {
+            "$ref": "#/$defs/observationStatus"
+          }
+        },
+        "if": {
+          "properties": {
+            "status": {
+              "enum": [
+                "missing",
+                "suppressed"
+              ]
+            }
+          },
+          "required": [
+            "status"
+          ]
+        },
+        "then": {
+          "properties": {
+            "value": {
+              "type": "null"
+            }
+          }
+        },
+        "else": {
+          "properties": {
+            "value": {
+              "type": "number"
+            }
+          }
+        }
+      }
+    },
+    "vintageFile": {
+      "title": "VintageFile",
+      "description": "vintages/{key}.json: every version of every Observation of a stored Series that the Release may show, the metadata history, and the complete Captures recorded for it. rows are in Period order, and a Period's versions in the order they were recorded. captures are oldest first; one whose change is none is a capture confirmation, and confirms only the Periods inside its scope. provider_coverage is the span over which the Origin's own record of its releases is known to be complete, or null when the Series has only Atlas-observed vintages. Only packages/core resolves an as-of question from this file (ADR 0003, docs/method/vintage-resolution.md).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "key",
+        "freq",
+        "representation",
+        "provider_coverage",
+        "metadata",
+        "captures",
+        "rows"
+      ],
+      "properties": {
+        "key": {
+          "$ref": "#/$defs/key"
+        },
+        "freq": {
+          "$ref": "#/$defs/frequency"
+        },
+        "representation": {
+          "description": "Always native: v1's legacy Series have no vintages.",
+          "const": "native"
+        },
+        "provider_coverage": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "title": "ProviderCoverage",
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "from",
+                "to"
+              ],
+              "properties": {
+                "from": {
+                  "$ref": "#/$defs/datetime"
+                },
+                "to": {
+                  "$ref": "#/$defs/datetime"
+                }
+              }
+            }
+          ]
+        },
+        "metadata": {
+          "description": "The metadata history, oldest first: each was in force from recorded_from until the next one's. metadata is what the vintage store recorded: the name, unit and adjustment declared, the Source, and the Rights the register gave when the bytes were fetched.",
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "title": "VintageMetadata",
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "hash",
+              "recorded_from",
+              "metadata"
+            ],
+            "properties": {
+              "hash": {
+                "$ref": "#/$defs/sha256"
+              },
+              "recorded_from": {
+                "$ref": "#/$defs/datetime"
+              },
+              "metadata": {
+                "type": "object"
+              }
+            }
+          }
+        },
+        "captures": {
+          "type": "array",
+          "items": {
+            "title": "VintageCapture",
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "retrieved_at",
+              "scope",
+              "change"
+            ],
+            "properties": {
+              "retrieved_at": {
+                "$ref": "#/$defs/datetime"
+              },
+              "scope": {
+                "description": "The first and last calendar day the source was asked about; null for no bound.",
+                "type": "array",
+                "minItems": 2,
+                "maxItems": 2,
+                "items": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/$defs/date"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "change": {
+                "enum": [
+                  "first",
+                  "revision",
+                  "metadata",
+                  "none"
+                ]
+              }
+            }
+          }
+        },
+        "rows": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/vintageRow"
           }
         }
       }

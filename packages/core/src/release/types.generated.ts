@@ -104,7 +104,7 @@ export type ObservationStatus =
 export type Anchor = DateAnchor | SpanAnchor | PeriodAnchor;
 
 /**
- * Macro Atlas release contract, v0 (schema_version 0.1.0). A Release is a directory; this schema describes it gathered into one object: manifest.json, catalog.json, series/{key}.json, derived/{key}.json and content/annotations.json. It is the seam between the writer and every reader (PLAN 4.2). Conventions the schema cannot express, and the cross-file rules, are in schema/README.md. Structural validity is not authorisation: whether a series may appear on a Surface is decided by permits() and the rights register.
+ * Macro Atlas release contract, v0 (schema_version 0.2.0). A Release is a directory; this schema describes it gathered into one object: manifest.json, catalog.json, series/{key}.json, derived/{key}.json, vintages/{key}.json and content/annotations.json. It is the seam between the writer and every reader (PLAN 4.2). Conventions the schema cannot express, and the cross-file rules, are in schema/README.md. Structural validity is not authorisation: whether a series may appear on a Surface is decided by permits() and the rights register.
  */
 export interface Release {
   manifest: Manifest;
@@ -121,6 +121,12 @@ export interface Release {
   derived: {
     [k: string]: SeriesFile;
   };
+  /**
+   * vintages/{key}.json: what Macro Atlas has held for a stored Series over time (ADR 0022, ADR 0024). Optional per Series; a Series without one has no as-of answer.
+   */
+  vintages: {
+    [k: string]: VintageFile;
+  };
   annotations: AnnotationsFile;
 }
 /**
@@ -133,7 +139,7 @@ export interface Manifest {
   /**
    * Version of this contract. Readers refuse a version they do not know.
    */
-  schema_version: "0.1.0";
+  schema_version: "0.2.0";
   /**
    * Version of the engine's behaviour that wrote derived/ (ADR 0003).
    */
@@ -181,7 +187,7 @@ export interface RightsRegisterRef {
   signed: boolean;
 }
 /**
- * sha256 is the hash of the file's exact bytes.
+ * sha256 is the hash of the file's exact bytes. vintages_sha256 is the hash of vintages/{key}.json, present exactly when that file is.
  */
 export interface ManifestSeries {
   /**
@@ -189,6 +195,7 @@ export interface ManifestSeries {
    */
   kind: "stored" | "derived";
   sha256: Sha256;
+  vintages_sha256?: Sha256;
   /**
    * The writer's hash of the full normalized state (PLAN 4.3). Opaque to readers; arrives with the VintageStore.
    */
@@ -439,6 +446,73 @@ export interface Observation {
   period_end: CalendarDate;
   value: number | null;
   status: ObservationStatus;
+}
+/**
+ * vintages/{key}.json: every version of every Observation of a stored Series that the Release may show, the metadata history, and the complete Captures recorded for it. rows are in Period order, and a Period's versions in the order they were recorded. captures are oldest first; one whose change is none is a capture confirmation, and confirms only the Periods inside its scope. provider_coverage is the span over which the Origin's own record of its releases is known to be complete, or null when the Series has only Atlas-observed vintages. Only packages/core resolves an as-of question from this file (ADR 0003, docs/method/vintage-resolution.md).
+ *
+ * This interface was referenced by `Release`'s JSON-Schema
+ * via the `definition` "vintageFile".
+ */
+export interface VintageFile {
+  key: SeriesKey;
+  freq: Frequency;
+  /**
+   * Always native: v1's legacy Series have no vintages.
+   */
+  representation: "native";
+  provider_coverage: null | ProviderCoverage;
+  /**
+   * The metadata history, oldest first: each was in force from recorded_from until the next one's. metadata is what the vintage store recorded: the name, unit and adjustment declared, the Source, and the Rights the register gave when the bytes were fetched.
+   *
+   * @minItems 1
+   */
+  metadata: [VintageMetadata, ...VintageMetadata[]];
+  captures: VintageCapture[];
+  /**
+   * @minItems 1
+   */
+  rows: [VintageRow, ...VintageRow[]];
+}
+export interface ProviderCoverage {
+  from: Instant;
+  to: Instant;
+}
+export interface VintageMetadata {
+  hash: Sha256;
+  recorded_from: Instant;
+  metadata: {};
+}
+export interface VintageCapture {
+  retrieved_at: Instant;
+  /**
+   * The first and last calendar day the source was asked about; null for no bound.
+   *
+   * @minItems 2
+   * @maxItems 2
+   */
+  scope: [CalendarDate | null, CalendarDate | null];
+  change: "first" | "revision" | "metadata" | "none";
+}
+/**
+ * One version of one Observation: what was held for a Period from recorded_from up to, not including, recorded_to (null: held now). Both are retrieval times of Captures, never the time a Release was written. deleted marks a tombstone: the Period was held, was asked about again and was no longer in a complete answer. provider_from is when the Origin published the version, where the Origin or an archive of its releases dates it; provider_precision says whether that is a day or an instant (a day is written as that day at 00:00:00Z). metadata is the hash of the metadata the version was recorded under.
+ *
+ * This interface was referenced by `Release`'s JSON-Schema
+ * via the `definition` "vintageRow".
+ */
+export interface VintageRow {
+  period: PeriodLabel;
+  period_start: CalendarDate;
+  period_end: CalendarDate;
+  value: number | null;
+  status: ObservationStatus | null;
+  deleted: boolean;
+  recorded_from: Instant;
+  recorded_to: Instant | null;
+  provider_from: Instant | null;
+  provider_to: Instant | null;
+  provider_precision: "date" | "datetime" | null;
+  channel: string;
+  metadata: Sha256;
 }
 /**
  * content/annotations.json.
