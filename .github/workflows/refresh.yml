@@ -1,4 +1,4 @@
-# SPEC 10.9: weekly refresh → QA → build → tests; commit data/atlas.json + dist/index.html; publish dist/ to Pages.
+# SPEC 10.9: weekly refresh → QA → build → tests; keep data/atlas.json + dist/index.html as a 90-day artifact (main is protected, so no commit); publish dist/ to Pages.
 name: refresh
 
 on:
@@ -10,7 +10,7 @@ on:
     paths: ["atlas/**", "web/**", "tests/**", ".github/**", "Makefile", "pyproject.toml", "uv.lock"]
 
 permissions:
-  contents: write
+  contents: read   # no longer pushes to main
   pages: write
   id-token: write
 
@@ -44,14 +44,16 @@ jobs:
       - uses: actions/upload-artifact@v7
         if: always()
         with: { name: snapshots, path: tests/snapshots/ }
-      - name: Commit refreshed data
-        if: github.event_name != 'pull_request'
-        run: |
-          git config user.name "macro-atlas-bot"
-          git config user.email "macro-atlas-bot@users.noreply.github.com"
-          git add data/atlas.json dist/index.html
-          git diff --cached --quiet || git commit -m "data: weekly refresh $(date -u +%Y-%m-%d)"
-          git push
+      # main is protected (reviewed PRs only), so the refresh no longer commits data to it.
+      # Each week's dataset is kept as an artifact instead; the site below is deployed from this build.
+      - uses: actions/upload-artifact@v7
+        with:
+          name: data-${{ github.run_id }}
+          path: |
+            data/atlas.json
+            dist/index.html
+          retention-days: 90
+          if-no-files-found: error
       - uses: actions/configure-pages@v6
       - uses: actions/upload-pages-artifact@v5
         with: { path: dist }
