@@ -43,6 +43,29 @@ is rendered, since a page's data is then sent twice (HTML and payload).
 - This is not a stop for Alex. A page that cannot fit moves code behind an interaction or renders
   it on the server.
 
+## Amendment, M4 (2026-11-11): the Explorer's budget
+
+The Explorer is built (ADR 0018). Measured on its production build, same method:
+
+| | gzip bytes |
+|---|---|
+| Framework (unchanged; 131,523 on this build, within 0.1% of the recorded floor) | 131,523 |
+| This app's client code on the Explorer: the theme control, the Explorer's five client components, and Next's link component | 15,742 |
+| The Explorer in total | 147,265 |
+| A reading page (`/data`) on the same build | 135,607 |
+| **Budget for the Explorer** = floor + 30 KB | **162,115** |
+
+- The Explorer may load at most **162,115 gzip bytes of script files** (`JS_BUDGET.explorerBytes`).
+  Half of the 30 KB is used; the rest is for M5 (statistics, compare ranges, export).
+- Reading pages keep their budget, and the test that holds them to it now measures `/data`,
+  since `/explore` is no longer a bare shell. A series page still loads no script of its own:
+  the figure component takes the Explorer's "show the table" link as a slot, so a reading page
+  does not load a link component it never uses.
+- `measure-js.mjs` recognises this app's chunks by two strings, the theme cookie's name and the
+  Explorer's mark.
+- The Explorer's inline payload is large (64 KB gzip for v1's opening view) because the page is
+  its drawings; ADR 0018 records what keeps it down.
+
 ## Considered options
 
 - **No framework JavaScript on reading pages at all.** Next's App Router does not offer that

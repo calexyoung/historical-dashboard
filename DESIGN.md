@@ -190,6 +190,41 @@ button is Plot Navy with the ground colour as its text. It is a GET form with no
 address is the state, and nothing on the page animates. Below 768px the table's other columns
 fold into the first cell so the page never scrolls sideways and no value is lost.
 
+### The Explorer
+
+The workbench (ADR 0018). Panels in reading order: Explore (presets, as link chips in one row
+that scrolls on a phone), View, Chart, Layers, Events in the window.
+
+- **View.** "Choose series" and "Copy link" are 36px controls; the selected Series are chips, each
+  with its colour, line style and symbol, its name (a door to its series page) and a 32px "×"
+  that removes it. A Series that is selected but not drawn has a dashed chip and a line under
+  the chart that says why. Mode is a select; the window is two month fields.
+- **The readout** sits above the chart: a 24px line (date, then "latest in the window",
+  "under the pointer" or "pinned", then "Unpin"), and one two-line row per selected Series
+  (name and value; unit, Period and the value as drawn). Rows have fixed heights and there is
+  always one per Series, so the strip never changes height as the date moves. The pointer
+  previews with a dashed ink line; a click, a tap or the arrow keys pin, with a solid Plot Navy
+  line (the one place navy is drawn on a chart: it marks the reader's own choice).
+- **Small multiples.** One plot per unit, stacked, on one time axis and one left edge, each with
+  its Series named under it. No second axis.
+- **Layers.** Recessions are ink at 10%. A set of bands (terms of government, policy periods) is
+  the `band` tint at two strengths, with a hairline where each begins and the holder's name at
+  the top where it fits; a party is written in words, "Obama (Democratic)", and the tint never
+  stands for it. One set of bands at a time. Events are ink ticks at the foot of the plot, all
+  alike: an Event's category is a word in the list under the chart, not a colour. Choosing an
+  Event in the list draws it as an ink line the height of the plot with its name.
+- **The picker** is a `<dialog>`: a sheet across the bottom of a phone (85% of its height at
+  most), a 400px drawer at the left from 1024px, where the chart is not dimmed so a ticked box
+  is seen to take effect. "Done" takes focus when it opens, not the search field, so a phone
+  does not raise its keyboard. More than four Series on a phone gets a line of advice, not a
+  limit.
+- **Motion.** The sheet: 240 ms in, 180 ms out, `transform` only, `cubic-bezier(0.32, 0.72, 0, 1)`;
+  none when a key opened it; opacity only under reduced motion. "Copied": a 200 ms crossfade.
+  Nothing else moves.
+
+Tokens are declared with `@theme static`, so that every series colour reaches the stylesheet:
+drawings name colours in SVG attributes, which Tailwind cannot see.
+
 ### Still to be recorded here
 
 Statement-table styles (v2.3) are added to this file by the milestone that builds them.

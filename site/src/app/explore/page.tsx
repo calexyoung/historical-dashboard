@@ -9,7 +9,7 @@ import { Figure } from "@/components/Figure";
 import { Panel } from "@/components/Panel";
 import { Svg } from "@/components/Svg";
 import { BASE_PATH, SURFACE } from "@/lib/config";
-import { explorerQuery, parseExplorerParams } from "@/lib/explorer/state";
+import { parseExplorerParams } from "@/lib/explorer/state";
 import { explorerView, MODE_LABELS, type Selected } from "@/lib/explorer/view";
 import { swatch } from "@/lib/figure";
 import { MAX_SERIES } from "@/lib/query";
@@ -92,7 +92,7 @@ export default async function ExplorePage({ searchParams }: PageProps<"/explore"
             max={MAX_SERIES}
             hidden={pickerHidden}
             initialOpen={state.pick}
-            openHref={`${here}?${explorerQuery({ ...resolved, pick: true })}`}
+            openHref={`${BASE_PATH}${to(view.queryWith({ pick: true }))}`}
             closeHref={`${BASE_PATH}${to(view.query)}`}
           />
           {view.selection.length > 0 && <CopyLink href={`${BASE_PATH}${to(view.resolvedQuery)}`} className={button} />}

@@ -37,6 +37,15 @@ at 320px has no clipped labels.
 5. **The table rows carry no classes.** A long Series is hundreds of rows, sent twice (HTML and
    React's payload, as ADR 0014 warned). `.figure-table` in `globals.css` styles them.
 
+## Amendment, M4 (2026-11-11)
+
+The generic component now writes a drawing's contents as markup (the figure module's own
+`svgString`, which escapes every text and attribute) inside a root element, instead of mapping
+every node to an element. The page is the same; React's payload holds the drawing once, as
+text, not a second time as elements. It is still one geometry and one writer. The Explorer puts
+its interaction on top of the drawings, not into them (ADR 0018): each drawing states its time
+axis on its root (`data-t0`, `data-t1`, `data-x0`, `data-x1`), which is all a pointer needs.
+
 ## What it costs (measured on a production build, M3)
 
 | Page | HTML | HTML, gzip | of which React's inline payload, gzip |

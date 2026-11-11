@@ -304,7 +304,7 @@ export function explorerView(release: OpenedRelease, surface: Surface, state: Ex
   // --- what is drawn ---
   const drawnGot = got.filter((g) => g.drawn !== null && g.raw.some((o) => o.value !== null) && g.drawn.some((o) => o.value !== null));
   for (const g of got) {
-    if (g.drawn !== null && g.reason === null && !drawnGot.includes(g)) g.reason = g.raw.some((o) => o.value !== null) ? "This mode has no value for this series in the window." : "This series has no value in the window.";
+    if (g.drawn !== null && g.reason === null && !drawnGot.includes(g)) g.reason = g.raw.some((o) => o.value !== null) ? "Shown this way, this series has no value in the window." : "This series has no value in the window.";
   }
   const shown: ShownSeries[] = drawnGot.map((g) => {
     const e = g.entry;
@@ -316,7 +316,7 @@ export function explorerView(release: OpenedRelease, surface: Surface, state: Ex
       counts.set(o.empty, (counts.get(o.empty) ?? 0) + 1);
       return { ...o, status: NO_ANSWER };
     });
-    for (const [why, n] of counts) notes.push(`${e.name}: ${n} ${n === 1 ? "period has" : "periods have"} nothing to draw in this mode (${EMPTY_WORDS[why] ?? why}).`);
+    for (const [why, n] of counts) notes.push(`${e.name}: ${n} ${n === 1 ? "period has" : "periods have"} nothing to draw when shown this way (${EMPTY_WORDS[why] ?? why}).`);
     return {
       key: e.key,
       name: e.name,

@@ -167,6 +167,11 @@ svg :focus-visible {
   outline: none;
 }
 
+/* Atlas: the Explorer's chart takes focus as a whole; its ring is drawn inside it, so the panel never clips it. */
+.explorer-chart:focus-visible {
+  outline-offset: -2px;
+}
+
 @layer components {
   /*
    * Anything pressable answers the press at once (PLAN section 8): scale(0.97), 120 ms, strong
@@ -261,9 +266,6 @@ svg :focus-visible {
     cursor: crosshair;
     touch-action: pan-y;
   }
-  .explorer-chart:focus-visible {
-    outline-offset: -2px; /* drawn inside the chart, so it is never clipped by the panel */
-  }
   /* Once the browser has taken over the pin, the server's drawing of it steps aside. */
   .explorer-chart[data-live] [data-pin] {
     display: none;
@@ -285,6 +287,7 @@ svg :focus-visible {
    */
   .sheet {
     position: fixed;
+    z-index: 40; /* for a reader without JavaScript it is not a modal, so it is not in the top layer */
     inset: auto 0 0 0;
     margin: 0;
     width: 100%;

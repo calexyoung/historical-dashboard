@@ -40,7 +40,7 @@ v2-check: lint-py test
 
 # --- v2 on v1's data (M2). One command: convert v1's committed output into a local-profile
 # release under $ATLAS_LOCAL (default var/local, git-ignored), then serve it on the local surface:
-#   http://localhost:3000/macro-atlas/data      http://localhost:3000/macro-atlas/data/unrate
+#   http://localhost:3000/macro-atlas/explore   http://localhost:3000/macro-atlas/data
 # Local only (PLAN 6.1): the release is never public-profile, and nothing is fetched.
 ATLAS_LOCAL ?= $(CURDIR)/var/local
 

@@ -94,8 +94,7 @@ export function SeriesPicker({
 
   const toggle = (rowKey: string, on: boolean) => {
     const next = on ? [...keys.filter((k) => k !== rowKey), rowKey] : keys.filter((k) => k !== rowKey);
-    setKeys(next);
-    setSeen(next.join(","));
+    setKeys(next); // shown at once; the server's answer then confirms it
     // In the order chosen, not the list's: the form alone would send them in the list's order.
     const params = new URLSearchParams(hidden);
     params.set("s", next.join(","));

@@ -118,8 +118,7 @@ export function ExplorerChart({
   useEffect(() => () => void (pending.current && clearTimeout(pending.current)), []);
 
   const pin = (next: string | null, wait = 0) => {
-    setAt(next);
-    setSeen(next); // ours until the server answers with it
+    setAt(next); // shown at once; the server's answer then confirms it
     commit(next, wait);
   };
 

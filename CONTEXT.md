@@ -295,6 +295,17 @@ The workbench where a reader picks Series, a window and a Transform and studies 
 with Annotations and As-of views. Its address fully describes what is shown.
 _Avoid_: Dashboard, chart builder
 
+**Readout**:
+What every selected Series says at one date in the Explorer: for each, the Observation whose
+Period contains that date. A reader may hold the Readout at a date; the address then carries it
+(`at=`). Holding a date is not a Pin, which is a reference to a Release.
+_Avoid_: Tooltip, crosshair values
+
+**Layer**:
+A set of Annotations a reader can switch on or off in the Explorer: recessions, one category of
+Events, one set of terms of government.
+_Avoid_: Overlay
+
 **Twin**:
 The same answer a page shows, in a machine-readable form at the same address with a file suffix.
 _Avoid_: Export, endpoint
