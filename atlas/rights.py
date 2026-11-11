@@ -13,8 +13,8 @@ writing one here.
 """
 from __future__ import annotations
 
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
-from typing import Iterable, Mapping, Optional
 
 SURFACES = ("local", "staging", "production")
 PERMISSIONS = ("display", "redistribute", "ml_use")
@@ -27,7 +27,7 @@ class Decision:
     """allow, or deny with a reason. Read ``.allowed``; a Decision has no truth value."""
 
     allowed: bool
-    reason: Optional[str] = None
+    reason: str | None = None
 
     def __bool__(self) -> bool:
         raise TypeError("a rights Decision has no truth value; read .allowed")
@@ -41,7 +41,7 @@ def _deny(reason: str) -> Decision:
     return Decision(False, reason)
 
 
-def _row_problem(row: object) -> Optional[str]:
+def _row_problem(row: object) -> str | None:
     if not isinstance(row, Mapping):
         return "a rights lineage row is not an object"
     for field in _ROW_FIELDS:

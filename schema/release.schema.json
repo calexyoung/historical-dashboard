@@ -97,7 +97,7 @@
     },
     "manifest": {
       "title": "Manifest",
-      "description": "manifest.json: what this Release is and what it holds.",
+      "description": "manifest.json: what this Release is and what it holds. created is when the Release was written, and is also the fixed date against which staleness (max_lag) is judged, so a Release never changes state as the clock moves.",
       "type": "object",
       "additionalProperties": false,
       "required": [
@@ -127,10 +127,7 @@
           "pattern": "^[0-9]{8}T[0-9]{6}Z-[0-9a-f]{7,12}$"
         },
         "profile": { "$ref": "#/$defs/profile" },
-        "created": {
-          "description": "When this Release was written. Also the fixed date against which staleness (max_lag) is judged, so a Release never changes state as the clock moves.",
-          "$ref": "#/$defs/datetime"
-        },
+        "created": { "$ref": "#/$defs/datetime" },
         "rights_register": {
           "title": "RightsRegisterRef",
           "description": "The rights register this Release was built against. signed says Alex has signed that version; a public Release requires it. It does not by itself authorise any Series: that is the writer's allowlist and permits().",
@@ -152,6 +149,7 @@
           "propertyNames": { "$ref": "#/$defs/key" },
           "additionalProperties": {
             "title": "ManifestSeries",
+            "description": "sha256 is the hash of the file's exact bytes.",
             "type": "object",
             "additionalProperties": false,
             "required": ["kind", "sha256", "channel", "rights_status", "representation"],
@@ -160,10 +158,7 @@
                 "description": "stored: series/{key}.json. derived: derived/{key}.json.",
                 "enum": ["stored", "derived"]
               },
-              "sha256": {
-                "description": "Hash of the file's exact bytes.",
-                "$ref": "#/$defs/sha256"
-              },
+              "sha256": { "$ref": "#/$defs/sha256" },
               "state_hash": {
                 "description": "The writer's hash of the full normalized state (PLAN 4.3). Opaque to readers; arrives with the VintageStore.",
                 "type": "string",

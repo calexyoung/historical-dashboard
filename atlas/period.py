@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import re
 from datetime import date, timedelta
-from typing import Optional, Tuple
 
 FREQUENCIES = (
     "daily",
@@ -29,7 +28,7 @@ _YEAR = re.compile(r"^(\d{4})$")
 _ONE_DAY = timedelta(days=1)
 
 
-def _day(label: str) -> Optional[date]:
+def _day(label: str) -> date | None:
     m = _DAY.match(label)
     if not m:
         return None
@@ -39,14 +38,14 @@ def _day(label: str) -> Optional[date]:
         return None
 
 
-def _span(freq: str, label: str) -> Optional[Tuple[date, date]]:
+def _span(freq: str, label: str) -> tuple[date, date] | None:
     try:
         return _span_unchecked(freq, label)
     except (ValueError, OverflowError):  # a year at the edge of the calendar
         return None
 
 
-def _span_unchecked(freq: str, label: str) -> Optional[Tuple[date, date]]:
+def _span_unchecked(freq: str, label: str) -> tuple[date, date] | None:
     if not isinstance(label, str):
         return None
     if freq in ("daily", "business_daily", "irregular"):
@@ -85,7 +84,7 @@ def _span_unchecked(freq: str, label: str) -> Optional[Tuple[date, date]]:
     return None
 
 
-def period_bounds(freq: str, label: str) -> Optional[Tuple[str, str]]:
+def period_bounds(freq: str, label: str) -> tuple[str, str] | None:
     """The first and last calendar day of the Period, both inclusive, as YYYY-MM-DD."""
     span = _span(freq, label)
     if span is None:
@@ -93,7 +92,7 @@ def period_bounds(freq: str, label: str) -> Optional[Tuple[str, str]]:
     return span[0].isoformat(), span[1].isoformat()
 
 
-def next_period(freq: str, label: str) -> Optional[str]:
+def next_period(freq: str, label: str) -> str | None:
     """The label of the Period that follows. None for an irregular Series or a bad label."""
     span = _span(freq, label)
     if span is None or freq == "irregular":
