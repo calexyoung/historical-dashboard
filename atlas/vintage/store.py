@@ -147,7 +147,7 @@ class VintageStore:
 
     # --- reading ---------------------------------------------------------------------------
 
-    def keys(self) -> list[str]:
+    def series_keys(self) -> list[str]:
         """Every Series with at least one complete Capture recorded."""
         return sorted(path.stem for path in (self.dir / "caplog").glob("*.ndjson"))
 
@@ -263,7 +263,7 @@ class VintageStore:
         if caplog:
             held = caplog[0]["real_bytes"]
         else:
-            other = next(iter(self.keys()), None)
+            other = next(iter(self.series_keys()), None)
             if other is None:
                 return
             held = self.captures(other)[0]["real_bytes"]

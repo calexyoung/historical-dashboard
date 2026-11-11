@@ -1,0 +1,70 @@
+{
+  "format": 1,
+  "about": "Which Series each captured source series is recorded under, and the metadata Macro Atlas declares for it, until the catalog of M12 takes this over. One entry per Series: the endpoint that fetches it (an id from the rights register's capture lists), the Origin's own identifier and dataset, and the declared metadata as a list of dated versions. Never edit a version that has been in force: add a new one with the instant it takes effect in \"from\". A replay applies to each Capture the version in force when it was retrieved, so the metadata history can be rebuilt from this file and the Captures alone.",
+  "series": [
+    {
+      "key": "cpi",
+      "freq": "monthly",
+      "endpoint": "bls-headline",
+      "origin_id": "CUSR0000SA0",
+      "dataset": "Consumer Price Index",
+      "url": "https://data.bls.gov/timeseries/CUSR0000SA0",
+      "metadata": [
+        {
+          "from": null,
+          "name": "Consumer Price Index for All Urban Consumers: all items, U.S. city average, seasonally adjusted",
+          "unit": "index, 1982-84 = 100",
+          "seasonal_adjustment": "sa"
+        }
+      ]
+    },
+    {
+      "key": "cpi_nsa",
+      "freq": "monthly",
+      "endpoint": "bls-headline",
+      "origin_id": "CUUR0000SA0",
+      "dataset": "Consumer Price Index",
+      "url": "https://data.bls.gov/timeseries/CUUR0000SA0",
+      "metadata": [
+        {
+          "from": null,
+          "name": "Consumer Price Index for All Urban Consumers: all items, U.S. city average, not seasonally adjusted",
+          "unit": "index, 1982-84 = 100",
+          "seasonal_adjustment": "nsa"
+        }
+      ]
+    },
+    {
+      "key": "unrate",
+      "freq": "monthly",
+      "endpoint": "bls-headline",
+      "origin_id": "LNS14000000",
+      "dataset": "Current Population Survey",
+      "url": "https://data.bls.gov/timeseries/LNS14000000",
+      "metadata": [
+        {
+          "from": null,
+          "name": "Unemployment rate, 16 years and over, seasonally adjusted",
+          "unit": "percent",
+          "seasonal_adjustment": "sa"
+        }
+      ]
+    },
+    {
+      "key": "payems",
+      "freq": "monthly",
+      "endpoint": "bls-headline",
+      "origin_id": "CES0000000001",
+      "dataset": "Current Employment Statistics",
+      "url": "https://data.bls.gov/timeseries/CES0000000001",
+      "metadata": [
+        {
+          "from": null,
+          "name": "All employees, total nonfarm, seasonally adjusted",
+          "unit": "thousands of persons",
+          "seasonal_adjustment": "sa"
+        }
+      ]
+    }
+  ]
+}

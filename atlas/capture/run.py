@@ -14,7 +14,7 @@ from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from ..rights import DIRECT, RightsGate
+from ..rights import DIRECT, GRANTS, RightsGate
 from . import store as S
 from .adapters import ADAPTERS, Endpoint, capture
 from .http import CaptureError, Fetch, Part, Session, Transport, redact
@@ -228,14 +228,22 @@ def _run(store, table, endpoints, transport, register_sha256, hide, sleep, user_
     if user_agent:
         options["user_agent"] = user_agent
     session = Session(transport, **options)
+    rows = {row["id"]: row for row in table["rows"]}
     for endpoint in endpoints:
         fetch = Fetch(session)
         adapter = ADAPTERS[endpoint.adapter]
+        row = rows[endpoint.source]
         record = {
             "capture_id": f"{run_id}/{endpoint.id}", "run_id": run_id, "endpoint": endpoint.id,
             "source": endpoint.source, "origin": endpoint.origin, "datasets": list(endpoint.datasets),
             "channel": endpoint.channel, "adapter": {"name": adapter.name, "version": adapter.version},
-            "register": register, "transport": transport.kind,
+            "register": register,
+            # What the row said on the day: the vintage store keeps Rights over time (PLAN 4.3),
+            # and a later replay cannot ask what a register used to say.
+            "rights": {"row": row["id"], "licence_class": row["licence_class"],
+                       "attribution": row["attribution"],
+                       **{grant: row["decision"][grant] for grant in GRANTS}},
+            "transport": transport.kind,
             "real_bytes": bool(getattr(transport, "real", True)),
             "started_at": S.stamp(transport.now()),
         }

@@ -173,7 +173,7 @@ def test_an_incomplete_state_writes_nothing_and_says_why(store):
 
 def test_an_incomplete_first_state_creates_no_series(store):
     store.record(state({"2026-01": "100.0"}, complete=False), ref("c1", T1))
-    assert store.keys() == [] and store.rows(KEY) == []
+    assert store.series_keys() == [] and store.rows(KEY) == []
 
 
 def test_a_missing_observation_is_a_fact_about_the_period_and_not_a_tombstone(store):
