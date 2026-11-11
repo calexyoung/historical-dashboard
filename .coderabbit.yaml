@@ -1,0 +1,9 @@
+# CodeRabbit: also review PRs into the long-lived v2 branch (default branch main is always included),
+# including drafts, since every v2 milestone PR is opened as a draft first. Codex remains the primary reviewer.
+reviews:
+  profile: chill
+  auto_review:
+    enabled: true
+    drafts: true
+    base_branches:
+      - "^v2$"
