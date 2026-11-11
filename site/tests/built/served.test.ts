@@ -98,6 +98,61 @@ describe("the fixture release is served at both base paths", () => {
   });
 });
 
+describe("export from the Explorer on the local surface (PLAN M5)", () => {
+  let server: Running;
+  beforeAll(async () => {
+    server = await startVariant("local-atlas", { root: FIXTURE_ROOT });
+  });
+  afterAll(() => server.stop());
+
+  it("the CSV is a file, stamped, never stored, never indexed", async () => {
+    const response = await get(server.url("/explore/export?format=csv&s=fx_price_index&mode=z"));
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-type")).toBe("text/csv; charset=utf-8");
+    expect(response.headers.get("content-disposition")).toMatch(/^attachment; filename="macro-atlas_z_2024-01_2025-12_not-for-publication\.csv"$/);
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    expect(response.headers.get("x-robots-tag")).toBe("noindex");
+    const body = await response.text();
+    expect(body.split("\n")[0]).toBe("# Macro Atlas · NOT FOR PUBLICATION");
+    expect(body).toContain(`# View: ${server.url("/explore")}?s=fx_price_index&mode=z`);
+    expect(body).toContain("fx_price_index,Fixture price index,window,2025-12,2025-12-01,2025-12-31,109.9,");
+  });
+
+  it("a Host that is not a host is not written into the file", async () => {
+    const response = await getAs(server.url("/explore/export?format=csv&s=fx_price_index"), "localhost,=1+1,");
+    // The gate turns away a name that is not this machine's; if it ever did not, the file would still not carry it.
+    expect(response.status === 421 || !response.body.includes("=1+1")).toBe(true);
+    const named = await getAs(server.url("/explore/export?format=csv&s=fx_price_index"), "localhost:9");
+    expect(named.status).toBe(200);
+    expect(named.body).toContain("# View: http://localhost:9/macro-atlas/explore?s=fx_price_index");
+  });
+
+  it("the chart is one standalone drawing, and the file of everything holds every series", async () => {
+    const svg = await get(server.url("/explore/export?format=svg&s=fx_price_index,fx_output_quarterly"));
+    expect(svg.headers.get("content-type")).toBe("image/svg+xml; charset=utf-8");
+    const drawing = await svg.text();
+    expect(drawing).toMatch(/^<svg xmlns=/);
+    expect(drawing).toContain("NOT FOR PUBLICATION");
+    expect(drawing).not.toContain("var(--");
+    const all = await (await get(server.url("/explore/export?format=all"))).text();
+    for (const key of ["fx_price_index", "fx_output_quarterly", "fx_vote_margin", "fx_price_index_yoy"]) expect(all).toContain(`\n${key},`);
+    expect(all).not.toContain("\nfx_exchange_index,");
+  });
+
+  it("a format it does not have, or nothing to export, is a short refusal", async () => {
+    expect((await get(server.url("/explore/export?format=xlsx&s=fx_price_index"))).status).toBe(400);
+    expect((await get(server.url("/explore/export?format=csv"))).status).toBe(422);
+    expect((await get(server.url("/explore/export?format=csv&s=fx_exchange_index"))).status).toBe(422);
+  });
+
+  it("the page links to the files of the view it shows", async () => {
+    const html = await (await get(server.url("/explore?s=fx_price_index&mode=z"))).text();
+    expect(html).toContain(`href="${server.base}/explore/export?format=csv&amp;s=fx_price_index&amp;mode=z&amp;from=2024-01&amp;to=2025-12`);
+    expect(html).toContain("format=svg");
+    expect(html).toContain("format=all");
+  });
+});
+
 describe("the catalog page, /data (PLAN section 3, M2)", () => {
   let server: Running;
   beforeAll(async () => {
@@ -389,7 +444,7 @@ describe("rewriting CURRENT changes the served page with no restart", () => {
 describe("a production-surface build fails closed (PLAN 6.1 point 5, reader)", () => {
   let server: Running;
   const root = tempRoot();
-  const PATHS = ["/", "/explore", "/explore/", "/data", "/data?q=price", "/data/fx_price_index", "/data/fx_exchange_index", "/docs/glossary", "/docs/glossary/stale", "/api/health", "/api/theme", "/icon.svg", "/_next/static/chunks/x.js", "/no/such/page"];
+  const PATHS = ["/", "/explore", "/explore/", "/data", "/data?q=price", "/data/fx_price_index", "/data/fx_exchange_index", "/docs/glossary", "/docs/glossary/stale", "/api/health", "/api/theme", "/icon.svg", "/_next/static/chunks/x.js", "/no/such/page", "/explore/export?format=csv&s=fx_price_index", "/explore/export?format=svg&s=fx_price_index", "/explore/export?format=all"];
 
   beforeAll(async () => {
     addRelease(root, { id: A });
@@ -421,6 +476,23 @@ describe("a production-surface build fails closed (PLAN 6.1 point 5, reader)", (
     expect(response.headers["x-robots-tag"]).toBeUndefined();
     expect(idsOn(response.body)).toEqual([A]);
     expect(await (await get(server.url("/api/health"))).json()).toMatchObject({ status: "ok", surface: "production" });
+  });
+
+  it("refuses every export, even of a public-profile release, until the rights register says otherwise (PLAN M5, 6.1)", async () => {
+    promote(root, A);
+    for (const query of ["format=csv&s=fx_price_index", "format=svg&s=fx_price_index", "format=all", "s=fx_price_index"]) {
+      const response = await get(server.url(`/explore/export?${query}`));
+      expect(response.status, query).toBe(403);
+      expect(response.headers.get("content-type"), query).toBe("text/plain; charset=utf-8");
+      expect(response.headers.get("cache-control"), query).toBe("no-store");
+      const body = await response.text();
+      expect(body, query).toMatch(/cannot be exported here/);
+      expect(body, query).not.toMatch(/109\.9|100\.4|<svg|period_start/);
+    }
+    // And the page does not offer what would be refused.
+    const html = await (await get(server.url("/explore?s=fx_price_index"))).text();
+    expect(html).not.toContain("/explore/export");
+    expect(html).toContain("Export is not available here");
   });
 
   it("goes back to 503 the moment CURRENT names a local-profile release: no fallback to the good one", async () => {

@@ -511,11 +511,11 @@ test.describe("accessibility and small screens", () => {
     }
   });
 
-  test("keyboard order follows reading order through the view: picker, copy, series, mode, window, chart, layers", async ({ page, atlas }) => {
+  test("keyboard order follows reading order through the view: picker, copy, export, series, mode, window, compare, marks, chart", async ({ page, atlas }) => {
     await page.goto(atlas.url("/explore?s=fx_price_index"));
     await page.getByRole("link", { name: /Choose series/ }).focus();
     const stops: string[] = [];
-    for (let i = 0; i < 16 && stops.at(-1) !== "How to read this"; i++) {
+    for (let i = 0; i < 28 && stops.at(-1) !== "How to read this"; i++) {
       await page.keyboard.press("Tab");
       const stop = await page.evaluate(() => {
         const el = document.activeElement!;
@@ -523,7 +523,7 @@ test.describe("accessibility and small screens", () => {
       });
       if (stop !== stops.at(-1)) stops.push(stop); // a month field is several stops in some browsers
     }
-    expect(stops).toEqual(["Copy linkCopied", "Fixture price index", "Remove", "mode", "from", "to", "Show", "Chart.", "Preliminary", "Missing", "How to read this"]);
+    expect(stops).toEqual(["Copy linkCopied", "Download CSV", "Copy CSVCopied", "Save chart as PNGSaved", "Every series in this rel", "Fixture price index", "Remove", "mode", "from", "to", "cmp", "ext", "Show", "Chart.", "Preliminary", "Missing", "How to read this"]);
   });
 
   test("the chart's focus ring is drawn inside it", async ({ page, atlas }) => {

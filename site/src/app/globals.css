@@ -271,6 +271,60 @@ svg :focus-visible {
     display: none;
   }
 
+  /*
+   * Atlas: a small table of figures in the Explorer (the snapshot, the correlations, the tables
+   * behind the relationship drawings). Numbers are right-aligned tabular figures (`.n`); a
+   * <small> under or beside a figure is its Period or unit. Nothing in it moves.
+   */
+  .data-table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: left;
+    font-size: 14px;
+    font-variant-numeric: tabular-nums;
+  }
+  .data-table.w-auto {
+    width: auto;
+  }
+  .data-table thead th {
+    padding: 6px 12px 6px 0;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--color-ink-3);
+    border-bottom: 1px solid var(--color-line);
+    white-space: nowrap;
+    vertical-align: bottom;
+  }
+  .data-table tbody tr + tr {
+    border-top: 1px solid var(--color-line);
+  }
+  .data-table tbody th {
+    padding: 5px 12px 5px 0;
+    font-weight: 500;
+    color: var(--color-ink);
+    vertical-align: top;
+  }
+  .data-table td {
+    padding: 5px 12px 5px 0;
+    vertical-align: top;
+  }
+  .data-table .n {
+    text-align: right;
+    white-space: nowrap;
+  }
+  .data-table small {
+    font-size: 12px;
+    font-weight: 400;
+    color: var(--color-ink-3);
+  }
+  .data-table tbody th small {
+    display: block;
+  }
+  .data-table td i {
+    font-style: normal;
+    color: var(--color-ink-3);
+  }
+
   /* "Copy link" and "Copied" share one box and crossfade in 200 ms. */
   .fade-label {
     transition: opacity 200ms ease;

@@ -6,7 +6,7 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import type { Surface } from "@macro-atlas/core";
 import type { SvgNode } from "../figure";
-import { walk } from "../figure/svg";
+import { textOf, walk } from "../figure/svg";
 import { createReleaseReader, type OpenedRelease } from "../release/reader";
 import { FIXTURE_ROOT } from "../release/testing";
 import { readoutAt } from "./readout";
@@ -263,11 +263,6 @@ describe("the address", () => {
     expect(v.queryWith({ at: null })).toBe("s=fx_price_index&mode=z&from=2024-01&layers=rec&cmp=2020-01");
   });
 
-  it("says in one line what a v1 link asks for that the Explorer does not draw yet", () => {
-    expect(view("s=fx_price_index&cmp=2020-01&ext=1").carriedNote).toMatch(/second range.*highest and lowest/i);
-    expect(view("s=fx_price_index").carriedNote).toBeNull();
-  });
-
   it("passes on what the address could not be read for", () => {
     expect(view("s=fx_price_index&mode=sideways").notes.join(" ")).toMatch(/mode/);
   });
@@ -324,5 +319,304 @@ describe("found in review", () => {
     expect(v.readout.stops).toEqual(["2025-01-01"]);
     expect(v.shownAt).toBe("2025-01-01");
     expect(readoutAt(v.readout, v.shownAt!).rows[0]).toMatchObject({ value: "−1.5", period: "5 Nov 2024" });
+  });
+});
+
+// --- Explorer II (PLAN M5) ----------------------------------------------------------------------
+
+describe("clearing the selection (v1's \"Clear all\")", () => {
+  it("an address that says no series is not the same as one that does not say: it stays empty", () => {
+    const v = view("s=fx_price_index,fx_output_quarterly&mode=z");
+    const cleared = v.queryWith({ series: [], sx: null, sy: null });
+    expect(cleared).toBe("s=&mode=z");
+    expect(view(cleared).selection).toEqual([]);
+    expect(view(cleared).figure).toBeNull();
+  });
+});
+
+describe("the snapshot table", () => {
+  it("gives each series' first and latest value in the window, the change, and the low and high, each with its period", () => {
+    const [row] = view("s=fx_price_index").snapshot;
+    expect(row).toMatchObject({
+      first: { value: "100.0", period: "Jan 2024" },
+      last: { value: "109.9", period: "Dec 2025" },
+      change: "+9.9%",
+      low: { value: "100.0", period: "Jan 2024" },
+      high: { value: "109.9", period: "Dec 2025" },
+      latest: "Dec 2025",
+      note: null,
+    });
+    expect(row!.source).toMatch(/fixture/i);
+  });
+
+  it("is read from the series' own values, whatever the mode, and follows the window", () => {
+    const [row] = view("s=fx_price_index&mode=z&from=2024-06&to=2024-12").snapshot;
+    expect(row).toMatchObject({ first: { value: "102.0", period: "Jun 2024" }, last: { value: "104.5", period: "Dec 2024" }, change: "+2.5%" });
+  });
+
+  it("gives the change of a percentage in points, and a quarterly series at its own periods", () => {
+    const rows = view("s=fx_poverty_rate_annual,fx_output_quarterly,fx_vote_margin").snapshot;
+    expect(rows[0]).toMatchObject({ first: { value: "15.0", period: "2012" }, last: { value: "10.4", period: "2025" }, change: "−4.60 pts", low: { period: "2025" }, high: { period: "2012" } });
+    expect(rows[1]).toMatchObject({ first: { value: "510.2", period: "2022 Q1" }, last: { value: "566.4", period: "2025 Q4" }, change: "+11.0%" });
+    expect(rows[2]).toMatchObject({ first: { value: "3.9" }, last: { value: "−1.5" }, change: "−5.40 pts" });
+  });
+
+  it("names a withheld series and gives it no figures", () => {
+    const row = view("s=fx_exchange_index").snapshot[0]!;
+    expect(row).toMatchObject({ first: null, last: null, change: null });
+    expect(row.note).toMatch(/^Withheld: /);
+  });
+});
+
+describe("marks at the highest and lowest value (ext=1)", () => {
+  const marks = (v: ExplorerView) => nodes(v.figure!.plots[0]!.layouts.wide, (n) => n.attrs["data-extreme"] !== undefined).map((n) => [n.attrs["data-extreme"], textOf(n)]);
+
+  it("are off unless asked for", () => {
+    expect(marks(view("s=fx_price_index"))).toEqual([]);
+    expect(view("s=fx_price_index").extremes).toBe(false);
+  });
+
+  it("mark each drawn series' highest and lowest value with the series' own value and period", () => {
+    const v = view("s=fx_price_index&ext=1");
+    expect(marks(v)).toEqual([["max", "max 109.9 · Dec 2025"], ["min", "min 100.0 · Jan 2024"]]);
+    for (const layout of ["narrow", "medium"] as const) expect(nodes(v.figure!.plots[0]!.layouts[layout], (n) => n.attrs["data-extreme"] !== undefined)).toHaveLength(2);
+    expect(v.resolvedQuery).toMatch(/&ext=1$/);
+  });
+
+  it("are chosen by the value as drawn and named by the value as published (v1's rule)", () => {
+    // Furthest below the running peak is not the lowest value.
+    const v = view("s=fx_output_quarterly&mode=z&ext=1");
+    expect(marks(v)).toEqual([["max", "max 566.4 · 2025 Q4"], ["min", "min 510.2 · 2022 Q1"]]);
+  });
+});
+
+describe("compare ranges (cmp=)", () => {
+  const q = "s=fx_price_index&mode=rebase&from=2024-01&to=2024-06&cmp=2025-04&layers=rec,gov";
+  const runs = (v: ExplorerView, run: string) => v.figure!.plots.flatMap((p) => nodes(p.layouts.wide, (n) => n.attrs["data-run"] === run || (run === "window" && n.attrs["data-series"] !== undefined && n.attrs["data-run"] === undefined)));
+
+  it("is a second range of the same length, starting at the month given", () => {
+    const v = view(q);
+    expect(v.compare).toMatchObject({ from: "2025-04", to: "2025-09", words: "Apr 2025 to Sep 2025", offset: 15 });
+    expect(v.compare!.offQuery).toBe("s=fx_price_index&mode=rebase&from=2024-01&to=2024-06&layers=rec,gov");
+    expect(v.resolvedQuery).toContain("&cmp=2025-04");
+  });
+
+  it("draws each series twice, the second run pale and wide in the same colour, in one plot", () => {
+    const v = view(q);
+    expect(v.figure!.plots).toHaveLength(1);
+    const [first] = runs(v, "window");
+    const [second] = runs(v, "comparison");
+    expect(second!.attrs.stroke).toBe(first!.attrs.stroke);
+    expect(Number(second!.attrs["stroke-width"])).toBeGreaterThan(Number(first!.attrs["stroke-width"]));
+    expect(v.figure!.plots[0]!.series.map((s) => [s.name, s.ghost ?? false])).toEqual([["Fixture price index", false], ["Fixture price index, from Apr 2025", true]]);
+    expect(v.selection).toHaveLength(1);
+    expect(v.selection[0]!.compared).toEqual({ drawn: true, reason: null });
+  });
+
+  it("applies the mode to each range on its own: an index is 100 at the start of each", () => {
+    const v = view(q);
+    const second = v.runs.find((r) => r.run === "comparison")!;
+    expect(second.rows.map((r) => r.period)).toEqual(["2025-04", "2025-05", "2025-06", "2025-07", "2025-08", "2025-09"]);
+    expect(second.rows[0]).toMatchObject({ value: 106.3, shown: 100 });
+    expect(second.rows[5]!.shown).toBeCloseTo((108.4 / 106.3) * 100, 9);
+    expect(v.runs.find((r) => r.run === "window")!.rows[0]).toMatchObject({ period: "2024-01", value: 100, shown: 100 });
+  });
+
+  it("the table and the readout name the second run's own periods, not where it is drawn", () => {
+    const v = view(q);
+    expect(v.figure!.tables.map((t) => [t.name, t.rows[0]!.label])).toEqual([["Fixture price index", "Jan 2024"], ["Fixture price index, from Apr 2025", "Apr 2025"]]);
+    const rows = readoutAt(v.readout, "2024-03-01").rows;
+    expect(rows.map((r) => [r.name, r.period, r.value])).toEqual([["Fixture price index", "Mar 2024", "100.9"], ["Fixture price index, from Apr 2025", "Jun 2025", "107.2"]]);
+  });
+
+  it("draws no layer while two ranges share the axis, and says so", () => {
+    const v = view(q);
+    for (const name of ["recession", "events", "band"]) expect(layerNodes(v, name), name).toEqual([]);
+    expect(v.notes.join(" ")).toMatch(/Layers are not drawn while two ranges are compared/);
+    expect(view("s=fx_price_index&from=2024-01&to=2024-06&layers=rec,gov").notes.join(" ")).not.toMatch(/Layers are not drawn/);
+  });
+
+  it("a second range that runs past the data is drawn as far as the data goes", () => {
+    const v = view("s=fx_price_index&from=2024-01&to=2024-06&cmp=2025-10");
+    expect(v.runs.find((r) => r.run === "comparison")!.rows.map((r) => r.period)).toEqual(["2025-10", "2025-11", "2025-12"]);
+  });
+
+  it("a series with nothing in the second range is still drawn once, with the reason", () => {
+    const v = view("s=fx_price_index&from=2024-01&to=2024-06&cmp=2030-01");
+    expect(v.figure!.plots[0]!.series).toHaveLength(1);
+    expect(v.selection[0]!.compared).toEqual({ drawn: false, reason: "This series has no value in the range compared with." });
+  });
+
+  it("a mode that has no answer over the second range leaves only that run out", () => {
+    // The fixture begins in 2024-01, so nothing in the second range has a value a year earlier.
+    const v = view("s=fx_price_index&mode=pc1&from=2025-01&to=2025-06&cmp=2024-01");
+    expect(v.selection[0]).toMatchObject({ state: "drawn", compared: { drawn: false } });
+  });
+
+  it("each run stands on its own: a second run is drawn even when the mode has no answer over the window", () => {
+    // Nothing in the first half of 2024 has a value a year earlier; the first half of 2025 does.
+    const v = view("s=fx_price_index&mode=pc1&from=2024-01&to=2024-06&cmp=2025-01");
+    expect(v.figure).not.toBeNull();
+    expect(v.runs.map((r) => r.run)).toEqual(["comparison"]);
+    expect(v.selection[0]).toMatchObject({ state: "not_drawn", compared: { drawn: true, reason: null } });
+    expect(v.figure!.plots[0]!.series).toMatchObject([{ name: "Fixture price index, from Jan 2025", ghost: true, color: 1 }]);
+  });
+
+  it("a period laid over the window covers the whole of the month it is drawn over, whatever their lengths", () => {
+    // February 2025 (28 days) is drawn over January 2024 (31): the 30th is still that observation.
+    const v = view("s=fx_price_index&from=2024-01&to=2024-06&cmp=2025-02&at=2024-01-30");
+    expect(readoutAt(v.readout, "2024-01-30").rows.map((r) => [r.period, r.value])).toEqual([["Jan 2024", "100.0"], ["Feb 2025", "105.2"]]);
+    expect(readoutAt(v.readout, "2024-02-29").rows[1]).toMatchObject({ period: "Mar 2025", note: "No value" });
+  });
+
+  it("a break is marked in a run only if it falls inside that run's own range", () => {
+    const breaksIn = (v: ExplorerView) => v.figure!.plots.flatMap((p) => nodes(p.layouts.wide, (n) => n.attrs["data-mark"] === "break")).length;
+    // The payrolls break is at Jan 2025: before a second range that starts in February.
+    const after = view("s=fx_payrolls_break&from=2024-01&to=2024-06&cmp=2025-02");
+    expect(breaksIn(after)).toBe(0);
+    expect(after.figure!.tables.flatMap((t) => t.rows.flatMap((row) => row.states.map((st) => st.mark)))).not.toContain("break");
+    // Inside the second range it is drawn where January 2025 is laid: over the window's third month.
+    const inside = view("s=fx_payrolls_break&from=2024-01&to=2024-06&cmp=2024-11");
+    const marks = inside.figure!.plots.flatMap((p) => nodes(p.layouts.wide, (n) => n.attrs["data-mark"] === "break"));
+    expect(marks).toHaveLength(1);
+    expect(inside.figure!.tables[1]!.rows.find((row) => row.period === "2025-01")!.states.map((st) => st.mark)).toContain("break");
+    // And in the window itself a break from before it is no longer drawn at its edge.
+    expect(breaksIn(view("s=fx_payrolls_break&from=2025-03&to=2025-12"))).toBe(0);
+    expect(breaksIn(view("s=fx_payrolls_break&from=2024-06&to=2025-12"))).toBe(1);
+  });
+
+  it("a second range that starts where the window starts is not one", () => {
+    const v = view("s=fx_price_index&from=2024-01&to=2024-06&cmp=2024-01");
+    expect(v.compare).toBeNull();
+    expect(v.notes.join(" ")).toMatch(/nothing to compare/);
+  });
+
+  it("works across frequencies and for a held value: every run starts at the left edge", () => {
+    const v = view("s=fx_output_quarterly,fx_vote_margin&from=2022-01&to=2023-12&cmp=2024-01");
+    expect(v.runs.filter((r) => r.run === "comparison").map((r) => [r.series, r.rows.map((x) => x.period)])).toEqual([
+      ["fx_output_quarterly", ["2024-Q1", "2024-Q2", "2024-Q3", "2024-Q4", "2025-Q1", "2025-Q2", "2025-Q3", "2025-Q4"]],
+      ["fx_vote_margin", ["2020-11-03", "2024-11-05"]],
+    ]);
+  });
+});
+
+describe("relationships", () => {
+  const pairQ = "s=fx_price_index,fx_payrolls_break";
+
+  it("needs two series", () => {
+    const r = view("s=fx_price_index").relationships;
+    expect(r.empty).toMatch(/at least two series/);
+    expect(r.pair).toBeNull();
+  });
+
+  it("gives r for every pair on changes, with n, and the diagonal is left empty", () => {
+    const r = view(pairQ).relationships;
+    expect(r.basis).toBe("chg");
+    expect(r.matrix).toHaveLength(2);
+    expect(r.matrix[0]![0]).toMatchObject({ self: true, r: null, query: null });
+    // 24 months; the index has no change in Mar and Apr 2025 (a gap), the payrolls none in Jan 2024
+    // (nothing before) or Jan 2025 (a break): 20 months have both.
+    expect(r.matrix[0]![1]).toMatchObject({ n: 20, self: false, chosen: true });
+    expect(r.matrix[0]![1]!.r).toMatch(/^−?[01]\.\d\d$/);
+    expect(r.matrix[0]![1]!.words).toMatch(/^Fixture price index and .+: r = .+ over 20 months\.$/);
+    expect(r.matrix[1]![0]!.r).toBe(r.matrix[0]![1]!.r);
+  });
+
+  it("the chosen pair is the first two series unless the address names one; a cell's link chooses it", () => {
+    const three = "s=fx_price_index,fx_payrolls_break,fx_permits_stale";
+    expect(view(three).relationships.pair).toMatchObject({ x: { key: "fx_price_index" }, y: { key: "fx_payrolls_break" } });
+    expect(view(three).relationships.matrix[2]![0]!.query).toBe(`${three}&sx=fx_permits_stale&sy=fx_price_index`);
+    expect(view(`${three}&sx=fx_permits_stale&sy=fx_price_index`).relationships.pair).toMatchObject({ x: { key: "fx_permits_stale" }, y: { key: "fx_price_index" } });
+    // A pair that names a series no longer selected falls back, as v1's did.
+    expect(view(`${pairQ}&sx=fx_permits_stale&sy=fx_price_index`).relationships.pair).toMatchObject({ x: { key: "fx_price_index" }, y: { key: "fx_payrolls_break" } });
+    expect(view(`${pairQ}&sx=fx_payrolls_break&sy=fx_payrolls_break`).relationships.pair).toMatchObject({ x: { key: "fx_payrolls_break" }, y: { key: "fx_price_index" } });
+  });
+
+  it("says what the answer rests on: basis, frequency, window, pairs and gaps", () => {
+    const pair = view(pairQ).relationships.pair!;
+    expect(pair.answer).toMatchObject({ n: 20 });
+    expect(pair.answer!.r).toMatch(/^−?[01]\.\d{3}$/);
+    expect(pair.facts).toEqual([
+      "Compared on percent change from the month before, monthly.",
+      "Window: Jan 2024 to Dec 2025, 24 months.",
+      "20 of 24 months have a value for both; 4 do not.",
+    ]);
+  });
+
+  it("on levels says so, and warns about shared trends", () => {
+    const r = view(`${pairQ}&basis=lvl`).relationships;
+    expect(r.basis).toBe("lvl");
+    expect(r.pair!.facts[0]).toBe("Compared on levels, monthly.");
+    expect(r.pair!.answer).toMatchObject({ n: 23 });
+    expect(r.guard.join(" ")).toMatch(/both rise or both fall/);
+  });
+
+  it("a lag pairs X with Y that many periods later, and every lag is a link", () => {
+    const pair = view(`${pairQ}&lag=2`).relationships.pair!;
+    expect(pair.facts[2]).toMatch(/^Lag \+2: each month of Fixture price index is paired with .+ 2 months later\. \d+ of the 22 pairs/);
+    expect(pair.lags.rows).toHaveLength(49);
+    expect(pair.lags.rows.filter((row) => row.current).map((row) => row.lag)).toEqual([2]);
+    expect(pair.lags.rows[0]).toMatchObject({ lag: -24, label: "−24 months", r: null });
+    expect(pair.lags.rows[23]!.query).toBe(`${pairQ}&lag=-1&sx=fx_price_index&sy=fx_payrolls_break`);
+    expect(pair.lags.strongest).toMatch(/Largest \|r\| of the \d+ lags with an answer: .+ It is not evidence|not evidence that one series leads/);
+  });
+
+  it("the rolling window is counted in the pair's own periods, and says when it does not fit", () => {
+    const short = view(`${pairQ}&roll=24`).relationships.pair!.rolling;
+    expect(short).toMatchObject({ span: 24, periods: 24, note: null });
+    expect(short.drawing).not.toBeNull();
+    const long = view(pairQ).relationships.pair!.rolling;
+    expect(long).toMatchObject({ span: 36, periods: 36, drawing: null });
+    expect(long.note).toMatch(/window of 36 months inside the range shown/);
+  });
+
+  it("a monthly and a quarterly series meet at the quarter, and too few pairs is said, not hidden", () => {
+    const r = view("s=fx_price_index,fx_output_quarterly").relationships;
+    expect(r.pair!.facts[0]).toBe("Compared on percent change from the quarter before, quarterly (Fixture price index is monthly, averaged over each quarter).");
+    expect(r.pair!.answer).toBeNull();
+    expect(r.pair!.noAnswer).toBe("No answer: 5 pairs, and fewer than 8 is too few.");
+    expect(r.matrix[0]![1]).toMatchObject({ r: null, n: 5 });
+    expect(r.pair!.rolling.note).toMatch(/window of 12 quarters/);
+  });
+
+  it("two quarterly or annual series have a correlation on changes at their own frequency (v1 had none)", () => {
+    const r = view("s=fx_poverty_rate_annual,fx_output_quarterly&basis=lvl").relationships;
+    expect(r.pair!.facts[0]).toBe("Compared on levels, annual (Fixture output is quarterly, summed over each year).");
+    // An annual window is two or three years: fewer than a correlation needs, and it says so.
+    expect(r.pair!.rolling).toMatchObject({ drawing: null, periods: 3 });
+    expect(r.pair!.rolling.note).toBe("A window of 36 months is 3 years: fewer than the 8 pairs a correlation needs.");
+  });
+
+  it("a held series takes no part, with the reason; a withheld one is named apart", () => {
+    const r = view("s=fx_price_index,fx_vote_margin,fx_exchange_index").relationships;
+    expect(r.series.map((s) => s.key)).toEqual(["fx_price_index", "fx_vote_margin"]);
+    expect(r.left_out).toEqual([{ key: "fx_exchange_index", name: "Fixture exchange index", reason: "The licence does not allow redistribution." }]);
+    expect(r.matrix[0]![1]!.words).toMatch(/no answer\. A series whose values stand until the next one/);
+    expect(r.pair!.noAnswer).toMatch(/stand until the next one/);
+  });
+
+  it("the tables behind the scatter and the rolling line are sent only when the table is asked for", () => {
+    const off = view(`${pairQ}&roll=24`).relationships.pair!;
+    expect(off.scatter!.rows).toEqual([]);
+    expect(off.rolling.rows).toEqual([]);
+    const on = view(`${pairQ}&roll=24&table=1`).relationships.pair!;
+    expect(on.scatter!.rows).toHaveLength(20);
+    expect(on.scatter!.rows[0]).toMatchObject({ xPeriod: "Feb 2024", yPeriod: "Feb 2024" });
+    expect(on.rolling.rows).toEqual([{ period: "Dec 2025", r: on.rolling.rows[0]!.r, n: 20 }]);
+  });
+
+  it("is guarded, always: descriptive, no cause, and no significance test", () => {
+    for (const q of [pairQ, `${pairQ}&basis=lvl`, "s=fx_price_index"]) {
+      const text = view(q).relationships.guard.join(" ");
+      expect(text).toMatch(/do not say that one moved the other/);
+      expect(text).toMatch(/no significance test is shown/);
+    }
+    const everything = JSON.stringify(view(`${pairQ}&table=1`).relationships);
+    expect(everything).not.toMatch(/p\s*[<≥=]\s*0|statistically|strong(ly)? correlat|weak(ly)? correlat/i);
+  });
+
+  it("does not depend on the mode or on a second range", () => {
+    const plain = JSON.stringify(view(pairQ).relationships.matrix.map((row) => row.map((c) => c.r)));
+    expect(JSON.stringify(view(`${pairQ}&mode=log&cmp=2025-01&from=2024-01&to=2025-12`).relationships.matrix.map((row) => row.map((c) => c.r)))).toBe(plain);
   });
 });

@@ -11,7 +11,7 @@ const MONTH = /^\d{4}-(0[1-9]|1[0-2])$/;
 type Mode = { value: string; label: string; current: boolean; offered: number };
 
 /**
- * Mode and window. A real GET form: with JavaScript off, "Show" sends it and the address is the
+ * Mode, window, a second range to compare with, and the marks at the extremes. A real GET form: with JavaScript off, "Show" sends it and the address is the
  * view. With JavaScript, a change is applied at once and the reader stays where they are; the
  * fields are controlled so that focus stays in the field that was changed.
  *
@@ -24,6 +24,8 @@ export function ExplorerControls({
   selected,
   from,
   to,
+  compare,
+  extremes,
   hidden,
 }: {
   action: string;
@@ -32,26 +34,32 @@ export function ExplorerControls({
   selected: number;
   from: string | null;
   to: string | null;
+  /** The month a second range starts, when two ranges are compared. */
+  compare: string | null;
+  /** Whether the highest and lowest values are marked. */
+  extremes: boolean;
   /** What the form must carry that it has no field for: the Series, the pin, the chosen Event. */
   hidden: [string, string][];
 }) {
   const go = useExplorerNav();
   const current = modes.find((m) => m.current)!.value;
-  const [seen, setSeen] = useState({ current, from, to });
+  const [seen, setSeen] = useState({ current, from, to, compare, extremes });
   const [mode, setMode] = useState(current);
-  const [window_, setWindow] = useState({ from: from ?? "", to: to ?? "" });
+  const [window_, setWindow] = useState({ from: from ?? "", to: to ?? "", cmp: compare ?? "" });
+  const [marks, setMarks] = useState(extremes);
   // The server drew another view (a preset, Back): take its values.
-  if (seen.current !== current || seen.from !== from || seen.to !== to) {
-    setSeen({ current, from, to });
+  if (seen.current !== current || seen.from !== from || seen.to !== to || seen.compare !== compare || seen.extremes !== extremes) {
+    setSeen({ current, from, to, compare, extremes });
     setMode(current);
-    setWindow({ from: from ?? "", to: to ?? "" });
+    setWindow({ from: from ?? "", to: to ?? "", cmp: compare ?? "" });
+    setMarks(extremes);
   }
 
   const apply = (form: HTMLFormElement | null) => {
     // After this render, so the form holds the value just chosen.
     queueMicrotask(() => form && go(formQuery(form)));
   };
-  const onMonth = (name: "from" | "to") => (event: ChangeEvent<HTMLInputElement>) => {
+  const onMonth = (name: "from" | "to" | "cmp") => (event: ChangeEvent<HTMLInputElement>) => {
     const value = event.target.value;
     setWindow((w) => ({ ...w, [name]: value }));
     if (value === "" || MONTH.test(value)) apply(event.target.form);
@@ -92,6 +100,24 @@ export function ExplorerControls({
       <label className="flex min-w-0 flex-1 basis-[9.5rem] flex-col gap-1 text-xs text-ink-2 sm:flex-none sm:basis-auto">
         To
         <input type="month" name="to" value={window_.to} onChange={onMonth("to")} placeholder="YYYY-MM" pattern="\d{4}-(0[1-9]|1[0-2])" className={`${control} num w-full sm:w-40`} />
+      </label>
+      <label className="flex min-w-0 flex-1 basis-[9.5rem] flex-col gap-1 text-xs text-ink-2 sm:flex-none sm:basis-auto">
+        Compare with the range from
+        <input type="month" name="cmp" value={window_.cmp} onChange={onMonth("cmp")} placeholder="YYYY-MM" pattern="\d{4}-(0[1-9]|1[0-2])" className={`${control} num w-full sm:w-40`} />
+      </label>
+      <label className={`press flex h-9 cursor-pointer items-center gap-1.5 rounded border px-2 text-sm ${marks ? "border-accent bg-band text-ink" : "border-control bg-raised text-ink-2"}`}>
+        <input
+          type="checkbox"
+          name="ext"
+          value="1"
+          checked={marks}
+          onChange={(event) => {
+            setMarks(event.target.checked);
+            apply(event.target.form);
+          }}
+          className="size-4 accent-[var(--color-accent)]"
+        />
+        Mark highest and lowest
       </label>
       <button type="submit" className="press h-9 rounded border border-accent bg-accent px-3 text-sm font-semibold text-void">
         Show

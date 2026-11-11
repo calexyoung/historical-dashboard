@@ -22,11 +22,17 @@ export type ReadoutSeries = {
   freq: Frequency;
   continuity: "discrete" | "held";
   /** Colour, line style and symbol as drawn; null when the Series is not drawn. */
-  style: { color: number; dash: string | null; symbol: "circle" | "square" | "triangle" | "diamond" } | null;
+  style: { color: number; dash: string | null; symbol: "circle" | "square" | "triangle" | "diamond"; ghost?: true } | null;
   /** Decimals the Series' own values are read with. */
   decimals: number;
-  /** One per Observation in the window: Period label, first day, last day, value, value as drawn. */
-  rows: [period: string, start: string, end: string, value: number | null, drawn: number | null][];
+  /**
+   * One per Observation in the window: Period label, first day, last day, value, value as drawn.
+   * A run from a second range is laid over the window: its days are where it is drawn, and a
+   * sixth entry is the Period's own first day, which is what the readout names.
+   */
+  rows: [period: string, start: string, end: string, value: number | null, drawn: number | null, own?: string][];
+  /** The last day a held value of this Series stands, where that is not the model's. */
+  until?: string;
   /** Why the Series has no values here (withheld, not offered in this mode, ...). */
   absent: string | null;
 };
@@ -78,13 +84,13 @@ export function readoutAt(model: ReadoutModel, date: string): Readout {
       // The standing Observation: the last that starts on or before the date. A missing one ends
       // the hold, and nothing stands after the day the Release was made.
       for (const row of s.rows) if (row[1] <= date) found = row;
-      if (date > model.until) found = undefined;
+      if (date > (s.until ?? model.until)) found = undefined;
     } else {
       found = s.rows.find((row) => row[1] <= date && date <= row[2]);
     }
     if (!found) return { ...base, value: null, period: null, drawn: null, note: "No observation covers this date" };
     const [, start, , value, drawn] = found;
-    const period = periodWords(s.freq, { period: found[0], period_start: start }, "short");
+    const period = periodWords(s.freq, { period: found[0], period_start: found[5] ?? start }, "short");
     if (value === null) return { ...base, value: null, period, drawn: null, note: "No value" };
     return {
       ...base,

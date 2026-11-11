@@ -10,7 +10,7 @@
 import { readFileSync } from "node:fs";
 import { beforeAll, describe, expect, it } from "vitest";
 import { createReleaseReader, type OpenedRelease } from "../release/reader";
-import { explorerQuery, parseExplorerParams, v1HashToQuery, V1_BAND_SETS, V1_EVENT_CATEGORIES } from "../explorer/state";
+import { parseExplorerParams, v1HashToQuery, V1_BAND_SETS, V1_EVENT_CATEGORIES } from "../explorer/state";
 import { explorerView, type ExplorerView } from "../explorer/view";
 import { buildLegacyRelease, type V1Data } from "./testing";
 
@@ -54,7 +54,7 @@ describe("v1's eleven presets", () => {
     const v = view(preset.query);
     expectSameView(v, want);
     expect(v.notes.filter((n) => /left out|not one of|could not/.test(n))).toEqual([]);
-    expect(Object.fromEntries(parseExplorerParams(new URLSearchParams(preset.query)).carried).cmp ?? null).toBe(want.compare_from ?? null);
+    expect(parseExplorerParams(new URLSearchParams(preset.query)).cmp).toBe(want.compare_from ?? null);
     expect(v.figure, "something is drawn").not.toBeNull();
   });
 
@@ -173,7 +173,7 @@ describe("layers match v1's dates and switch on and off", () => {
 describe("what the page costs with eight series", () => {
   it("stays a page: the view of v1's eight busiest series over the whole axis is under 1.5 MB as data", () => {
     const eight = Object.keys(v1.series).sort((a, b) => v1.series[b]!.d.length - v1.series[a]!.d.length).slice(0, 8);
-    const v = view(explorerQuery({ series: eight, mode: "lin", from: null, to: null, layers: null, at: null, event: null, hi: null, pick: false, table: false, carried: [] }));
+    const v = view(`s=${eight.join(",")}&mode=lin`);
     expect(v.selection.filter((s) => s.state === "drawn")).toHaveLength(8);
     expect(JSON.stringify({ figure: v.figure, readout: v.readout }).length).toBeLessThan(1_500_000);
   });

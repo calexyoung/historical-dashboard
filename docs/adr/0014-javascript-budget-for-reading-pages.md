@@ -73,3 +73,17 @@ The Explorer is built (ADR 0018). Measured on its production build, same method:
 - **A budget on total bytes including inline data.** It would punish a page for having content.
 - **A fixed round number (150 KB).** Easier to remember, but it hides a framework regression
   inside the slack.
+
+## Amendment, M5 (2026-11-11): Explorer II within the same budget
+
+Explorer II (ADR 0019) added two client components: the relationship form and the export
+actions (copy the CSV, rasterise the chart to a PNG). Everything else it added is drawn on the
+server. Measured on its production build, same method:
+
+| | gzip bytes |
+|---|---|
+| This app's client code on the Explorer (was 15,742) | 17,216 |
+| The Explorer in total (was 147,265) | 148,739 |
+| Budget for the Explorer, unchanged | 162,115 |
+
+M5 used 1.5 KB of the 15 KB that was left. A reading page is unchanged at 135,607.

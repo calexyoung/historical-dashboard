@@ -238,11 +238,11 @@ export function drawPlot(input: PlotInput, created: string, layout: LayoutName, 
 
   // The time axis runs from the first Period's start to the last one's, or to the day the Release
   // was made where a held value is still standing; or over exactly the window it is given.
-  const starts = all.flatMap((s) => s.observations.map((o) => ms(o.period_start)));
+  const starts = all.flatMap((s) => s.observations.map((o) => ms(o.at ?? o.period_start)));
   let t0 = Math.min(...starts);
   let t1 = Math.max(...starts);
   const madeOn = ms(created);
-  const standing = (s: ShownSeries) => s.continuity === "held" && s.observations.at(-1)?.value !== null && madeOn > ms(s.observations.at(-1)!.period_start);
+  const standing = (s: ShownSeries) => !s.ghost && s.continuity === "held" && s.observations.at(-1)?.value !== null && madeOn > ms(s.observations.at(-1)!.period_start);
   if (all.some(standing)) t1 = Math.max(t1, madeOn);
   if (options.domain) [t0, t1] = [ms(options.domain.from), ms(options.domain.to)];
   if (t1 - t0 < 60 * DAY_MS) [t0, t1] = [t0 - 45 * DAY_MS, t1 + 45 * DAY_MS];
@@ -253,9 +253,9 @@ export function drawPlot(input: PlotInput, created: string, layout: LayoutName, 
   const bottom = 28;
 
   // End labels (wide layout, two or more Series): only where every name fits beside the plot.
-  const names = input.map((i) => i.style.name);
+  const names = input.filter((i) => !i.style.ghost).map((i) => i.style.name);
   const labelRoom = Math.max(...names.map(textWidth)) + 30;
-  const endLabels = wantEndLabels && input.length > 1 && labelRoom <= W * 0.3;
+  const endLabels = wantEndLabels && names.length > 1 && labelRoom <= W * 0.3;
   const right = endLabels ? labelRoom : 16;
 
   const x0 = left;
@@ -362,8 +362,12 @@ export function drawPlot(input: PlotInput, created: string, layout: LayoutName, 
   const within = (px: number) => px >= x0 - 0.01 && px <= x1 + 0.01;
   for (const { series: s } of input) {
     for (const b of s.breaks ?? []) {
-      const at = labelStart(s.freq, b.period);
-      if (!at || !within(x(ms(at.period_start)))) continue;
+      const label = labelStart(s.freq, b.period);
+      // A run laid over the window from another range: the break is where its first Observation
+      // on the new basis is drawn.
+      const moved = s.ghost && label ? s.observations.find((o) => o.period_start >= label.period_start) : undefined;
+      const at = s.ghost ? (moved ? { period_start: moved.at ?? moved.period_start } : null) : label;
+      if (!at || !inWindow(ms(at.period_start)) || !within(x(ms(at.period_start)))) continue;
       const bx = r2(x(ms(at.period_start)));
       stateMarks.push(
         h("g", { "data-mark": "break", color: INK_2 }, h("line", { x1: bx, y1: yTop, x2: bx, y2: yBottom, stroke: "currentColor", "stroke-width": 1.5, "stroke-dasharray": "3 2" })),
@@ -371,8 +375,8 @@ export function drawPlot(input: PlotInput, created: string, layout: LayoutName, 
     }
     for (const state of GAP_MARKS) {
       for (const [a, b] of statusRuns(s.observations, state)) {
-        let ax = x(ms(s.observations[a]!.period_start));
-        let bx = x(ms(s.observations[b]!.period_start));
+        let ax = x(ms(s.observations[a]!.at ?? s.observations[a]!.period_start));
+        let bx = x(ms(s.observations[b]!.at ?? s.observations[b]!.period_start));
         if (bx - ax < 12) [ax, bx] = [Math.max(x0, (ax + bx) / 2 - 6), Math.min(x1, (ax + bx) / 2 + 6)];
         const bar = { x1: r2(ax), y1: yBottom - 3, x2: r2(bx), y2: yBottom - 3, stroke: "currentColor" };
         stateMarks.push(
@@ -389,10 +393,13 @@ export function drawPlot(input: PlotInput, created: string, layout: LayoutName, 
   for (const { series: s, style, stale } of input) {
     const colour = `var(--color-series-${style.color})`;
     const obs = s.observations;
-    const px = (o: FigureObservation) => x(ms(o.period_start));
+    const px = (o: FigureObservation) => x(ms(o.at ?? o.period_start));
     const valued = obs.filter((o): o is FigureObservation & { value: number } => o.value !== null);
     const spacing = (x1 - x0) / Math.max(1, obs.length - 1);
-    const common = { "data-series": s.key, stroke: colour };
+    const ghost = style.ghost === true;
+    // A second run: the same colour and line style, pale and wide, so weight tells the two apart.
+    const common = ghost ? { "data-series": s.key, "data-run": "comparison", stroke: colour, "stroke-opacity": 0.45 } : { "data-series": s.key, stroke: colour };
+    const lineWidth = ghost ? 4 : 1.75;
 
     if (style.drawnAs === "line") {
       const path = d3line<FigureObservation>()
@@ -400,19 +407,20 @@ export function drawPlot(input: PlotInput, created: string, layout: LayoutName, 
         .x(px)
         .y((o) => y(o.value!))
         .digits(2)(obs as FigureObservation[]);
-      if (path) drawn.push(h("path", { ...common, "data-drawn": "line", d: path, fill: "none", "stroke-width": 1.75, "stroke-linejoin": "round", "stroke-linecap": "round", "stroke-dasharray": style.dash }));
+      if (path) drawn.push(h("path", { ...common, "data-drawn": "line", d: path, fill: "none", "stroke-width": lineWidth, "stroke-linejoin": "round", "stroke-linecap": "round", "stroke-dasharray": style.dash }));
     } else if (style.drawnAs === "step") {
       // Each run of values, plus the point at which its last value stops standing: the next
       // Observation (a missing one ends the hold) or the day the Release was made.
       const parts: string[] = [];
       for (const [a, b] of runs(obs, (o) => o.value !== null)) {
         const points: [number, number][] = obs.slice(a, b + 1).map((o) => [px(o), y(o.value!)]);
-        const until = b + 1 < obs.length ? px(obs[b + 1]!) : madeOn > ms(obs[b]!.period_start) ? x(madeOn) : null;
+        const end = s.ghost ? (s.ghost.standsUntil ? ms(s.ghost.standsUntil) : null) : madeOn;
+        const until = b + 1 < obs.length ? px(obs[b + 1]!) : end !== null && end > ms(obs[b]!.at ?? obs[b]!.period_start) ? x(end) : null;
         if (until !== null) points.push([until, points.at(-1)![1]]);
         const path = d3line().curve(curveStepAfter).digits(2)(points);
         if (path) parts.push(path);
       }
-      if (parts.length > 0) drawn.push(h("path", { ...common, "data-drawn": "step", d: parts.join(""), fill: "none", "stroke-width": 1.75, "stroke-linejoin": "round", "stroke-dasharray": style.dash }));
+      if (parts.length > 0) drawn.push(h("path", { ...common, "data-drawn": "step", d: parts.join(""), fill: "none", "stroke-width": lineWidth, "stroke-linejoin": "round", "stroke-dasharray": style.dash }));
     }
 
     // A symbol at each value: always for points and steps; on a line where the values are far
@@ -420,9 +428,31 @@ export function drawPlot(input: PlotInput, created: string, layout: LayoutName, 
     const lonely = (i: number) => obs[i]!.value !== null && (i === 0 || obs[i - 1]!.value === null) && (i === obs.length - 1 || obs[i + 1]!.value === null);
     const symbolAt = style.drawnAs !== "line" || spacing >= 7 ? valued : obs.filter((_, i) => lonely(i)).filter((o): o is FigureObservation & { value: number } => o.value !== null);
     if (symbolAt.length > 0) {
-      const r = style.drawnAs === "line" ? 2.25 : Math.min(3, Math.max(1.25, spacing * 0.42));
+      const r = (style.drawnAs === "line" ? 2.25 : Math.min(3, Math.max(1.25, spacing * 0.42))) + (ghost ? 1 : 0);
       const d = symbolAt.map((o) => symbolPath(style.symbol, px(o), y(o.value), r)).join("");
-      drawn.push(h("path", { ...common, "data-drawn": "points", "data-count": symbolAt.length, d, fill: colour, "stroke-width": 0.5 }));
+      drawn.push(
+        ghost
+          ? h("path", { "data-series": s.key, "data-run": "comparison", "data-drawn": "points", "data-count": symbolAt.length, d, fill: "var(--color-panel)", stroke: colour, "stroke-width": 1.25 })
+          : h("path", { ...common, "data-drawn": "points", "data-count": symbolAt.length, d, fill: colour, "stroke-width": 0.5 }),
+      );
+    }
+
+    // The highest and lowest drawn value: a ring, and the Series' own value and Period beside it.
+    for (const extreme of s.extremes ?? []) {
+      const o = valued.find((v) => v.period === extreme.period);
+      if (!o) continue;
+      const [ex, ey] = [px(o), y(o.value)];
+      const w = textWidth(extreme.label);
+      const tx = ex + 7 + w > W - 2 ? Math.max(2, ex - 7 - w) : ex + 7;
+      const ty = Math.min(yBottom - 4, Math.max(yTop + 10, ey + (extreme.kind === "max" ? -7 : 15)));
+      overlay.push(
+        h(
+          "g",
+          { "data-extreme": extreme.kind, "data-series": s.key },
+          h("circle", { cx: r2(ex), cy: r2(ey), r: 4.5, fill: "none", stroke: colour, "stroke-width": 1.5 }),
+          h("text", { x: r2(tx), y: r2(ty), "font-size": FONT, fill: INK, stroke: "var(--color-panel)", "stroke-width": 3, "paint-order": "stroke", "stroke-linejoin": "round" }, extreme.label),
+        ),
+      );
     }
 
     // Status marks: hollow, in ink, around the first and last value of each run.
@@ -437,7 +467,7 @@ export function drawPlot(input: PlotInput, created: string, layout: LayoutName, 
     }
     const last = valued.at(-1);
     if (last && stale) overlay.push(h("g", { color: INK }, mark("stale", px(last), y(last.value), 14)));
-    if (last) ends.push({ name: style.name, style, y: y(last.value) });
+    if (last && !ghost) ends.push({ name: style.name, style, y: y(last.value) });
   }
 
   // --- names at the ends of the lines ---
@@ -454,10 +484,11 @@ export function drawPlot(input: PlotInput, created: string, layout: LayoutName, 
     }
   }
 
-  const first = all.flatMap((s) => s.observations.slice(0, 1).map((o) => ({ s, o }))).sort((a, b) => a.o.period_start.localeCompare(b.o.period_start))[0];
-  const lastOne = all.flatMap((s) => s.observations.slice(-1).map((o) => ({ s, o }))).sort((a, b) => b.o.period_start.localeCompare(a.o.period_start))[0];
+  const own = all.filter((s) => !s.ghost);
+  const first = own.flatMap((s) => s.observations.slice(0, 1).map((o) => ({ s, o }))).sort((a, b) => a.o.period_start.localeCompare(b.o.period_start))[0];
+  const lastOne = own.flatMap((s) => s.observations.slice(-1).map((o) => ({ s, o }))).sort((a, b) => b.o.period_start.localeCompare(a.o.period_start))[0];
   const span = first && lastOne ? `, ${periodWords(first.s.freq, first.o, "short")} to ${periodWords(lastOne.s.freq, lastOne.o, "short")}` : "";
-  const label = `Chart of ${names.join(", ")}${span}. Every value is in the table below.`;
+  const label = `Chart of ${names.join(", ")}${span}${all.length > own.length ? ", each with the same series over a second range" : ""}. Every value is in the table below.`;
 
   const svg = h(
     "svg",
@@ -489,12 +520,16 @@ export function drawPlot(input: PlotInput, created: string, layout: LayoutName, 
 }
 
 /** A Series' colour, line style and symbol on their own, for a legend entry. Decorative. */
-export function swatch(style: Pick<SeriesStyle, "color" | "dash" | "symbol">): SvgNode {
+export function swatch(style: Pick<SeriesStyle, "color" | "dash" | "symbol" | "ghost">): SvgNode {
   const colour = `var(--color-series-${style.color})`;
   return h(
     "svg",
     { viewBox: "0 0 32 12", width: 32, height: 12, "aria-hidden": "true", focusable: "false" },
-    h("line", { x1: 1, y1: 6, x2: 31, y2: 6, stroke: colour, "stroke-width": 1.75, "stroke-dasharray": style.dash }),
-    h("path", { d: symbolPath(style.symbol, 16, 6, 3), fill: colour, stroke: colour, "stroke-width": 0.5 }),
+    style.ghost
+      ? h("line", { x1: 1, y1: 6, x2: 31, y2: 6, stroke: colour, "stroke-opacity": 0.45, "stroke-width": 4, "stroke-dasharray": style.dash })
+      : h("line", { x1: 1, y1: 6, x2: 31, y2: 6, stroke: colour, "stroke-width": 1.75, "stroke-dasharray": style.dash }),
+    style.ghost
+      ? h("path", { d: symbolPath(style.symbol, 16, 6, 3.5), fill: "var(--color-panel)", stroke: colour, "stroke-width": 1.25 })
+      : h("path", { d: symbolPath(style.symbol, 16, 6, 3), fill: colour, stroke: colour, "stroke-width": 0.5 }),
   );
 }

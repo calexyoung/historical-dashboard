@@ -40,7 +40,7 @@ hover-only, and that nothing animate on data.
 6. **v1's links.** `v1HashToQuery` reads a hash the way v1's `applyParams` did, quirks included
    (checks/v1-links.json was recorded by driving v1's own page). What a v1 link asks of features
    that arrive in M5 (`cmp`, `basis`, `lag`, `sx`, `sy`, `roll`, `ext`) is kept in the address
-   untouched and the page says so in one line.
+   untouched and the page says so in one line. (M5: they are real parameters now; ADR 0019.)
 7. **Motion** (PLAN section 8). Nothing in a drawing, the readout or the lists moves. The picker
    sheet slides by `transform` only, 240 ms in and 180 ms out, with CSS transitions and
    `@starting-style`; opened from the keyboard it does not move, and under reduced motion it
