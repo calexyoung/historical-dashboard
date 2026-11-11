@@ -134,6 +134,16 @@ describe("pairFrame: two Series on one axis of Periods", () => {
     expect(frame.x[0]).toBeCloseTo(10, 9);
   });
 
+  it("the axis covers the whole window, so Periods neither Series reaches are counted as having no pair", () => {
+    const a = series("monthly", "2020-03", [1, 2]);
+    const frame = pairFrame(a, a, "lvl", { from: "2020-01-01", to: "2020-06-30" });
+    if (!frame.ok) throw new Error(frame.message);
+    expect(frame.periods.map((p) => p.period)).toEqual(["2020-01", "2020-02", "2020-03", "2020-04", "2020-05", "2020-06"]);
+    expect(frame.x).toEqual([null, null, 1, 2, null, null]);
+    // An open end goes no further than the data.
+    expect(pairFrame(a, a, "lvl", { from: "2020-02-01" })).toMatchObject({ ok: true, x: [null, 1, 2] });
+  });
+
   it("a held or irregular Series has no Period-to-Period comparison", () => {
     const votes: StatsSeries = { freq: "irregular", continuity: "held", observations: [] };
     const frame = pairFrame(series("monthly", "2020-01", [1, 2]), votes, "chg", window);

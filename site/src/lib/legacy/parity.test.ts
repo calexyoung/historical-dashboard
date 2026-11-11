@@ -16,49 +16,12 @@ import type { CatalogEntry, SeriesFile } from "@macro-atlas/core/release";
 import { createReleaseReader, type OpenedRelease } from "../release/reader";
 import { catalogView, parseCatalogFilters, releaseHoldsLegacy } from "../catalog";
 import { query } from "../query";
-import { buildLegacyRelease, REPO, v1Stats, type LegacyFixture, type V1Data, type V1Stats } from "./testing";
+import { buildLegacyRelease, REPO, v1Page, v1Stats, type LegacyFixture, type V1Data, type V1Stats } from "./testing";
 
 type Arr = (number | null)[];
 type WindowSpec = { name: string; from: string; to: string };
 const WINDOWS = (JSON.parse(readFileSync(join(REPO, "checks", "v1-parity-windows.json"), "utf8")) as { windows: WindowSpec[] }).windows;
 const V1_MODE: Record<TransformName, string> = { lin: "raw", log: "log", rebase: "rebase", z: "z", pc1: "yoy", drawdown: "dd" };
-
-/** v1's page, as far as transforms go: web/app.js lines 19 to 39 and `transform()`, verbatim in substance. */
-function v1Page(DB: V1Data, Stats: V1Stats) {
-  const MONTHS: string[] = [];
-  for (let m = DB.first_month; m <= DB.last_month; m = Stats.addM(m, 1)) MONTHS.push(m);
-  const MI: Record<string, number> = Object.fromEntries(MONTHS.map((m, i) => [m, i]));
-  const series = (k: string): Arr => {
-    const a: Arr = new Array<number | null>(MONTHS.length).fill(null);
-    const s = DB.series[k]!;
-    for (let i = 0; i < s.d.length; i++) {
-      const j = MI[s.d[i]!];
-      if (j !== undefined) a[j] = s.v[i]!;
-    }
-    return a;
-  };
-  const isSparse = (k: string) => DB.series[k]!.d.length < MONTHS.length * 0.5;
-  const lastIdx = (k: string) => MI[DB.series[k]!.d.at(-1)!] ?? MONTHS.length - 1;
-  const sparseFreq = (k: string) =>
-    DB.meta[k]!.freq === "E" ? "E" : DB.meta[k]!.freq === "A" || DB.series[k]!.d.length < 40 ? "A" : "Q";
-  const plotRaw = (k: string) => (isSparse(k) ? Stats.fillSparse(series(k), lastIdx(k), sparseFreq(k)) : series(k));
-  function transformV1(k: string, mode: string, i0: number, i1: number): Arr {
-    const a = mode === "raw" || mode === "log" || (isSparse(k) && sparseFreq(k) === "E") ? plotRaw(k) : series(k);
-    let out: Arr;
-    if (mode === "rebase") out = Stats.rebase(a, i0, i1);
-    else if (mode === "z") out = Stats.zscore(a, i0, i1);
-    else if (mode === "yoy") out = Stats.yoy(a, i0, i1);
-    else if (mode === "dd") out = Stats.drawdown(a, i0, i1);
-    else out = Stats.window(a, i0, i1);
-    if (mode === "log") out = out.map((v) => (v != null && v > 0 ? v : null));
-    if (mode !== "raw" && mode !== "log" && isSparse(k)) {
-      out = Stats.fillSparse(out, Math.min(lastIdx(k), i1), sparseFreq(k));
-      for (let i = i1 + 1; i < out.length; i++) out[i] = null;
-    }
-    return out;
-  }
-  return { MI, transformV1, observed: series };
-}
 
 const same = (a: number | null, b: number | null): boolean => {
   if (a === null || b === null) return a === b;

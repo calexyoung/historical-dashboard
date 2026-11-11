@@ -4,12 +4,15 @@ import { CopyLink } from "@/components/explorer/CopyLink";
 import { ExplorerChart } from "@/components/explorer/ExplorerChart";
 import { ExplorerControls, ExplorerLayers } from "@/components/explorer/ExplorerControls";
 import { ExplorerSession } from "@/components/explorer/ExplorerSession";
+import { ExportAction } from "@/components/explorer/ExportActions";
+import { RelationshipControls } from "@/components/explorer/RelationshipControls";
 import { SeriesPicker } from "@/components/explorer/SeriesPicker";
 import { Figure } from "@/components/Figure";
 import { Panel } from "@/components/Panel";
 import { Svg } from "@/components/Svg";
 import { BASE_PATH, SURFACE } from "@/lib/config";
-import { parseExplorerParams } from "@/lib/explorer/state";
+import { MAX_LAG, parseExplorerParams } from "@/lib/explorer/state";
+import { exportAllowed } from "@/lib/export";
 import { explorerView, MODE_LABELS, type Selected } from "@/lib/explorer/view";
 import { swatch } from "@/lib/figure";
 import { MAX_SERIES } from "@/lib/query";
@@ -19,17 +22,19 @@ export const metadata: Metadata = { title: "Explore" };
 
 const link = "press hover-ink text-accent underline underline-offset-2";
 const chip = "press hover-control inline-flex h-8 items-center rounded border border-control bg-raised px-2.5 text-sm text-ink";
+const summary = "hover-ink w-fit cursor-pointer py-1.5 text-sm font-medium text-accent";
 const button = "press inline-flex h-9 items-center justify-center rounded border border-control bg-raised px-3 text-sm font-medium text-ink";
 
 const NOT_DRAWN: Record<Exclude<Selected["state"], "drawn">, string> = { not_drawn: "Not drawn", withheld: "Withheld", not_permitted: "Not shown here" };
 
 /**
- * The Explorer (PLAN section 3; M4): the Series a reader picked, a window and a mode, drawn
- * together with Annotation layers and a readout.
+ * The Explorer (PLAN section 3; M4 and M5): the Series a reader picked, a window and a mode, drawn
+ * together with Annotation layers and a readout; then a snapshot table, how the Series moved
+ * together, and the view as a file.
  *
  * The address is the state and the server draws every view (ADR 0018). Every control is a GET
  * form or a link, so the page works with JavaScript off and a copied address reproduces the
- * view. Four small client components make it quick: a change applies at once and the reader
+ * view. A few small client components make it quick: a change applies at once and the reader
  * stays where they were, a pointer or the arrow keys move the readout and pin it, the picker
  * opens as a sheet, and v1's hash links are sent to their address here.
  *
@@ -44,15 +49,24 @@ export default async function ExplorePage({ searchParams }: PageProps<"/explore"
   const to = (query: string) => (query === "" ? "/explore" : `/explore?${query}`);
 
   const { resolved } = view;
-  const carried: [string, string][] = resolved.carried.map(([name, value]) => [name, value]);
+  // What the address says of Explorer II's features, for a form that has no field for it.
+  const pairs = (names: string[]): [string, string][] => [...new URLSearchParams(view.resolvedQuery)].filter(([name]) => names.includes(name));
+  const relations = pairs(["basis", "lag", "sx", "sy", "roll"]);
+  const carried = pairs(["cmp", "basis", "lag", "sx", "sy", "roll", "ext"]);
   const pinAndEvent: [string, string][] = [...(resolved.at ? [["at", resolved.at] as [string, string]] : []), ...(resolved.event ? [["event", resolved.event] as [string, string]] : [])];
   const table: [string, string][] = state.table ? [["table", "1"]] : [];
-  const controlsHidden: [string, string][] = [["s", resolved.series!.join(",")], ...pinAndEvent, ...carried, ...table];
+  const controlsHidden: [string, string][] = [["s", resolved.series!.join(",")], ...pinAndEvent, ...relations, ...table];
+  const layersValue: [string, string] = ["layers", resolved.layers!.length > 0 ? resolved.layers!.join(",") : "none"];
+  const windowFields: [string, string][] = [...(view.window.from ? [["from", view.window.from] as [string, string]] : []), ...(view.window.to ? [["to", view.window.to] as [string, string]] : [])];
+  const relationshipHidden: [string, string][] = [["s", resolved.series!.join(",")], ["mode", view.mode], ...windowFields, layersValue, ...pinAndEvent, ...pairs(["cmp", "ext"]), ...table];
+  const exporting = exportAllowed(release, SURFACE, resolved.series!);
+  const file = (format: string) => `${here}/export?format=${format}${view.resolvedQuery ? `&${view.resolvedQuery.replace(/&(table|pick)=1/g, "")}` : ""}`;
+  const rel = view.relationships;
+  const uncompared = view.selection.filter((s) => s.state === "drawn" && s.compared && !s.compared.drawn);
   const pickerHidden: [string, string][] = [
     ["mode", view.mode],
-    ...(view.window.from ? [["from", view.window.from] as [string, string]] : []),
-    ...(view.window.to ? [["to", view.window.to] as [string, string]] : []),
-    ["layers", resolved.layers!.length > 0 ? resolved.layers!.join(",") : "none"],
+    ...windowFields,
+    layersValue,
     ...pinAndEvent,
     ...carried,
     ...table,
@@ -94,7 +108,35 @@ export default async function ExplorePage({ searchParams }: PageProps<"/explore"
             closeHref={`${BASE_PATH}${to(view.query)}`}
           />
           {view.selection.length > 0 && <CopyLink href={`${BASE_PATH}${to(view.resolvedQuery)}`} className={button} />}
+          {view.figure && exporting.allowed && (
+            <ul data-exports aria-label="Export" className="flex flex-wrap items-center gap-2">
+              <li>
+                <a href={file("csv")} data-export="csv" className={button}>
+                  Download CSV
+                </a>
+              </li>
+              <li>
+                <ExportAction href={file("csv")} kind="copy" label="Copy CSV" done="Copied" className={button} />
+              </li>
+              <li>
+                <ExportAction href={file("svg")} kind="png" label="Save chart as PNG" done="Saved" className={button} />
+              </li>
+            </ul>
+          )}
         </div>
+        {view.figure && exporting.allowed && SURFACE === "local" && (
+          <p data-export-note className="-mt-2 text-xs text-ink-3">
+            Files made here are stamped “not for publication”.{" "}
+            <a href={file("all")} data-export="all" className={`${link} inline-flex min-h-6 items-center`}>
+              Every series in this release as one CSV
+            </a>
+          </p>
+        )}
+        {view.selection.length > 0 && !exporting.allowed && (
+          <p data-export-note className="-mt-2 text-xs text-ink-3">
+            Export is not available here: {exporting.reason}.
+          </p>
+        )}
 
         {view.selection.length > 0 && (
           <ul data-selection aria-label="Selected series" className="flex flex-wrap gap-2">
@@ -112,14 +154,22 @@ export default async function ExplorePage({ searchParams }: PageProps<"/explore"
           </ul>
         )}
 
-        <ExplorerControls action={here} modes={view.modes} selected={view.selection.length} from={view.window.from} to={view.window.to} hidden={controlsHidden} />
+        <ExplorerControls action={here} modes={view.modes} selected={view.selection.length} from={view.window.from} to={view.window.to} compare={state.cmp} extremes={view.extremes} hidden={controlsHidden} />
 
-        {(view.notes.length > 0 || view.carriedNote) && (
+        {view.compare && (
+          <p data-compare className="max-w-[80ch] text-sm text-ink-2">
+            Comparing <span className="num text-ink">{view.window.words}</span> with <span className="num text-ink">{view.compare.words}</span>, drawn pale and wide from the left edge of the same axis.{" "}
+            <Link href={to(view.compare.offQuery)} prefetch={false} scroll={false} data-compare-off className={`${link} inline-flex min-h-6 items-center`}>
+              Stop comparing
+            </Link>
+          </p>
+        )}
+
+        {view.notes.length > 0 && (
           <ul data-notes className="flex max-w-[80ch] flex-col gap-1 text-sm text-ink-2">
             {view.notes.map((note) => (
               <li key={note}>{note}</li>
             ))}
-            {view.carriedNote && <li>{view.carriedNote}</li>}
           </ul>
         )}
       </Panel>
@@ -160,7 +210,7 @@ export default async function ExplorePage({ searchParams }: PageProps<"/explore"
             {view.selection.length === 0 ? "No series is selected. Choose series above to begin." : "None of the selected series can be drawn in this view. The reasons are below."}
           </p>
         )}
-        {kept.length > 0 && (
+        {(kept.length > 0 || uncompared.length > 0) && (
           <ul data-not-drawn className="flex max-w-[80ch] flex-col gap-1 border-t border-line pt-3 text-sm text-ink-2">
             {kept.map((s) => (
               <li key={s.key}>
@@ -170,9 +220,314 @@ export default async function ExplorePage({ searchParams }: PageProps<"/explore"
                 : {s.reason}
               </li>
             ))}
+            {uncompared.map((s) => (
+              <li key={`${s.key}-compared`}>
+                <span className="font-medium text-ink">Not drawn over the second range · {s.name}</span>: {s.compared!.reason}
+              </li>
+            ))}
           </ul>
         )}
       </Panel>
+
+      {view.snapshot.length > 0 && (
+        <Panel id="snapshot" title="Snapshot" meta={<>Each series&rsquo; own values over <span className="num">{view.window.words}</span>, whatever the chart shows them as.</>} bodyClassName="p-4">
+          <div role="group" aria-label="Snapshot table" tabIndex={0} className="overflow-x-auto">
+            <table data-snapshot className="data-table">
+              <thead>
+                <tr>
+                  <th scope="col">Series</th>
+                  <th scope="col" className="n">First in window</th>
+                  <th scope="col" className="n">Latest in window</th>
+                  <th scope="col" className="n">Change</th>
+                  <th scope="col" className="n">Low</th>
+                  <th scope="col" className="n">High</th>
+                  <th scope="col">Source</th>
+                </tr>
+              </thead>
+              <tbody>
+                {view.snapshot.map((row) => {
+                  const cell = (c: { value: string; period: string } | null) =>
+                    c ? (
+                      <>
+                        {c.value} <small>{c.period}</small>
+                      </>
+                    ) : (
+                      "–"
+                    );
+                  return (
+                    <tr key={row.key} data-snapshot-row={row.key}>
+                      <th scope="row">
+                        {row.name}
+                        <small>{row.unit}</small>
+                      </th>
+                      {row.note ? (
+                        <td colSpan={5}>
+                          <i>{row.note}</i>
+                        </td>
+                      ) : (
+                        <>
+                          <td className="n">{cell(row.first)}</td>
+                          <td className="n">{cell(row.last)}</td>
+                          <td className="n">{row.change ?? "–"}</td>
+                          <td className="n">{cell(row.low)}</td>
+                          <td className="n">{cell(row.high)}</td>
+                        </>
+                      )}
+                      <td>
+                        <small>
+                          {row.source}
+                          {row.latest && ` · latest value ${row.latest}`}
+                        </small>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </Panel>
+      )}
+
+      {view.selection.length > 0 && (
+        <Panel
+          id="relationships"
+          title="Relationships"
+          meta={
+            <>
+              How the series moved together over <span className="num">{view.window.words}</span>. Descriptive only.
+            </>
+          }
+          bodyClassName="flex flex-col gap-5 p-4"
+        >
+          {rel.empty ? (
+            <p data-relationships-empty className="max-w-[68ch] text-ink-2">
+              {rel.empty}
+            </p>
+          ) : (
+            <>
+              <div>
+                <h3 className="text-xs font-semibold text-ink-2">Correlation of every pair, r, {rel.basis === "chg" ? "on changes from the period before" : "on levels"}, with no lag</h3>
+                <div role="group" aria-label="Correlation of every pair" tabIndex={0} className="mt-1 overflow-x-auto">
+                  <table data-matrix className="data-table w-auto">
+                    <thead>
+                      <tr>
+                        <td />
+                        {rel.series.map((s) => (
+                          <th key={s.key} scope="col" className="n" title={s.name}>
+                            {s.short}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {rel.matrix.map((row, a) => (
+                        <tr key={rel.series[a]!.key}>
+                          <th scope="row" title={rel.series[a]!.name}>
+                            {rel.series[a]!.short}
+                          </th>
+                          {row.map((c, b) => (
+                            <td key={rel.series[b]!.key} className="n">
+                              {c.self ? (
+                                <span aria-label={c.words} className="text-ink-3">
+                                  –
+                                </span>
+                              ) : (
+                                <Link
+                                  href={to(c.query!)}
+                                  prefetch={false}
+                                  scroll={false}
+                                  title={c.words}
+                                  aria-label={c.words}
+                                  aria-current={c.chosen ? "true" : undefined}
+                                  data-cell={`${rel.series[a]!.key} ${rel.series[b]!.key}`}
+                                  className={`press hover-ink num inline-flex h-8 min-w-14 items-center justify-end rounded border px-2 ${c.chosen ? "border-accent bg-band font-semibold text-ink" : "border-transparent text-accent underline underline-offset-2"}`}
+                                >
+                                  {c.r ?? "no answer"}
+                                </Link>
+                              )}
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <p className="mt-1 text-xs text-ink-3">Choose a cell to look at that pair below. “No answer” has its reason in the cell&rsquo;s name and under the pair.</p>
+              </div>
+
+              {rel.pair && (
+                <div data-pair className="flex flex-col gap-3 border-t border-line pt-4">
+                  <RelationshipControls
+                    action={here}
+                    series={rel.series}
+                    x={rel.pair.x.key}
+                    y={rel.pair.y.key}
+                    levels={rel.basis === "lvl"}
+                    lag={rel.pair.lag}
+                    maxLag={MAX_LAG}
+                    lagUnit={rel.pair.lags.unit}
+                    roll={rel.pair.rolling.span}
+                    hidden={relationshipHidden}
+                  />
+                  <div>
+                    <p className="text-sm text-ink-2">
+                      X: <span className="font-medium text-ink">{rel.pair.x.name}</span> · Y: <span className="font-medium text-ink">{rel.pair.y.name}</span>
+                    </p>
+                    {rel.pair.answer ? (
+                      <p data-pair-answer className="num mt-1 text-base font-semibold text-ink">
+                        r = {rel.pair.answer.r} <span className="ml-3 font-normal text-ink-2">r² = {rel.pair.answer.r2}</span> <span className="ml-3 font-normal text-ink-2">n = {rel.pair.answer.n}</span>
+                      </p>
+                    ) : (
+                      <p data-pair-answer className="mt-1 text-base font-medium text-ink">
+                        {rel.pair.noAnswer}
+                      </p>
+                    )}
+                    <ul data-pair-facts className="mt-1 flex max-w-[80ch] flex-col gap-0.5 text-sm text-ink-2">
+                      {rel.pair.facts.map((fact) => (
+                        <li key={fact}>{fact}</li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  <div className="grid gap-x-6 gap-y-5 md:grid-cols-2 xl:grid-cols-3">
+                    <figure data-relationship="scatter" className="m-0 flex min-w-0 flex-col gap-1">
+                      <h3 className="text-xs font-semibold text-ink-2">Each pair of periods</h3>
+                      {rel.pair.scatter ? (
+                        <>
+                          <Svg node={rel.pair.scatter.drawing} className="h-auto w-full max-w-[352px] text-ink" />
+                          {state.table && (
+                            <details data-relationship-table>
+                              <summary className={summary}>The pairs as a table</summary>
+                              <div role="group" aria-label="Pairs" tabIndex={0} className="max-h-80 overflow-auto">
+                                <table className="data-table">
+                                  <thead>
+                                    <tr>
+                                      <th scope="col">Period of X</th>
+                                      <th scope="col" className="n">{rel.pair.scatter.xHead}</th>
+                                      <th scope="col">Period of Y</th>
+                                      <th scope="col" className="n">{rel.pair.scatter.yHead}</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {rel.pair.scatter.rows.map((row) => (
+                                      <tr key={`${row.xPeriod} ${row.yPeriod}`}>
+                                        <th scope="row">{row.xPeriod}</th>
+                                        <td className="n">{row.x}</td>
+                                        <td>{row.yPeriod}</td>
+                                        <td className="n">{row.y}</td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            </details>
+                          )}
+                        </>
+                      ) : (
+                        <p className="text-sm text-ink-2">Nothing to draw: {rel.pair.noAnswer}</p>
+                      )}
+                    </figure>
+
+                    <figure data-relationship="lags" className="m-0 flex min-w-0 flex-col gap-1">
+                      <h3 className="text-xs font-semibold text-ink-2">r at each lag, in {rel.pair.lags.unit}</h3>
+                      <Svg node={rel.pair.lags.drawing} className="h-auto w-full max-w-[352px] text-ink" />
+                      {rel.pair.lags.strongest && <figcaption className="max-w-[60ch] text-xs text-ink-2">{rel.pair.lags.strongest}</figcaption>}
+                      <details data-relationship-table>
+                        <summary className={summary}>The lags as a table; choose one</summary>
+                        <div role="group" aria-label="Lags" tabIndex={0} className="max-h-80 overflow-auto">
+                          <table data-lags className="data-table">
+                            <thead>
+                              <tr>
+                                <th scope="col">Lag</th>
+                                <th scope="col" className="n">r</th>
+                                <th scope="col" className="n">n</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {rel.pair.lags.rows.map((row) => (
+                                <tr key={row.lag}>
+                                  <th scope="row">
+                                    <Link href={to(row.query)} prefetch={false} scroll={false} aria-current={row.current ? "true" : undefined} className={`${link} ${row.current ? "font-semibold" : ""}`}>
+                                      {row.label}
+                                    </Link>
+                                  </th>
+                                  <td className="n">{row.r ?? <i>no answer</i>}</td>
+                                  <td className="n">{row.n}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </details>
+                    </figure>
+
+                    <figure data-relationship="rolling" className="m-0 flex min-w-0 flex-col gap-1">
+                      <h3 className="text-xs font-semibold text-ink-2">
+                        r over a rolling {rel.pair.rolling.span} months, with no lag
+                      </h3>
+                      {rel.pair.rolling.drawing ? (
+                        <>
+                          <Svg node={rel.pair.rolling.drawing} className="h-auto w-full max-w-[352px] text-ink" />
+                          {state.table && (
+                            <details data-relationship-table>
+                              <summary className={summary}>The rolling values as a table</summary>
+                              <div role="group" aria-label="Rolling correlation" tabIndex={0} className="max-h-80 overflow-auto">
+                                <table className="data-table">
+                                  <thead>
+                                    <tr>
+                                      <th scope="col">Window ending</th>
+                                      <th scope="col" className="n">r</th>
+                                      <th scope="col" className="n">n</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {rel.pair.rolling.rows.map((row) => (
+                                      <tr key={row.period}>
+                                        <th scope="row">{row.period}</th>
+                                        <td className="n">{row.r ?? <i>no answer</i>}</td>
+                                        <td className="n">{row.n}</td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            </details>
+                          )}
+                        </>
+                      ) : (
+                        <p data-rolling-note className="max-w-[60ch] text-sm text-ink-2">
+                          {rel.pair.rolling.note}
+                        </p>
+                      )}
+                    </figure>
+                  </div>
+                  {!state.table && (rel.pair.scatter || rel.pair.rolling.drawing) && (
+                    <p className="text-sm font-medium">
+                      <Link href={to(view.queryWith({ table: true }))} prefetch={false} scroll={false} className={`${link} inline-flex min-h-8 items-center`}>
+                        Show the tables behind these drawings
+                      </Link>
+                    </p>
+                  )}
+                </div>
+              )}
+            </>
+          )}
+          {rel.left_out.length > 0 && (
+            <ul data-relationships-left-out className="flex max-w-[80ch] flex-col gap-1 text-sm text-ink-2">
+              {rel.left_out.map((s) => (
+                <li key={s.key}>
+                  <span className="font-medium text-ink">Takes no part · {s.name}</span>: {s.reason}
+                </li>
+              ))}
+            </ul>
+          )}
+          <ul data-guard className="flex max-w-[80ch] list-disc flex-col gap-1 border-t border-line pl-5 pt-3 text-sm text-ink-2">
+            {rel.guard.map((line) => (
+              <li key={line}>{line}</li>
+            ))}
+          </ul>
+        </Panel>
+      )}
 
       {(view.layers.toggles.length > 0 || view.layers.bands.length > 1) && (
         <Panel id="layers" title="Layers" meta="Context drawn behind the series. An event or a term of government is never said to have caused a movement." bodyClassName="flex flex-col gap-4 p-4">

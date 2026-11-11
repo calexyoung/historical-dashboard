@@ -171,7 +171,7 @@ export function relationshipsFor(
     `Compared on ${basisWords}, ${freq}${combined.length > 0 ? ` (${list(combined)})` : ""}.`,
     `Window: ${window.words}, ${many(freq, frame.periods.length)}.`,
     state.lag === 0
-      ? `${c.n} of ${many(freq, frame.periods.length)} have a value for both; ${frame.periods.length - c.n} do not.`
+      ? `${c.n} of ${many(freq, frame.periods.length)} have a value for both; ${frame.periods.length - c.n} ${frame.periods.length - c.n === 1 ? "does" : "do"} not.`
       : `Lag ${signedLag(state.lag)}: each ${one} of ${ex.name} is paired with ${ey.name} ${many(freq, Math.abs(state.lag))} ${state.lag > 0 ? "later" : "earlier"}. ${c.n} of the ${Math.max(0, offAxis)} pairs that fit in the window have a value for both.`,
   ];
 

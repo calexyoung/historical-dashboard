@@ -1,0 +1,16 @@
+{
+  "description": "Two recorded pairs of ranges for the comparison of the Explorer's compare ranges with v1 (PLAN M5), and the windows and pairs of series over which its statistics are compared with v1's web/stats.js. Months are v1's. They are fixed here, not read from the data, so the comparison does not move when v1's data is refreshed. Keys and months only; no values.",
+  "pairs": [
+    { "name": "v1's preset '2008 vs 2020'", "series": ["spx", "unrate", "wti"], "mode": "rebase", "from": "2007-10", "to": "2010-10", "cmp": "2020-01" },
+    { "name": "the dot-com fall against the financial crisis, as z-scores, with a quarterly series", "series": ["spx", "vix", "fedfunds", "gdp"], "mode": "z", "from": "2000-03", "to": "2002-10", "cmp": "2007-10" }
+  ],
+  "statistics": {
+    "windows": [
+      { "from": "2000-01", "to": "2026-10" },
+      { "from": "2007-10", "to": "2010-10" }
+    ],
+    "series": ["spx", "unrate", "wti", "cpi_yoy"],
+    "lags": [0, 6, -3],
+    "mixed_frequency": { "monthly": "spx", "quarterly": "gdp", "annual": "income" }
+  }
+}

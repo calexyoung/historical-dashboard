@@ -154,6 +154,19 @@ function chartSvg(view: ExplorerView, release: OpenedRelease, stamped: boolean, 
   return printColors(svgString(root));
 }
 
+/**
+ * Whether a view of these Series could be exported on this Surface at all: the same question
+ * `exportView` asks, for a page that must decide whether to offer the links.
+ */
+export function exportAllowed(release: OpenedRelease, surface: string, keys: readonly string[]): { allowed: true } | { allowed: false; reason: string } {
+  const withheld = new Set(release.manifest.withheld.map((row) => row.key));
+  const asked = keys.filter((k) => !withheld.has(k));
+  const lineage = rightsLineage(release, asked.length > 0 ? asked : release.catalog.series.filter((e) => !withheld.has(e.key)).map((e) => e.key), "redistribute");
+  if (!lineage.ok) return { allowed: false, reason: lineage.message };
+  const decision = permits(lineage.rightsUsed, surface);
+  return decision.allowed ? { allowed: true } : { allowed: false, reason: decision.reason };
+}
+
 export function exportView(release: OpenedRelease, surface: string, state: ExplorerState, format: ExportFormat, options: { /** The Explorer's own address, without a query. */ address: string }): ExportFile | ExportRefusal {
   if (!(EXPORT_FORMATS as readonly string[]).includes(format)) return refuse(400, `format: one of ${EXPORT_FORMATS.join(", ")}`);
   const stamped = surface === "local";

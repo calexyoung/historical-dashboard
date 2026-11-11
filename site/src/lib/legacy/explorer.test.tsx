@@ -10,7 +10,7 @@
 import { readFileSync } from "node:fs";
 import { beforeAll, describe, expect, it } from "vitest";
 import { createReleaseReader, type OpenedRelease } from "../release/reader";
-import { explorerQuery, parseExplorerParams, v1HashToQuery, V1_BAND_SETS, V1_EVENT_CATEGORIES } from "../explorer/state";
+import { parseExplorerParams, v1HashToQuery, V1_BAND_SETS, V1_EVENT_CATEGORIES } from "../explorer/state";
 import { explorerView, type ExplorerView } from "../explorer/view";
 import { buildLegacyRelease, type V1Data } from "./testing";
 

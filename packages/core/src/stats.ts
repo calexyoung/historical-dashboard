@@ -222,7 +222,21 @@ export function pairFrame(a: StatsSeries, b: StatsSeries, basis: Basis, window: 
     if (typeof at === "string") return { ok: false, reason: "no_aggregation", message: at };
     levels.push(at);
   }
-  const starts = [...levels[0]!.keys(), ...levels[1]!.keys()].map((label) => ({ label, start: periodBounds(freq, label)?.start })).filter((p): p is { label: string; start: string } => p.start !== undefined);
+  const starts: { label: string; start: string }[] = [...levels[0]!.keys(), ...levels[1]!.keys()].map((label) => ({ label, start: periodBounds(freq, label)?.start })).filter((p): p is { label: string; start: string } => p.start !== undefined);
+  // A window with a stated edge is part of the axis up to that edge, whether or not either
+  // Series reaches it: a Period neither has a value for is a Period with no pair.
+  for (const edge of [window.from, window.to]) {
+    if (edge === undefined || !/^\d{4}-\d{2}-\d{2}$/.test(edge)) continue;
+    const label = labelAt(freq, edge);
+    const bounds = periodBounds(freq, label);
+    if (!bounds) continue;
+    // The Period that holds the window's first day belongs to the window only if it starts there.
+    if (edge === window.from && bounds.start < edge) {
+      const next = nextPeriod(freq, label);
+      const after = next ? periodBounds(freq, next) : null;
+      if (next && after && (window.to === undefined || after.start <= window.to)) starts.push({ label: next, start: after.start });
+    } else starts.push({ label, start: bounds.start });
+  }
   const periods: FramePeriod[] = [];
   if (starts.length > 0) {
     const first = starts.reduce((p, q) => (q.start < p.start ? q : p));
