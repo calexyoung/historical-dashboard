@@ -57,6 +57,15 @@ describe("a valid request is answered from the release, by the engine", () => {
     expect(answer.series[1]!.result.ok).toBe(true);
   });
 
+  it("a transform the Catalog does not offer for a series is unavailable for it, by the engine's own answer", () => {
+    const answer = ask({ ...base, series: ["fx_price_index_yoy", "fx_price_index"], transform: "rebase" });
+    if (!answer.ok) throw new Error(answer.message);
+    expect(answer.series[0]!.result).toMatchObject({ ok: false, reason: "not_offered" });
+    expect(answer.series[1]!.result.ok).toBe(true);
+    const offered = ask({ ...base, series: ["fx_price_index_yoy"], transform: "z" });
+    expect(offered.ok && offered.series[0]!.result.ok).toBe(true);
+  });
+
   it("an empty window is an answer with no rows, not an error", () => {
     const answer = ask({ ...base, from: "1990-01-01", to: "1990-12-31" });
     expect(answer).toMatchObject({ ok: true, rows: 0 });

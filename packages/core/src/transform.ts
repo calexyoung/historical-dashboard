@@ -12,7 +12,7 @@
 import type { Frequency } from "./period";
 
 /** Raised by any change in what a Transform returns (PLAN 4.5). */
-export const SEMANTICS_VERSION = "0.2.0";
+export const SEMANTICS_VERSION = "0.3.0";
 
 /** v1's six scale modes under FRED's names, plus v1's drawdown. The rest arrive in M11. */
 export const TRANSFORMS = ["lin", "log", "rebase", "z", "pc1", "drawdown"] as const;
@@ -32,6 +32,11 @@ export type TransformSeries = {
   continuity: "discrete" | "held";
   /** In Period order, with every gap explicit, as a Release holds them. */
   observations: readonly TransformObservation[];
+  /**
+   * The Transforms the Catalog offers for this Series (`allowed_transforms`). Absent or empty:
+   * none is ruled out. One that is not on the list is unavailable, whatever the window holds.
+   */
+  allowed?: readonly string[];
 };
 
 /** Calendar dates, both inclusive. Either may be left open. */
@@ -49,6 +54,7 @@ export type TransformedObservation = TransformObservation & { empty?: EmptyReaso
 
 export type UnavailableReason =
   | "unknown_transform"
+  | "not_offered"
   | "bad_window"
   | "no_values"
   | "base_not_positive"
@@ -124,6 +130,11 @@ export function transform(
   });
   if (!(TRANSFORMS as readonly string[]).includes(name)) {
     return unavailable("unknown_transform", `there is no transform called ${JSON.stringify(name)}`);
+  }
+  if (series.allowed && series.allowed.length > 0 && !series.allowed.includes(name)) {
+    const offered = series.allowed.filter((t) => (TRANSFORMS as readonly string[]).includes(t));
+    const list = offered.length > 1 ? `${offered.slice(0, -1).join(", ")} and ${offered.at(-1)}` : offered.join("");
+    return unavailable("not_offered", `this series does not offer ${name}; it offers ${list || "none of the transforms the engine has"}`);
   }
   for (const edge of [window.from, window.to]) {
     if (edge !== undefined && !isDate(edge)) {
