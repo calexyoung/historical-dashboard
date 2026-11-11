@@ -22,6 +22,12 @@ export type Variant = {
   legacy?: string;
   /** Rename this series (catalog `name` only), so two releases can be told apart on a page. */
   rename?: { key: string; name: string };
+  /**
+   * Change stored series: each function gets the series file and its catalog entry and edits
+   * them in place. The manifest's hash is brought up to date; keeping the result valid is the
+   * caller's business.
+   */
+  edit?: Record<string, (file: Json, entry: Json) => void>;
 };
 
 export function tempRoot(): string {
@@ -50,6 +56,13 @@ export function addRelease(root: string, variant: Variant): string {
     manifest.series[key].representation = "legacy_monthly_rounded";
     manifest.series[key].sha256 = createHash("sha256").update(readFileSync(path)).digest("hex");
     catalog.series.find((e: Json) => e.key === key).representation = "legacy_monthly_rounded";
+  }
+  for (const [key, change] of Object.entries(variant.edit ?? {})) {
+    const path = join(dir, "series", `${key}.json`);
+    const file = readJson(path);
+    change(file, catalog.series.find((e: Json) => e.key === key));
+    writeJson(path, file);
+    manifest.series[key].sha256 = createHash("sha256").update(readFileSync(path)).digest("hex");
   }
   if (variant.rename) {
     const { key, name } = variant.rename;

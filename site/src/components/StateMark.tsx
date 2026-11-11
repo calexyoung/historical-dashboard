@@ -10,10 +10,10 @@ export function StateMark({ mark, word, basePath, link = true }: { mark: MarkNam
   // "Not shown here" borrows the Withheld mark and has its own entry.
   const slug = mark === "withheld" && word !== "Withheld" ? "not-shown-here" : stateSlug(mark);
   return (
-    <span data-state={mark} className="inline-flex min-h-6 items-center gap-1 whitespace-nowrap align-middle font-medium text-ink">
+    <span data-state={mark} className="inline-flex min-h-6 min-w-6 items-center gap-1 whitespace-nowrap align-middle font-medium text-ink">
       <Svg node={markIcon(mark)} className="shrink-0" />
       {link ? (
-        <a href={glossaryHref(basePath, slug)} className="press hover-ink inline-flex min-h-6 items-center text-accent underline underline-offset-2">
+        <a href={glossaryHref(basePath, slug)} className="press hover-ink inline-flex min-h-6 min-w-6 items-center text-accent underline underline-offset-2">
           {word}
         </a>
       ) : (

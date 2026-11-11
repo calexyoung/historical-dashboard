@@ -15,7 +15,7 @@ function Facts({ facts, basePath }: { facts: Fact[]; basePath: string }) {
         <div key={fact.label} className="grid grid-cols-1 gap-x-4 border-b border-line py-1.5 last:border-b-0 sm:grid-cols-[minmax(9rem,13rem)_1fr]">
           <dt className="text-xs text-ink-3 sm:text-sm">
             {fact.term ? (
-              <a href={glossaryHref(basePath, fact.term)} className={`${link} inline-flex min-h-6 items-center`}>
+              <a href={glossaryHref(basePath, fact.term)} className={`${link} inline-flex min-h-6 min-w-6 items-center`}>
                 {fact.label}
               </a>
             ) : (
@@ -42,7 +42,7 @@ function Group({ title, term, basePath, children }: { title: string; term?: stri
     <div className="min-w-0">
       <h3 className="mb-1 text-xs font-bold uppercase tracking-[0.06em] text-ink-2">
         {term ? (
-          <a href={glossaryHref(basePath, term)} className={`${link} inline-flex min-h-6 items-center`}>
+          <a href={glossaryHref(basePath, term)} className={`${link} inline-flex min-h-6 min-w-6 items-center`}>
             {title}
           </a>
         ) : (
@@ -63,14 +63,14 @@ function Group({ title, term, basePath, children }: { title: string; term?: stri
 export function SeriesPage({ view, basePath }: { view: SeriesPageView; basePath: string }) {
   const { latest, provenance } = view;
   return (
-    <div className="flex flex-col gap-6" data-series-page={view.key} data-state={view.state}>
+    <div className="flex flex-col gap-6" data-series-page={view.key} data-values={view.state}>
       <Panel
         id="series"
         title={view.name}
         level={1}
         meta={
           <>
-            <a href={`${basePath}/data`} className={`${link} inline-flex min-h-6 items-center`}>
+            <a href={`${basePath}/data`} className={`${link} inline-flex min-h-6 min-w-6 items-center`}>
               Data
             </a>{" "}
             · <span className="num break-all font-mono">{view.key}</span>
@@ -127,7 +127,7 @@ export function SeriesPage({ view, basePath }: { view: SeriesPageView; basePath:
                 <ul className="mt-1 text-sm">
                   {provenance.lineage.inputs.map((input) => (
                     <li key={input.key}>
-                      <a href={`${basePath}/data/${input.key}`} className={`${link} inline-flex min-h-6 items-center`}>
+                      <a href={`${basePath}/data/${input.key}`} className={`${link} inline-flex min-h-6 min-w-6 items-center`}>
                         {input.name}
                       </a>
                     </li>

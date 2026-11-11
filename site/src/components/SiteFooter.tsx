@@ -19,7 +19,7 @@ export function SiteFooter({ surface, release }: { surface: Surface; release: Op
         </p>
         {BUILD_WORD[surface] && <p data-surface={surface}>{BUILD_WORD[surface]}</p>}
         <p className="sm:ml-auto">
-          <a href={glossaryHref(BASE_PATH)} className="press hover-ink inline-flex min-h-6 items-center text-accent underline underline-offset-2">
+          <a href={glossaryHref(BASE_PATH)} className="press hover-ink inline-flex min-h-6 min-w-6 items-center text-accent underline underline-offset-2">
             Glossary
           </a>
         </p>

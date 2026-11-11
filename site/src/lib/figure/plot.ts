@@ -16,7 +16,8 @@ import { h, r2, type SvgNode } from "./svg";
 import { dayWords, periodWords } from "./words";
 
 export const LAYOUT_SIZES: Record<LayoutName, { width: number; height: number }> = {
-  narrow: { width: 288, height: 200 },
+  // 256px is what a 320px phone leaves a figure inside the page's and the panel's padding.
+  narrow: { width: 256, height: 190 },
   medium: { width: 448, height: 250 },
   wide: { width: 768, height: 320 },
 };

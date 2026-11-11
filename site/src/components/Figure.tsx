@@ -137,7 +137,9 @@ export function Figure({ figure, basePath, explorerHref }: { figure: FigureData;
             </details>
             <details data-table>
               <summary className={summary}>Show the table</summary>
-              <div className="mb-2 mt-1 flex flex-col gap-6 overflow-x-auto">
+              {/* Wide values can outgrow a phone: the table scrolls inside this region, never the page.
+                  A scrolling region must be reachable from the keyboard, hence the tab stop. */}
+              <div role="group" aria-label="Table of values" tabIndex={0} className="mb-2 mt-1 flex flex-col gap-6 overflow-x-auto">
                 {figure.tables.map((table) => (
                   <Table key={table.key} table={table} basePath={basePath} />
                 ))}

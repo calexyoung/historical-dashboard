@@ -27,7 +27,7 @@ export default function GlossaryPage() {
               <div key={entry.slug} id={entry.slug} data-term={entry.slug} className="border-b border-line py-2 last:border-b-0">
                 <dt className="flex items-center gap-1.5 font-medium text-ink">
                   {entry.mark && <Svg node={markIcon(entry.mark)} className="shrink-0" />}
-                  <a href={glossaryHref(BASE_PATH, entry.slug)} className={`${link} inline-flex min-h-6 items-center`}>
+                  <a href={glossaryHref(BASE_PATH, entry.slug)} className={`${link} inline-flex min-h-6 min-w-6 items-center`}>
                     {entry.term}
                   </a>
                 </dt>

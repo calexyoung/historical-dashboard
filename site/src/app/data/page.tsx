@@ -140,7 +140,7 @@ export default async function DataPage({ searchParams }: PageProps<"/data">) {
                 return (
                   <tr key={row.key} data-series-key={row.key} data-state={row.state} className="border-b border-line align-top last:border-b-0">
                     <th scope="row" className="px-4 py-2 font-normal">
-                      <a href={`${here}/${row.key}`} className={`${link} inline-flex min-h-6 items-center font-medium`}>
+                      <a href={`${here}/${row.key}`} className={`${link} inline-flex min-h-6 min-w-6 items-center font-medium`}>
                         {row.name}
                       </a>
                       <span className="num block break-all font-mono text-xs text-ink-3">{row.key}</span>

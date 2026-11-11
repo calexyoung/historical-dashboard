@@ -25,7 +25,7 @@ export default async function GlossaryTermPage({ params }: PageProps<"/docs/glos
       level={1}
       meta={
         <>
-          <a href={glossaryHref(BASE_PATH)} className={`${link} inline-flex min-h-6 items-center`}>
+          <a href={glossaryHref(BASE_PATH)} className={`${link} inline-flex min-h-6 min-w-6 items-center`}>
             Glossary
           </a>{" "}
           · {entry.group}
@@ -46,7 +46,7 @@ export default async function GlossaryTermPage({ params }: PageProps<"/docs/glos
           {see.map((other, i) => (
             <span key={other.slug}>
               {i > 0 && ", "}
-              <a href={glossaryHref(BASE_PATH, other.slug)} className={`${link} inline-flex min-h-6 items-center`}>
+              <a href={glossaryHref(BASE_PATH, other.slug)} className={`${link} inline-flex min-h-6 min-w-6 items-center`}>
                 {other.term}
               </a>
             </span>

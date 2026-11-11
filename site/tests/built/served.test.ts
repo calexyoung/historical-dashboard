@@ -156,6 +156,80 @@ describe("the catalog page, /data (PLAN section 3, M2)", () => {
   });
 });
 
+describe("series pages, /data/{key} (PLAN section 3, M3)", () => {
+  const ALIASED = "20260204T000000Z-ddddddd";
+  let local: Running;
+  let production: Running;
+  const root = tempRoot();
+  beforeAll(async () => {
+    addRelease(root, { id: ALIASED, edit: { fx_price_index: (_file, entry) => void (entry.aliases = ["fx_cpi"]) } });
+    promote(root, ALIASED);
+    local = await startVariant("local-atlas", { root });
+    production = await startVariant("production", { root: FIXTURE_ROOT });
+  });
+  afterAll(() => Promise.all([local.stop(), production.stop()]));
+
+  it("a page is complete in its HTML, from one release: value, sentence, three drawings, every row of the table", async () => {
+    const response = await get(local.url("/data/fx_price_index"));
+    expect(response.status).toBe(200);
+    const html = await response.text();
+    expect(idsOn(html)).toEqual([ALIASED]);
+    expect(html).toMatch(/<h1[^>]*>Fixture price index<\/h1>/);
+    expect(html).toContain("data-latest");
+    expect(html).toContain("5.2% higher than a year earlier.");
+    expect(html.match(/<svg[^>]*role="img"/g)).toHaveLength(3);
+    const table = /<table data-figure-table[\s\S]*?<\/table>/.exec(html)![0];
+    expect(table.match(/<tr/g)).toHaveLength(25);
+    expect(html).toContain('href="/macro-atlas/explore?s=fx_price_index"');
+    expect(html).not.toMatch(/<style\b/);
+  });
+
+  it("is rendered for each request and never stored by a shared cache", async () => {
+    const response = await get(local.url("/data/fx_price_index"));
+    expect(response.headers.get("cache-control") ?? "").toMatch(/no-store|private/);
+  });
+
+  it("a renamed key moves, permanently, to the permanent key under the base path", async () => {
+    const response = await get(local.url("/data/fx_cpi"));
+    expect(response.status).toBe(308);
+    expect(new URL(response.headers.get("location")!, local.origin).pathname).toBe("/macro-atlas/data/fx_price_index");
+  });
+
+  it.each(["/data/nope", "/data/FX_PRICE_INDEX", "/data/fx_price_index.json", "/data/fx_price_index/extra", "/docs/glossary/nope"])("%s is not found", async (path) => {
+    expect((await get(local.url(path))).status).toBe(404);
+  });
+
+  it("a withheld series has its page: name, reason, and no value, drawing or table", async () => {
+    const html = await (await get(local.url("/data/fx_exchange_index"))).text();
+    expect(html).toMatch(/<h1[^>]*>Fixture exchange index<\/h1>/);
+    expect(html).toContain("The licence does not allow redistribution.");
+    for (const absent of ["data-latest", "data-figure-table", 'role="img"']) expect(html).not.toContain(absent);
+  });
+
+  // A public-profile release on the production surface is served (200), but until the rights
+  // register is in force (M6) the gate permits no value there. This is not the 503 a
+  // local-profile release gets: the page exists and says why it holds no value.
+  it.each(["fx_price_index", "fx_output_quarterly", "fx_vote_margin", "fx_price_index_yoy"])("on the production surface %s is named, with the reason, and not one value", async (key) => {
+    const response = await get(production.url(`/data/${key}`));
+    expect(response.status).toBe(200);
+    const html = await response.text();
+    expect(html).toContain("Not shown here");
+    expect(html).toContain("the rights register is not in force yet");
+    for (const absent of ["data-latest", "data-figure-table", 'role="img"', "data-takeaway", "data-silence"]) expect(html, absent).not.toContain(absent);
+    // Values that exist only in the fixture's series files.
+    for (const value of ["109.9", "104.5", "566.4", "510.2", "5.167", "-1.5<"]) expect(html, value).not.toContain(value);
+  });
+
+  it("the glossary is served on every surface", async () => {
+    for (const server of [local, production]) {
+      const html = await (await get(server.url("/docs/glossary"))).text();
+      expect(html).toMatch(/<h1[^>]*>Glossary<\/h1>/);
+      expect(html.match(/data-term="/g)!.length).toBeGreaterThanOrEqual(20);
+      expect((await get(server.url("/docs/glossary/withheld"))).status).toBe(200);
+    }
+  });
+});
+
 describe("the strip on a local-profile release (PLAN M2, 6.1)", () => {
   const STRIP = "Local build · v1 data via FRED and Yahoo · not for publication";
   let server: Running;
@@ -169,7 +243,7 @@ describe("the strip on a local-profile release (PLAN M2, 6.1)", () => {
   });
   afterAll(() => server.stop());
 
-  it.each(["/explore", "/data", "/data?q=nothing-matches", "/no-such-page"])("reads exactly as agreed on %s when the release holds v1's data", async (path) => {
+  it.each(["/explore", "/data", "/data?q=nothing-matches", "/data/fx_price_index", "/docs/glossary", "/docs/glossary/stale", "/no-such-page"])("reads exactly as agreed on %s when the release holds v1's data", async (path) => {
     promote(root, A);
     const html = await (await get(server.url(path))).text();
     expect(idsOn(html)).toEqual([A]);
@@ -315,7 +389,7 @@ describe("rewriting CURRENT changes the served page with no restart", () => {
 describe("a production-surface build fails closed (PLAN 6.1 point 5, reader)", () => {
   let server: Running;
   const root = tempRoot();
-  const PATHS = ["/", "/explore", "/explore/", "/data", "/data?q=price", "/api/health", "/api/theme", "/icon.svg", "/_next/static/chunks/x.js", "/no/such/page"];
+  const PATHS = ["/", "/explore", "/explore/", "/data", "/data?q=price", "/data/fx_price_index", "/data/fx_exchange_index", "/docs/glossary", "/docs/glossary/stale", "/api/health", "/api/theme", "/icon.svg", "/_next/static/chunks/x.js", "/no/such/page"];
 
   beforeAll(async () => {
     addRelease(root, { id: A });
