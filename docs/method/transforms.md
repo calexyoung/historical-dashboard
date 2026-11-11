@@ -81,7 +81,7 @@ them inherits that.
 
 ## Compared with v1
 
-`packages/core/src/transform.parity.test.ts` converts v1's committed output with
+`site/src/lib/legacy/parity.test.ts` converts v1's committed output with
 `atlas legacy-release` into a temporary directory, runs every one of the 126 Series through all
 six Transforms over three recorded windows (`checks/v1-parity-windows.json`), and compares each
 answer with what v1's own `web/stats.js` gives when driven the way v1's `app.js` drove it. The

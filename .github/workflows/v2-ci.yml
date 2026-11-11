@@ -1,6 +1,8 @@
 # CI for Macro Atlas v2: runs on pull requests into the long-lived `v2` branch (ADR 0010).
-# It never deploys, never fetches data and uploads no artefact (PLAN 6.1): tests use only the
-# synthetic fixture release in fixtures/public. v1's refresh workflow (refresh.yml) is separate
+# It never deploys, never fetches data and uploads no artefact (PLAN 6.1): pages, previews and
+# browser tests use only the synthetic fixture release in fixtures/public. Tests that need v1's
+# values (the legacy converter, the comparison with v1) convert v1's committed output into a
+# temporary directory, print counts and names but no values, and upload nothing. v1's refresh workflow (refresh.yml) is separate
 # and only runs from `main`.
 name: v2-ci
 
@@ -38,8 +40,11 @@ jobs:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
         with: { node-version: "22", cache: npm }
+      - uses: astral-sh/setup-uv@v10.2.0
       - name: Install
         run: npm ci
+      - name: Install Python (the v1 parity test runs the legacy converter into a temp dir)
+        run: uv sync --locked --extra dev
       - name: Generated schema module and types are up to date
         run: npm run gen:check
       - name: Lint (eslint)
