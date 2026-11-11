@@ -1,7 +1,7 @@
 import { rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { createReleaseReader } from "./reader";
+import { createReleaseReader, refusal } from "./reader";
 import { addRelease, FIXTURE_ID, FIXTURE_ROOT, promote, tempRoot } from "./testing";
 
 const A = "20260201T000000Z-aaaaaaa";
@@ -150,5 +150,34 @@ describe("ReleaseReader.open: a release by id (pinned or rolled back)", () => {
     const reader = createReleaseReader({ root: FIXTURE_ROOT, surface: "local" });
     expect(await reader.open("../public")).toMatchObject({ ok: false, kind: "unavailable" });
     expect(await reader.open("20260101T000000Z-0000000/../x")).toMatchObject({ ok: false, kind: "unavailable" });
+  });
+});
+
+describe("refusal: each condition of the Surface guard on its own", () => {
+  const load = async (variant: Omit<Parameters<typeof addRelease>[1], "id">) => {
+    const root = tempRoot();
+    addRelease(root, { id: A, profile: "local", ...variant });
+    promote(root, A);
+    const opened = await createReleaseReader({ root, surface: "local" }).current();
+    if (!opened.ok) throw new Error(opened.reason);
+    // What the validator would never pass: the same content claiming to be public.
+    return { ...opened.release, manifest: { ...opened.release.manifest, profile: "public" as const } };
+  };
+
+  it("refuses an unsigned rights register on a public surface", async () => {
+    const release = await load({ signed: false });
+    expect(refusal(release, "production")).toMatch(/signed rights register/);
+    expect(refusal(release, "staging")).toMatch(/signed rights register/);
+    expect(refusal(release, "local")).toBeNull();
+  });
+
+  it("refuses a legacy series on a public surface, naming it", async () => {
+    const release = await load({ legacy: "fx_price_index" });
+    expect(refusal(release, "production")).toMatch(/legacy representation \(fx_price_index\)/);
+    expect(refusal(release, "local")).toBeNull();
+  });
+
+  it("allows a signed, native, public-profile release", async () => {
+    expect(refusal(await load({}), "production")).toBeNull();
   });
 });
