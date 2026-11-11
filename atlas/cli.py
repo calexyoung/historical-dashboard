@@ -63,7 +63,18 @@ def cmd_rights(a) -> int:
     return status
 
 
+def cmd_capture(argv) -> int:
+    from .capture.cli import main as capture_main  # v2 (PLAN M7): raw capture; its own options
+
+    return capture_main(argv)
+
+
 def main(argv=None) -> int:
+    argv = sys.argv[1:] if argv is None else list(argv)
+    if argv[:1] == ["capture"]:
+        # `atlas capture` is `python -m atlas.capture`, which also runs where v1's pipeline
+        # is not installed; its options are parsed there.
+        return cmd_capture(argv[1:])
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
     p = argparse.ArgumentParser(prog="atlas")
     sub = p.add_subparsers(dest="cmd", required=True)
@@ -81,6 +92,8 @@ def main(argv=None) -> int:
     )
     r = sub.add_parser("rights", help="v2: list the rights register, each row's proposal and what is signed")
     r.add_argument("--register", help="another register file to check (default schema/rights-register.json)")
+    sub.add_parser("capture", help="v2: fetch rights-cleared agency endpoints and keep the raw bytes "
+                                   "(see python -m atlas.capture --help)")
     a = p.parse_args(argv)
     commands = {"fetch": cmd_fetch, "build": cmd_build, "check": cmd_check, "serve": cmd_serve,
                 "legacy-release": cmd_legacy_release, "rights": cmd_rights}

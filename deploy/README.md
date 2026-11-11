@@ -12,6 +12,7 @@ every build is given its Surface explicitly (PLAN 6.1).
 | `compose.web.yaml` | Two local-surface builds, one per base path, on `127.0.0.1:3101` and `127.0.0.1:3102`, each with the release root mounted read-only |
 | `check-images.sh` | Builds both images, reads every layer for seeded values and v1 data, smoke-tests `docker compose up`, and checks that a build with no Surface or a mismatched one fails |
 | `scan_image.py` | The layer reader `check-images.sh` uses |
+| `capture/` | The capture host kit: a scheduled workflow to copy into a separate private repository, and its runbook. It starts nothing here (D2 and D6 are Alex's) |
 
 ```
 make v2-up            # http://localhost:3101/macro-atlas/explore

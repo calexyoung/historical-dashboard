@@ -63,6 +63,13 @@ function rowSection(row) {
     out.push(`Terms: <${terms.url}> (${HOW[terms.how].replace("{date}", terms.read_on)}).${terms.note ? ` ${terms.note}` : ""}`, "");
     for (const quote of terms.quotes) out.push(`> ${quote}`, "");
   }
+  if (row.capture?.length) {
+    out.push("Capture endpoints (fetched by `atlas capture` only once this row is signed and allows store):", "");
+    for (const endpoint of row.capture) {
+      out.push(`- \`${endpoint.id}\`, the \`${endpoint.adapter}\` adapter, for ${endpoint.datasets.map((d) => `"${d}"`).join(", ")}.${endpoint.note ? ` ${endpoint.note}` : ""}`);
+    }
+    out.push("");
+  }
   out.push(`Proposal: allow **${grantsText(row.proposal)}**. ${row.proposal.note}`, "");
   if (row.open_questions.length > 0) {
     out.push("Open questions:", "");

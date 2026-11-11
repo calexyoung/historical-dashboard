@@ -1,7 +1,7 @@
 {
   "$schema": "./rights-register.schema.json",
   "format": 1,
-  "version": "2026-11-11.draft-1",
+  "version": "2026-11-11.draft-2",
   "about": "The rights register (CONTEXT.md; PLAN 6 and 6.1; ADR 0006, ADR 0020): one row per Origin and per intermediary Channel, with the terms read, a proposal, and Alex's decision. This file is the single table. docs/v2/rights-register.md and packages/core/src/rights-register.generated.ts are generated from it (npm run gen); atlas/rights.py reads it. A row permits something on a public Surface only when its decision is signed by Alex. The builder proposes and never fills in a decision.",
   "cleared_intermediaries": [],
   "rows": [
@@ -14,6 +14,27 @@
       ],
       "datasets": "*",
       "used_for": "CPI, payrolls, unemployment, participation, wages. v2.0 (M7, M13).",
+      "capture": [
+        {
+          "id": "bls-headline",
+          "adapter": "bls",
+          "datasets": [
+            "Consumer Price Index",
+            "Current Population Survey",
+            "Current Employment Statistics"
+          ],
+          "params": {
+            "series": [
+              "CUUR0000SA0",
+              "CUSR0000SA0",
+              "LNS14000000",
+              "CES0000000001"
+            ],
+            "years": 10
+          },
+          "note": "CPI-U all items (not adjusted and seasonally adjusted), the unemployment rate and total nonfarm payrolls, monthly, for the ten years ending this year: one request without a key."
+        }
+      ],
       "terms": [
         {
           "url": "https://www.bls.gov/bls/linksite.htm",
@@ -43,7 +64,8 @@
         "note": "Public domain by the Bureau's own statement. Cite the Bureau on every figure and download."
       },
       "open_questions": [
-        "The API terms of service were not read. Read them, and confirm the limit on requests without a key, before the capture job runs daily (PLAN 6, still unverified)."
+        "The API terms of service and the API FAQ were not read: bls.gov refused the automated request for both (HTTP 403, 2026-11-11). Read them before signing.",
+        "Limits without a key, as far as M7 could check them on 2026-11-11 by asking the API: a request for more than ten years is cut to ten years from its start year, with a message; an unknown series is left out, with a message. The capture job asks for ten years and treats any message as an incomplete answer. The daily limit on requests without a key is believed to be 25 and was not confirmed from the page; the job makes one request per run, two runs a day."
       ],
       "decision": null
     },
@@ -138,6 +160,24 @@
       ],
       "datasets": "*",
       "used_for": "Debt, Monthly Treasury Statement receipts and outlays. v2.0 (M13).",
+      "capture": [
+        {
+          "id": "treasury-debt-to-penny",
+          "adapter": "treasury_fiscal_data",
+          "datasets": [
+            "Debt to the Penny"
+          ],
+          "params": {
+            "path": "v2/accounting/od/debt_to_penny",
+            "key": [
+              "record_date",
+              "src_line_nbr"
+            ],
+            "page_size": 10000
+          },
+          "note": "Total public debt outstanding, daily since 1993-04-01, the whole table on each run (one page of about 2.8 MB on 2026-11-11)."
+        }
+      ],
       "terms": [
         {
           "url": "https://fiscaldata.treasury.gov/api-documentation/",
@@ -177,6 +217,33 @@
       ],
       "datasets": "*",
       "used_for": "H.15 rates, H.10 exchange rates, H.4.1 balance sheet, Z.1 net worth, through the Data Download Program. v2.0 (M13).",
+      "capture": [
+        {
+          "id": "fed-h15-treasury-yields",
+          "adapter": "fed_board",
+          "datasets": [
+            "H.15 Selected Interest Rates"
+          ],
+          "params": {
+            "rel": "H15",
+            "series": "bf17364827e38702b42a58cf8eaa3f78",
+            "expect": [
+              "RIFLGFCM01_N.B",
+              "RIFLGFCM03_N.B",
+              "RIFLGFCM06_N.B",
+              "RIFLGFCY01_N.B",
+              "RIFLGFCY02_N.B",
+              "RIFLGFCY03_N.B",
+              "RIFLGFCY05_N.B",
+              "RIFLGFCY07_N.B",
+              "RIFLGFCY10_N.B",
+              "RIFLGFCY20_N.B",
+              "RIFLGFCY30_N.B"
+            ]
+          },
+          "note": "Treasury constant-maturity yields, business daily since 1962, the Data Download Program's own H.15 package, whole history on each run (about 1 MB on 2026-11-11)."
+        }
+      ],
       "terms": [
         {
           "url": "https://www.federalreserve.gov/disclaimer.htm",

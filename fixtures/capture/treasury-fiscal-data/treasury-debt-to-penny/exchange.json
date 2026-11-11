@@ -1,0 +1,48 @@
+{
+  "format": 1,
+  "source": "treasury-fiscal-data",
+  "endpoint": "treasury-debt-to-penny",
+  "recorded_at": "2026-11-11T15:50:00Z",
+  "provenance": {
+    "synthetic": true,
+    "transport": "synthetic",
+    "origin": "U.S. Department of the Treasury, Bureau of the Fiscal Service",
+    "datasets": [
+      "Debt to the Penny"
+    ],
+    "retrieved_at": "2026-11-11T15:50:02Z",
+    "capture_id": null,
+    "note": "Invented values in the shape of the source's answer of 2026-11-11. Not a measurement of anything and not a capture: written by fixtures/capture/make_fixtures.py."
+  },
+  "exchanges": [
+    {
+      "request": {
+        "method": "GET",
+        "url": "https://api.fiscaldata.treasury.gov/services/api/fiscal_service/v2/accounting/od/debt_to_penny?format=json&sort=record_date%2Csrc_line_nbr&page%5Bnumber%5D=1&page%5Bsize%5D=10000",
+        "body": null
+      },
+      "status": 200,
+      "headers": [
+        [
+          "Content-Type",
+          "application/json"
+        ],
+        [
+          "Date",
+          "Wed, 11 Nov 2026 15:50:02 GMT"
+        ],
+        [
+          "Content-Length",
+          "11407"
+        ],
+        [
+          "Set-Cookie",
+          "(not kept)"
+        ]
+      ],
+      "received_at": "2026-11-11T15:50:02Z",
+      "body_file": "part-1.json",
+      "sha256": "4a9c878fa39e677aa3330bcac25b8233cc34ced992066a4dae15148297f56058"
+    }
+  ]
+}

@@ -133,6 +133,20 @@ _Avoid_: First print, snapshot
 One successful fetch of a Source's exact bytes, kept as evidence whether or not anything changed.
 _Avoid_: Scrape, download, cache
 
+**Endpoint**:
+One thing the capture job fetches from an Origin: a request, or a paged run of requests, whose
+answer is kept whole. The list of Endpoints lives on the Origin's row of the Rights register.
+_Avoid_: URL, feed, source (a Source is where a Series comes from)
+
+**Completeness evidence**:
+What a Capture records to show the answer was whole: what was asked for (the scope), what came
+back, and every reason it falls short. An answer that falls short is kept and flagged incomplete.
+_Avoid_: Validation, health check
+
+**Fetch log**:
+The append-only record of every Capture attempted, with its request, response headers, time and
+Completeness evidence. The Vintage store is rebuilt by replaying it.
+
 **Capture gap**:
 A stretch of days with no Capture of a Series. An answer that depends on a gap is marked uncertain.
 

@@ -2,7 +2,7 @@
 
 # Rights register
 
-Version `2026-11-11.draft-1`. 0 of 30 rows signed. Intermediary Channels cleared: none.
+Version `2026-11-11.draft-2`. 0 of 30 rows signed. Intermediary Channels cleared: none.
 
 One row per Origin and per intermediary Channel: the terms that were read, the sentences that
 matter quoted, a proposal, and Alex's decision (CONTEXT.md, Rights register; PLAN 6 and 6.1;
@@ -106,11 +106,16 @@ Terms: <https://www.bls.gov/bls/linksite.htm> (read on 2026-11-11 through a tool
 
 Terms: <https://www.bls.gov/developers/termsOfService.htm> (not read). The site refused the automated request (HTTP 403).
 
+Capture endpoints (fetched by `atlas capture` only once this row is signed and allows store):
+
+- `bls-headline`, the `bls` adapter, for "Consumer Price Index", "Current Population Survey", "Current Employment Statistics". CPI-U all items (not adjusted and seasonally adjusted), the unemployment rate and total nonfarm payrolls, monthly, for the ten years ending this year: one request without a key.
+
 Proposal: allow **all four**. Public domain by the Bureau's own statement. Cite the Bureau on every figure and download.
 
 Open questions:
 
-- The API terms of service were not read. Read them, and confirm the limit on requests without a key, before the capture job runs daily (PLAN 6, still unverified).
+- The API terms of service and the API FAQ were not read: bls.gov refused the automated request for both (HTTP 403, 2026-11-11). Read them before signing.
+- Limits without a key, as far as M7 could check them on 2026-11-11 by asking the API: a request for more than ten years is cut to ten years from its start year, with a message; an unknown series is left out, with a message. The capture job asks for ten years and treats any message as an incomplete answer. The daily limit on requests without a key is believed to be 25 and was not confirmed from the page; the job makes one request per run, two runs a day.
 
 Decision: **not decided**.
 
@@ -178,6 +183,10 @@ Terms: <https://fiscaldata.treasury.gov/about-us/> (read on 2026-11-11, from the
 
 > The data on this site is available to copy, adapt, redistribute, or otherwise use for non-commercial and commercial purposes.
 
+Capture endpoints (fetched by `atlas capture` only once this row is signed and allows store):
+
+- `treasury-debt-to-penny`, the `treasury_fiscal_data` adapter, for "Debt to the Penny". Total public debt outstanding, daily since 1993-04-01, the whole table on each run (one page of about 2.8 MB on 2026-11-11).
+
 Proposal: allow **all four**. Open by the Bureau's own statement, with no condition attached.
 
 Decision: **not decided**.
@@ -195,6 +204,10 @@ Terms: <https://www.federalreserve.gov/disclaimer.htm> (read on 2026-11-11, from
 > Unless otherwise indicated, information on Board's website is in the public domain and may be copied and distributed without permission.
 
 > Please cite to the Board as the source of the information.
+
+Capture endpoints (fetched by `atlas capture` only once this row is signed and allows store):
+
+- `fed-h15-treasury-yields`, the `fed_board` adapter, for "H.15 Selected Interest Rates". Treasury constant-maturity yields, business daily since 1962, the Data Download Program's own H.15 package, whole history on each run (about 1 MB on 2026-11-11).
 
 Proposal: allow **all four**. Public domain by the Board's own statement, unless a release says otherwise. Cite the Board.
 
