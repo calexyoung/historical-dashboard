@@ -81,7 +81,8 @@ function schemaValidator(): ValidateFunction {
   return compiled;
 }
 
-const decoder = new TextDecoder("utf-8", { fatal: true });
+// ignoreBOM: true keeps a byte order mark in the text, so JSON.parse refuses it as Python does.
+const decoder = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
 const sha256 = (data: Uint8Array): string => createHash("sha256").update(data).digest("hex");
 const quote = (value: unknown): string => JSON.stringify(value);
 

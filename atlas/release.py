@@ -18,10 +18,10 @@ import json
 import re
 from collections.abc import Mapping
 from dataclasses import dataclass
-from functools import lru_cache
+from functools import cache, lru_cache
 from pathlib import Path
 
-from jsonschema import Draft202012Validator
+from jsonschema import Draft202012Validator, ValidationError, validators
 
 from atlas.period import next_period, period_bounds
 
@@ -32,7 +32,7 @@ MANIFEST = "manifest.json"
 CATALOG = "catalog.json"
 ANNOTATIONS = "content/annotations.json"
 REQUIRED_FILES = (MANIFEST, CATALOG, ANNOTATIONS)
-_SERIES_FILE = re.compile(r"^(series|derived)/([a-z][a-z0-9_]{0,63})\.json$")
+_SERIES_FILE = re.compile(r"(series|derived)/([a-z][a-z0-9_]{0,63})\.json")
 _KIND_OF_FOLDER = {"series": "stored", "derived": "derived"}
 LEGACY = "legacy_monthly_rounded"
 
@@ -49,10 +49,31 @@ class Issue:
         return f"{self.code}: {self.path}: {self.message}"
 
 
+@cache
+def _ecma_pattern(pattern: str) -> re.Pattern:
+    """Compile a schema pattern the way JavaScript reads it.
+
+    JSON Schema patterns are ECMA 262 regular expressions, where a closing ``$`` matches only at
+    the very end. Python's ``$`` also matches before a trailing newline, which would let
+    ``"fx_key" + newline`` through here and not in the TypeScript twin.
+    """
+    if pattern.endswith("$") and not pattern.endswith("\\$"):
+        pattern = pattern[:-1] + "\\Z"
+    return re.compile(pattern)
+
+
+def _pattern(validator, pattern, instance, schema):
+    if validator.is_type(instance, "string") and not _ecma_pattern(pattern).search(instance):
+        yield ValidationError(f"{instance!r} does not match {pattern!r}")
+
+
+_ReleaseValidator = validators.extend(Draft202012Validator, {"pattern": _pattern})
+
+
 @lru_cache(maxsize=1)
 def _validator() -> Draft202012Validator:
     schema = json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))
-    return Draft202012Validator(schema, format_checker=Draft202012Validator.FORMAT_CHECKER)
+    return _ReleaseValidator(schema, format_checker=Draft202012Validator.FORMAT_CHECKER)
 
 
 def load_release(directory: Path) -> dict[str, bytes]:
@@ -83,7 +104,7 @@ def validate_files(release_id: str, files: Mapping[str, bytes]) -> list[Issue]:
     issues: list[Issue] = []
     series_paths: dict[str, dict[str, str]] = {"series": {}, "derived": {}}  # folder -> key -> path
     for path in sorted(files):
-        match = _SERIES_FILE.match(path)
+        match = _SERIES_FILE.fullmatch(path)
         if match:
             series_paths[match[1]][match[2]] = path
         elif path not in REQUIRED_FILES:

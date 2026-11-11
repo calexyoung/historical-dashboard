@@ -42,6 +42,7 @@ const isoWeekday = (ms: number): number => new Date(ms).getUTCDay() || 7;
 function day(label: string): number | null {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(label);
   if (!m) return null;
+  if (Number(m[1]) < 1) return null; // there is no year 0000
   const ms = utc(Number(m[1]), Number(m[2]), Number(m[3]));
   return iso(ms) === label ? ms : null; // rejects 2023-02-29, month 13, day 00
 }

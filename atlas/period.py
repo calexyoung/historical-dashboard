@@ -20,16 +20,18 @@ FREQUENCIES = (
     "irregular",
 )
 
-_DAY = re.compile(r"^(\d{4})-(\d{2})-(\d{2})$")
-_WEEK = re.compile(r"^(\d{4})-W(\d{2})$")
-_MONTH = re.compile(r"^(\d{4})-(\d{2})$")
-_QUARTER = re.compile(r"^(\d{4})-Q([1-4])$")
-_YEAR = re.compile(r"^(\d{4})$")
+# Matched with fullmatch, and with [0-9] rather than \d, so that a trailing newline or a
+# non-ASCII digit is refused exactly as the TypeScript twin refuses it.
+_DAY = re.compile(r"([0-9]{4})-([0-9]{2})-([0-9]{2})")
+_WEEK = re.compile(r"([0-9]{4})-W([0-9]{2})")
+_MONTH = re.compile(r"([0-9]{4})-([0-9]{2})")
+_QUARTER = re.compile(r"([0-9]{4})-Q([1-4])")
+_YEAR = re.compile(r"([0-9]{4})")
 _ONE_DAY = timedelta(days=1)
 
 
 def _day(label: str) -> date | None:
-    m = _DAY.match(label)
+    m = _DAY.fullmatch(label)
     if not m:
         return None
     try:
@@ -54,7 +56,7 @@ def _span_unchecked(freq: str, label: str) -> tuple[date, date] | None:
             return None
         return d, d
     if freq == "weekly":
-        m = _WEEK.match(label)
+        m = _WEEK.fullmatch(label)
         if not m:
             return None
         try:
@@ -63,21 +65,21 @@ def _span_unchecked(freq: str, label: str) -> tuple[date, date] | None:
             return None
         return monday, monday + timedelta(days=6)
     if freq == "monthly":
-        m = _MONTH.match(label)
+        m = _MONTH.fullmatch(label)
         if not m or not 1 <= int(m[2]) <= 12:
             return None
         year, month = int(m[1]), int(m[2])
         after = date(year + 1, 1, 1) if month == 12 else date(year, month + 1, 1)
         return date(year, month, 1), after - _ONE_DAY
     if freq == "quarterly":
-        m = _QUARTER.match(label)
+        m = _QUARTER.fullmatch(label)
         if not m:
             return None
         year, quarter = int(m[1]), int(m[2])
         after = date(year + 1, 1, 1) if quarter == 4 else date(year, quarter * 3 + 1, 1)
         return date(year, quarter * 3 - 2, 1), after - _ONE_DAY
     if freq == "annual":
-        m = _YEAR.match(label)
+        m = _YEAR.fullmatch(label)
         if not m or int(m[1]) < 1:
             return None
         return date(int(m[1]), 1, 1), date(int(m[1]), 12, 31)

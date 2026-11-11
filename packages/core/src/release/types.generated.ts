@@ -53,7 +53,7 @@ export type SeriesKey = string;
 export type Frequency =
   "daily" | "business_daily" | "weekly" | "monthly" | "quarterly" | "annual" | "irregular";
 /**
- * A calendar date, YYYY-MM-DD. No time and no zone.
+ * A calendar date, YYYY-MM-DD, in years 0001 to 9999. No time and no zone.
  *
  * This interface was referenced by `Release`'s JSON-Schema
  * via the `definition` "date".

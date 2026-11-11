@@ -56,10 +56,10 @@ export const releaseSchema: Record<string, unknown> = {
     },
     "date": {
       "title": "CalendarDate",
-      "description": "A calendar date, YYYY-MM-DD. No time and no zone.",
+      "description": "A calendar date, YYYY-MM-DD, in years 0001 to 9999. No time and no zone.",
       "type": "string",
       "format": "date",
-      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+      "pattern": "^(?!0000)[0-9]{4}-[0-9]{2}-[0-9]{2}$"
     },
     "datetime": {
       "title": "Instant",
@@ -77,7 +77,7 @@ export const releaseSchema: Record<string, unknown> = {
       "title": "PeriodLabel",
       "description": "The label of a Period: 2024 (annual), 2024-Q1, 2024-01, 2024-W03 (ISO week), 2024-01-15 (a day; also used by irregular series).",
       "type": "string",
-      "pattern": "^[0-9]{4}(-Q[1-4]|-W[0-9]{2}|-[0-9]{2}(-[0-9]{2})?)?$"
+      "pattern": "^(?!0000)[0-9]{4}(-Q[1-4]|-W[0-9]{2}|-[0-9]{2}(-[0-9]{2})?)?$"
     },
     "frequency": {
       "title": "Frequency",
