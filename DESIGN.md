@@ -235,7 +235,7 @@ Explorer II (M5, ADR 0019) adds two panels after Chart, and controls to View:
   ninth colour. Its dates are in the readout row under its Series, in the table and in the
   file; the axis keeps the first range's dates.
 - **Marks at the extremes**: a 4.5px ring in the Series' colour and a 12px ink label with a
-  panel-coloured halo, "max 4,766.2 · Dec 2021".
+  panel-coloured halo, "max 109.9 · Dec 2025" (the fixture's).
 - **Snapshot.** One `data-table`: Series (name over unit), first and latest in the window, change,
   low, high, source. Figures are right-aligned tabular numerals, each with its Period beside it
   in 12px ink-3. The change is a signed number in ink: no green, no red (colour never judges

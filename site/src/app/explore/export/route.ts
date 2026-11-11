@@ -14,7 +14,9 @@ export async function GET(request: NextRequest) {
   const params = request.nextUrl.searchParams;
   const format = (params.get("format") ?? "csv") as ExportFormat;
   // The address a reader would open, as they asked for it: the Host they named, not the server's own.
-  const host = request.headers.get("host") ?? request.nextUrl.host;
+  // It is written into the file, so it must look like a host and nothing else.
+  const named = request.headers.get("host") ?? "";
+  const host = /^([a-z0-9.-]{1,253}|\[[0-9a-f:]{2,45}\])(:[0-9]{1,5})?$/i.test(named) ? named : request.nextUrl.host;
   const result = exportView(release, SURFACE, parseExplorerParams(params), format, { address: `${request.nextUrl.protocol}//${host}${BASE_PATH}/explore` });
   const common = { "cache-control": "no-store", "x-robots-tag": "noindex" };
   if (!result.ok) return new Response(`${result.message}\n`, { status: result.status, headers: { ...common, "content-type": "text/plain; charset=utf-8" } });

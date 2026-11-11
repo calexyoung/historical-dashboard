@@ -296,9 +296,11 @@ export function renderFigure(spec: FigureSpec, series: readonly FigureSeries[]):
   const styles = new Map<string, SeriesStyle>();
   // A second run takes the style of the Series it is a run of, and no place in the palette.
   shown.filter((s) => !s.ghost).forEach((s, i) => styles.set(s.key, { key: s.key, name: s.name, ...styleFor(i), drawnAs: drawnAs(s) }));
+  const own = shown.filter((s) => !s.ghost).length;
   shown.filter((s) => s.ghost).forEach((s, i) => {
+    // A run whose Series is not itself in the figure takes the next free place in the palette.
     const of = styles.get(s.ghost!.of);
-    styles.set(s.key, { key: s.key, name: s.name, ...(of ? { color: of.color, dash: of.dash, symbol: of.symbol } : styleFor(i)), drawnAs: drawnAs(s), ghost: true });
+    styles.set(s.key, { key: s.key, name: s.name, ...(of ? { color: of.color, dash: of.dash, symbol: of.symbol } : styleFor(own + i)), drawnAs: drawnAs(s), ghost: true });
   });
   for (const s of series) {
     if (isShown(s)) {

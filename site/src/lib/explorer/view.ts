@@ -271,6 +271,7 @@ export function explorerView(release: OpenedRelease, surface: Surface, state: Ex
   // --- a second range: the same Series over the same number of months from another start ---
   type Run = { raw: TransformedObservation[]; drawn: TransformedObservation[] | null; reason: string | null };
   let compare: ExplorerView["compare"] = null;
+  let compareRange: { from: string; to: string } | null = null;
   const second = new Map<string, Run>();
   if (state.cmp !== null && start !== null && end !== null) {
     const offset = monthIndex(state.cmp) - monthIndex(start.slice(0, 7));
@@ -278,6 +279,7 @@ export function explorerView(release: OpenedRelease, surface: Surface, state: Ex
     if (offset === 0) notes.push("The range to compare with starts where the window starts, so there is nothing to compare.");
     else {
       const range = { from: monthStart(state.cmp), to: monthEnd(monthAt(monthIndex(state.cmp) + span)) };
+      compareRange = range;
       compare = { from: state.cmp, to: range.to.slice(0, 7), words: `${stopWords(range.from)} to ${stopWords(monthStart(range.to.slice(0, 7)))}`, offset, offQuery: "" };
       for (const g of got) {
         if (g.failure) continue;
@@ -404,6 +406,13 @@ export function explorerView(release: OpenedRelease, surface: Surface, state: Ex
   const unitOf = (e: CatalogEntry): string => (mode === "lin" ? e.unit : mode === "log" ? `${e.unit}, on a logarithmic scale` : DRAWN[mode].unit);
   const shownFor = (e: CatalogEntry, run: Run, over: { key: string; name: string; which: "window" | "comparison" }): ShownSeries => {
     const unit = unitOf(e);
+    // A break is marked in a run only if it falls inside that run's own range: one from before
+    // the range is not an event of it, and must not be drawn at its edge.
+    const [lo, hi] = over.which === "comparison" && compareRange ? [compareRange.from, compareRange.to] : [start ?? "0001-01-01", end ?? "9999-12-31"];
+    const breaks = e.breaks?.filter((b) => {
+      const at = labelStart(e.freq, b.period)?.period_start;
+      return at !== undefined && at >= lo && at <= hi;
+    });
     // A Period the mode has no answer for is not a gap in the data: it is noted, not marked Missing.
     const counts = new Map<string, number>();
     const observations = run.drawn!.map((o) => {
@@ -441,7 +450,7 @@ export function explorerView(release: OpenedRelease, surface: Surface, state: Ex
       country: e.country,
       // Stale is said of a Series' latest value: only where the window still shows that value.
       maxLag: over.which === "window" && showsLatest(e.key, run.raw) ? e.max_lag : undefined,
-      breaks: e.breaks,
+      breaks,
       source: sourceWords(e),
       observations,
     };
@@ -471,9 +480,10 @@ export function explorerView(release: OpenedRelease, surface: Surface, state: Ex
   const ghostKey = (key: string): string => `${key}.compared`;
   const comparedUntil = compare && end !== null ? (shiftDate(madeOn, -compare.offset) < end ? shiftDate(madeOn, -compare.offset) : end) : null;
   if (compare) {
-    for (const g of drawnGot) {
+    // Each run stands on its own: a Series with nothing to draw in the window may still have a second run.
+    for (const g of got) {
       const run = second.get(g.entry.key);
-      if (!run || run.drawn === null) continue;
+      if (g.failure || !run || run.drawn === null) continue;
       if (!run.drawn.some((o) => o.value !== null)) {
         run.reason = "This series has no value in the range compared with.";
         run.drawn = null;
@@ -528,6 +538,10 @@ export function explorerView(release: OpenedRelease, surface: Surface, state: Ex
   // A value standing since before the window opened can be read where the window opens.
   const ghosts = compare ? got.filter((g) => styles.has(ghostKey(g.entry.key))) : [];
   const laid = (date: string): string => shiftDate(date, -(compare?.offset ?? 0));
+  // A Period's last day, laid over the window, is the day before the next Period's first day is
+  // laid: a February that ends on the 28th covers all of the January it is drawn over.
+  const dayFrom = (date: string, days: number): string => new Date(Date.parse(`${date}T00:00:00Z`) + days * 86_400_000).toISOString().slice(0, 10);
+  const laidEnd = (date: string): string => dayFrom(laid(dayFrom(date, 1)), -1);
   const stops =
     start === null
       ? []
@@ -563,7 +577,7 @@ export function explorerView(release: OpenedRelease, surface: Surface, state: Ex
       style: { ...styles.get(ghostKey(g.entry.key))!, ghost: true },
       decimals: Math.max(0, ...values.map(readingDecimals)),
       // Laid over the window; each row keeps its own first day, which is what the readout names.
-      rows: run.raw.map((o) => [o.period, laid(o.period_start), laid(o.period_end), o.value, drawnBy.get(o.period) ?? null, o.period_start]),
+      rows: run.raw.map((o) => [o.period, laid(o.period_start), laidEnd(o.period_end), o.value, drawnBy.get(o.period) ?? null, o.period_start]),
       until: comparedUntil ?? undefined,
       absent: null,
     });

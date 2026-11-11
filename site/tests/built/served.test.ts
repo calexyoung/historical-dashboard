@@ -118,6 +118,15 @@ describe("export from the Explorer on the local surface (PLAN M5)", () => {
     expect(body).toContain("fx_price_index,Fixture price index,window,2025-12,2025-12-01,2025-12-31,109.9,");
   });
 
+  it("a Host that is not a host is not written into the file", async () => {
+    const response = await getAs(server.url("/explore/export?format=csv&s=fx_price_index"), "localhost,=1+1,");
+    // The gate turns away a name that is not this machine's; if it ever did not, the file would still not carry it.
+    expect(response.status === 421 || !response.body.includes("=1+1")).toBe(true);
+    const named = await getAs(server.url("/explore/export?format=csv&s=fx_price_index"), "localhost:9");
+    expect(named.status).toBe(200);
+    expect(named.body).toContain("# View: http://localhost:9/macro-atlas/explore?s=fx_price_index");
+  });
+
   it("the chart is one standalone drawing, and the file of everything holds every series", async () => {
     const svg = await get(server.url("/explore/export?format=svg&s=fx_price_index,fx_output_quarterly"));
     expect(svg.headers.get("content-type")).toBe("image/svg+xml; charset=utf-8");

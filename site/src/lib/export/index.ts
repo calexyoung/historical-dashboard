@@ -48,14 +48,24 @@ export type ExportRefusal = { ok: false; status: 400 | 403 | 404 | 422; message:
 const STAMP = "NOT FOR PUBLICATION";
 const refuse = (status: ExportRefusal["status"], message: string): ExportRefusal => ({ ok: false, status, message });
 
+/**
+ * A spreadsheet runs a cell that begins with =, +, - or @ as a formula. A number is written as it
+ * is; any other text that begins so is given a leading apostrophe, which a spreadsheet shows as
+ * text. (Names and units come from a Release's Catalog, not from a reader, but a file is opened
+ * by people who did not write the Catalog.)
+ */
+const FORMULA = /^[=+\-@\t\r]/;
 const cell = (value: string | number | null): string => {
   if (value === null) return "";
-  const text = String(value);
+  const text = typeof value === "number" ? String(value) : FORMULA.test(value) ? `'${value}` : value;
   return /[",\n\r]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
 };
 const line = (cells: (string | number | null)[]): string => cells.map(cell).join(",");
-/** A comment line: one line, whatever the text holds. */
-const note = (text: string): string => `# ${text.replace(/\s+/g, " ").trim()}`;
+/**
+ * A comment line: one line, whatever the text holds. A spreadsheet does not know `#` and splits
+ * the line at its commas like any other, so no part after a comma may begin as a formula either.
+ */
+const note = (text: string): string => `# ${text.replace(/\s+/g, " ").trim().replace(/,(\s*)(?=[=+\-@])/g, ",$1'")}`;
 
 /** Read a CSV back into rows of cells (RFC 4180). For tests and for anything that checks a file. */
 export function parseCsv(text: string): string[][] {

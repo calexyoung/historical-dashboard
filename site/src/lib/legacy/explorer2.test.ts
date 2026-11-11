@@ -144,7 +144,10 @@ describe("statistics against v1's own stats.js", () => {
 
   it("the matrix is the pair answers at lag 0, both ways round", () => {
     const m = view(`s=${series.join(",")}`).relationships.matrix;
-    for (let a = 0; a < series.length; a++) for (let b = 0; b < series.length; b++) if (a !== b) expect(m[a]![b]!.r, `${series[a]} ${series[b]}`).toBe(m[b]![a]!.r);
+    // Compared as a yes or no: a failure names the pair and prints neither figure (PLAN 6.1).
+    const lopsided: string[] = [];
+    for (let a = 0; a < series.length; a++) for (let b = 0; b < series.length; b++) if (a !== b && m[a]![b]!.r !== m[b]![a]!.r) lopsided.push(`${series[a]} ${series[b]}`);
+    expect(lopsided).toEqual([]);
   });
 
   it("caveat 2 on v1's data: a quarterly or annual series had no change-based correlation in v1, and has one now", () => {

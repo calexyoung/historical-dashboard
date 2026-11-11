@@ -11,7 +11,7 @@ import { parseExplorerParams } from "../explorer/state";
 import { explorerView } from "../explorer/view";
 import { PRINT_COLORS } from "../figure/print";
 import { createReleaseReader, type OpenedRelease } from "../release/reader";
-import { FIXTURE_ROOT } from "../release/testing";
+import { addRelease, FIXTURE_ROOT, promote, tempRoot } from "../release/testing";
 import { EXPORT_FORMATS, exportView, parseCsv, type ExportFormat } from "./index";
 
 let release: OpenedRelease;
@@ -76,6 +76,27 @@ describe("the CSV of a view", () => {
 
   it("quotes what needs quoting", () => {
     expect(ok(q, "csv").body).toContain('"index, 2024-01 = 100"');
+  });
+
+  it("text that a spreadsheet would run as a formula is written as text, in a row and in a comment line", async () => {
+    const root = tempRoot();
+    const id = "20260301T000000Z-f0f0f0f";
+    addRelease(root, { id, rename: { key: "fx_price_index", name: "=1+1" }, edit: { fx_output_quarterly: (_file, entry) => void (entry.name = "Output, @SUM(A1)") } });
+    promote(root, id);
+    const opened = await createReleaseReader({ root, surface: "local" }).current();
+    if (!opened.ok) throw new Error(opened.reason);
+    const result = exportView(opened.release, "local", state("s=fx_price_index,fx_output_quarterly,fx_exchange_index"), "csv", { address: ADDRESS });
+    if (!result.ok) throw new Error(result.message);
+    const rows = table(result.body);
+    expect(rows[1]![1]).toBe("'=1+1");
+    expect(rows.find((r) => r[0] === "fx_output_quarterly")![1]).toBe("Output, @SUM(A1)"); // quoted whole: one cell, beginning with a letter
+    expect(rows.find((r) => r[0] === "fx_price_index" && r[3] === "2024-01")![6]).toBe("100"); // a number stays a number
+    // Read the way a spreadsheet reads the file, comment lines and all: no cell begins as a formula.
+    const cells = parseCsv(result.body).flat();
+    expect(cells.filter((c) => /^\s*[=+\-@]/.test(c) && Number.isNaN(Number(c)))).toEqual([]);
+    const all = exportView(opened.release, "local", state(""), "all", { address: ADDRESS });
+    if (!all.ok) throw new Error(all.message);
+    expect(parseCsv(all.body).flat().filter((c) => /^\s*[=+\-@]/.test(c) && Number.isNaN(Number(c)))).toEqual([]);
   });
 
   it("leaves a withheld series out and says so", () => {

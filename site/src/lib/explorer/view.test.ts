@@ -453,6 +453,38 @@ describe("compare ranges (cmp=)", () => {
     expect(v.selection[0]).toMatchObject({ state: "drawn", compared: { drawn: false } });
   });
 
+  it("each run stands on its own: a second run is drawn even when the mode has no answer over the window", () => {
+    // Nothing in the first half of 2024 has a value a year earlier; the first half of 2025 does.
+    const v = view("s=fx_price_index&mode=pc1&from=2024-01&to=2024-06&cmp=2025-01");
+    expect(v.figure).not.toBeNull();
+    expect(v.runs.map((r) => r.run)).toEqual(["comparison"]);
+    expect(v.selection[0]).toMatchObject({ state: "not_drawn", compared: { drawn: true, reason: null } });
+    expect(v.figure!.plots[0]!.series).toMatchObject([{ name: "Fixture price index, from Jan 2025", ghost: true, color: 1 }]);
+  });
+
+  it("a period laid over the window covers the whole of the month it is drawn over, whatever their lengths", () => {
+    // February 2025 (28 days) is drawn over January 2024 (31): the 30th is still that observation.
+    const v = view("s=fx_price_index&from=2024-01&to=2024-06&cmp=2025-02&at=2024-01-30");
+    expect(readoutAt(v.readout, "2024-01-30").rows.map((r) => [r.period, r.value])).toEqual([["Jan 2024", "100.0"], ["Feb 2025", "105.2"]]);
+    expect(readoutAt(v.readout, "2024-02-29").rows[1]).toMatchObject({ period: "Mar 2025", note: "No value" });
+  });
+
+  it("a break is marked in a run only if it falls inside that run's own range", () => {
+    const breaksIn = (v: ExplorerView) => v.figure!.plots.flatMap((p) => nodes(p.layouts.wide, (n) => n.attrs["data-mark"] === "break")).length;
+    // The payrolls break is at Jan 2025: before a second range that starts in February.
+    const after = view("s=fx_payrolls_break&from=2024-01&to=2024-06&cmp=2025-02");
+    expect(breaksIn(after)).toBe(0);
+    expect(after.figure!.tables.flatMap((t) => t.rows.flatMap((row) => row.states.map((st) => st.mark)))).not.toContain("break");
+    // Inside the second range it is drawn where January 2025 is laid: over the window's third month.
+    const inside = view("s=fx_payrolls_break&from=2024-01&to=2024-06&cmp=2024-11");
+    const marks = inside.figure!.plots.flatMap((p) => nodes(p.layouts.wide, (n) => n.attrs["data-mark"] === "break"));
+    expect(marks).toHaveLength(1);
+    expect(inside.figure!.tables[1]!.rows.find((row) => row.period === "2025-01")!.states.map((st) => st.mark)).toContain("break");
+    // And in the window itself a break from before it is no longer drawn at its edge.
+    expect(breaksIn(view("s=fx_payrolls_break&from=2025-03&to=2025-12"))).toBe(0);
+    expect(breaksIn(view("s=fx_payrolls_break&from=2024-06&to=2025-12"))).toBe(1);
+  });
+
   it("a second range that starts where the window starts is not one", () => {
     const v = view("s=fx_price_index&from=2024-01&to=2024-06&cmp=2024-01");
     expect(v.compare).toBeNull();
