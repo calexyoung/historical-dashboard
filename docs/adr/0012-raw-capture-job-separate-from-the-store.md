@@ -1,5 +1,5 @@
 ---
-status: proposed (awaiting Gate 1)
+status: accepted (Gate 1, 2026-11-11); where the job runs is still open (D6)
 ---
 
 # Start the vintage clock with a raw-capture job that is separate from the store
@@ -15,6 +15,11 @@ original retrieval times.
 The job cannot live on the `v2` branch (ADR 0010). Alex chooses where it runs; the recommendation
 is a separate private GitHub repository with a scheduled workflow that commits each day's captures
 to itself, which is also the durable copy.
+
+At Gate 1 Alex put a usable local site first, so the capture kit is milestone M7, after the rights
+register (M6), not the second PR. Both can be built beside the site at any time, and should be the
+day Alex has cleared the first three sources (D2) and named the host (D6): until then no capture
+could run anyway; after that every day's delay is lost for good.
 
 ## Considered options
 

@@ -1,5 +1,5 @@
 ---
-status: proposed (awaiting Gate 1)
+status: accepted (Gate 1, 2026-11-11)
 ---
 
 # v2 is built on a long-lived `v2` branch; `main` stays v1 until cutover
@@ -11,7 +11,7 @@ those pull requests, and `main` is not touched until the single cutover PR, whic
 
 ## Considered options
 
-- **Build v2 beside v1 on `main`.** Every one of about 26 PRs would stop for Alex, and v2 paths
+- **Build v2 beside v1 on `main`.** Every one of about 29 PRs would stop for Alex, and v2 paths
   would trigger or collide with v1's refresh workflow.
 
 ## Consequences
@@ -19,3 +19,5 @@ those pull requests, and `main` is not touched until the single cutover PR, whic
 - Scheduled GitHub workflows fire only from the default branch, so nothing scheduled can live on
   `v2`. The interim capture job (ADR 0012) therefore runs somewhere else.
 - The cutover merge is large. It is rehearsed on staging first.
+- The builder merges its own milestone PRs into `v2` once CI is green and the Codex review is
+  settled (build protocol, section 10.1 of the plan). Only the merge to `main` waits for Alex.

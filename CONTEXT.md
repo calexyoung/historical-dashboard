@@ -19,7 +19,9 @@ permanent public key.
 _Avoid_: Indicator, metric, variable, ticker
 
 **Observation**:
-One value of one Series for one Period, held unrounded with its Status.
+One value of one Series for one Period, held unrounded with its Status. (Values carried over from
+v1 are monthly and already rounded; they are marked as the legacy representation and never mixed
+with unrounded values in one Series.)
 _Avoid_: Data point, reading, row
 
 **Period**:
@@ -93,7 +95,7 @@ follows from Rights and the Channel used.
 _Avoid_: Access level
 
 **Withheld**:
-A Series that exists in the Catalog but is kept off every public surface because its Rights do not
+A Series that exists in the Catalog but is kept off every public Surface because its Rights do not
 allow display or are not yet known. It is listed by name with the reason.
 _Avoid_: Hidden, private, disabled
 
@@ -151,6 +153,17 @@ The instant before which a value must have been public to count as known when a 
 One complete, checked, unchangeable publication of Macro Atlas's data and content. The site always
 serves exactly one Release, and every page is drawn from a single Release.
 _Avoid_: Build, snapshot, deploy
+
+**Profile**:
+Which kind of Release a directory is. A public Release is built only from what the Rights register
+allows and is the only kind production may serve. A local Release may also hold v1's legacy data,
+draft Claims and User notes, and is never served on a public Surface.
+_Avoid_: Mode, environment
+
+**Surface**:
+Where a build of the site is reachable: local (one machine), staging or production. A Surface is
+public unless it is local or behind a password.
+_Avoid_: Environment, tier
 
 **Pin**:
 A reference from a link, a Claim lock or an Edition to one specific Release, so the reader sees the

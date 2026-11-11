@@ -1,13 +1,16 @@
 # Macro Atlas v2 — the plan
 
-Status: for Gate 1 (needs Alex's OK). Written 2026-11-11. Nothing here is built and no code was
-changed.
+Status: **Gate 1 passed 2026-11-11**, with one change from Alex: the milestones are reordered so
+that a usable site comes first (this revision; section 10). Decided so far: D1 approved (v2.0, then
+v2.1–v2.3), D3 approved as recommended. Still open, each with a recommendation in section 12: D2
+(rights), D4, D5, D6 (capture host), D7–D13. While D2 is open the interim data rule in section 6.1
+applies. Nothing here is built and no code was changed.
 
 Inputs: `docs/v2/BRIEF.md` including its "Decisions added 2026-11-11" (which override the
 research and the drafts), research notes `docs/v2/research/01`–`04`, the two drafts in
 `docs/v2/drafts/` (research-first and reader-first) and the critique of them. Vocabulary is in
-`/CONTEXT.md`; the decisions behind this plan are in `docs/adr/0001`–`0012` (all "proposed" until
-Gate 1).
+`/CONTEXT.md`; the decisions behind this plan are in `docs/adr/0001`–`0012` (accepted at Gate 1;
+ADR 0006 carries the interim data rule).
 
 Items that need Alex are marked **[ALEX]** and collected in section 12.
 
@@ -27,47 +30,58 @@ and has no Letter. It is inspired by Bagby's annual report but is not one. Judgm
 user, in a separate layer of personal notes that is clearly marked and kept out of the data. The
 plan favours ways in and out of the data (views, exports, an API, later MCP) over editorial content.
 
-**What gets built first.** One complete claim record, end to end, in eleven small steps: fetch one
-series straight from its agency, keep its history, publish it, show it on a page that explains
-itself on a phone, and set a real quote beside it with "then" and "now" and the effect of the
-chosen window. After that come the rest of the US series, the Explorer you have today, an overview
-page with two topics, and downloads and an API. Then v1 is switched off.
+**What gets built first.** A site you can use. Six small steps (M0–M5, about 62 hours of agent
+work) give you the v2 shell and the Explorer you have today, rebuilt on the new stack and running
+on your machine: series pages, links that carry the whole view, v1's old hash links, the six scale
+modes, events and governance bands, compare ranges and exports. It is usable after the fifth step
+and at v1 parity after the sixth. It reads v1's existing data through the same release format the
+finished site will use, so nothing built here is thrown away when the agency sources arrive. The
+layers that make the site trustworthy in public (the rights gate, daily capture, kept history,
+agency sources, claim records) follow in tracks that do not hold the usable site up. Then the
+overview, two topics, downloads and an API. Then v1 is switched off.
 
-**What you should know before saying yes.** Four things:
+**What you should know.** Four things:
 
-1. **v2.0 is not the whole brief.** v2.0 is the release that replaces v1: 26 pull requests, about
-   220 hours of agent work. US infrastructure, most of the G20 table, trade, disasters and the full
-   statement-style views come in v2.1 to v2.3 (about 17 more pull requests). The brief's scope is
-   planned to be complete at v2.3, except items that turn out to have no free publishable source
-   (the stock indices, possibly broadband programme outlays and monthly port volumes), which are
-   reported to you as such. This staging is a scope decision and needs your explicit OK (D1).
-2. **Licensing is the biggest open question.** Today v1 gets 83 of its 109 catalog entries through
-   FRED and 25 through Yahoo. Yahoo's terms forbid redistribution. FRED's terms restrict storing
-   and archiving what it serves, and using it for ML, even when the underlying data is public
-   domain. The plan's default is strict: v2 keeps and shows only what it fetches directly from the
-   agency that produces it (BLS, BEA, Treasury, the Fed Board, Census, EIA, IMF if its terms allow).
-   That means v2.0 may launch with fewer series than v1's 126, and the stock-market series will be
-   listed as "withheld". You decide this once, in a rights register the agent drafts for you (D2).
-   I am not giving legal advice; the register quotes the terms so you can judge.
-3. **The brief's "G20 main stock index" probably cannot be published from free sources.** Index
-   levels are licensed products from every channel. I recommend amending the brief: link out to
-   each exchange and show the row as withheld (D5).
+1. **v2.0 is not the whole brief** (D1, approved). v2.0 is the release that replaces v1: 29 pull
+   requests, about 246 hours of agent work (222 in the Gate 1 draft). US infrastructure, most of the G20 table, trade,
+   disasters and the full statement-style views come in v2.1 to v2.3 (about 17 more pull
+   requests). The brief's scope is planned to be complete at v2.3, except items that turn out to
+   have no free publishable source (the stock indices, possibly broadband programme outlays and
+   monthly port volumes), which are reported to you as such. Putting the usable site first costs
+   three more pull requests and about 24 more hours than the Gate 1 draft.
+2. **Licensing is the biggest open question** (D2, open). Today v1 gets 83 of its 109 catalog
+   entries through FRED and 25 through Yahoo. Yahoo's terms forbid redistribution. FRED's terms
+   restrict storing and archiving what it serves, and using it for ML, even when the underlying
+   data is public domain. The plan's default for anything public is strict: v2 keeps and shows
+   only what it fetches directly from the agency that produces it (BLS, BEA, Treasury, the Fed
+   Board, Census, EIA, IMF if its terms allow). So v2.0 may launch with fewer series than v1's
+   126, and the stock-market series will be listed as "withheld". **Until you decide, your interim
+   basis applies (section 6.1):** local builds, and staging behind a password, may show v1's
+   current data; nothing that came through FRED or Yahoo can reach the production path, and the
+   build is made to refuse it. I am not giving legal advice; the register quotes the terms so you
+   can judge.
+3. **The brief's "G20 main stock index" probably cannot be published from free sources** (D5,
+   not yet answered). Index levels are licensed products from every channel. I recommend amending
+   the brief: link out to each exchange and show the row as withheld. Until you answer, that is
+   what the build does.
 4. **Atlas's own record of history cannot be bought back.** For most series, Macro Atlas can say
    "this was public by date X" only for days on which it was fetching. (For a few headline series
    an archive kept by the provider may fill in earlier dates later, in v2.1, if its terms allow.)
-   So a tiny daily capture job should start as soon as you name a place for it to run (D6), long
-   before the site exists.
+   The daily capture job can start only when you have cleared its first three sources (D2) and
+   named a place for it to run (D6). Its code is two small steps (M6, M7) that can be built beside
+   the usable site the day you answer.
 
-**What I need from you, and when.** Six decisions at Gate 1 (scope, licensing, the cutover rule,
-the stock-index amendment, where capture runs, and when claims become public). Two free API keys
-(BEA, EIA) before step M15. Server access, the Caddy change and a backup target before staging
-(M24). Your OK for cutover (M25). Nothing in v2.0
+**What I need from you, and when.** Nothing for the usable local site (M0–M5). Then: D2 for BLS,
+Treasury and the Fed Board, and D6, to start capture. Two free API keys (BEA, EIA) before M15. The
+rest of D2, signed, before anything is public. Server access, the Caddy change with a staging
+password, and a backup target before staging (M27). Your OK for cutover (M28). Nothing in v2.0
 costs money unless you choose a paid backup target.
 
 **How it is built.** Fable 5.2 builds one milestone per pull request onto a `v2` branch, tests
-first, with a Codex review each. `main` and the live v1 site are not touched until cutover. The
-agent stops only for the four things the brief lists: production deploys, merges to `main`, money,
-your credentials.
+first, with Codex as partner on each (the protocol is section 10.1). `main` and the live v1 site
+are not touched until cutover. The agent stops only for the four things the brief lists:
+production deploys, merges to `main`, money, your credentials. It reports at the end of every
+milestone.
 
 ---
 
@@ -109,16 +123,18 @@ your credentials.
 - No exact recomputation of old answers (ADR 0005). Claim locks are exact; pinned links pin data.
 - No MCP endpoint (v2.1). No statement tables, segment pages or frozen Editions (v2.3).
 - `ClaimReview` markup is never emitted: it requires a rating, which the site does not give.
-- No FRED or Yahoo data kept or shown unless Alex clears it in the rights register.
+- No FRED or Yahoo data on any public surface, in STORE or in a public release unless Alex clears
+  it in the rights register. v1's existing data may be shown on local builds and on staging behind
+  a password while D2 is open (section 6.1).
 
 ### Releases
 
 | Release | Contains | Milestones | Size |
 |---|---|---|---|
-| **v2.0 Cutover** | The claim slice; US series re-sourced from agencies; G20 CPI and FX; series pages; Explorer at v1 parity; Overview, Highlights, two topics; read API and bulk files; v1 retired | M0–M25 | 26 PRs, ~220 h |
-| **v2.1 Access, history, infrastructure** | MCP; provider vintages; construction, freight, grid; IIJA and CHIPS spending; broadband | M26–M32 | 7 PRs, ~60 h |
-| **v2.2 World and shocks** | G20 rates, unemployment, GDP; trade and commodities; disasters and health | M33–M36 | 4 PRs, ~34 h |
-| **v2.3 Report-style views** | Statement tables, segment pages, the frozen 2025 Edition; claims depth and the user-notes layer | M37–M42 | 6+ PRs, ~54 h |
+| **v2.0 Cutover** | The site shell and the Explorer at v1 parity on a local build first (M0–M5); then the rights gate, capture and history; US series re-sourced from agencies; G20 CPI and FX; claim records; Overview, Highlights, two topics; read API and bulk files; v1 retired | M0–M28 | 29 PRs, ~246 h |
+| **v2.1 Access, history, infrastructure** | MCP; provider vintages; construction, freight, grid; IIJA and CHIPS spending; broadband | M29–M35 | 7 PRs, ~60 h |
+| **v2.2 World and shocks** | G20 rates, unemployment, GDP; trade and commodities; disasters and health | M36–M39 | 4 PRs, ~34 h |
+| **v2.3 Report-style views** | Statement tables, segment pages, the frozen 2025 Edition; claims depth and the user-notes layer | M40–M45 | 6+ PRs, ~54 h |
 
 Hours are agent working time, not calendar time. Waiting on Alex is extra.
 
@@ -148,7 +164,8 @@ All under the base path `/macro-atlas` (staging: `/macro-atlas-staging`).
 
 **Navigation.** Top bar as on /missions: name and breadcrumb left; search, a data-freshness dot
 with a word, and the theme toggle right. Tabs in v2.0: `Topics · Claims · Explore · Events · Data`
-(Claims appears once the first claim is public). On a phone the three research tabs fold under
+(Claims appears once the first claim is public). A tab is shown only when its pages exist; until the
+Overview is built (M22), `/` redirects to `/explore`. On a phone the three research tabs fold under
 "Research ▾". When the statement views exist (v2.3) the bar becomes
 `Overview · Topics · Claims · Research ▾`. A small "mydashboards" home link sits in the top bar.
 
@@ -239,12 +256,13 @@ Decisions: ADR 0001 (stack), 0002 (Python writer), 0003 (one engine), 0004 (file
 |---|---|---|---|
 | **Source adapter** | Python | `fetch(spec) -> RawCapture`; `parse(capture) -> NormalizedState` (observations, metadata, `complete`). Raises on failure; never invents or passes partial data as complete | Per-host throttle, serial requests, backoff, the 429 breaker, User-Agent policy, paging, encodings, SDMX quirks |
 | **VintageStore** | Python | `record(state, capture) -> ChangeSet`; `replay(captures)`; `export_public(allowlist) -> staged release` | Raw blob store, fetch log, state hashing, the observation log, tombstones, metadata history, capture confirmations |
-| **Release** | contract | A directory validated by `schema/release.schema.json` | (It is the seam between the writer and every reader. Two adapters exist from day one: the real writer and the committed fixture release) |
+| **Release** | contract | A directory validated by `schema/release.schema.json` | (It is the seam between the writer and every reader. Three things write one: the committed fixture release, the legacy converter from M2, and the real writer from M9) |
+| **Legacy converter** | Python | `legacy_release(v1 files) -> local release` | v1's `atlas.json` layout, month arrays, sparse and held series, v1 channels and derived lineage. Local profile only (section 6.1); removed at cutover unless Alex keeps it for local use |
 | **Publisher** | Python, with a Node step | `publish(staged) -> promoted \| rejected(reasons)` | LOCK, staging, Python checks, the Node step, atomic `CURRENT` replacement, `STATUS.json`, retention, pins, withdrawal |
 | **core** | TypeScript, pure | `resolve(series, asOf) -> VintageAnswer`; `evaluate(request, data) -> Answer`; `measure(reading, data) -> EvidenceRow`; statistics | Cutoff policy, basis selection, aggregation by measure kind, the transform contract, recipe dependency closure, rights intersection, window sensitivity. No I/O; runs in Node and the browser |
 | **ReleaseReader** | TypeScript (Node) | `open() -> ReleaseHandle`, fixed once per request | File layout, schema validation on open, caching by release id, the failed-refresh state |
 | **Query** | TypeScript (Node) | `query(request) -> Answer` from a validated, allowlisted request | Reader + core + RightsGate + caps on rows, bytes and time |
-| **RightsGate** | Python and TypeScript, generated from one table | `permits(rightsUsed, surface) -> allow \| deny(reason)` | Derivation from status and channel; most restrictive wins |
+| **RightsGate** | Python and TypeScript, generated from one table | `permits(rightsUsed, surface) -> allow \| deny(reason)` | Derivation from status and channel; most restrictive wins; the legacy representation is denied on every public surface |
 | **figure** | TypeScript, pure | `renderFigure(spec, data) -> {svg, table, takeaway, stateLine}` | Scales, ticks, layout at any width, data-state marks, takeaway templates and silence rules, palette |
 | **Delivery adapters** | TypeScript | Pages, suffix twins, REST routes, the `atlas-core` CLI (later MCP) | Parameter parsing and serialisation only |
 
@@ -270,7 +288,8 @@ $ATLAS_STORE/                         writer-only; never mounted by web
 
 $ATLAS_PUBLIC/                        read-only for web
   releases/{release_id}/
-    manifest.json                     ids, hashes, schema and semantics versions, per-source
+    manifest.json                     profile (public | local), the rights-register version it
+                                      was built against, ids, hashes, schema and semantics versions, per-source
                                       freshness, per-series {state hash, channel, rights}, the
                                       withheld list with reasons, the check report
     catalog.json                      public series metadata, rights, recipes
@@ -286,6 +305,9 @@ $ATLAS_PUBLIC/                        read-only for web
   CURRENT                             text file: the promoted release id
   STATUS.json                         last run: started, finished, outcome, failed checks
   pins.json                           release ids that retention must keep
+
+$ATLAS_LOCAL/                         local-profile releases only (section 6.1); same layout as
+  releases/{release_id}/  CURRENT     PUBLIC; never mounted by a production container; git-ignored
 ```
 
 Observation log columns: `key, period, period_start, period_end, value` (unrounded), `status`,
@@ -300,8 +322,8 @@ Rules:
   good release and says "the 11 Nov refresh failed".
 - **Each request reads `CURRENT` once** and uses that release for text, figures, tables and links.
   A promotion or rollback takes effect with no restart.
-- **Only allowlisted material enters PUBLIC.** Withheld series, draft claims, user notes and raw
-  bytes are never copied in. "Hidden" means absent from release JSON, search, twins and
+- **Only allowlisted material enters PUBLIC.** Withheld series, v1's legacy series, draft claims,
+  user notes and raw bytes are never copied in. "Hidden" means absent from release JSON, search, twins and
   bulk files, not merely unlinked.
 - **"Changed" is a hash of the full normalized state** per series plus a separate hash of its
   metadata. A change of unit, definition, adjustment, source or rights is a revision.
@@ -386,10 +408,10 @@ by hard-linking the previous release's data files.
   toggle, the Explorer.
 - **Content Security Policy.** /missions sends `script-src 'self' 'unsafe-inline'` as Report-Only.
   A `'self'`-only enforced policy breaks Next's inline bootstrap, and a nonce makes every page
-  dynamic. So M6 runs a spike: enforce a nonce or hash policy only if it works with release-keyed
+  dynamic. So M1 runs a spike: enforce a nonce or hash policy only if it works with release-keyed
   caching and no-JS rendering; otherwise ship /missions' Report-Only policy. Either way the agent
   records the result in an ADR, and nothing loads from a CDN.
-- **JavaScript budget.** M6 measures the framework floor and sets the reading-page budget at the
+- **JavaScript budget.** M1 measures the framework floor and sets the reading-page budget at the
   floor plus 15 KB, recorded in an ADR. It is not a stop for Alex.
 - **Health.** `/api/health`: liveness, release id and age, never an upstream call. `/api/v1/status`:
   per-source and per-series freshness and the last run's outcome. A fresh release with stale inputs
@@ -407,9 +429,9 @@ by hard-linking the previous release's data files.
   run; the status route and each series page show per-series freshness.
 - **Missed runs** show as "release N hours old" in the footer and status route, and as capture gaps
   that downgrade as-of answers across them to `uncertain`.
-- **Interim capture (ADR 0012).** From M1, a raw-only job fetches the rights-cleared agency
+- **Interim capture (ADR 0012).** From M7, a raw-only job fetches the rights-cleared agency
   endpoints (first list: BLS, Treasury Fiscal Data, Federal Reserve Board) and keeps bytes plus
-  retrieval time, request, headers and paging evidence. M2's store replays them with their original
+  retrieval time, request, headers and paging evidence. M8's store replays them with their original
   retrieval times. Scheduled GitHub workflows fire only from the default branch, so this cannot
   live on `v2`. Options **[ALEX, D6]**: (a) a separate private repository whose scheduled workflow
   commits each day's captures to itself (recommended: durable, off the Mac, no merge to `main`);
@@ -420,7 +442,7 @@ by hard-linking the previous release's data files.
 ### 4.8 Deploy
 
 - `deploy/compose.yaml`: `web` (Next standalone on `node:24-alpine`, non-root, PUBLIC read-only,
-  healthcheck) and `ingest` (Python with uv, plus Node; mounts STORE and PUBLIC; reads API keys
+  healthcheck, listening on `127.0.0.1` only, built with an explicit surface per section 6.1) and `ingest` (Python with uv, plus Node; mounts STORE and PUBLIC; reads API keys
   from the server environment).
 - Caddy, two non-overlapping matchers, prefix not stripped:
 
@@ -434,9 +456,12 @@ by hard-linking the previous release's data files.
 
   The Caddy config is outside both repos; `deploy/Caddyfile.snippet` is for Alex to apply.
 - Staging sends `X-Robots-Tag: noindex`. **[ALEX, D9]** Recommended: put staging behind Caddy
-  basic auth, so drafts can be reviewed there. Without it, drafts are reviewed on a local build.
+  basic auth, so drafts and v1's interim data can be reviewed there. Without it, staging serves
+  public-profile releases only and drafts are reviewed on a local build (section 6.1).
 - The deploy kit is tested locally: compose brings up both builds behind a throwaway Caddy
   container and a smoke test checks each path serves its own build.
+- Every production deploy starts with the preflight `atlas doctor --surface production` (section
+  6.1).
 - Before the first deploy, a read-only headroom script (`free -m`, `df -h`, container stats) checks
   the VPS can carry two more Next containers and a pandas/pyarrow job beside /missions.
 - CI: GitHub Actions on pull requests to `v2` (pytest, Vitest, typecheck, lint, schema check,
@@ -501,7 +526,7 @@ origin agencies first, intermediaries only if Alex clears them.
 
 | Priority | Source | What it gives | Auth | Release |
 |---|---|---|---|---|
-| 1 | **BLS** API v2 / flat files | CPI, payrolls, unemployment, participation, wages | none (keyless tier is rate-limited) | v2.0 (M1, M13) |
+| 1 | **BLS** API v2 / flat files | CPI, payrolls, unemployment, participation, wages | none (keyless tier is rate-limited) | v2.0 (M7, M13) |
 | 1 | **Treasury Fiscal Data** | Debt, Monthly Treasury Statement receipts and outlays | none | v2.0 (M13) |
 | 1 | **Federal Reserve Board** Data Download | H.15 rates, H.10 FX, H.4.1 balance sheet, Z.1 net worth | none | v2.0 (M13) |
 | 1 | **BEA** API | GDP, PCE, income, profits, trade balance | free key **[ALEX]** | v2.0 (M15) |
@@ -519,16 +544,77 @@ origin agencies first, intermediaries only if Alex clears them.
 | 3 | **Philadelphia Fed** real-time data set | Provider vintages for GDP, payrolls, unemployment, CPI | none; terms unclear | v2.1, after a spike |
 | 3 | **NTIA** Internet Use Survey | Broadband adoption | none | v2.1 |
 | 4 | **e-Stat** file download | Japan CPI source of record (cross-check) | none | v2.0 test only |
-| — | **FRED** (83 v1 entries) | Was v1's main channel | none | Not stored or shown unless cleared (D2). Used in tests as a cross-check on captured fixtures only if the register allows |
-| — | **Yahoo** (25 v1 entries) | Index levels, FX, commodities | none | Withheld. FX and rates are re-sourced from the Fed Board; index levels have no free publishable source |
+| — | **FRED** (83 v1 entries) | Was v1's main channel | none | Not fetched, stored or shown publicly unless cleared (D2). v1's existing values are read on local builds under section 6.1. Used in tests as a cross-check on captured fixtures only if the register allows |
+| — | **Yahoo** (25 v1 entries) | Index levels, FX, commodities | none | Withheld from every public surface; v1's existing values are read on local builds under section 6.1. FX and rates are re-sourced from the Fed Board; index levels have no free publishable source |
 | — | **EM-DAT** | Disasters | registration | Link only; terms forbid redistribution |
 
-**The rights register** (`docs/v2/rights-register.md`, drafted in M0) has one row per origin and
+**The rights register** (`docs/v2/rights-register.md`, drafted in M6) has one row per origin and
 channel: terms URL, date read, the relevant sentences quoted, licence class, attribution string,
 whether display, bulk redistribution, storage and ML description are allowed, and open questions.
 The agent proposes; Alex decides and signs once. Rows it must cover: BLS, BEA, Census, Treasury,
 Fed Board, EIA, FRED and ALFRED, Yahoo, Philadelphia Fed, IMF, OECD, World Bank, BIS, Eurostat,
 e-Stat, BTS, USAspending, OpenFEMA, CDC, NOAA, OWID, EM-DAT.
+
+### 6.1 The interim data rule (D2 open)
+
+Alex's interim basis, 2026-11-11: until he decides D2, **local and staging builds may show v1's
+current data, which came through FRED and Yahoo, because nothing is redistributed publicly. The
+strict origin-agency allowlist must be in force before anything is deployed to the public
+production path.** This is not a reading of FRED's or Yahoo's terms and settles nothing in D2;
+access control is a boundary, not a licence. The rule is written so that an autonomous builder
+cannot ship that data publicly by accident or by convenience.
+
+1. **Three surfaces.** *Local*: Alex's machine, listening on loopback. *Staging*:
+   `/macro-atlas-staging`. *Production*: `/macro-atlas`. Every build is given its surface
+   explicitly; a build with no surface, or with a surface that does not match its base path, fails.
+2. **Two release profiles.** `public`: written only by the publisher (M9), from the rights
+   allowlist. `local`: may also hold v1's legacy series, draft claims and user notes. A local
+   release lives under `$ATLAS_LOCAL`, never under `$ATLAS_PUBLIC`, and the production containers
+   never mount `$ATLAS_LOCAL`.
+3. **Where v1's data may appear.** Only in a local-profile release, as whole series marked
+   `legacy_monthly_rounded`. A local-profile release may be served on the local surface. It may be
+   served on staging only behind Caddy basic auth covering every route, twin, static asset and
+   API path, with no direct port open; staging is on the public internet, so without a password it
+   is public. (This last condition tightens Alex's wording; it is what makes "nothing is
+   redistributed publicly" true.)
+4. **Production serves only public-profile releases.** A public release requires, for every series
+   and every input of every derived series, a row in the rights register that Alex has signed for
+   that origin, dataset, channel and permission. The output of `atlas legacy-release` is never
+   eligible, whatever the register says. An intermediary channel (FRED, Yahoo) becomes eligible
+   only if Alex's D2 decision clears it in two places, a signed register row and a dated
+   amendment to ADR 0006; a register row alone does not override the origin-only default. Its
+   data is then fetched afresh by a real adapter through capture and STORE (M16), never taken
+   from `data/atlas.json`.
+5. **Fail closed, in five places.**
+   - *Writer*: `--profile public` refuses an unsigned or unknown row and the legacy
+     representation, and cannot reuse, pin or roll back to a local-profile file.
+   - *Reader*: a production-surface build checks every release it opens (current, pinned or
+     rolled back). If the profile is not `public`, the register reference is unsigned, or any
+     series is legacy, every route answers 503 and the health check fails.
+   - *Deploy*: `atlas doctor --surface production` runs before any production deploy and refuses
+     the same three things. A staging deploy of a local-profile release first proves that a
+     request without the password gets 401.
+   - *Build and CI*: generated releases, and v1's own files that hold the same values
+     (`data/`, `dist/`, `web/`, `.git`), are excluded from the Docker build context, from image
+     layers and from Next's build output (data pages render at request time); generated releases
+     are also git-ignored. A test inspects the built image and the build output for a seeded
+     value, separately from the profile checks. CI
+     previews, screenshots, logs and uploaded artefacts use only the fixture release, which holds
+     rights-cleared or synthetic data. Tests that need v1's values build the local release in a
+     temporary directory and upload nothing.
+   - *Tests*: each check above has a test with a seeded FRED value that must not appear.
+6. **The builder may not weaken, skip or work around these checks.** Work that seems to need
+   that is parked and reported to Alex (build protocol, point 7).
+7. **v2 does not fetch from FRED or Yahoo** unless point 4's two-part clearance exists for that
+   channel. The converter reads v1's committed output in place. Nothing from it enters STORE or
+   the capture job (ADR 0012 stands).
+8. **Duration.** Point 3's permission for local and staging use lasts until Alex records a D2
+   decision. Points 4 to 7 do not expire; they change only by an amendment to ADR 0006 that Alex
+   approves.
+
+Not covered: v1's own exposure today (the live Pages site and the committed `data/atlas.json`)
+is the separate open question D4. This rule neither worsens it nor resolves it; v2 adds no new
+committed copy of that data.
 
 **Still unverified** (each is checked in the milestone that first depends on it, with a captured
 fixture): BLS keyless limits for daily use; IMF reuse wording; EIA and Socrata rate limits; the
@@ -575,7 +661,7 @@ apps' top bars (the /missions side is a one-line change in that repo, for Alex's
 setting (`prefers-color-scheme`), with a manual toggle that overrides it. /missions ignores the OS
 setting. Type is system sans everywhere; no serif.
 
-**Added for Macro Atlas** (recorded in this repo's `DESIGN.md` in M6): an Okabe-Ito-based series
+**Added for Macro Atlas** (recorded in this repo's `DESIGN.md` in M1): an Okabe-Ito-based series
 palette of eight colours that avoids navy, checked for colour-vision deficiency and contrast in
 both themes, with line style as a second channel and end labels instead of a legend where there is
 room; no party colours for data (muted tints only in governance bands, with the party named); no
@@ -622,7 +708,7 @@ green, refactor, in vertical slices. Tests never touch the network.
 | Source adapters | pytest | `parse(captured blob)` gives the expected state; failures raise; incomplete responses are flagged. Fixtures are real captured responses with provenance recorded |
 | VintageStore | pytest + hypothesis | A revision opens a new row and closes the old; an unchanged complete fetch adds a confirmation only; tombstones only on complete states; a metadata change is a revision; replay with original retrieval times gives the same store; no overlapping validity intervals |
 | Publisher | pytest on temp dirs | Overlapping runs; a kill between staging and promotion; a kill during promotion; disk full; a provider returning stale data, an empty body or HTML; rollback by rewriting `CURRENT`; pruning while a reader holds an older release; pinned releases survive retention; withdrawal retires the right releases |
-| Rights | pytest + Vitest table tests | Status × channel → permissions; most restrictive wins; unknown blocks all; a withheld series' values appear nowhere in a release (grep test); drafts appear nowhere in a public release |
+| Rights | pytest + Vitest table tests | Status × channel → permissions; most restrictive wins; unknown blocks all; every fail-closed check of section 6.1 (writer, reader, deploy preflight, build context) with a seeded FRED value; a withheld series' values appear nowhere in a release (grep test); drafts appear nowhere in a public release |
 | core | Vitest | Against **independently specified** expected tables (hand-computed, or published figures such as CPI y/y for 2022-06 ≈ 9.1). Cutoff edge cases; `unavailable` never falls back to current; cyclic recipes fail by name |
 | Release contract | both | The fixture release validates in pytest and Vitest; a release written by Python from fixture blobs is read by the TypeScript reader in one CI job |
 | Query, twins, REST | Vitest | HTML data, `.json` and `.csv` agree for the same request; 403 for restricted; caps; 400s |
@@ -636,276 +722,451 @@ green, refactor, in vertical slices. Tests never touch the network.
 
 A committed **fixture release** (about eight series: provider vintages, observed-only vintages, a
 gap, a derived series, a display-only series, a withheld series, a break, a stale series) backs all
-TypeScript tests, previews and screenshots. It holds only rights-cleared or synthetic data.
+TypeScript tests, previews and screenshots. It holds only rights-cleared or synthetic data. Tests
+that need v1's real values (Explorer parity, the comparison with v1) build the local release in a
+temporary directory; CI uploads no artefact, screenshot or log made from it (section 6.1).
 
-Every milestone PR: tests first and visible in the history, CI green, a Codex review, a short "how
-to see it" note, and the PR body written with the mattpocock `pr` skill.
+Every milestone PR follows the build protocol in section 10.1: tests first and visible in the
+history, CI green, a Codex review, a short "how to see it" note, and the PR body written with the
+mattpocock `pr` skill.
 
 ---
 
 ## 10. Milestones
 
-One PR each, to the `v2` branch. Size is hours of agent work. "Stops" names which of the brief's
-four stop conditions the milestone can hit: **D** production or staging deploy, **M** merge to
-`main`, **$** money, **C** Alex's credentials. "—" means it can run start to finish alone. No
-acceptance criterion depends on waiting days; soak periods are checklists before cutover, not PR
-gates.
+Reordered at Gate 1 (2026-11-11) so that a site Alex can use comes first. One PR each, to the `v2`
+branch. Size is hours of agent work. No acceptance criterion depends on waiting days; soak periods
+are checklists before cutover, not PR gates.
 
-### v2.0 — Phase A: one claim record, end to end
+**Needs Alex** on each milestone names what only Alex can supply, in the brief's four stop
+conditions: **deploy** (production), **merge to `main`**, **money**, **credentials** (API keys,
+SSH, anything typed into a server; a staging deploy falls here, since it needs his server access). "—" means the milestone runs start to finish
+without him. A decision that is still open never blocks a PR: the recommended default applies and
+the result stays local, draft or withheld until he decides.
 
-**M0 · Foundations and the rights register (6 h). Stops: —.**
-`v2` branch, repo layout (`atlas/`, `packages/core/`, `site/`, `schema/`, `content/`, `checks/`,
-`fixtures/`, `deploy/`), CI for PRs to `v2`, `release.schema.json` v0, the hand-written fixture
-release, and `docs/v2/rights-register.md` with terms quoted and a proposal per row.
-AC: CI runs pytest, Vitest, typecheck and lint; the fixture release validates in both languages;
-the register has a row for every source in section 6 with a proposal and no decision filled in;
-`main` and `refresh.yml` are unchanged.
+| Track | Milestones | What it gives | Hours |
+|---|---|---|---|
+| **A · A site you can use** | M0–M5 | The v2 shell and the Explorer at v1 parity on your machine, on v1's data | ~62 |
+| **B · Data foundation** | M6–M18 | Rights register and gate, capture, vintages, the release writer, agency sources, native frequency and as-of in the Explorer | ~108 |
+| **C · Content and claims** | M19–M21 | Events as files, claim records and claim pages | ~26 |
+| **D · Reading pages and data out** | M22–M25 | Overview, Highlights, search, two topics, read API, bulk files | ~34 |
+| **Ship** | M26–M28 | Deploy kit, staging, cutover | ~16 |
 
-**M1 · Capture kit and the first agency adapter (8 h). Stops: — (running the job: C).**
+Track A runs first and alone, in order. After M5 the default order is by number. Tracks B, C and D
+do not block the usable site, and the head of track B (M6, then M7) may be started beside track A
+at any time after M0, because all it shares with track A is the `permits()` contract defined in
+M0; either order of M2 and M6 works. That matters once Alex has answered D2
+for the first three sources and D6: from that day, every day without the capture job is a day of
+Atlas-observed history that cannot be recovered (ADR 0012).
+
+### 10.1 Build protocol for the autonomous builder
+
+1. **Branch.** All work lands on the long-lived `v2` branch (ADR 0010). The builder creates `v2`
+   from `main` once, in M0. `main` and `refresh.yml` are not touched before cutover (M28).
+2. **One PR per milestone**, from a branch `v2-mNN-short-name` into `v2`. The builder merges its
+   own PR into `v2` when CI is green and the Codex review is settled. It never merges into `main`.
+3. **Tests first.** Use the `mattpocock-skills:tdd` skill: one behaviour at a time through a
+   module's public interface, red, green, refactor. The failing test is visible in the history.
+   Tests never touch the network.
+4. **UI work** (anything under `site/`, any figure, any motion) uses the `emil-design-eng` skill
+   and section 8 of this plan. Charts and data get no animation.
+5. **Codex is the partner on every milestone** (the rule in Alex's `CLAUDE.md`): send the plan for
+   the milestone to Codex before writing code; run `codex exec --sandbox read-only -C <repo>
+   review --uncommitted < /dev/null` before each commit that closes the milestone; adopt what is
+   right, answer what is not, and put one line `Codex check: <raised> → <done>` in the PR body.
+   If Codex is unavailable the PR says "not reviewed" and is not merged into `v2` until it is.
+6. **Stop and ask Alex only for:** a production deploy; a merge to `main`; anything that costs
+   money; any credential (API keys, SSH, server environment; staging needs these, so it waits for
+   them). Everything else the builder decides, records in the PR or an ADR, and continues. An
+   open decision (section 12) is not a stop: its recommended default applies, the one acceptance
+   item that depends on it is marked "awaiting Alex" in the report, and other work goes on.
+7. **Never weaken the interim data rule** (section 6.1). The builder has no authority to relax
+   one of its checks or to put v1's FRED- or Yahoo-sourced data on a public surface, in a new
+   committed file, a CI artefact or an image. This is not a fifth stop: the piece of work that
+   seems to need it is parked and reported to Alex, and the builder carries on with the rest.
+8. **Report at the end of each milestone:** what was built, how to see it (one command and one
+   address), test and CI results, the Codex line, anything deferred with the milestone it moved
+   to, hours used against the estimate, and what Alex is needed for next. The PR body is written
+   with the `mattpocock-skills:pr` skill.
+9. **Estimates are budgets, acceptance is the bar.** A milestone is reported complete only when
+   every acceptance criterion passes. If it passes 150% of its hours it may be split: the working
+   part is merged, and the follow-up PR is listed with its remaining criteria and what depends on
+   them. The "usable" and "parity" markers after M4 and M5 count only on full acceptance. No
+   milestone absorbs its neighbour.
+
+### v2.0 — Track A: a site you can use
+
+**M0 · Foundations (6 h). Needs Alex: —.**
+`v2` branch; repo layout (`atlas/`, `packages/core/`, `site/`, `schema/`, `content/`, `checks/`,
+`fixtures/`, `deploy/`); CI for PRs to `v2`; `release.schema.json` v0; the hand-written fixture
+release. The schema already carries what later tracks need, so that track A is not rebuilt: the
+manifest `profile` (`local` or `public`); per series the native frequency, period bounds,
+`representation`, origin, channel and rights; a minimal catalog entry; the one Annotation shape;
+missing values as explicit gaps. Also the `permits(rightsUsed, surface)` contract with its
+default body (allow on the local surface, deny on every other), which M6 later replaces with the
+register table; it is the one piece of code tracks A and B share.
+AC: `permits()` denies every non-local surface (test); CI runs pytest, Vitest, typecheck and
+lint; the fixture release validates in both languages
+and contains a sparse quarterly series, an annual series and a held (step) series; `main` and
+`refresh.yml` are unchanged; `.gitignore` and `.dockerignore` exclude every generated release.
+
+**M1 · Site shell (12 h). Needs Alex: —.** Needs M0.
+Next 16 app copied from the /missions skeleton; tokens and `DESIGN.md`; the theme follows the OS
+setting with a toggle that overrides it; top bar and tabs (only tabs that exist are shown; `/`
+redirects to `/explore` until the Overview exists in M22); both base paths; Dockerfile and a
+`web`-only compose file that binds to `127.0.0.1`; `/api/health`; `ReleaseReader` v0 (open,
+validate, read `CURRENT` once per request, cache by release id); the surface setting and its guard
+(section 6.1); the CSP spike and the JavaScript-floor measurement.
+AC: `docker compose up` serves the fixture release at both base paths on loopback only; rewriting
+`CURRENT` changes the served page with no restart (test); everything on a page comes from one
+release id (test); the theme follows the OS and the toggle overrides and persists (test, both
+themes pass contrast checks); a build with no surface set, or with a surface that does not match
+its base path, fails; a production-surface build pointed at a local-profile release serves 503 on
+every route and fails its health check (test); the CSP decision and the JS budget are each
+recorded in an ADR with a passing test.
+
+**M2 · v1's data through the release reader; transforms; the catalog page (12 h). Needs Alex: —.**
+Needs M1.
+`atlas legacy-release` (Python): converts v1's committed output (`data/atlas.json`, the v1 catalog,
+`events.yaml`, `politics.yaml`, `approval.yaml`) into a `local`-profile release under
+`$ATLAS_LOCAL`, using the staging, validation and atomic-promotion helper that the release writer
+(M9) will reuse. Each series keeps its v1 key, its `legacy_monthly_rounded` representation, its
+real cadence (monthly, quarterly, annual, per election), its v1 channel and the lineage of v1's
+derived series; rights are recorded as not settled. The manifest records the input commit and file
+hash, and the conversion time separately from v1's own `generated` time. `packages/core` gets the
+transform contract for v1's six scale modes (`lin`, `log`, `rebase`, `z`, `pc1`, drawdown), written
+first as `docs/method/transforms.md`; the rest of the allowlist in 4.5 arrives in M11. Query v0
+(reader plus core, one validated request shape). Export and Query call `permits()` from M0; if M6
+has already landed, its register table is what answers and M2 leaves it alone. The `/data` catalog page with search and filters.
+AC: all 126 v1 series and 83 events are in the release and it validates; for every series the six
+transforms match v1's `stats.js` output for three recorded windows, including a quarterly, an
+annual and a held series (differences that are deliberate fixes are listed, not hidden); the
+converter cannot write a `public` profile (test); nothing is written to STORE and no network call
+is made (test); a visible strip on every page of a local-profile release reads "Local build ·
+v1 data via FRED and Yahoo · not for publication"; `make v2` builds the release and starts the
+site with one command.
+
+**M3 · The explained figure and series pages (10 h). Needs Alex: —.** Needs M2.
+`figure` for line and multi-line charts; takeaway templates with silence rules; data-state marks;
+"how to read this"; the table twin; the series palette validated in both themes; glossary pages;
+`/data/{key}` v0: name, definition and unit from the catalog, latest value with its period, the
+explained figure, a provenance block that names origin and channel as v1 recorded them and the
+legacy representation, the table, and a door into the Explorer. Vintage table, as-of and file
+twins come in M17.
+AC: each silence rule has a test (partial, stale, estimate, break, non-comparable); every data
+state renders with a mark and a word; a figure at 320px has no clipped labels; series pages render
+complete without JavaScript for all 126 series; a sparse series is drawn as points or steps at its
+real cadence, never as an invented monthly line.
+
+**M4 · Explorer I (12 h). Needs Alex: —.** Needs M3.
+The interactive chart on `figure`; address state in search parameters; the v1 hash shim; the six
+scale modes with per-series valid transforms; small multiples for mixed units; annotation layers
+(events by category, governance bands, recessions) from the release's annotations; pinned readout;
+the phone bottom sheet; presets.
+AC: each of v1's 11 presets and ten recorded v1 hash links open the same selection, mode and
+range; a copied link reproduces the view in a fresh session; every v1 event category and the
+governance bands can be switched on and off and match v1's dates; no animation on data; nothing is
+hover-only; usable at 360px.
+
+> **Usable local site: after M4 (5 PRs, about 52 h).** `make v2`, then open
+> `http://localhost:3000/macro-atlas/explore`. Checkpoint A1 **[ALEX, non-blocking]**: use it and
+> say what is wrong. Work continues meanwhile.
+
+**M5 · Explorer II (10 h). Needs Alex: —.** Needs M4.
+`stats.ts` (descriptive, no p-value hint), lag profile and rolling correlation with guard text,
+compare ranges, the snapshot table, CSV and PNG export through one export function that asks
+`permits()` (on the local surface every export is allowed and is stamped "not for
+publication"; on any other surface it is refused unless M6's table allows it).
+The as-of control, `pin=` and saved queries come in M18, when vintages exist.
+AC: v1's 16 statistics cases pass plus its two caveats (`minN`, quarterly and annual changes) as
+failing-then-fixed tests; compare ranges reproduce v1's result for two recorded pairs; exported CSV
+holds the values on screen; a parity checklist of every v1 control is attached to the PR, each
+ticked or marked as a deliberate change with the reason.
+
+> **v1 parity on the local site: after M5 (6 PRs, about 62 h).**
+
+### v2.0 — Track B: data foundation
+
+**M6 · Rights register and the rights gate (6 h). Needs Alex: — (D2 is his to sign; unsigned rows
+stay blocked).** Needs M0. May start beside track A.
+`docs/v2/rights-register.md` with terms quoted and a proposal per row (section 6); `RightsGate`
+generated from one table for Python and TypeScript: `permits(rightsUsed, surface)`, keyed by
+origin, dataset, channel and permission, most restrictive wins, unknown blocks every public
+surface. It replaces M0's default body behind the same contract.
+AC: the register has a row for every source in section 6 with a proposal and no decision filled
+in; table tests cover status × channel × surface; an unsigned or unknown row permits nothing on a
+public surface; the legacy representation is refused on a public surface whatever its row says.
+
+**M7 · Capture kit and the first agency adapter (8 h). Needs Alex: — for the PR; credentials and
+D2 + D6 for the job to start.** Needs M6. May start beside track A.
 The adapter contract, a fixture adapter, the BLS adapter (CPI-U, unemployment rate, payrolls), the
 raw blob store, the fetch log with request, headers and completeness evidence, and `atlas capture`
-(raw only). A ready-to-copy scheduled workflow and a runbook for the capture host.
+(raw only). Capture needs only the fetch half of an adapter, so the first endpoint list covers
+BLS, Treasury Fiscal Data and the Federal Reserve Board; parsing for the last two arrives in M13
+and replays these captures. A ready-to-copy scheduled workflow and a runbook for the capture host.
 AC: against captured fixtures `atlas capture` writes a blob and a fetch-log line; an incomplete
 response is flagged and a failure raises; a skipped day is reported; the endpoint list is read from
-the register and contains only rows Alex has cleared (an uncleared row fails the run).
-Needs before the job *starts*: D2 for the three first sources, and D6.
+the register and contains only rows Alex has cleared (an uncleared row fails the run); a captured
+fixture exists for one endpoint of each of the three sources.
 
-**M2 · Vintage store with replay (10 h). Stops: —.** Needs M1.
+**M8 · Vintage store with replay (10 h). Needs Alex: —.** Needs M7.
 Observation log, metadata history, state hashing, tombstones, capture confirmations, `atlas
 replay`.
 AC: the property tests in section 9 pass; replaying a three-fetch fixture (initial, revision,
 withdrawal) gives the expected rows exactly, using the fixtures' retrieval times and not the
 replay time.
 
-**M3 · Release writer (10 h). Stops: —.** Needs M2.
+**M9 · Release writer (10 h). Needs Alex: —.** Needs M6, M8 and M2's promotion helper.
 Allowlist export, staging, Python checks, atomic `CURRENT`, `STATUS.json`, `LOCK`, `runs.ndjson`,
-retention with pins and `trash/`, the withheld list, `atlas doctor`. Publishes native series only;
-the derived-series gate arrives in M5.
+retention with pins and `trash/`, the withheld list, `atlas doctor` (including `--surface
+production`). Publishes native series only; the derived-series gate arrives in M11. `atlas release
+--profile public` writes to `$ATLAS_PUBLIC`; `--profile local` writes a separate release to
+`$ATLAS_LOCAL` that adds, as whole series, v1's legacy series for keys not yet live from an
+origin, so the local site never loses a series.
 AC: a release from fixtures validates; every publisher failure case in section 9 passes; a
-withheld series is named in the manifest and its values appear nowhere in the release.
+withheld series is named in the manifest and its values appear nowhere in the public release; a
+public release is refused if any series, or any input of a derived series, lacks a signed row for
+its origin, dataset, channel and permission, or carries the legacy representation; `--reuse-data`,
+rollback and pins cannot bring a local-profile file into `$ATLAS_PUBLIC` (tests); a series is never
+a mix of legacy and origin values.
 
-**M4 · Engine I: vintage resolution (8 h). Stops: —.** Needs M0.
+**M10 · Engine II: vintage resolution (6 h). Needs Alex: —.** Needs M1. May run beside M7–M9.
 `packages/core` `resolve()` with every basis, cutoff policy, capture gap and same-day flag; the
-Node `ReleaseReader`.
-AC: expected-table tests pass, including: no coverage returns `unavailable`; a metadata change is
+reader learns vintages.
+AC: expected-table tests pass, including: no coverage returns `unavailable`; a legacy series
+answers as-of with basis `legacy` or `unavailable`, never as today's figure; a metadata change is
 reported as in force at the cutoff; a browser bundle of core imports no `fs`.
 
-**M5 · Engine II: aggregation, transforms, recipes (10 h). Stops: —.** Needs M3, M4.
-Measure-kind aggregation, the transform allowlist, recipes with dependency closure and rights
-intersection, `cpi_yoy` as the first recipe, `atlas-core verify` as the Node step of the publisher.
-Also writes `docs/method/transforms.md`, the text the tests are derived from.
+**M11 · Engine III: aggregation, the full transform allowlist, recipes (8 h). Needs Alex: —.**
+Needs M9, M10.
+Measure-kind aggregation at native frequency, the rest of the transform allowlist in 4.5 (`chg`,
+`ch1`, `pch`, `pca` and the daily and partial-period rules), recipes with dependency closure and
+rights intersection, `cpi_yoy` as the first recipe, `atlas-core verify` as the Node step of the
+publisher, the `ingest` image. Extends `docs/method/transforms.md`; any change to what M2 defined
+bumps `semantics_version` and is listed.
 AC: tests derived from `docs/method/transforms.md` pass; a cyclic recipe fails with the cycle
 named; `cpi_yoy` for 2022-06 matches the published figure within tolerance; derived output carries
 the weakest input basis and the most restrictive rights; the Node step writes only inside staging.
 
-**M6 · Site shell (10 h). Stops: —.** Needs M4.
-Next app from the /missions skeleton, tokens and `DESIGN.md`, top bar and tabs, both base paths,
-Dockerfile, compose with `web` and `ingest`, health and status routes, the catalog page, the CSP
-spike and the JavaScript-floor measurement.
-AC: `docker compose up` serves the fixture release at both base paths; rewriting `CURRENT` changes
-the served page with no restart (test); everything on a page comes from one release id, checked on
-the catalog page (test); the theme follows the OS setting and the toggle overrides it (test); the CSP decision and the JS budget are each recorded in an ADR with a passing test.
-
-**M7 · The explained figure (8 h). Stops: —.** Needs M6.
-`figure` for line and multi-line charts, takeaway templates with silence rules, data-state marks,
-"how to read this", the table twin, the series palette validated in both themes, glossary pages.
-AC: each silence rule has a test (partial, stale, estimate, break, non-comparable); every data
-state renders with a mark and a word; a figure at 320px has no clipped labels; no JavaScript needed.
-
-**M8 · Series page, twins and the rights gate (10 h). Stops: —.** Needs M5, M7.
-`/data/{key}` with definition, provenance block, vintage table, breaks, citation and reproduce
-snippet; `.json`, `.csv`, `.metadata.json`, `.md`; Query and RightsGate.
-AC: for every fixture series the HTML table, JSON and CSV hold the same values; a display-only
-series renders but its downloads return 403 with a reason; `?as_of=` on a date without coverage
-shows the unavailable state; the withheld fixture series shows by name with no values.
-
-**M9 · Claim engine and claim authoring (10 h). Stops: —.** Needs M5.
-Claim schema, the content compiler for claims (public and local profiles), `atlas add claim`, the
-closed list of measures, window sensitivity, `atlas claims compute`, lock files with everything
-listed in 4.5, `relock`, the claim record rules in `atlas check`.
-AC: the slice story test passes (after a simulated revision the *latest* row changes, the locked
-rows do not, a drift report appears); editing a locked reading fails the build; `compute` refuses
-to overwrite a lock; a claim with one source or no archive URL fails `atlas check`; the schema
-rejects a finding, rating or label field; window-sensitivity numbers match a hand-computed
-fixture; a draft claim is absent from a public-profile release.
-
-**M10 · Claim page and index (8 h). Stops: —.** Needs M8, M9.
-`/claims/{id}` as in section 3, the claims index with filters by person, party and topic and a
-count by party, the correction log, `/docs/method/claims` (how a claim record is built), evidence
-downloads, twins. A `notes/` reader for the local profile only.
-AC: the *then* and *now when checked* rows and the window-sensitivity table come from the lock (a
-test swaps the lock and sees the page change); the *latest* row comes from the release and is
-marked as such (a second test changes the release and sees only that row change); the page contains no finding, rating or label (test greps the
-rendered HTML against a word list); quote, source and the then/now figures are above the fold at
-360×740; a user note renders on a local build, marked with its author, and is absent from a
-public-profile release; one fully worked real claim is included as a draft for Alex.
-
-**Checkpoint A [ALEX, non-blocking].** Alex tries one real claim end to end on a local build and
-comments on the page and the CLI. Work continues meanwhile.
-
-### v2.0 — Phase B: make it deployable, fill it, reach v1 parity
-
-**M11 · Deploy kit (8 h). Stops: —.** Needs M3, M6, M10.
-`deploy/` with compose, both builds, `Caddyfile.snippet`, timer units in `America/New_York`,
-backup and restore scripts, the VPS headroom script, the capture hand-off procedure, the runbook,
-and the local throwaway-Caddy smoke test.
-AC: the local smoke passes for both paths together; backup then restore reproduces a working STORE
-and PUBLIC and a locked claim shows its original numbers; the runbook lists every manual step.
-After M11, staging (M24) can happen as soon as Alex provides access.
-
-**M12 · Catalog v2 and migration (10 h). Stops: —.** Needs M5.
+**M12 · Catalog v2 and migration (10 h). Needs Alex: —.** Needs M11.
 Series schema; a script that rewrites the 109 entries (origin, channel, measure and unit kind,
 adjustment, price basis, refresh, rights block); recipes for the 14 y/y series and the ratio;
 `atlas check` layers; `atlas add series`; for each entry a proposed origin-agency channel or "no
 free publishable source".
 AC: all 109 validate; no permission is hand-set; the recipe graph is acyclic; `atlas check` fails
 on a seeded error in each layer; a table lists every v1 series as *re-source from X*, *needs D2*,
-or *withheld*.
+or *withheld*; v1 keys are unchanged, so every Explorer link from track A still opens.
 
-**M13 · Agency adapters I: Treasury, Fed Board, BLS coverage (10 h). Stops: —.** Needs M12.
+**M13 · Agency adapters I: Treasury, Fed Board, BLS coverage (10 h). Needs Alex: —.** Needs M12.
 Treasury Fiscal Data (debt, receipts, outlays), Fed Board DDP (H.15, H.10, H.4.1, Z.1), remaining
 BLS series. The capture list grows to match.
 AC: captured fixtures with provenance; each series passes the release gate; each matches v1's
 value for the overlap within a stated tolerance or the difference is explained.
 
-**M14 · IMF SDMX: Japan CPI and the G20 CPI and FX rows (8 h). Stops: —.** Needs M12 and the IMF
-row of the register.
+**M14 · IMF SDMX: Japan CPI and the G20 CPI and FX rows (8 h). Needs Alex: — (the IMF row of the
+register must be signed for the series to be public).** Needs M12.
 `api.imf.org` SDMX 3.0 adapter with the observed/projected split; Japan CPI replaces the truncated
 FRED series; CPI for all 19 countries and FX for the non-euro members plus EUR.
 AC: Japan CPI matches the e-Stat file for the 25 months research 02 checked; a coverage matrix
 page generated from the catalog shows what exists per country and why anything is missing.
 
-**M15 · Agency adapters II: BEA and EIA (8 h). Stops: C.** Needs M12 and both keys *before it
-starts* (fixtures cannot be captured without them).
+**M15 · Agency adapters II: BEA and EIA (8 h). Needs Alex: credentials (two free API keys, before
+it starts; fixtures cannot be captured without them).** Needs M12.
 GDP, PCE, income, profits, trade balance; headline energy prices and generation.
 AC: suites pass with no keys present; each keyed source degrades to "stale, last fetched …" when
 its key is missing; keys never appear in the repo, logs or fixtures (test).
 
-**M16 · v1 coverage, Census top lines and hand-entered series (8 h). Stops: —.** Needs M13.
+**M16 · v1 coverage, Census top lines and hand-entered series (8 h). Needs Alex: —.** Needs M13.
 Census files for construction, retail and housing headline series; a `manual` adapter for
 approval, election margins and terms of government with a citation per value; legacy-channel
-adapters only for channels Alex cleared in D2; the v1 comparison test and coverage report.
+adapters only for channels Alex cleared in D2 by a signed register row and an amendment to ADR
+0006 (these fetch through capture and STORE like any other; v1's `data/atlas.json` is never a
+public source); the v1 comparison test and coverage
+report.
 AC: every one of v1's 126 series is accounted for as *live from origin*, *live via a cleared
 channel*, or *withheld (reason)*; the comparison table is attached with every difference
 explained; the public release holds only allowlisted series.
 
-**M17 · Events, annotations and the content pipeline (8 h). Stops: —.** Needs M9.
-A lossless script from `events.yaml` (83 events) to `content/events/*.md`; new categories and
-spans; annotation projection; event pages and index; governance and recession layers; `atlas add
-event|note`.
+**M17 · Series pages II: vintages, twins and Query (8 h). Needs Alex: —.** Needs M3, M6, M11.
+`/data/{key}` gains the vintage table, breaks, citation and reproduce snippet; `.json`, `.csv`,
+`.metadata.json`, `.md`; full Query with RightsGate and caps; `/api/v1/status`.
+AC: for every fixture series the HTML table, JSON and CSV hold the same values; a display-only
+series renders but its downloads return 403 with a reason; `?as_of=` on a date without coverage
+shows the unavailable state; the withheld fixture series shows by name with no values.
+
+**M18 · Explorer on agency data (8 h). Needs Alex: —.** Needs M5, M16, M17.
+Native frequency in the Explorer (daily, quarterly and annual series drawn as such, aggregation by
+measure kind when series are combined), the as-of control, `pin=`, saved queries and `atlas save`,
+export that honours rights, and the parity suite of M4 and M5 run again on a public-profile
+release.
+AC: on a public-profile release each v1 preset and recorded hash link opens the same view or names
+the withheld series; a pinned link to a retained release shows the same data after a newer release
+is promoted and returns 410 once pruned; export of a display-only series is refused with the
+reason; no Explorer test from track A is deleted to make this pass.
+
+### v2.0 — Track C: content and claims
+
+**M19 · Events, annotations and the content pipeline (8 h). Needs Alex: —.** Needs M4, M9, M12.
+The content compiler (public and local profiles); a lossless script from `events.yaml` (83 events)
+to `content/events/*.md`; new categories and spans; annotation projection; event pages and index;
+governance and recession layers; `atlas add event|note`. The Explorer's layers now read compiled
+content in place of the converter's projection.
 AC: a round-trip test covers all 83 events and every v1 field; each citation has an archive URL or
 a listed exception; every migrated description is checked against a word list of causal and
 evaluative terms and by Codex, and any that fails is listed for Alex with a proposed neutral
-rewording, not silently changed; `atlas add` writes drafts only and its output passes `atlas check`.
+rewording, not silently changed; `atlas add` writes drafts only and its output passes `atlas
+check`; the Explorer's annotation tests from M4 pass unchanged.
 
-**M18 · Explorer I (12 h). Stops: —.** Needs M8, M16, M17.
-The interactive chart on `figure`; address state in search parameters; the v1 hash shim; six scale
-modes with per-series valid transforms; small multiples for mixed units; annotation layers; pinned
-readout; the phone bottom sheet; presets.
-AC: each of v1's 11 presets and ten recorded v1 hash links open the same selection, mode and range
-(or name the withheld series); a copied link reproduces the view in a fresh session; no animation
-on data; nothing is hover-only.
+**M20 · Claim engine and claim authoring (10 h). Needs Alex: — (D7 defaults apply; claims stay
+draft).** Needs M11, M19.
+Claim schema, claims in the content compiler, `atlas add claim`, the closed list of measures,
+window sensitivity, `atlas claims compute`, lock files with everything listed in 4.5, `relock`,
+the claim record rules in `atlas check`.
+AC: the slice story test passes (after a simulated revision the *latest* row changes, the locked
+rows do not, a drift report appears); editing a locked reading fails the build; `compute` refuses
+to overwrite a lock; a claim with one source or no archive URL fails `atlas check`; the schema
+rejects a finding, rating or label field; window-sensitivity numbers match a hand-computed
+fixture; a draft claim is absent from a public-profile release; a claim cannot be locked on a
+legacy-representation series.
 
-**M19 · Explorer II (10 h). Stops: —.** Needs M18.
-`stats.ts` (descriptive, no p-value hint), lag profile and rolling correlation with guard text,
-compare ranges, snapshot table, CSV and PNG export that honours rights, the as-of control, `pin=`,
-saved queries and `atlas save`.
-AC: ported tests pass plus the two fixed caveats; a pinned link to a retained release shows the
-same data after a newer release is promoted and returns 410 once pruned; export of a display-only
-series is refused with the reason.
+**M21 · Claim page and index (8 h). Needs Alex: —.** Needs M17, M20.
+`/claims/{id}` as in section 3, the claims index with filters by person, party and topic and a
+count by party, the correction log, `/docs/method/claims` (how a claim record is built), evidence
+downloads, twins. A `notes/` reader for the local profile only.
+AC: the *then* and *now when checked* rows and the window-sensitivity table come from the lock (a
+test swaps the lock and sees the page change); the *latest* row comes from the release and is
+marked as such (a second test changes the release and sees only that row change); the page
+contains no finding, rating or label (test greps the rendered HTML against a word list); quote,
+source and the then/now figures are above the fold at 360×740; a user note renders on a local
+build, marked with its author, and is absent from a public-profile release; one fully worked real
+claim is included as a draft for Alex.
 
-**M20 · Overview, Highlights and search (10 h). Stops: —.** Needs M16, M7.
-The Overview as home (one row per segment), the 1/5/10-year Highlights table where every cell is a door, sparkline
-and change-strip figure types, `search.json`, the search sheet and a no-JavaScript `/search`.
+**Checkpoint A2 [ALEX, non-blocking].** Alex tries one real claim end to end on a local build and
+comments on the page and the CLI. Work continues meanwhile.
+
+### v2.0 — Track D: reading pages and data out
+
+**M22 · Overview, Highlights and search (10 h). Needs Alex: —.** Needs M3, M16, M19.
+The Overview as home (one row per segment; `/` stops redirecting to the Explorer), the 1/5/10-year
+Highlights table where every cell is a door, sparkline and change-strip figure types,
+`search.json`, the search sheet and a no-JavaScript `/search`.
 AC: the Overview renders complete with JavaScript off; every Highlights cell opens the Explorer at
-that window; one query returns grouped hits for a series, an event, a topic and a glossary term.
+that window; one query returns grouped hits for a series, an event and a glossary term (topic
+hits are added and tested in M23); the search index of a public release contains no withheld series' values.
 
-**M21 · Two topics: Inflation and Jobs (8 h). Stops: —.** Needs M20, M17, M14.
+**M23 · Two topics: Inflation and Jobs (8 h). Needs Alex: —.** Needs M14, M19, M22.
 The topic template, "what else moved" with curated companions as small multiples on one axis, the
 "US against the G20 range" figure for CPI (data from M14), definitions quoted from the agencies.
 AC: every sentence on a topic page is a label, a template sentence or a quoted and cited
 definition (test against the content schema, which has no free-prose field); each companion
 states a factual relation; the G20 band matches a hand-computed minimum, median and maximum for a
-fixture month; compile fails on a dangling reference with file and line.
+fixture month; compile fails on a dangling reference with file and line; search returns the two
+topics.
 
-**M22 · Read API (8 h). Stops: —.** Needs M8.
+**M24 · Read API (8 h). Needs Alex: —.** Needs M17, M19, M20.
 `/api/v1` routes, validation, caps, rate limiting, `/docs/api`.
 AC: a contract test per route; over-limit requests get 429; invalid input gets 400 with the
 allowlist; every response carries the fields in section 7.
 
-**M23 · Bulk files and discovery (8 h). Stops: —.** Needs M22.
+**M25 · Bulk files and discovery (8 h). Needs Alex: —.** Needs M21, M23, M24.
 Parquet, CSV.gz and JSON Lines, `vintages.parquet`, `datapackage.json` by licence, `/downloads`,
 Markdown twins for every page, `llms.txt`, JSON-LD, `/docs/method` and `/docs/rights`.
 AC: files load in pandas, polars and DuckDB in CI; the three formats hold the same rows (round-trip
-test); checksums match; nothing withheld or
-non-redistributable is in any bulk file (test); every link in `llms.txt` resolves.
+test); checksums match; nothing withheld, non-redistributable or legacy is in any bulk file
+(test); bulk files are written only for a public-profile release; every link in `llms.txt`
+resolves.
 
-### v2.0 — Phase C: ship
+### v2.0 — Ship
 
-**M24 · Staging (4 h agent). Stops: D, C, possibly $.** Needs M11; can run any time after it.
+**M26 · Deploy kit (8 h). Needs Alex: —.** Needs M1, M9, M21.
+`deploy/` with compose (`web` and `ingest`), both builds, `Caddyfile.snippet` (including basic
+auth for staging), timer units in `America/New_York`, backup and restore scripts, the VPS headroom
+script, the capture hand-off procedure, the runbook, the local throwaway-Caddy smoke test, and the
+deploy preflight of section 6.1.
+AC: the local smoke passes for both paths together; backup then restore reproduces a working STORE
+and PUBLIC and a locked claim shows its original numbers; the production preflight refuses a
+local-profile release, an unsigned register and a release holding a legacy series (three tests);
+containers listen on loopback only; the runbook lists every manual step.
+
+**M27 · Staging (4 h agent). Needs Alex: credentials for the staging deploy (SSH user and key,
+applying the Caddy snippet, placing keys), possibly money (backup target).** Needs M26; can run any time after it.
 Deploy to `/macro-atlas-staging`, server environment, timer, backups, capture hand-off (replay the
 interim captures into the VPS store), restore drill.
 AC, all checked on the day: the headroom script shows room; the smoke suite passes from outside;
 one release is promoted by the timer path; a restore from the off-host backup passes `atlas
-doctor`. A separate *soak checklist* (seven daily releases without intervention, no missed run)
-must be ticked before M25; it is not part of this PR.
-Alex: SSH user and key, apply the Caddy snippet, place keys, choose the backup target.
+doctor`; if staging serves a local-profile release, a request without the password gets 401 on a
+page, a twin, a static asset and the API, and the container port is not reachable from outside. A
+separate *soak checklist* (seven daily public-profile releases without intervention, no missed
+run) must be ticked before M28; it is not part of this PR.
 
-**M25 · Cutover (4 h agent). Stops: D, M.** Needs every v2.0 milestone, the soak checklist, D3.
+**M28 · Cutover (4 h agent). Needs Alex: deploy, merge to `main`.** Needs M0–M27, the
+soak checklist, the signed rights register (D2) and the cutover rule (D3, approved).
 Production at `/macro-atlas`; a GitHub Pages page that carries v1 hash links across to
 `/macro-atlas/explore`; `refresh.yml` retired in the same merge (it would otherwise fire on the
 merge); tag `v1-final`; merge `v2` to `main`.
-AC: v1 preset links land on the equivalent v2 view; production smoke passes; rollback (restore the
-previous Pages commit) is written down and rehearsed on staging.
+AC: the production preflight passes on the release to be served; production serves no value that
+came through FRED or Yahoo unless section 6.1 point 4 clears that exact channel (grep test against
+v1's `data/atlas.json` for the withheld keys); v1 preset links land on the equivalent v2 view or
+name the withheld series; production smoke passes; rollback (restore the previous Pages commit) is
+written down and rehearsed on staging.
 
 ### v2.1 — Access, history and infrastructure
 
-| # | Milestone | Scope and acceptance | Size | Stops |
+| # | Milestone | Scope and acceptance | Size | Needs Alex |
 |---|---|---|---|---|
-| M26 | MCP endpoint | As ADR 0007: stateless, seven read-only tools over Query, resources, caps. AC: SDK client round-trip per tool on the fixture release; caps enforced; withheld and draft material absent; a manual check from Claude Code against the local container recorded in the PR | 8 h | — |
-| M27 | Provider vintages | Spike on the Philadelphia Fed data set (format, coverage, terms into the register), then an importer for GDP, payrolls, unemployment, CPI; v1's git history imported as its own `legacy` representation. AC: for a named revised quarter the vintage table shows the advance, later and current values listed in a fixture; no locked claim changes. No-go outcome: the PR ships the coverage machinery and the written reason, and Alex is told | 10 h | Alex if terms unclear |
-| M28 | Construction | Census C30: total, public, private, water supply, sewage, power, highway, communication (eight named series). AC: the PR's fixture of expected values names each series by its origin identifier; each passes the release gate from captured fixtures and matches a published value for one named period at its native frequency (month, quarter or year); rights recorded; a Construction topic page | 8 h | — |
-| M29 | Freight and transport | BTS freight TSI, rail carloads and intermodal, truck tonnage; annual port TEU. AC: as M28 for each named series; monthly TEU recorded as "no free machine-readable source found" unless the spike finds one | 8 h | — |
-| M30 | Grid and energy | EIA net generation by source, capacity by source, retail electricity price. AC: as M28 | 8 h | C (key from M15) |
-| M31 | IIJA spending | Spike (one day): can budget authority, obligations and outlays be extracted by DEF code and agency? Then three separate series per agency with dated captures. AC: each of the three measures for two named agencies matches the USAspending site's figure for a fixture date; the measures are never summed or mixed in a label. No-go outcome: a written finding for Alex and the series left out | 10 h | — |
-| M32 | CHIPS and broadband | CHIPS through federal account 013-0520 and related accounts; NTIA adoption; C30 communication construction; BEAD outlays if its account is found. AC: CHIPS obligations and outlays match the account page for a fixture date, or the spike's no-go is written up; NTIA and C30 series pass the gate. Anything not delivered needs Alex's sign-off; it does not pass as a listed gap | 8 h | — |
+| M29 | MCP endpoint | As ADR 0007: stateless, seven read-only tools over Query, resources, caps. AC: SDK client round-trip per tool on the fixture release; caps enforced; withheld and draft material absent; a manual check from Claude Code against the local container recorded in the PR | 8 h | — |
+| M30 | Provider vintages | Spike on the Philadelphia Fed data set (format, coverage, terms into the register), then an importer for GDP, payrolls, unemployment, CPI; v1's git history imported as its own `legacy` representation. AC: for a named revised quarter the vintage table shows the advance, later and current values listed in a fixture; no locked claim changes. No-go outcome: the PR ships the coverage machinery and the written reason, and Alex is told | 10 h | a decision if the terms are unclear |
+| M31 | Construction | Census C30: total, public, private, water supply, sewage, power, highway, communication (eight named series). AC: the PR's fixture of expected values names each series by its origin identifier; each passes the release gate from captured fixtures and matches a published value for one named period at its native frequency (month, quarter or year); rights recorded; a Construction topic page | 8 h | — |
+| M32 | Freight and transport | BTS freight TSI, rail carloads and intermodal, truck tonnage; annual port TEU. AC: as M31 for each named series; monthly TEU recorded as "no free machine-readable source found" unless the spike finds one | 8 h | — |
+| M33 | Grid and energy | EIA net generation by source, capacity by source, retail electricity price. AC: as M31 | 8 h | credentials (the EIA key from M15) |
+| M34 | IIJA spending | Spike (one day): can budget authority, obligations and outlays be extracted by DEF code and agency? Then three separate series per agency with dated captures. AC: each of the three measures for two named agencies matches the USAspending site's figure for a fixture date; the measures are never summed or mixed in a label. No-go outcome: a written finding for Alex and the series left out | 10 h | — |
+| M35 | CHIPS and broadband | CHIPS through federal account 013-0520 and related accounts; NTIA adoption; C30 communication construction; BEAD outlays if its account is found. AC: CHIPS obligations and outlays match the account page for a fixture date, or the spike's no-go is written up; NTIA and C30 series pass the gate. Anything not delivered needs Alex's sign-off; it does not pass as a listed gap | 8 h | — |
 
 ### v2.2 — World and shocks
 
-| # | Milestone | Scope and acceptance | Size | Stops |
+| # | Milestone | Scope and acceptance | Size | Needs Alex |
 |---|---|---|---|---|
-| M33 | G20 rates and unemployment | BIS policy rates for 18 economies and the euro area, Argentina from its central bank; monthly unemployment for the 19 countries from OECD or national sources. AC: the expected matrix (19 economies plus the euro area × CPI, FX, policy rate, unemployment) is a fixture; every cell is either live from captured fixtures or carries a written "no free monthly source" reason that Alex has accepted | 10 h | — |
-| M34 | G20 GDP and the peer band | WEO with observed and projected values split and a dated capture per WEO release; the band figure for GDP growth and unemployment. AC: projections are never drawn as observed (test on the boundary year); the band matches a hand-computed minimum, median and maximum | 8 h | — |
-| M35 | Trade and commodities | IMF commodity price indices; US trade balance, exports and imports; World Bank trade share for the G20. AC: as M28 for each named series | 8 h | — |
-| M36 | Disasters and health | OpenFEMA declarations; NOAA billion-dollar series to 2024 with its end stated; CDC deaths; OWID COVID; EM-DAT as a link only. AC: as M28 for each named series | 8 h | — |
+| M36 | G20 rates and unemployment | BIS policy rates for 18 economies and the euro area, Argentina from its central bank; monthly unemployment for the 19 countries from OECD or national sources. AC: the expected matrix (19 economies plus the euro area × CPI, FX, policy rate, unemployment) is a fixture; every cell is either live from captured fixtures or carries a written "no free monthly source" reason that Alex has accepted | 10 h | — |
+| M37 | G20 GDP and the peer band | WEO with observed and projected values split and a dated capture per WEO release; the band figure for GDP growth and unemployment. AC: projections are never drawn as observed (test on the boundary year); the band matches a hand-computed minimum, median and maximum | 8 h | — |
+| M38 | Trade and commodities | IMF commodity price indices; US trade balance, exports and imports; World Bank trade share for the G20. AC: as M31 for each named series | 8 h | — |
+| M39 | Disasters and health | OpenFEMA declarations; NOAA billion-dollar series to 2024 with its end stated; CDC deaths; OWID COVID; EM-DAT as a link only. AC: as M31 for each named series | 8 h | — |
 
 ### v2.3 — Report-style views
 
-| # | Milestone | Scope and acceptance | Size | Stops |
+| # | Milestone | Scope and acceptance | Size | Needs Alex |
 |---|---|---|---|---|
-| M37 | Statement tables: shell and federal | The statement-table figure type, Notes generated from the catalog, print stylesheet, the two-layer navigation; the federal statement from the Monthly Treasury Statement (cash) and the accrual balance sheet as a hand-entered annual table with page citations; an ADR on fiscal against calendar year, stock against flow, cash against accrual. AC: every header states entity, basis and period; no total across bases; Notes lists every break | 10 h | — |
-| M38 | National and external statements | GDP, income, net worth; trade, current account, investment position. AC: each line maps to a catalog series or says "no free source"; every cell is a door | 10 h | — |
-| M39 | Segment pages | One page per segment from a single template: a metrics strip, two to four figures, events. AC: every sentence is a label or a template sentence; all six segments render from catalog data alone | 8 h | — |
-| M40 | The 2025 Edition | Freezing (pin plus rendered figures and tables), corrections log, the "compiled later" label, three views (as in this Edition, as first reported, today's estimate). AC: a renderer change does not alter a frozen Edition; a correction makes v1.1 and leaves v1.0 at its address | 10 h | — |
-| M41 | Claims depth and user notes | Claim markers in the Explorer, the choose-your-window control, the drift report on the status page, a "report an error" link; the user-notes layer on public pages if Alex wants it, marked with the author and excluded from the data files. AC: a note never appears in a twin, the API or a bulk file (test) | 8 h | Alex: notes public or not |
-| M42+ | More topics | Two topics per PR (housing, federal budget, energy and grid, freight, G20 growth, …), same rules as M21 | 8 h each | — |
+| M40 | Statement tables: shell and federal | The statement-table figure type, Notes generated from the catalog, print stylesheet, the two-layer navigation; the federal statement from the Monthly Treasury Statement (cash) and the accrual balance sheet as a hand-entered annual table with page citations; an ADR on fiscal against calendar year, stock against flow, cash against accrual. AC: every header states entity, basis and period; no total across bases; Notes lists every break | 10 h | — |
+| M41 | National and external statements | GDP, income, net worth; trade, current account, investment position. AC: each line maps to a catalog series or says "no free source"; every cell is a door | 10 h | — |
+| M42 | Segment pages | One page per segment from a single template: a metrics strip, two to four figures, events. AC: every sentence is a label or a template sentence; all six segments render from catalog data alone | 8 h | — |
+| M43 | The 2025 Edition | Freezing (pin plus rendered figures and tables), corrections log, the "compiled later" label, three views (as in this Edition, as first reported, today's estimate). AC: a renderer change does not alter a frozen Edition; a correction makes v1.1 and leaves v1.0 at its address | 10 h | — |
+| M44 | Claims depth and user notes | Claim markers in the Explorer, the choose-your-window control, the drift report on the status page, a "report an error" link; the user-notes layer on public pages if Alex wants it, marked with the author and excluded from the data files. AC: a note never appears in a twin, the API or a bulk file (test) | 8 h | a decision: notes public or not |
+| M45+ | More topics | Two topics per PR (housing, federal budget, energy and grid, freight, G20 growth, …), same rules as M23 | 8 h each | — |
 
 ### Order and lead times
 
-Hard prerequisites are on each milestone. Beyond those: M4 can run beside M1–M3; M12–M17 are
-independent of M22–M23; M13, M14, M15 are independent of each other; v2.1 and v2.2 milestones can
-be reordered by what Alex wants to study first.
+Track A is strictly in order (M0 to M5). After it the default is number order; hard prerequisites
+are on each milestone. Beyond those: M6 and M7 may start any time after M0, and should start as
+soon as D2 (first three sources) and D6 are answered; M10 can run beside M7–M9; M13, M14 and M15
+are independent of each other; track C needs M12 and M17 but not M13–M16 or M18, so it can be
+pulled ahead of those if Alex wants claims sooner; v2.1 and v2.2 milestones can be reordered by
+what Alex wants to study first.
+
+What the reorder costs: three more PRs and about 24 more agent hours in v2.0 (the converter, the
+surface guard, and bringing the Explorer over from v1's monthly data to agency data in M18), and a
+later start for the capture kit's code (M7, not second). The second cost is nil while D2 and D6
+are open, and is avoided afterwards by starting M6–M7 in parallel.
 
 | Alex's input | Needed before | If it is late |
 |---|---|---|
-| Gate 1: this plan, D1 scope, D3 cutover rule, D5 stock index | M0 | Nothing starts |
-| D2 rights for BLS, Treasury, Fed Board; D6 capture host | M1's job starting | Capture days are lost; the build continues |
-| D7 claims rules | M9 | Defaults apply; claims stay draft |
-| Checkpoint A | after M10 | Non-blocking |
-| D2 remaining rows (FRED, Yahoo, IMF, Census, …) | M12 (IMF: M14) | Affected series stay withheld |
-| BEA and EIA keys (D8) | M15 start | M15 is skipped and done later; GDP and energy are absent |
-| SSH, Caddy, env, backup target (D9) | M24 | Everything stays local |
-| Soak checklist, cutover approval | M25 | v1 stays live |
+| Gate 1: this plan, D1 scope, D3 cutover rule | M0 | Done 2026-11-11 |
+| Nothing | M0–M5 (the usable local site) | — |
+| D2 rights for BLS, Treasury, Fed Board; D6 capture host | M7's job starting | Capture days are lost; the build continues |
+| D2 remaining rows (FRED, Yahoo, IMF, Census, …); D5 stock index | M12 (IMF: M14) | Affected series stay withheld on public surfaces; still visible locally under 6.1 |
+| BEA and EIA keys (D8) | M15 start | M15 is skipped and done later; GDP and energy come only from v1's data, locally |
+| D7 claims rules | M20 | Defaults apply; claims stay draft |
+| Checkpoints A1 (after M4) and A2 (after M21) | — | Non-blocking |
+| SSH, Caddy with basic auth, env, backup target (D9) | M27 | Everything stays local |
+| Signed rights register (D2), soak checklist, cutover approval | M28 | v1 stays live; nothing reaches the production path |
 
 ---
 
@@ -913,16 +1174,18 @@ be reordered by what Alex wants to study first.
 
 | Risk | Containment |
 |---|---|
-| The rights decision leaves v2.0 with far fewer series than v1 | Agency re-sourcing is the core of Phase B; withheld rows are named, not silent; D3 lets Alex set the cutover bar; v1 stays live until he is satisfied |
+| The rights decision leaves v2.0 with far fewer series than v1 | Agency re-sourcing is the core of track B; withheld rows are named, not silent; D3 lets Alex set the cutover bar; v1 stays live until he is satisfied |
 | An agency source (BLS keyless tier, Census files) is rate-limited or changes format | Serial per host, backoff, breaker; captured fixtures; flat files as a second path; a failed source degrades to "stale", never to invented data |
-| Vintage coverage is thin at launch | `unavailable` and `uncertain` are designed, tested states built first; capture starts at M1; provider vintages in M27 |
+| Vintage coverage is thin at launch | `unavailable` and `uncertain` are designed, tested states; capture starts as soon as D2 and D6 allow (M6–M7 can be built beside track A); provider vintages in M30 |
 | Two languages drift | The mathematics exists only in `core`; one cross-language test on the release contract; the schema is the single source |
 | Autonomous PRs too large or stuck on Alex | No milestone over 12 h; stops and lead times are listed per milestone; no wall-clock acceptance criteria |
 | A claim page is read as partisan, or a quote is wrong | The site gives no verdict at all; two archived sources per quote; a selection note and a count by party on the index; correction log; claims hidden until Alex opens them |
-| The site's own text drifts into opinion | Claim and topic schemas have no free-prose or finding fields; pages are labels, template sentences and quoted definitions; event descriptions are the one hand-written text, limited to cited statements of what happened and checked in M17; an HTML word-list test on claim pages; each Codex review checks for evaluative language |
+| The site's own text drifts into opinion | Claim and topic schemas have no free-prose or finding fields; pages are labels, template sentences and quoted definitions; event descriptions are the one hand-written text, limited to cited statements of what happened and checked in M19; an HTML word-list test on claim pages; each Codex review checks for evaluative language |
 | The choice of readings and windows is itself a judgment | Readings not measured are listed; window sensitivity shows every declared window; the selection note says why the claim was recorded |
+| v1's FRED- or Yahoo-sourced data reaches a public surface while D2 is open | The interim data rule (6.1): separate volume, explicit surface, fail-closed checks in the writer, the reader, the deploy preflight and the build context, a test for each; the builder may not relax them; staging only behind a password |
+| The Explorer is built on v1's monthly data and must be redone for native frequency | The release schema carries native frequency, period bounds and representation from M0; sparse and held series are tested in M2–M4; M18 extends the same components and may not delete track A's tests |
 | Something is published that should not have been | Allowlist releases; grep tests; a written withdrawal procedure that retires affected releases |
-| Next 16 differences, CSP or the JS floor trip the build | Bundled docs read first; spikes in M6 before any reading page depends on the answer |
+| Next 16 differences, CSP or the JS floor trip the build | Bundled docs read first; spikes in M1 before any reading page depends on the answer |
 | The shared VPS is short of memory or its IP is throttled | Headroom check before the first deploy; polite per-host fetching; staging can read production's PUBLIC volume to avoid doubling requests |
 | Statistics suggest causation | Descriptive only; no p-value hint; a note on what a correlation cannot show |
 | The cutover merge is large | Rehearsed on staging; `refresh.yml` retired in the same merge; rollback written down |
@@ -934,26 +1197,31 @@ be reordered by what Alex wants to study first.
 
 ### Decisions, with recommendations
 
-| # | Decision | Recommendation | Needed by |
-|---|---|---|---|
-| D1 | **Scope staging.** v2.0 replaces v1 and delivers claim records with their evidence, US core series, G20 CPI and FX, the Explorer, the Overview and two topics, and data out. Infrastructure, the rest of the G20 table, trade, disasters and the report-style views follow in v2.1–v2.3 | Approve. The alternative, holding cutover until the whole brief is built, keeps v1 live about twice as long | Gate 1 |
-| D2 | **Rights register.** Per source: may v2 store it, show it, offer it for download? In particular FRED (83 v1 entries) and Yahoo (25) | Origin agencies only for storage and display. FRED: not stored, not shown, re-source instead. Yahoo: withheld. Revisit per row if you read the terms differently | M1 (first three rows); M12 (the rest) |
-| D3 | **Cutover rule.** What must be live before v1 is switched off | Explorer at v1 feature parity, plus every v1 series either live from its origin or listed as withheld with a reason. Not "all 126 visible" | Gate 1 |
-| D4 | **v1's Yahoo exposure today.** The live Pages site embeds Yahoo month-end values | Your call on timing. Options: leave until cutover, or drop the 25 series from v1's public build now (a small v1 change and a merge to `main`) | Any time |
-| D5 | **G20 main stock index** (brief amendment) | Amend: show the row as withheld with a link to each exchange. Index levels are licensed from every free channel | Gate 1 |
-| D6 | **Where interim capture runs** | A separate private GitHub repo with a scheduled workflow that commits its captures to itself. Second choice: a cron entry you install on the VPS | Before M1's job starts |
-| D7 | **Claims.** (a) Public from the start or draft first. (b) The cutoff rule. (c) Whose statements are recorded. (d) Your own notes on claims | (a) Draft until about ten records have tested the page. (b) Strictly before 00:00 ET on the day unless the claim has a time. (c) Public statements by officials, candidates and named pundits, each with two archived sources. (d) Local only in v2.0; shown publicly, marked as yours, only if you choose (M41). Already settled by the brief: no finding, rating or label from the site | M9 |
-| D8 | **Free API keys:** BEA and EIA. Later: api.data.gov; optionally Census, FRED (only if D2 allows it), e-Stat | Register BEA and EIA now; they are needed before M15 can start | M15 |
-| D9 | **Server:** deploy user and SSH key, the Caddy snippet, server environment, timer, backup target (may cost money), and whether staging sits behind a password | Staging behind Caddy basic auth so drafts can be reviewed there | M24 |
-| D10 | **The "mydashboards" link in /missions' top bar.** Design is otherwise settled by the brief (system sans, OS theme with a toggle, the six segments) | OK a one-line PR in the mission-dashboard repo when M6 lands | M6 |
-| D11 | **Published accounts on topic pages:** an unranked, cited list of what named third parties have published | Leave out of v2.0. Add later per topic only if you want it | Any time |
-| D12 | **Bagby's contents page** (1995 first edition) from your softcover, as a guide to laying out the statement views | Optional; send a photo before M37 | v2.3 |
-| D13 | **Broadband measure** | C30 communication construction plus NTIA adoption now; BEAD outlays when the account is identified | v2.1 |
+| # | Decision | Recommendation | Status | Needed by |
+|---|---|---|---|---|
+| D1 | **Scope staging.** v2.0 replaces v1 and delivers the Explorer, US core series, G20 CPI and FX, claim records with their evidence, the Overview and two topics, and data out. Infrastructure, the rest of the G20 table, trade, disasters and the report-style views follow in v2.1–v2.3 | Approve | **Approved 2026-11-11** | — |
+| D2 | **Rights register.** Per source: may v2 store it, show it, offer it for download? In particular FRED (83 v1 entries) and Yahoo (25) | Origin agencies only for storage and display. FRED: not stored, not shown, re-source instead. Yahoo: withheld. Revisit per row if you read the terms differently | **Open.** Interim basis in force (section 6.1): v1's data on local builds and password-protected staging only; nothing from FRED or Yahoo on the production path | First three rows: before M7's job starts. All rows signed: before M28 |
+| D3 | **Cutover rule.** What must be live before v1 is switched off | Explorer at v1 feature parity, plus every v1 series either live from its origin or listed as withheld with a reason. Not "all 126 visible" | **Approved as recommended 2026-11-11** | — |
+| D4 | **v1's Yahoo exposure today.** The live Pages site embeds Yahoo month-end values | Your call on timing. Options: leave until cutover, or drop the 25 series from v1's public build now (a small v1 change and a merge to `main`) | Open | Any time |
+| D5 | **G20 main stock index** (brief amendment) | Amend: show the row as withheld with a link to each exchange. Index levels are licensed from every free channel | Open; the recommendation is the default until you answer | M12 |
+| D6 | **Where interim capture runs** | A separate private GitHub repo with a scheduled workflow that commits its captures to itself. Second choice: a cron entry you install on the VPS | Open | Before M7's job starts |
+| D7 | **Claims.** (a) Public from the start or draft first. (b) The cutoff rule. (c) Whose statements are recorded. (d) Your own notes on claims | (a) Draft until about ten records have tested the page. (b) Strictly before 00:00 ET on the day unless the claim has a time. (c) Public statements by officials, candidates and named pundits, each with two archived sources. (d) Local only in v2.0; shown publicly, marked as yours, only if you choose (M44). Already settled by the brief: no finding, rating or label from the site | Open | M20 |
+| D8 | **Free API keys:** BEA and EIA. Later: api.data.gov; optionally Census, FRED (only if D2 allows it), e-Stat | Register BEA and EIA now; they are needed before M15 can start | Open | M15 |
+| D9 | **Server:** deploy user and SSH key, the Caddy snippet, server environment, timer, backup target (may cost money), and whether staging sits behind a password | Staging behind Caddy basic auth so drafts, and v1's data while D2 is open, can be reviewed there | Open | M27 |
+| D10 | **The "mydashboards" link in /missions' top bar.** Design is otherwise settled by the brief (system sans, OS theme with a toggle, the six segments) | OK a one-line PR in the mission-dashboard repo when M1 lands | Open | M1 |
+| D11 | **Published accounts on topic pages:** an unranked, cited list of what named third parties have published | Leave out of v2.0. Add later per topic only if you want it | Open | Any time |
+| D12 | **Bagby's contents page** (1995 first edition) from your softcover, as a guide to laying out the statement views | Optional; send a photo before M40 | Open | v2.3 |
+| D13 | **Broadband measure** | C30 communication construction plus NTIA adoption now; BEAD outlays when the account is identified | Open | v2.1 |
 
 ### Approvals and stops
 
-Gate 1 (this plan). Checkpoint A (non-blocking). Staging deploy (M24). Cutover: production deploy
-and the merge to `main` (M25). Any later production deploy.
+Gate 1 (this plan): passed 2026-11-11. Checkpoints A1 after M4 and A2 after M21 (non-blocking).
+Starting the capture job (credentials for its host; D2 and D6). API keys for M15. Staging deploy
+(M27). Cutover: the signed rights register, the production deploy and the merge to `main` (M28).
+Any later production deploy. Milestones that need Alex: M15 (keys), M27 (SSH, Caddy, deploy,
+possibly money), M28 (deploy, merge to `main`); in v2.1, M33 reuses the EIA key. Every other
+milestone runs without a stop. A few hold one acceptance item for a decision of his, as marked
+(the capture job's start in M7, public claims in M20, and M30, M35, M36 and M44 later).
 
 ### Money
 
@@ -967,34 +1235,35 @@ target, which is your choice.
 
 None of these is in the plan. Each is independent and names the point after which it could be added.
 
-- **"What changed" page and feed** (after M19): generated from the observation log, listing new
+- **"What changed" page and feed** (after M18): generated from the observation log, listing new
   releases and revisions in plain sentences, with an Atom feed. The site becomes worth a daily look.
-- **Revision profile per series** (after M27): how far a first print usually moves and how long it
+- **Revision profile per series** (after M30): how far a first print usually moves and how long it
   takes to settle. It tells a fact-checker how much weight a fresh number can bear.
-- **Appropriated, obligated, spent** (after M31): for IIJA and CHIPS, authorised against obligated against spent
+- **Appropriated, obligated, spent** (after M34): for IIJA and CHIPS, authorised against obligated against spent
   over time. "How much of the money has gone out" is a constant subject of claims.
 - **Published accounts** on topic pages: an unranked, cited list of explanations published by
   named third parties, each with a quoted passage. Only if Alex wants it (D11).
 - **Shared user notes:** let more than one user keep a marked, personal layer of notes and
   judgments over the neutral data. Needs the login the brief lists as a later option.
-- **Claims re-read each year** (after M40): each Edition lists the previous year's claims with
+- **Claims re-read each year** (after M43): each Edition lists the previous year's claims with
   their *latest* rows, so a reader sees how the figures moved afterwards.
-- **Evidence pack** (after M10): one zip per claim with the evidence CSV, lock, manifest and README.
+- **Evidence pack** (after M21): one zip per claim with the evidence CSV, lock, manifest and README.
 - **Release-calendar-driven runs** (after M15): fetch each series minutes after its scheduled
   release, shrinking the capture gap from hours to minutes.
-- **Guided reading mode** (after M21): a topic as a sequence of steps, one figure and its template
+- **Guided reading mode** (after M23): a topic as a sequence of steps, one figure and its template
   sentence each. Plain links, no scroll effects.
-- **"What is in this number" pages** (after M20): from a Highlights row to its quoted definition
+- **"What is in this number" pages** (after M22): from a Highlights row to its quoted definition
   and its components (an accounting breakdown, labelled as accounting and not cause).
-- **Print and PDF Edition** (after M40), in Bagby's spirit.
-- **Python client and recipes** (after M23); a **Hugging Face mirror** of the public-domain
+- **Print and PDF Edition** (after M43), in Bagby's spirit.
+- **Python client and recipes** (after M25); a **Hugging Face mirror** of the public-domain
   resources **[ALEX: account]**.
-- **Congress context** (after M36): Voteview and Clerk roll calls linked from events and claims.
-- **Claim leads inbox** (after M41): the Data Commons ClaimReview feed filtered to US economic
+- **Congress context** (after M39): Voteview and Clerk roll calls linked from events and claims.
+- **Claim leads inbox** (after M44): the Data Commons ClaimReview feed filtered to US economic
   claims, as a private reading list. Not republished.
 - **Private research profile:** a localhost-only build over the full store for series Alex may
   study but not republish, if their terms allow personal use. A separate build and volume, no route
-  in Caddy. Needs D2.
+  in Caddy. Needs D2. (The local profile of section 6.1 is the interim form of this; whether it
+  outlives cutover is part of D2.)
 - **In-browser query page** with DuckDB-WASM over the Parquet; a **single-file index** per release
   if JSON stops being fast enough (still no database server).
 - **In-browser editor behind a login** (the brief's later option).
@@ -1004,8 +1273,8 @@ None of these is in the plan. Each is independent and names the point after whic
 ## 14. How this plan was merged
 
 From the research-first draft: the STORE/PUBLIC split, the single TypeScript engine, the adapter
-contract with completeness flags, the three evidence rows, the long-lived `v2` branch, claims in
-Phase A. From the reader-first draft: `CURRENT` as a text file, `STATUS.json`, the withheld list
+contract with completeness flags, the three evidence rows, the long-lived `v2` branch, claims
+early (moved behind the usable site at Gate 1). From the reader-first draft: `CURRENT` as a text file, `STATUS.json`, the withheld list
 shown by name, the CSP and JavaScript spikes, the explained figure with silence rules, the
 two-layer navigation, content-only releases.
 
@@ -1022,9 +1291,18 @@ the frozen Edition. Added: the raw-capture job, the rights register, the stock-i
 the claim record rules, the user-notes layer, the stop and lead-time tables, the VPS headroom
 check, timer times set in Eastern time, bulk JSON Lines, and a withdrawal procedure.
 
+Changed at Gate 1 (2026-11-11): Alex approved the plan with one change, usefulness first. The
+first eleven PRs of the Gate 1 draft produced one claim page; now the first six produce the site
+shell and the Explorer at v1 parity on a local build, reading v1's data through the release
+contract. Capture, the vintage store, the rights gate, the agency sources and the claim engine
+keep their scope and rules and follow in tracks B and C. Added by the reorder: the legacy
+converter, the surface and profile checks of the interim data rule (6.1), the build protocol
+(10.1) and M18, which carries the Explorer over to agency data.
+
 ---
 
-Codex check: three rounds (outline, full review, re-check), all read-only. Outline round raised:
+Codex check on the Gate 1 draft (milestone numbers in this paragraph are the old ones, before the
+reorder): three rounds (outline, full review, re-check), all read-only. Outline round raised:
 scope deferral needs explicit Gate 1 approval; locks must freeze more than numbers; a pin fixes
 data, not the computation; capture needs durable storage and original retrieval times; "hidden"
 must mean absent from PUBLIC; same-day refresh is not guaranteed; 26 milestones, not 24; "Python is
@@ -1043,3 +1321,17 @@ criteria assumed monthly data; one "full Report" remnant) → all fixed. Not ado
 done: the earlier critique's Codex run never wrote its full output, so its section-by-section
 answers and top-10 list were never read; and the last four fixes above were not sent back for a
 fourth pass.
+
+Codex check on the Gate 1 reorder (2026-11-11, new milestone numbers): three rounds, all read-only.
+Outline round raised nine points: the base path is not an access boundary; a `public` label and a
+channel list are too weak a gate; CI artefacts, images and build output bypass the reader; early
+pages need catalog, annotation and Query contracts; the converter belongs in Python on the release
+contract; local releases must be separate and immutable; period-aware schema before a monthly
+Explorer; capture delay costs days once D2 and D6 are answered; protections must not expire with
+D2 → all adopted (6.1, M0–M2, M9, `$ATLAS_LOCAL`, M6–M7 startable in parallel). Review of the full
+text raised eight: v1's own data files in the build context; register approval alone seemed to
+re-admit FRED; M5 used a gate built in M6; missing dependencies (M19, M22, M24, M25, M28); capture
+promised three sources but built one; the protocol added stops beyond the brief's four; the budget
+rule let an unfinished milestone count; totals → all adopted. Third round found one ordering fault
+(M2 and M6 both defining `permits()`) → the contract moved to M0. Not adopted: nothing. Not sent
+back: that last fix.

@@ -1,5 +1,5 @@
 ---
-status: proposed (awaiting Gate 1)
+status: accepted (Gate 1, 2026-11-11)
 ---
 
 # Next.js server app on the /missions stack

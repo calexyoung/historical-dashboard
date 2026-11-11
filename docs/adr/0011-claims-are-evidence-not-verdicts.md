@@ -1,5 +1,5 @@
 ---
-status: proposed (awaiting Gate 1)
+status: accepted (Gate 1, 2026-11-11)
 ---
 
 # Claims are records and locked evidence; the site gives no verdict

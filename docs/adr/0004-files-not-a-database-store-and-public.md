@@ -1,5 +1,5 @@
 ---
-status: proposed (awaiting Gate 1)
+status: accepted (Gate 1, 2026-11-11)
 ---
 
 # Files, not a database, split into STORE and PUBLIC
@@ -12,6 +12,11 @@ mounts PUBLIC read-only and nothing else.
 
 A release is staged, checked in full, then promoted by atomically replacing `CURRENT`. A failed run
 changes only `STATUS.json`. Each request reads `CURRENT` once and uses that release throughout.
+
+A third directory, **LOCAL**, holds local-profile releases (v1's interim data, drafts, user notes;
+see ADR 0006). It has the same layout as PUBLIC, each release in it is just as immutable, and it is
+mounted only by a local build, or by staging behind a password. Nothing in LOCAL is ever copied,
+linked, pinned or rolled back into PUBLIC.
 
 ## Considered options
 

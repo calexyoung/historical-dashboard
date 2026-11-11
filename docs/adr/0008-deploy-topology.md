@@ -1,5 +1,5 @@
 ---
-status: proposed (awaiting Gate 1)
+status: accepted (Gate 1, 2026-11-11)
 ---
 
 # Deploy: two containers, a host timer, two base-path builds behind the shared Caddy
@@ -26,3 +26,6 @@ configuration lives outside both repos; this repo ships a snippet and a runbook 
 - One instance only. Two writers never run at once; moving the writer between hosts is a written
   hand-off.
 - Production deploys, the Caddy change and the server environment are Alex's.
+- Each build is given its surface (local, staging or production) explicitly and listens on
+  loopback behind Caddy; a production build refuses any release that is not public-profile
+  (ADR 0006).
