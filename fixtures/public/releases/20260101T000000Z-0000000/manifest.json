@@ -1,0 +1,86 @@
+{
+  "schema_version": "0.1.0",
+  "semantics_version": "0",
+  "release_id": "20260101T000000Z-0000000",
+  "profile": "public",
+  "created": "2026-01-01T00:00:00Z",
+  "rights_register": {
+    "version": "fixture",
+    "sha256": null,
+    "signed": true
+  },
+  "series": {
+    "fx_output_quarterly": {
+      "kind": "stored",
+      "sha256": "3001ee5840f57b7c4f1769376b4ff745d27daadadc0d8110526b63938382ab3c",
+      "channel": "fixture",
+      "rights_status": "public_domain",
+      "representation": "native"
+    },
+    "fx_payrolls_break": {
+      "kind": "stored",
+      "sha256": "fff1c3179455b0711c589d6fb18d4b96b1b258b1cfe4da915502d524a8fa7233",
+      "channel": "fixture",
+      "rights_status": "public_domain",
+      "representation": "native"
+    },
+    "fx_permits_stale": {
+      "kind": "stored",
+      "sha256": "e2d694a574d4fac1b01eaee4119db83b9c03a2b094a385959b51dcc3ca34d762",
+      "channel": "fixture",
+      "rights_status": "public_domain",
+      "representation": "native"
+    },
+    "fx_poverty_rate_annual": {
+      "kind": "stored",
+      "sha256": "198ea8690abef4aa1f1f8bda5e88ffe82866301f0ab2a60df8c794c017839e91",
+      "channel": "fixture",
+      "rights_status": "citation_required",
+      "representation": "native"
+    },
+    "fx_price_index": {
+      "kind": "stored",
+      "sha256": "1dfb3849241f76761e28a8c319d5b0f1ad13a07f66f1325aaf5bd5d1062a1012",
+      "channel": "fixture",
+      "rights_status": "public_domain",
+      "representation": "native"
+    },
+    "fx_price_index_yoy": {
+      "kind": "derived",
+      "sha256": "1dc080b0d6b50ce908f677816182dcde19153c9adeb9ccd5c99c94cf179f5af0",
+      "channel": "fixture",
+      "rights_status": "public_domain",
+      "representation": "native"
+    },
+    "fx_vote_margin": {
+      "kind": "stored",
+      "sha256": "743b46024607906fc85a20bc4ed1a9dfcb6faa7fa23bfe321e16972a1dc9b237",
+      "channel": "fixture",
+      "rights_status": "public_domain",
+      "representation": "native"
+    }
+  },
+  "withheld": [
+    {
+      "key": "fx_exchange_index",
+      "reason": "The licence does not allow redistribution."
+    }
+  ],
+  "checks": {
+    "passed": true,
+    "report": [
+      {
+        "check": "hand-written fixture",
+        "outcome": "pass"
+      }
+    ]
+  },
+  "sources": [
+    {
+      "producer": "Macro Atlas fixture (synthetic)",
+      "via": "fixture",
+      "fetched": null,
+      "outcome": "ok"
+    }
+  ]
+}

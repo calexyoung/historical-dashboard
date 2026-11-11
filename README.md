@@ -47,3 +47,21 @@ make serve                      # http://localhost:8000
 | 8 | Export | Done: chart PNG, all-data CSV, copy link. **Not done:** Parquet (would need a library the page isn't allowed to load). |
 | 9 | CI | `.github/workflows/refresh.yml` runs weekly: fetch → build → check → test → smoke, then commits data and deploys `dist/` to GitHub Pages. |
 
+
+## v2 (in progress, on the `v2` branch)
+
+Macro Atlas v2 is being built on the long-lived `v2` branch (`docs/v2/PLAN.md`, `CONTEXT.md`,
+`docs/adr/`). v1 above is untouched until cutover. Layout:
+
+| Path | What |
+|---|---|
+| `atlas/` | Python: v1's pipeline, plus v2's `rights.py`, `period.py`, `release.py` |
+| `packages/core/` | TypeScript: the one analytical engine (pure) |
+| `site/` | the Next.js app (from M1) |
+| `schema/` | the release contract, `release.schema.json`, and its README |
+| `fixtures/` | the synthetic fixture release |
+| `checks/` | shared tables both languages are tested against |
+| `content/`, `deploy/` | content files and the deploy kit (later milestones) |
+| `var/` | generated releases and the store; git-ignored, never in a Docker build context |
+
+`make v2-setup` installs both toolchains; `make v2-check` runs everything CI runs.

@@ -1,0 +1,107 @@
+{
+  "key": "fx_poverty_rate_annual",
+  "freq": "annual",
+  "representation": "native",
+  "period_start": "2012-01-01",
+  "period_end": "2025-12-31",
+  "observations": [
+    {
+      "period": "2012",
+      "period_start": "2012-01-01",
+      "period_end": "2012-12-31",
+      "value": 15.0,
+      "status": "final"
+    },
+    {
+      "period": "2013",
+      "period_start": "2013-01-01",
+      "period_end": "2013-12-31",
+      "value": 14.8,
+      "status": "final"
+    },
+    {
+      "period": "2014",
+      "period_start": "2014-01-01",
+      "period_end": "2014-12-31",
+      "value": 14.8,
+      "status": "final"
+    },
+    {
+      "period": "2015",
+      "period_start": "2015-01-01",
+      "period_end": "2015-12-31",
+      "value": 13.5,
+      "status": "final"
+    },
+    {
+      "period": "2016",
+      "period_start": "2016-01-01",
+      "period_end": "2016-12-31",
+      "value": 12.7,
+      "status": "final"
+    },
+    {
+      "period": "2017",
+      "period_start": "2017-01-01",
+      "period_end": "2017-12-31",
+      "value": 12.3,
+      "status": "final"
+    },
+    {
+      "period": "2018",
+      "period_start": "2018-01-01",
+      "period_end": "2018-12-31",
+      "value": 11.8,
+      "status": "final"
+    },
+    {
+      "period": "2019",
+      "period_start": "2019-01-01",
+      "period_end": "2019-12-31",
+      "value": 10.5,
+      "status": "final"
+    },
+    {
+      "period": "2020",
+      "period_start": "2020-01-01",
+      "period_end": "2020-12-31",
+      "value": 11.5,
+      "status": "final"
+    },
+    {
+      "period": "2021",
+      "period_start": "2021-01-01",
+      "period_end": "2021-12-31",
+      "value": 11.6,
+      "status": "final"
+    },
+    {
+      "period": "2022",
+      "period_start": "2022-01-01",
+      "period_end": "2022-12-31",
+      "value": 11.5,
+      "status": "final"
+    },
+    {
+      "period": "2023",
+      "period_start": "2023-01-01",
+      "period_end": "2023-12-31",
+      "value": 11.1,
+      "status": "final"
+    },
+    {
+      "period": "2024",
+      "period_start": "2024-01-01",
+      "period_end": "2024-12-31",
+      "value": 10.6,
+      "status": "final"
+    },
+    {
+      "period": "2025",
+      "period_start": "2025-01-01",
+      "period_end": "2025-12-31",
+      "value": 10.4,
+      "status": "final"
+    }
+  ]
+}

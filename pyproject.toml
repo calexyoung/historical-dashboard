@@ -3,10 +3,10 @@ name = "macro-atlas"
 version = "1.0.0"
 description = "Macro Atlas 2000–2026: monthly economic/financial/political series, events, and a self-contained dashboard"
 requires-python = ">=3.11"
-dependencies = ["pandas", "requests", "curl_cffi", "pyyaml", "jinja2", "tzdata"]
+dependencies = ["pandas", "requests", "curl_cffi", "pyyaml", "jinja2", "tzdata", "jsonschema>=4.18", "rfc3339-validator"]
 
 [project.optional-dependencies]
-dev = ["pytest", "playwright"]
+dev = ["pytest", "playwright", "ruff"]
 
 [tool.setuptools]
 packages = ["atlas"]
@@ -17,3 +17,8 @@ atlas = ["*.yaml"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 markers = ["smoke: headless-browser test of dist/index.html (needs network for the Chart.js CDN)"]
+
+[tool.ruff]
+# v2 code only; v1 modules are left as they are until cutover (ADR 0010).
+include = ["atlas/rights.py", "atlas/release.py", "atlas/period.py", "tests/v2/**/*.py", "fixtures/**/*.py"]
+line-length = 100

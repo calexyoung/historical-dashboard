@@ -8,3 +8,11 @@ data/raw/
 .remember/
 .DS_Store
 tests/snapshots/*.png
+node_modules/
+*.tsbuildinfo
+
+# v2: generated releases, the store and staging never enter git (PLAN 6.1).
+# $ATLAS_LOCAL, $ATLAS_PUBLIC and $ATLAS_STORE default to var/local, var/public and var/store.
+# The committed fixture release (fixtures/public) is synthetic and is not ignored.
+/var/
+.next/

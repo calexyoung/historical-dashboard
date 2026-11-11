@@ -1,0 +1,177 @@
+{
+  "key": "fx_payrolls_break",
+  "freq": "monthly",
+  "representation": "native",
+  "period_start": "2024-01-01",
+  "period_end": "2025-12-31",
+  "observations": [
+    {
+      "period": "2024-01",
+      "period_start": "2024-01-01",
+      "period_end": "2024-01-31",
+      "value": 1500,
+      "status": "final"
+    },
+    {
+      "period": "2024-02",
+      "period_start": "2024-02-01",
+      "period_end": "2024-02-29",
+      "value": 1504,
+      "status": "final"
+    },
+    {
+      "period": "2024-03",
+      "period_start": "2024-03-01",
+      "period_end": "2024-03-31",
+      "value": 1509,
+      "status": "final"
+    },
+    {
+      "period": "2024-04",
+      "period_start": "2024-04-01",
+      "period_end": "2024-04-30",
+      "value": 1511,
+      "status": "final"
+    },
+    {
+      "period": "2024-05",
+      "period_start": "2024-05-01",
+      "period_end": "2024-05-31",
+      "value": 1516,
+      "status": "final"
+    },
+    {
+      "period": "2024-06",
+      "period_start": "2024-06-01",
+      "period_end": "2024-06-30",
+      "value": 1522,
+      "status": "final"
+    },
+    {
+      "period": "2024-07",
+      "period_start": "2024-07-01",
+      "period_end": "2024-07-31",
+      "value": 1525,
+      "status": "final"
+    },
+    {
+      "period": "2024-08",
+      "period_start": "2024-08-01",
+      "period_end": "2024-08-31",
+      "value": 1531,
+      "status": "final"
+    },
+    {
+      "period": "2024-09",
+      "period_start": "2024-09-01",
+      "period_end": "2024-09-30",
+      "value": 1534,
+      "status": "final"
+    },
+    {
+      "period": "2024-10",
+      "period_start": "2024-10-01",
+      "period_end": "2024-10-31",
+      "value": 1540,
+      "status": "final"
+    },
+    {
+      "period": "2024-11",
+      "period_start": "2024-11-01",
+      "period_end": "2024-11-30",
+      "value": 1543,
+      "status": "final"
+    },
+    {
+      "period": "2024-12",
+      "period_start": "2024-12-01",
+      "period_end": "2024-12-31",
+      "value": 1549,
+      "status": "final"
+    },
+    {
+      "period": "2025-01",
+      "period_start": "2025-01-01",
+      "period_end": "2025-01-31",
+      "value": 1602,
+      "status": "final"
+    },
+    {
+      "period": "2025-02",
+      "period_start": "2025-02-01",
+      "period_end": "2025-02-28",
+      "value": 1606,
+      "status": "final"
+    },
+    {
+      "period": "2025-03",
+      "period_start": "2025-03-01",
+      "period_end": "2025-03-31",
+      "value": 1611,
+      "status": "final"
+    },
+    {
+      "period": "2025-04",
+      "period_start": "2025-04-01",
+      "period_end": "2025-04-30",
+      "value": 1615,
+      "status": "final"
+    },
+    {
+      "period": "2025-05",
+      "period_start": "2025-05-01",
+      "period_end": "2025-05-31",
+      "value": 1618,
+      "status": "final"
+    },
+    {
+      "period": "2025-06",
+      "period_start": "2025-06-01",
+      "period_end": "2025-06-30",
+      "value": 1624,
+      "status": "final"
+    },
+    {
+      "period": "2025-07",
+      "period_start": "2025-07-01",
+      "period_end": "2025-07-31",
+      "value": 1629,
+      "status": "final"
+    },
+    {
+      "period": "2025-08",
+      "period_start": "2025-08-01",
+      "period_end": "2025-08-31",
+      "value": 1633,
+      "status": "final"
+    },
+    {
+      "period": "2025-09",
+      "period_start": "2025-09-01",
+      "period_end": "2025-09-30",
+      "value": 1636,
+      "status": "final"
+    },
+    {
+      "period": "2025-10",
+      "period_start": "2025-10-01",
+      "period_end": "2025-10-31",
+      "value": 1642,
+      "status": "final"
+    },
+    {
+      "period": "2025-11",
+      "period_start": "2025-11-01",
+      "period_end": "2025-11-30",
+      "value": 1645,
+      "status": "final"
+    },
+    {
+      "period": "2025-12",
+      "period_start": "2025-12-01",
+      "period_end": "2025-12-31",
+      "value": 1651,
+      "status": "final"
+    }
+  ]
+}

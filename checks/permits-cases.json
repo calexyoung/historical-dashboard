@@ -1,0 +1,31 @@
+{
+  "about": "Shared table for the permits(rightsUsed, surface) contract (PLAN 4.2, 6.1; ADR 0006). Run by pytest (tests/v2/test_rights.py) and Vitest (packages/core/src/rights.test.ts) so the two bodies cannot drift. These rows describe M0's default body: allow on the local surface, deny on every other. M6 replaces the body with the rights register table and extends this file.",
+  "lineage": {
+    "agency_direct": [
+      { "origin": "Macro Atlas fixture (synthetic)", "dataset": "fixture", "channel": "fixture", "representation": "native", "permission": "display" }
+    ],
+    "legacy_fred": [
+      { "origin": "U.S. Bureau of Labor Statistics", "dataset": "CPI-U", "channel": "fred", "representation": "legacy_monthly_rounded", "permission": "display" }
+    ],
+    "derived_two_inputs": [
+      { "origin": "Macro Atlas fixture (synthetic)", "dataset": "fixture", "channel": "fixture", "representation": "native", "permission": "redistribute" },
+      { "origin": "S&P Dow Jones Indices", "dataset": "S&P 500", "channel": "yahoo", "representation": "legacy_monthly_rounded", "permission": "redistribute" }
+    ],
+    "empty": []
+  },
+  "cases": [
+    { "name": "local surface allows display of directly sourced data", "lineage": "agency_direct", "surface": "local", "allowed": true },
+    { "name": "local surface allows v1 legacy data (interim rule point 3)", "lineage": "legacy_fred", "surface": "local", "allowed": true },
+    { "name": "local surface allows a derived series with mixed inputs", "lineage": "derived_two_inputs", "surface": "local", "allowed": true },
+    { "name": "staging denies even directly sourced data until the register exists", "lineage": "agency_direct", "surface": "staging", "allowed": false },
+    { "name": "staging denies legacy data", "lineage": "legacy_fred", "surface": "staging", "allowed": false },
+    { "name": "production denies directly sourced data until the register exists", "lineage": "agency_direct", "surface": "production", "allowed": false },
+    { "name": "production denies legacy data", "lineage": "legacy_fred", "surface": "production", "allowed": false },
+    { "name": "production denies a derived series with mixed inputs", "lineage": "derived_two_inputs", "surface": "production", "allowed": false },
+    { "name": "an unknown surface is denied", "lineage": "agency_direct", "surface": "preview", "allowed": false },
+    { "name": "a surface in the wrong case is denied", "lineage": "agency_direct", "surface": "Local", "allowed": false },
+    { "name": "an empty surface is denied", "lineage": "agency_direct", "surface": "", "allowed": false },
+    { "name": "a missing surface is denied", "lineage": "agency_direct", "surface": null, "allowed": false },
+    { "name": "an empty lineage is denied even locally: nothing can be shown without saying where it came from", "lineage": "empty", "surface": "local", "allowed": false }
+  ]
+}

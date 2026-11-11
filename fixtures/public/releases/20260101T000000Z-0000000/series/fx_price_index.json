@@ -1,0 +1,177 @@
+{
+  "key": "fx_price_index",
+  "freq": "monthly",
+  "representation": "native",
+  "period_start": "2024-01-01",
+  "period_end": "2025-12-31",
+  "observations": [
+    {
+      "period": "2024-01",
+      "period_start": "2024-01-01",
+      "period_end": "2024-01-31",
+      "value": 100.0,
+      "status": "final"
+    },
+    {
+      "period": "2024-02",
+      "period_start": "2024-02-01",
+      "period_end": "2024-02-29",
+      "value": 100.4,
+      "status": "final"
+    },
+    {
+      "period": "2024-03",
+      "period_start": "2024-03-01",
+      "period_end": "2024-03-31",
+      "value": 100.9,
+      "status": "final"
+    },
+    {
+      "period": "2024-04",
+      "period_start": "2024-04-01",
+      "period_end": "2024-04-30",
+      "value": 101.1,
+      "status": "final"
+    },
+    {
+      "period": "2024-05",
+      "period_start": "2024-05-01",
+      "period_end": "2024-05-31",
+      "value": 101.6,
+      "status": "final"
+    },
+    {
+      "period": "2024-06",
+      "period_start": "2024-06-01",
+      "period_end": "2024-06-30",
+      "value": 102.0,
+      "status": "final"
+    },
+    {
+      "period": "2024-07",
+      "period_start": "2024-07-01",
+      "period_end": "2024-07-31",
+      "value": 102.3,
+      "status": "final"
+    },
+    {
+      "period": "2024-08",
+      "period_start": "2024-08-01",
+      "period_end": "2024-08-31",
+      "value": 102.9,
+      "status": "final"
+    },
+    {
+      "period": "2024-09",
+      "period_start": "2024-09-01",
+      "period_end": "2024-09-30",
+      "value": 103.2,
+      "status": "final"
+    },
+    {
+      "period": "2024-10",
+      "period_start": "2024-10-01",
+      "period_end": "2024-10-31",
+      "value": 103.8,
+      "status": "final"
+    },
+    {
+      "period": "2024-11",
+      "period_start": "2024-11-01",
+      "period_end": "2024-11-30",
+      "value": 104.1,
+      "status": "final"
+    },
+    {
+      "period": "2024-12",
+      "period_start": "2024-12-01",
+      "period_end": "2024-12-31",
+      "value": 104.5,
+      "status": "final"
+    },
+    {
+      "period": "2025-01",
+      "period_start": "2025-01-01",
+      "period_end": "2025-01-31",
+      "value": 105.0,
+      "status": "final"
+    },
+    {
+      "period": "2025-02",
+      "period_start": "2025-02-01",
+      "period_end": "2025-02-28",
+      "value": 105.2,
+      "status": "final"
+    },
+    {
+      "period": "2025-03",
+      "period_start": "2025-03-01",
+      "period_end": "2025-03-31",
+      "value": null,
+      "status": "missing"
+    },
+    {
+      "period": "2025-04",
+      "period_start": "2025-04-01",
+      "period_end": "2025-04-30",
+      "value": 106.3,
+      "status": "final"
+    },
+    {
+      "period": "2025-05",
+      "period_start": "2025-05-01",
+      "period_end": "2025-05-31",
+      "value": 106.9,
+      "status": "final"
+    },
+    {
+      "period": "2025-06",
+      "period_start": "2025-06-01",
+      "period_end": "2025-06-30",
+      "value": 107.2,
+      "status": "final"
+    },
+    {
+      "period": "2025-07",
+      "period_start": "2025-07-01",
+      "period_end": "2025-07-31",
+      "value": 107.8,
+      "status": "final"
+    },
+    {
+      "period": "2025-08",
+      "period_start": "2025-08-01",
+      "period_end": "2025-08-31",
+      "value": 108.1,
+      "status": "final"
+    },
+    {
+      "period": "2025-09",
+      "period_start": "2025-09-01",
+      "period_end": "2025-09-30",
+      "value": 108.4,
+      "status": "final"
+    },
+    {
+      "period": "2025-10",
+      "period_start": "2025-10-01",
+      "period_end": "2025-10-31",
+      "value": 109.0,
+      "status": "final"
+    },
+    {
+      "period": "2025-11",
+      "period_start": "2025-11-01",
+      "period_end": "2025-11-30",
+      "value": 109.3,
+      "status": "final"
+    },
+    {
+      "period": "2025-12",
+      "period_start": "2025-12-01",
+      "period_end": "2025-12-31",
+      "value": 109.9,
+      "status": "preliminary"
+    }
+  ]
+}

@@ -1,0 +1,121 @@
+{
+  "key": "fx_output_quarterly",
+  "freq": "quarterly",
+  "representation": "native",
+  "period_start": "2022-01-01",
+  "period_end": "2025-12-31",
+  "observations": [
+    {
+      "period": "2022-Q1",
+      "period_start": "2022-01-01",
+      "period_end": "2022-03-31",
+      "value": 510.2,
+      "status": "final"
+    },
+    {
+      "period": "2022-Q2",
+      "period_start": "2022-04-01",
+      "period_end": "2022-06-30",
+      "value": 514.8,
+      "status": "final"
+    },
+    {
+      "period": "2022-Q3",
+      "period_start": "2022-07-01",
+      "period_end": "2022-09-30",
+      "value": 517.3,
+      "status": "final"
+    },
+    {
+      "period": "2022-Q4",
+      "period_start": "2022-10-01",
+      "period_end": "2022-12-31",
+      "value": 521.9,
+      "status": "final"
+    },
+    {
+      "period": "2023-Q1",
+      "period_start": "2023-01-01",
+      "period_end": "2023-03-31",
+      "value": 524.4,
+      "status": "final"
+    },
+    {
+      "period": "2023-Q2",
+      "period_start": "2023-04-01",
+      "period_end": "2023-06-30",
+      "value": 529.0,
+      "status": "final"
+    },
+    {
+      "period": "2023-Q3",
+      "period_start": "2023-07-01",
+      "period_end": "2023-09-30",
+      "value": null,
+      "status": "missing"
+    },
+    {
+      "period": "2023-Q4",
+      "period_start": "2023-10-01",
+      "period_end": "2023-12-31",
+      "value": 536.7,
+      "status": "final"
+    },
+    {
+      "period": "2024-Q1",
+      "period_start": "2024-01-01",
+      "period_end": "2024-03-31",
+      "value": 540.1,
+      "status": "final"
+    },
+    {
+      "period": "2024-Q2",
+      "period_start": "2024-04-01",
+      "period_end": "2024-06-30",
+      "value": 543.6,
+      "status": "final"
+    },
+    {
+      "period": "2024-Q3",
+      "period_start": "2024-07-01",
+      "period_end": "2024-09-30",
+      "value": 547.2,
+      "status": "final"
+    },
+    {
+      "period": "2024-Q4",
+      "period_start": "2024-10-01",
+      "period_end": "2024-12-31",
+      "value": 551.5,
+      "status": "final"
+    },
+    {
+      "period": "2025-Q1",
+      "period_start": "2025-01-01",
+      "period_end": "2025-03-31",
+      "value": 553.9,
+      "status": "final"
+    },
+    {
+      "period": "2025-Q2",
+      "period_start": "2025-04-01",
+      "period_end": "2025-06-30",
+      "value": 558.3,
+      "status": "final"
+    },
+    {
+      "period": "2025-Q3",
+      "period_start": "2025-07-01",
+      "period_end": "2025-09-30",
+      "value": 561.0,
+      "status": "revised"
+    },
+    {
+      "period": "2025-Q4",
+      "period_start": "2025-10-01",
+      "period_end": "2025-12-31",
+      "value": 566.4,
+      "status": "estimate"
+    }
+  ]
+}
