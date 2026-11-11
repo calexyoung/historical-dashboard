@@ -18,7 +18,7 @@ import { Ajv2020, type ErrorObject, type ValidateFunction } from "ajv/dist/2020.
 import addFormats from "ajv-formats";
 import { nextPeriod, periodBounds } from "../period";
 import { releaseSchema, SCHEMA_VERSION } from "./schema.generated";
-import type { CatalogEntry, Release, SeriesFile } from "./types.generated";
+import type { CatalogEntry, Release, SeriesFile, VintageRow } from "./types.generated";
 
 export type * from "./types.generated";
 export { SCHEMA_VERSION };
@@ -44,6 +44,8 @@ export type IssueCode =
   | "hash_mismatch"
   | "manifest_mismatch"
   | "series_mismatch"
+  | "orphan_vintage_file"
+  | "vintage_mismatch"
   | "bad_period"
   | "unordered_periods"
   | "implicit_gap"
@@ -65,7 +67,7 @@ const MANIFEST = "manifest.json";
 const CATALOG = "catalog.json";
 const ANNOTATIONS = "content/annotations.json";
 const REQUIRED_FILES = [MANIFEST, CATALOG, ANNOTATIONS] as const;
-const SERIES_FILE = /^(series|derived)\/([a-z][a-z0-9_]{0,63})\.json$/;
+const SERIES_FILE = /^(series|derived|vintages)\/([a-z][a-z0-9_]{0,63})\.json$/;
 const FOLDERS = ["series", "derived"] as const;
 type Folder = (typeof FOLDERS)[number];
 const KIND_OF_FOLDER = { series: "stored", derived: "derived" } as const;
@@ -149,7 +151,7 @@ function parseStrictJson(text: string): unknown {
 function locate(instancePath: string): [string, string] {
   const parts = instancePath.split("/").slice(1);
   const [head, ...rest] = parts;
-  if ((head === "series" || head === "derived") && rest.length > 0) {
+  if ((head === "series" || head === "derived" || head === "vintages") && rest.length > 0) {
     return [`${head}/${rest[0]}.json`, "/" + rest.slice(1).join("/")];
   }
   const file =
@@ -162,16 +164,18 @@ function locate(instancePath: string): [string, string] {
  *
  * Checks run in stages and stop at the first stage that finds something, so a reader is never
  * shown consequences of a problem instead of the problem: files present and named by the
- * contract, JSON, schema version, schema, then the cross-file rules.
+ * contract, JSON, schema version, schema, the cross-file rules, then the vintage files.
  */
 export function validateRelease(releaseId: string, files: ReleaseFiles): Issue[] {
   const issues: Issue[] = [];
   const has = (code: IssueCode): boolean => issues.some((i) => i.code === code);
   const seriesPaths: Record<Folder, Map<string, string>> = { series: new Map(), derived: new Map() };
+  const vintagePaths = new Map<string, string>();
 
   for (const path of Object.keys(files).sort()) {
     const match = SERIES_FILE.exec(path);
-    if (match) seriesPaths[match[1] as Folder].set(match[2]!, path);
+    if (match && match[1] === "vintages") vintagePaths.set(match[2]!, path);
+    else if (match) seriesPaths[match[1] as Folder].set(match[2]!, path);
     else if (!(REQUIRED_FILES as readonly string[]).includes(path)) {
       issues.push({ code: "unknown_file", path, message: "the release contract does not name this file" });
     }
@@ -182,7 +186,7 @@ export function validateRelease(releaseId: string, files: ReleaseFiles): Issue[]
   if (has("missing_file")) return issues;
 
   const parsed = new Map<string, unknown>();
-  const known = [...REQUIRED_FILES, ...FOLDERS.flatMap((f) => [...seriesPaths[f].values()])];
+  const known = [...REQUIRED_FILES, ...FOLDERS.flatMap((f) => [...seriesPaths[f].values()]), ...vintagePaths.values()];
   for (const path of known) {
     try {
       parsed.set(path, parseStrictJson(decoder.decode(files[path]!)));
@@ -213,6 +217,7 @@ export function validateRelease(releaseId: string, files: ReleaseFiles): Issue[]
     catalog: parsed.get(CATALOG),
     series: collect("series"),
     derived: collect("derived"),
+    vintages: Object.fromEntries([...vintagePaths].map(([key, path]) => [key, parsed.get(path)])),
     annotations: parsed.get(ANNOTATIONS),
   };
   const validate = schemaValidator();
@@ -225,6 +230,8 @@ export function validateRelease(releaseId: string, files: ReleaseFiles): Issue[]
   }
 
   issues.push(...crossFileRules(releaseId, bundle as Release, files, seriesPaths));
+  // A last stage: a vintage file is judged against Series files that are sound.
+  if (issues.length === 0) issues.push(...vintageRules(bundle as Release, files, vintagePaths));
   return issues;
 }
 
@@ -471,6 +478,131 @@ function recipeRules(entries: Map<string, CatalogEntry>, withheld: Set<string>):
         path: CATALOG,
         message: `${key} is derived from withheld ${blocked.join(", ")}`,
       });
+    }
+  }
+  return issues;
+}
+
+/**
+ * An Instant as text that sorts in time order: the fraction, if any, padded to nine digits.
+ * (`...:00Z` and `...:00.5Z` do not sort as written.)
+ */
+export function instantKey(text: string): string {
+  const [whole, fraction = ""] = text.slice(0, -1).split(".");
+  return `${whole}.${fraction.padEnd(9, "0")}`;
+}
+
+/**
+ * vintages/{key}.json against the manifest, the catalog and the Series' own file, then its own
+ * order in time (schema/README.md). Resolving an as-of question from the file is the engine's
+ * job (`resolve`, ADR 0003), not the validator's.
+ */
+function vintageRules(bundle: Release, files: ReleaseFiles, vintagePaths: Map<string, string>): Issue[] {
+  const issues: Issue[] = [];
+  const { manifest } = bundle;
+  const entries = new Map(bundle.catalog.series.map((entry) => [entry.key, entry]));
+  const withheld = new Set(manifest.withheld.map((row) => row.key));
+  const sorted = (times: string[]): boolean => times.every((time, i) => i === 0 || times[i - 1]! <= time);
+
+  for (const [key, row] of Object.entries(manifest.series)) {
+    if (row.vintages_sha256 !== undefined && !vintagePaths.has(key)) {
+      issues.push({ code: "manifest_mismatch", path: MANIFEST, message: `${key}: the manifest names a vintage file the release does not hold` });
+    }
+  }
+  for (const [key, path] of vintagePaths) {
+    const bad = (message: string): void => {
+      issues.push({ code: "vintage_mismatch", path, message });
+    };
+    if (withheld.has(key)) {
+      issues.push({ code: "withheld_present", path, message: `${key} is withheld, so the release may not hold its past values` });
+      continue;
+    }
+    const series = Object.hasOwn(bundle.series, key) ? bundle.series[key] : undefined;
+    const entry = entries.get(key);
+    if (!series || !entry) {
+      issues.push({ code: "orphan_vintage_file", path, message: `${key} has no file under series/` });
+      continue;
+    }
+    const row = Object.hasOwn(manifest.series, key) ? manifest.series[key] : undefined;
+    if (row?.vintages_sha256 === undefined) {
+      issues.push({ code: "manifest_mismatch", path: MANIFEST, message: `${key}: the manifest has no vintages_sha256` });
+    } else if (sha256(files[path]!) !== row.vintages_sha256) {
+      issues.push({ code: "hash_mismatch", path, message: "the file's bytes do not match the manifest's vintages_sha256" });
+    }
+    const doc = bundle.vintages[key]!;
+    if (doc.key !== key) {
+      bad(`key ${quote(doc.key)} is not the file name`);
+      continue;
+    }
+    if (doc.freq !== entry.freq) {
+      bad(`freq ${quote(doc.freq)} is not the catalog's ${quote(entry.freq)}`);
+      continue;
+    }
+
+    const coverage = doc.provider_coverage;
+    if (coverage && instantKey(coverage.from) > instantKey(coverage.to)) bad("provider_coverage ends before it begins");
+    if (!sorted(doc.captures.map((capture) => instantKey(capture.retrieved_at)))) bad("captures are not oldest first");
+    for (const capture of doc.captures) {
+      const [first, last] = capture.scope;
+      if (typeof first === "string" && typeof last === "string" && first > last) {
+        bad(`the scope of the capture at ${capture.retrieved_at} ends before it begins`);
+      }
+    }
+    if (!sorted(doc.metadata.map((line) => instantKey(line.recorded_from)))) bad("the metadata history is not oldest first");
+    const channelOf = new Map(doc.metadata.map((line) => [line.hash, line.metadata.source.channel.via]));
+
+    const current = new Map<string, VintageRow>();
+    const seen = new Set<string>();
+    let before: VintageRow | null = null;
+    for (const version of doc.rows) {
+      const { period } = version;
+      const bounds = periodBounds(doc.freq, period);
+      if (!bounds || bounds.start !== version.period_start || bounds.end !== version.period_end) {
+        bad(`${period}: its dates are not that Period's`);
+      }
+      const start = instantKey(version.recorded_from);
+      if (version.recorded_to !== null && instantKey(version.recorded_to) < start) {
+        bad(`${period}: a version is replaced before it was first held`);
+      }
+      if (version.provider_from === null) {
+        if (version.provider_to !== null || version.provider_precision !== null) {
+          bad(`${period}: a version the Origin did not date carries a provider time`);
+        }
+      } else if (version.provider_precision === null) {
+        bad(`${period}: a version the Origin dated does not say how precisely`);
+      } else if (version.provider_to !== null && instantKey(version.provider_to) < instantKey(version.provider_from)) {
+        bad(`${period}: a version is superseded before the Origin published it`);
+      }
+      const channel = channelOf.get(version.metadata);
+      if (channel === undefined) bad(`${period}: a version names metadata the file does not hold`);
+      else if (channel !== version.channel) bad(`${period}: a version's Channel is not the one its metadata names`);
+      if (before !== null && before.period === period) {
+        if (before.recorded_to === null) bad(`${period}: more than one version is current`);
+        else if (instantKey(before.recorded_to) > start) bad(`${period}: two versions were held at once`);
+      } else if (before !== null && (seen.has(period) || version.period_start < before.period_start)) {
+        bad(`${period}: versions are not in Period order`);
+      }
+      seen.add(period);
+      before = version;
+      if (version.recorded_to === null && !version.deleted) current.set(period, version);
+    }
+
+    // The versions current now are the Series' own file, once its gaps are written out.
+    const listed = new Set<string>();
+    for (const observation of series.observations) {
+      const { period } = observation;
+      listed.add(period);
+      const version = current.get(period);
+      if (!version) {
+        if (observation.value !== null || observation.status !== "missing") {
+          bad(`${period}: series/${key}.json has a value that no current version holds`);
+        }
+      } else if (version.value !== observation.value || version.status !== observation.status) {
+        bad(`${period}: the current version is not what series/${key}.json holds`);
+      }
+    }
+    for (const period of [...current.keys()].filter((p) => !listed.has(p)).sort()) {
+      bad(`${period}: a current version is not in series/${key}.json`);
     }
   }
   return issues;

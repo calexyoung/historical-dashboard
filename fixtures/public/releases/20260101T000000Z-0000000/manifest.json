@@ -1,5 +1,5 @@
 {
-  "schema_version": "0.1.0",
+  "schema_version": "0.2.0",
   "semantics_version": "0",
   "release_id": "20260101T000000Z-0000000",
   "profile": "public",
@@ -15,7 +15,8 @@
       "sha256": "3001ee5840f57b7c4f1769376b4ff745d27daadadc0d8110526b63938382ab3c",
       "channel": "fixture",
       "rights_status": "public_domain",
-      "representation": "native"
+      "representation": "native",
+      "vintages_sha256": "0649e81708501d502f32ae854b1e13b468f2ee9c47b5ae742c9343af8385f11c"
     },
     "fx_payrolls_break": {
       "kind": "stored",
@@ -36,14 +37,16 @@
       "sha256": "198ea8690abef4aa1f1f8bda5e88ffe82866301f0ab2a60df8c794c017839e91",
       "channel": "fixture",
       "rights_status": "citation_required",
-      "representation": "native"
+      "representation": "native",
+      "vintages_sha256": "4d5bca6246eb78aa74f700a2f6747057291cb57284ab2bcc5e40e99ace572ad4"
     },
     "fx_price_index": {
       "kind": "stored",
       "sha256": "1dfb3849241f76761e28a8c319d5b0f1ad13a07f66f1325aaf5bd5d1062a1012",
       "channel": "fixture",
       "rights_status": "public_domain",
-      "representation": "native"
+      "representation": "native",
+      "vintages_sha256": "b33086b71a1dc4059075b22ccd10c21a5910afb3c91074fd79cc376a5416f295"
     },
     "fx_price_index_yoy": {
       "kind": "derived",
