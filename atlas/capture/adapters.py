@@ -237,6 +237,11 @@ class BlsAdapter:
                               "last": observations[-1]["period"] if observations else None}
         return _evidence(scope, {"series": checks}, problems)
 
+    def coverage(self, scope: dict) -> tuple[str, str]:
+        """The first and last calendar day a scope asked about. A Period inside them that the
+        answer does not list is gone; a Period outside them was not asked about (M8)."""
+        return f"{scope['start_year']:04d}-01-01", f"{scope['end_year']:04d}-12-31"
+
     def parse(self, capture: RawCapture) -> NormalizedState:
         scope = capture.evidence.scope
         problems: list[str] = []

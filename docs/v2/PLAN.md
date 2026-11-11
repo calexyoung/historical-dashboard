@@ -278,10 +278,13 @@ $ATLAS_STORE/                         writer-only; never mounted by web
   LOCK                                a second run exits at once with a clear message
   raw/{source}/{yyyy-mm-dd}/{sha256}.gz   exact bytes as fetched; kept for good
   fetchlog.ndjson                     every attempt: retrieval time, request, status, response
-                                      headers, raw hash, state hash, adapter version, paging and
-                                      completeness evidence
+                                      headers, raw hash, adapter version, the register row's
+                                      rights then, paging and completeness evidence
   obslog/{key}.parquet                the observation log (columns below)
   metalog/{key}.ndjson                unit, definition, adjustment, source, rights over time
+  caplog/{key}.ndjson                 every complete capture recorded for the series, with its
+                                      scope and state hash; an unchanged one is a capture
+                                      confirmation (ADR 0022)
   runs.ndjson                         one line per run; drives missed-run detection
   rejected/                           check reports of failed runs
   retired/                            releases withdrawn from PUBLIC (ADR 0006)
@@ -313,7 +316,9 @@ $ATLAS_LOCAL/                         local-profile releases only (section 6.1);
 Observation log columns: `key, period, period_start, period_end, value` (unrounded), `status`,
 `deleted` (tombstone, only from a complete fetch), `provider_from, provider_to,
 provider_precision`, `recorded_from, recorded_to`, `release_id` (the run that wrote the row),
-`channel`, `representation` (`native` or `legacy_monthly_rounded`; never mixed).
+`channel`, `representation` (`native` or `legacy_monthly_rounded`; never mixed). M8 added
+`capture_id` (the capture that opened the row) and `metadata_hash`, keeps `value` as the
+provider's decimal text, and leaves `release_id` and the provider times empty (ADR 0022).
 
 Rules:
 

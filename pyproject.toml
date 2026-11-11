@@ -3,16 +3,32 @@ name = "macro-atlas"
 version = "1.0.0"
 description = "Macro Atlas 2000–2026: monthly economic/financial/political series, events, and a self-contained dashboard"
 requires-python = ">=3.11"
-dependencies = ["pandas", "requests", "curl_cffi", "pyyaml", "jinja2", "tzdata", "jsonschema>=4.18", "rfc3339-validator"]
+dependencies = [
+    "pandas",
+    "requests",
+    "curl_cffi",
+    "pyyaml",
+    "jinja2",
+    "tzdata",
+    "jsonschema>=4.18",
+    "rfc3339-validator",
+    "pyarrow>=26.0.1",
+]
 
 [project.optional-dependencies]
-dev = ["pytest", "playwright", "ruff"]
+dev = [
+    "pytest",
+    "playwright",
+    "ruff",
+    "hypothesis>=6.170.15",
+]
 
 [tool.setuptools]
-packages = ["atlas", "atlas.capture"]
+packages = ["atlas", "atlas.capture", "atlas.vintage"]
 
 [tool.setuptools.package-data]
 atlas = ["*.yaml"]
+"atlas.vintage" = ["*.json"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -20,5 +36,5 @@ markers = ["smoke: headless-browser test of dist/index.html (needs network for t
 
 [tool.ruff]
 # v2 code only; v1 modules are left as they are until cutover (ADR 0010).
-include = ["atlas/rights.py", "atlas/release.py", "atlas/period.py", "atlas/staging.py", "atlas/legacy.py", "atlas/capture/**/*.py", "tests/v2/**/*.py", "fixtures/**/*.py", "deploy/**/*.py"]
+include = ["atlas/rights.py", "atlas/release.py", "atlas/period.py", "atlas/staging.py", "atlas/legacy.py", "atlas/capture/**/*.py", "atlas/vintage/**/*.py", "tests/v2/**/*.py", "fixtures/**/*.py", "deploy/**/*.py"]
 line-length = 100

@@ -65,7 +65,8 @@ runs.ndjson                           two JSON lines per run: started, finished
 
 A fetch-log line holds `capture_id`, `run_id`, `endpoint`, `source` (the register row),
 `origin`, `datasets`, `channel`, `adapter` (name and version), `register` (version and file
-hash), `transport` (`live` or `replay`), `real_bytes` (whether a source served them, now or when
+hash), `rights` (what the register row said then: licence class, attribution and the four
+grants; the vintage store keeps Rights over time from it), `transport` (`live` or `replay`), `real_bytes` (whether a source served them, now or when
 they were recorded), `started_at`, `retrieved_at` (when the last part
 arrived; null if the fetch failed), `outcome`, `evidence` (`complete`, `scope`, `checks`,
 `problems`), `error`, and `parts`. Each part holds the request (method, URL, headers, body),
@@ -77,6 +78,8 @@ files are append-only; a line cut short by a crash is passed over, reported, and
 starts clean.
 
 ## Reading captures back
+
+`atlas replay` builds the vintage store from these files (`docs/method/vintage-store.md`).
 
 `atlas.capture.replay.load_capture(store, line)` returns the bytes (checked against their
 hashes), the recorded evidence and the original retrieval time. `reexamine` judges completeness

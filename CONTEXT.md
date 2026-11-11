@@ -145,7 +145,27 @@ _Avoid_: Validation, health check
 
 **Fetch log**:
 The append-only record of every Capture attempted, with its request, response headers, time and
-Completeness evidence. The Vintage store is rebuilt by replaying it.
+Completeness evidence. The Observation log is built by replaying it.
+
+**Observation log**:
+The record of every version of every Observation of a Series that Macro Atlas has held, each with
+the time it was first held and the time it was replaced.
+_Avoid_: History table, audit log
+
+**Tombstone**:
+The entry in the Observation log that says a Period which was held, and was asked about again,
+was no longer in a complete answer.
+_Avoid_: Deletion, removal
+
+**Capture confirmation**:
+A complete Capture that agreed with what was already held. It is what shows a value was still
+public on that day, for the Periods that Capture asked about.
+_Avoid_: No-op, duplicate fetch
+
+**State hash**:
+A fingerprint of the whole current state of a Series: every Period with its value and Status.
+Two states with the same hash are the same.
+_Avoid_: Checksum, version id
 
 **Capture gap**:
 A stretch of days with no Capture of a Series. An answer that depends on a gap is marked uncertain.

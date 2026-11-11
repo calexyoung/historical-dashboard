@@ -69,8 +69,16 @@ def cmd_capture(argv) -> int:
     return capture_main(argv)
 
 
+def cmd_replay(argv) -> int:
+    from .vintage.cli import main as replay_main  # v2 (PLAN M8): the vintage store; its own options
+
+    return replay_main(argv)
+
+
 def main(argv=None) -> int:
     argv = sys.argv[1:] if argv is None else list(argv)
+    if argv[:1] == ["replay"]:
+        return cmd_replay(argv[1:])
     if argv[:1] == ["capture"]:
         # `atlas capture` is `python -m atlas.capture`, which also runs where v1's pipeline
         # is not installed; its options are parsed there.
@@ -94,6 +102,8 @@ def main(argv=None) -> int:
     r.add_argument("--register", help="another register file to check (default schema/rights-register.json)")
     sub.add_parser("capture", help="v2: fetch rights-cleared agency endpoints and keep the raw bytes "
                                    "(see python -m atlas.capture --help)")
+    sub.add_parser("replay", help="v2: build the vintage store from kept captures, with their "
+                                  "original retrieval times (see python -m atlas replay --help)")
     a = p.parse_args(argv)
     commands = {"fetch": cmd_fetch, "build": cmd_build, "check": cmd_check, "serve": cmd_serve,
                 "legacy-release": cmd_legacy_release, "rights": cmd_rights}

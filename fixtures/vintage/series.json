@@ -1,0 +1,28 @@
+{
+  "format": 1,
+  "about": "The Series the vintage fixture's endpoint is bound to. Invented Series from a made-up Origin; test data only.",
+  "series": [
+    {
+      "key": "fx_price",
+      "freq": "monthly",
+      "endpoint": "fx-bls-shape",
+      "origin_id": "FXPRICE0001",
+      "dataset": "fixture prices",
+      "url": null,
+      "metadata": [
+        {"from": null, "name": "Fixture price index", "unit": "index, 2024-01 = 100", "seasonal_adjustment": "nsa"}
+      ]
+    },
+    {
+      "key": "fx_jobs",
+      "freq": "monthly",
+      "endpoint": "fx-bls-shape",
+      "origin_id": "FXJOBS00001",
+      "dataset": "fixture jobs",
+      "url": null,
+      "metadata": [
+        {"from": null, "name": "Fixture jobs", "unit": "thousands of persons", "seasonal_adjustment": "sa"}
+      ]
+    }
+  ]
+}
