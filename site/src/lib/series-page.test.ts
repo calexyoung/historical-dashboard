@@ -51,7 +51,7 @@ describe("a series page", () => {
     expect(v.figure.takeaway).toBe("Fixture price index was 109.9 in December 2025 (index, 2024-01 = 100), 5.2% higher than a year earlier.");
     expect(v.figure.plots).toHaveLength(1);
     expect(v.figure.tables[0]!.rows).toHaveLength(24);
-    expect(v.figure.sourceLine).toBe("Source: Macro Atlas fixture (synthetic), FX-PRICE · data to Dec 2025 · preliminary");
+    expect(v.figure.sourceLine).toBe("Source: Macro Atlas fixture (synthetic), FX-PRICE, via fixture · data to Dec 2025 · preliminary");
     expect(page("fx_permits_stale").figure.silence?.rule).toBe("stale");
     expect(page("fx_output_quarterly").figure.silence?.rule).toBe("estimate");
     expect(page("fx_payrolls_break").figure.silence?.rule).toBe("break");
@@ -112,7 +112,7 @@ describe("a series whose values may not be shown", () => {
   it("not permitted on this Surface: the same page with no value anywhere in it", () => {
     const v = page("fx_price_index", "production");
     expect(v.state).toBe("not_permitted");
-    expect(v.reason).toMatch(/local surface/);
+    expect(v.reason).toMatch(/rights register is not in force/);
     expect(v.latest).toBeNull();
     expect(v.figure.plots).toEqual([]);
     expect(v.figure.tables).toEqual([]);
