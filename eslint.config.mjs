@@ -6,6 +6,7 @@ export default defineConfig([
   globalIgnores([
     "**/node_modules/**",
     ".venv/**",
+    ".remember/**",
     "var/**",
     // v1 (untouched until cutover, ADR 0010)
     "web/**",
