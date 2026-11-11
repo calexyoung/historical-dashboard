@@ -76,7 +76,7 @@ export function refusal(release: Pick<Release, "manifest" | "catalog" | "series"
   if (surface === "local") return null;
   const { manifest, catalog } = release;
   if (manifest.profile !== "public") {
-    return `the ${surface} surface serves only public-profile releases; this one's profile is "${String(manifest.profile)}"`;
+    return `the ${surface} surface serves only public-profile releases; this one's profile is ${JSON.stringify(manifest.profile)}`;
   }
   if (manifest.rights_register?.signed !== true) {
     return `the ${surface} surface serves only releases built against a signed rights register`;
@@ -91,6 +91,20 @@ export function refusal(release: Pick<Release, "manifest" | "catalog" | "series"
     return `the ${surface} surface never serves v1's legacy representation (${[...legacy].sort().slice(0, 3).join(", ")})`;
   }
   return null;
+}
+
+const POLICY_CODES: ReadonlySet<string> = new Set(["unsigned_register", "legacy_in_public", "draft_in_public"]);
+
+/** The manifest's profile, read leniently from bytes that have not been validated yet. */
+function manifestRefusal(bytes: Uint8Array | undefined, surface: Surface): string | null {
+  let profile: unknown;
+  try {
+    profile = (JSON.parse(new TextDecoder().decode(bytes)) as { profile?: unknown } | null)?.profile;
+  } catch {
+    return null; // not readable as a manifest at all: the validator says how
+  }
+  if (profile === "public") return null;
+  return `the ${surface} surface serves only public-profile releases; this one's profile is ${JSON.stringify(profile) ?? "not given"}`;
 }
 
 async function readFiles(dir: string): Promise<ReleaseFiles | string> {
@@ -131,8 +145,16 @@ export function createReleaseReader(options: {
       return fail("unavailable", id, `release ${id} cannot be read (${code})`);
     }
     if (typeof files === "string") return fail("invalid", id, files);
+    // Before anything else on a public Surface: what the manifest says of itself. A Release that
+    // is not public-profile is refused whether or not the rest of it is well formed.
+    const early = surface === "local" ? null : manifestRefusal(files["manifest.json"], surface);
+    if (early) return fail("refused", id, early);
     const issues = validateRelease(id, files);
     if (issues.length > 0) {
+      // The contract's own profile rules are the same rule seen from the writer's side: a breach
+      // is a refusal (503, no fallback), not a failed refresh.
+      const breach = issues.find((issue) => POLICY_CODES.has(issue.code));
+      if (breach) return fail("refused", id, `${breach.code}: ${breach.message}`);
       const first = issues[0]!;
       const more = issues.length > 1 ? ` (and ${issues.length - 1} more)` : "";
       return fail("invalid", id, `${first.code} in ${first.path}: ${first.message}${more}`);
