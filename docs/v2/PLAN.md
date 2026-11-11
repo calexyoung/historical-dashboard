@@ -320,6 +320,15 @@ provider_precision`, `recorded_from, recorded_to`, `release_id` (the run that wr
 `capture_id` (the capture that opened the row) and `metadata_hash`, keeps `value` as the
 provider's decimal text, and leaves `release_id` and the provider times empty (ADR 0022).
 
+As built in M9 (ADR 0023, `docs/method/release-writer.md`): each release root also has its own
+`LOCK`, taken before the store's; `root.json` (the root's profile and whether its values are an
+agency's or invented), `withdrawn.json`, `trash/` and `.staging/`; release runs are lines marked
+`"job": "release"` in the store's `runs.ndjson`. M9 writes `manifest.json`, `catalog.json`,
+`series/` and `content/annotations.json`; the other files of a release arrive with their
+milestones (`vintages/` M10, `derived/` M11, content M19, `locks/` M20, `search.json` M22,
+`downloads/` M25). A release run does not fetch: `atlas capture`, `atlas replay`, `atlas release`
+run in that order, and one job for the three is M26's.
+
 Rules:
 
 - **A release is immutable once promoted.** Promotion is one atomic replacement of `CURRENT`. A

@@ -75,8 +75,19 @@ def cmd_replay(argv) -> int:
     return replay_main(argv)
 
 
+def cmd_publish(argv) -> int:
+    from .publish.cli import main as publish_main  # v2 (PLAN M9): the release writer; its own options
+
+    return publish_main(argv)
+
+
+PUBLISH_COMMANDS = ("release", "rollback", "pin", "unpin", "withdraw", "doctor")
+
+
 def main(argv=None) -> int:
     argv = sys.argv[1:] if argv is None else list(argv)
+    if argv[:1] and argv[0] in PUBLISH_COMMANDS:
+        return cmd_publish(argv)
     if argv[:1] == ["replay"]:
         return cmd_replay(argv[1:])
     if argv[:1] == ["capture"]:
@@ -104,6 +115,12 @@ def main(argv=None) -> int:
                                    "(see python -m atlas.capture --help)")
     sub.add_parser("replay", help="v2: build the vintage store from kept captures, with their "
                                   "original retrieval times (see python -m atlas replay --help)")
+    for name, text in (("release", "write, check and promote a Release from the vintage store"),
+                       ("rollback", "name an earlier Release in CURRENT"),
+                       ("pin", "keep a Release through retention"), ("unpin", "undo a pin"),
+                       ("withdraw", "take a Series down and retire the Releases that held it"),
+                       ("doctor", "is a release root fit to serve? (--surface production: the preflight)")):
+        sub.add_parser(name, help=f"v2: {text} (see python -m atlas {name} --help)")
     a = p.parse_args(argv)
     commands = {"fetch": cmd_fetch, "build": cmd_build, "check": cmd_check, "serve": cmd_serve,
                 "legacy-release": cmd_legacy_release, "rights": cmd_rights}

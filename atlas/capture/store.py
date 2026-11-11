@@ -119,7 +119,14 @@ def read_fetch_log(store: Path, problems: list[str] | None = None) -> list[dict]
 
 
 def read_runs(store: Path, problems: list[str] | None = None) -> list[dict]:
-    return read_lines(Path(store) / RUNS, problems)
+    """The capture runs. The release writer (M9) keeps its runs in the same file, each line
+    marked ``"job": "release"``; those are not capture runs and are left out here."""
+    return [run for run in read_lines(Path(store) / RUNS, problems)
+            if run.get("job", "capture") == "capture"]
+
+
+def read_release_runs(store: Path, problems: list[str] | None = None) -> list[dict]:
+    return [run for run in read_lines(Path(store) / RUNS, problems) if run.get("job") == "release"]
 
 
 @contextmanager

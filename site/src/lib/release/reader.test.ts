@@ -1,4 +1,4 @@
-import { rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { mkdirSync, renameSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { createReleaseReader, refusal } from "./reader";
@@ -38,9 +38,36 @@ describe("ReleaseReader.current: the promoted Release, validated on open", () =>
     promote(root, A);
     const reader = createReleaseReader({ root, surface: "local" });
     const first = await reader.current();
-    rmSync(dir, { recursive: true }); // gone from disk; the opened release is still served
+    // Not read again: a file that would now fail validation changes nothing.
+    writeFileSync(join(dir, "catalog.json"), "not JSON");
     const second = await reader.current();
     expect(second.ok && first.ok && second.release).toBe(first.ok && first.release);
+  });
+
+  it("goes on serving a pruned release from memory while it is in the trash, so a request under way can finish", async () => {
+    const root = tempRoot();
+    const dir = addRelease(root, { id: A });
+    promote(root, A);
+    const reader = createReleaseReader({ root, surface: "production" });
+    const first = await reader.current(); // the proxy fixes the release id for the request...
+    mkdirSync(join(root, "trash"));
+    renameSync(dir, join(root, "trash", A)); // ...retention prunes it...
+    const again = await reader.open(A); // ...and the page opens that id
+    expect(again.ok && first.ok && again.release).toBe(first.ok && first.release);
+    // Nothing is opened from the trash: a process that never held it does not start to.
+    expect(await createReleaseReader({ root, surface: "production" }).open(A)).toMatchObject({ ok: false, kind: "unavailable" });
+  });
+
+  it("stops serving a release from memory once it has left the root (retired by a withdrawal)", async () => {
+    const root = tempRoot();
+    const dir = addRelease(root, { id: A });
+    promote(root, A);
+    const reader = createReleaseReader({ root, surface: "local" });
+    expect((await reader.current()).ok).toBe(true);
+    rmSync(dir, { recursive: true });
+    expect(await reader.open(A)).toMatchObject({ ok: false, kind: "unavailable", id: A });
+    // Not even as the local Surface's stand-in for a refresh that failed.
+    expect(await reader.current()).toMatchObject({ ok: false, kind: "unavailable" });
   });
 
   it("is unavailable when there is no CURRENT", async () => {

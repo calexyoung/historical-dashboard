@@ -1,6 +1,6 @@
 {
   "format": 1,
-  "about": "The Series the vintage fixture's endpoint is bound to. Invented Series from a made-up Origin; test data only.",
+  "about": "The Series the vintage fixture's endpoint is bound to. Invented Series from a made-up Origin; test data only. \"catalog\" holds what a Release's Catalog needs beyond the declared metadata (Measure kind, Segment, continuity, the staleness and range checks); it is not part of the metadata history, so adding to it revises nothing.",
   "series": [
     {
       "key": "fx_price",
@@ -10,8 +10,25 @@
       "dataset": "fixture prices",
       "url": null,
       "metadata": [
-        {"from": null, "name": "Fixture price index", "unit": "index, 2024-01 = 100", "seasonal_adjustment": "nsa"}
-      ]
+        {
+          "from": null,
+          "name": "Fixture price index",
+          "unit": "index, 2024-01 = 100",
+          "seasonal_adjustment": "nsa"
+        }
+      ],
+      "catalog": {
+        "measure_kind": "index",
+        "unit_kind": "index",
+        "segment": "economy_jobs",
+        "continuity": "discrete",
+        "agg": "mean",
+        "max_lag": "P3M",
+        "range": [
+          50,
+          200
+        ]
+      }
     },
     {
       "key": "fx_jobs",
@@ -21,8 +38,25 @@
       "dataset": "fixture jobs",
       "url": null,
       "metadata": [
-        {"from": null, "name": "Fixture jobs", "unit": "thousands of persons", "seasonal_adjustment": "sa"}
-      ]
+        {
+          "from": null,
+          "name": "Fixture jobs",
+          "unit": "thousands of persons",
+          "seasonal_adjustment": "sa"
+        }
+      ],
+      "catalog": {
+        "measure_kind": "stock",
+        "unit_kind": "count",
+        "segment": "economy_jobs",
+        "continuity": "discrete",
+        "agg": "mean",
+        "max_lag": "P3M",
+        "range": [
+          100000,
+          200000
+        ]
+      }
     }
   ]
 }

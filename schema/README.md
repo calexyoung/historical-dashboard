@@ -31,6 +31,11 @@ TypeScript's types and its copy of the schema are generated: `npm run gen` after
   content/annotations.json           every Annotation, one shape
 ```
 
+Beside `CURRENT` and `releases/` a root written by the release writer (M9) also holds `LOCK`,
+`root.json`, `STATUS.json`, `pins.json`, `withdrawn.json`, `trash/` and `.staging/`. They are the
+writer's own (`docs/method/release-writer.md`) and no part of this contract: a reader needs only
+`CURRENT` and `releases/`.
+
 `{root}` is `$ATLAS_PUBLIC` for public-profile Releases and `$ATLAS_LOCAL` for local-profile
 ones; they default to `var/public` and `var/local`, both git-ignored and outside the Docker build
 context. Any other file in a release directory is an error in v0, so nothing rides along
@@ -140,5 +145,6 @@ defence for the interim data rule (PLAN 6.1). Whether a Series may be shown or h
 Surface is decided by `permits(rightsUsed, surface)` (`atlas/rights.py`,
 `packages/core/src/rights.ts`) over the rights register (`schema/rights-register.json`, ADR 0020). `rights_register.signed` in
 a manifest records which register a writer built against; it does not authorise any Series by
-itself, and a writer may set it only as M9 specifies. The fixture sets it because every value in
+itself. The release writer (M9) sets it true only when that register can be trusted and permits
+every Series the Release publishes for display on production (ADR 0023). The fixture sets it because every value in
 the fixture is invented by this project.

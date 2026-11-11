@@ -12,9 +12,10 @@
  * open: the caller answers 503. Staging is held to production's rule until it has a password
  * that the deploy step can prove (ADR 0015). Only the local Surface has the failed-refresh state.
  *
- * Node only. A Release is immutable once promoted, so a good one is read and validated once.
+ * Node only. A Release is immutable once promoted, so a good one is read and validated once,
+ * and served from memory for as long as it is still in the root.
  */
-import { readdir, readFile } from "node:fs/promises";
+import { readdir, readFile, stat } from "node:fs/promises";
 import { join } from "node:path";
 import type { Surface } from "@macro-atlas/core";
 import {
@@ -180,15 +181,38 @@ export function createReleaseReader(options: {
     return { ok: true, release, refreshFailed: null };
   }
 
-  function open(id: string): Promise<Opened> {
+  /**
+   * Whether a Release this process has in memory may still be served from there. The writer
+   * takes a Release out of `releases/` by one rename. Retention moves it to `trash/`, where it
+   * stays a day: a request that was given its id a moment ago must still be able to finish.
+   * A withdrawal moves it out of the root altogether (ADR 0023), and then a copy in memory
+   * must not outlive it, or a withdrawn value would be served until the process restarts.
+   * Only what is already in memory is served from the trash; nothing is opened from there.
+   */
+  async function stillThere(id: string): Promise<boolean> {
+    for (const folder of ["releases", "trash"]) {
+      try {
+        if ((await stat(join(root, folder, id, "manifest.json"))).isFile()) return true;
+      } catch {
+        // not in this folder
+      }
+    }
+    return false;
+  }
+
+  async function open(id: string): Promise<Opened> {
     if (typeof id !== "string" || !RELEASE_ID.test(id)) {
-      return Promise.resolve(fail("unavailable", null, "that is not a release id"));
+      return fail("unavailable", null, "that is not a release id");
     }
     const held = good.get(id) ?? (lastGood?.id === id ? lastGood : undefined);
     if (held) {
+      if (await stillThere(id)) {
+        good.delete(id);
+        good.set(id, held);
+        return { ok: true, release: held, refreshFailed: null };
+      }
       good.delete(id);
-      good.set(id, held);
-      return Promise.resolve({ ok: true, release: held, refreshFailed: null });
+      if (lastGood?.id === id) lastGood = null;
     }
     const remembered = failed.get(id);
     if (remembered && remembered.until > now()) return Promise.resolve(remembered.failure);
@@ -236,9 +260,10 @@ export function createReleaseReader(options: {
       lastGood = null;
       return opened;
     }
-    if (lastGood) {
+    const standIn = lastGood; // held here: another request may clear lastGood while this one waits
+    if (standIn && (await stillThere(standIn.id))) {
       const { kind, id, reason } = opened;
-      return { ok: true, release: lastGood, refreshFailed: { kind, id, reason } };
+      return { ok: true, release: standIn, refreshFailed: { kind, id, reason } };
     }
     return opened;
   }
