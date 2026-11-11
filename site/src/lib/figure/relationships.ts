@@ -81,6 +81,9 @@ export function scatterDrawing(spec: ScatterSpec): SvgNode {
   );
 }
 
+/** Room at the left for "−1.0" in a font wider than the one this was measured in. */
+const R_LEFT = 42;
+
 /** r from −1 to 1 on the vertical axis, shared by the two drawings below. */
 function rAxis(x0: number, x1: number, y: (r: number) => number): SvgNode[] {
   const out: SvgNode[] = [];
@@ -95,7 +98,7 @@ export type LagSpec = { profile: { lag: number; r: number | null }[]; current: n
 
 /** One bar per lag, up for a positive r and down for a negative one. The lag in hand is in the accent. */
 export function lagDrawing(spec: LagSpec): SvgNode {
-  const [x0, x1, yTop, yBottom] = [34, W - 8, 10, H - 30];
+  const [x0, x1, yTop, yBottom] = [R_LEFT, W - 8, 10, H - 30];
   const lags = spec.profile.map((p) => p.lag);
   const [lo, hi] = [Math.min(...lags), Math.max(...lags)];
   const x = scaleLinear().domain([lo - 0.5, hi + 0.5]).range([x0, x1]);
@@ -131,7 +134,7 @@ export type RollingSpec = { /** One per Period of the window: its first day and 
 
 /** r over the trailing window ending at each Period: a line, broken wherever there is no answer. */
 export function rollingDrawing(spec: RollingSpec): SvgNode {
-  const [x0, x1, yTop, yBottom] = [34, W - 8, 10, H - 30];
+  const [x0, x1, yTop, yBottom] = [R_LEFT, W - 8, 10, H - 30];
   const ms = (date: string) => Date.parse(`${date}T00:00:00Z`);
   const times = spec.points.map((p) => ms(p.date));
   const [t0, t1] = [Math.min(...times), Math.max(...times)];

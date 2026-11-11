@@ -68,8 +68,8 @@ frequency (ADR 0003, `transforms.md`), and may hand nothing out without asking t
 
 See ADR 0014's M5 amendment for script size. A view of eight Series with a second range, marks
 and relationships is drawn in about the same time as before plus the relationships (a few
-milliseconds: at most 28 pairs, 49 lags and one rolling line); `explorer2.test.ts` holds a warm
-draw under 1.5 s. The tables behind the scatter and the rolling line are sent only with
+milliseconds: at most 28 pairs, 49 lags and one rolling line); `explorer2.test.ts` times a warm
+draw (a few hundred milliseconds on a laptop) and fails past 5 s. The tables behind the scatter and the rolling line are sent only with
 `table=1`, as the chart's table is.
 
 ## Considered options
