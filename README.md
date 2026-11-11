@@ -55,7 +55,7 @@ Macro Atlas v2 is being built on the long-lived `v2` branch (`docs/v2/PLAN.md`, 
 
 | Path | What |
 |---|---|
-| `atlas/` | Python: v1's pipeline, plus v2's `rights.py`, `period.py`, `release.py`, `staging.py` and the legacy converter `legacy.py` |
+| `atlas/` | Python: v1's pipeline, plus v2's `rights.py`, `period.py`, `release.py`, `staging.py`, the legacy converter `legacy.py` and the capture kit `capture/` (`docs/method/capture.md`) |
 | `packages/core/` | TypeScript: the one analytical engine (pure) |
 | `site/` | the Next.js app (from M1) |
 | `schema/` | the release contract, `release.schema.json`, and its README |

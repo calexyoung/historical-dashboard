@@ -24,3 +24,6 @@ recession, governance, policy and data_note. Vintages arrive with the VintageSto
 
 To change it, edit the literals in `make_fixture.py`, run `python fixtures/make_fixture.py` and
 commit the result. A test fails if the committed files and the script disagree.
+
+`capture/` holds the capture kit's recorded exchanges, one per first source, also invented: see
+`capture/README.md`.

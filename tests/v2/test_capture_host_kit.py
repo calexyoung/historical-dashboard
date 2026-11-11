@@ -45,9 +45,9 @@ def test_the_code_is_checked_out_at_a_pinned_commit_beside_the_store():
 
 def test_the_capture_step_needs_requests_only_and_no_secret():
     text = (KIT / "capture.yml").read_text()
-    assert "pip install requests==" in text
+    assert text.count(" install ") == 1 and "install requests==" in text  # nothing else
     assert "secrets." not in text
-    assert "python -m atlas.capture" in step("Capture")["run"]
+    assert step("Capture")["run"].strip().endswith("-m atlas.capture")
 
 
 def test_what_was_captured_is_committed_even_when_the_run_failed():

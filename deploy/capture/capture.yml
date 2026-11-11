@@ -1,0 +1,88 @@
+# Macro Atlas interim capture (PLAN 4.7 and M7; ADR 0012, ADR 0021).
+#
+# THIS FILE DOES NOTHING WHERE IT IS. It is kept in the Macro Atlas repository to be copied, by
+# Alex, to `.github/workflows/capture.yml` in a separate PRIVATE repository whose only job is to
+# hold the captures (decision D6). The runbook is deploy/capture/README.md in the Macro Atlas
+# repository. Do not copy it before the rights register rows for its endpoints are signed (D2):
+# until then every run stops at the rights gate, fetches nothing and fails.
+#
+# What a run does: checks out the capture repository (the store) and the Macro Atlas code at the
+# commit named by the repository variable ATLAS_REF, runs `python -m atlas.capture`, and commits
+# the new raw bytes and log lines back to the capture repository. The rights register it obeys is
+# the one at ATLAS_REF.
+name: capture
+
+on:
+  schedule:
+    # GitHub's clock is UTC and knows no daylight saving. Both times fall after the releases
+    # they follow in winter and in summer:
+    - cron: "50 15 * * *" # 10:50 EST / 11:50 EDT: after the 08:30 and 10:00 ET releases
+    - cron: "45 22 * * *" # 17:45 EST / 18:45 EDT: after the Fed's 16:15 ET H.15
+  workflow_dispatch:
+
+permissions:
+  contents: write # to commit the captures to this repository; nothing else
+
+concurrency:
+  group: capture
+  cancel-in-progress: false # a second run waits; it never interrupts one that is writing
+
+jobs:
+  capture:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Check out the store (this repository)
+        uses: actions/checkout@v7
+        with:
+          path: store
+
+      - name: Check out the Macro Atlas code at the pinned commit
+        uses: actions/checkout@v7
+        with:
+          repository: calexyoung/historical-dashboard
+          ref: ${{ vars.ATLAS_REF }}
+          path: atlas
+
+      - name: Install the one dependency
+        run: |
+          python3 -m venv "$RUNNER_TEMP/venv"
+          "$RUNNER_TEMP/venv/bin/pip" install requests==2.34.2
+
+      - name: Capture
+        id: capture
+        continue-on-error: true # what did arrive is committed below before the run is failed
+        working-directory: atlas
+        env:
+          ATLAS_STORE: ${{ github.workspace }}/store
+          ATLAS_CAPTURE_USER_AGENT: ${{ vars.ATLAS_CAPTURE_USER_AGENT }}
+        run: |
+          "$RUNNER_TEMP/venv/bin/python" -m atlas.capture
+
+      - name: Keep what was captured
+        if: always()
+        working-directory: store
+        run: |
+          git config user.name "macro-atlas-capture"
+          git config user.email "macro-atlas-capture@users.noreply.github.com"
+          for path in raw fetchlog.ndjson runs.ndjson; do
+            if [ -e "$path" ]; then git add -- "$path"; fi
+          done
+          if git diff --cached --quiet; then
+            echo "Nothing new to keep."
+            exit 0
+          fi
+          git commit -m "capture $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          for attempt in 1 2 3; do
+            if git push; then exit 0; fi
+            echo "push failed (attempt $attempt); rebasing on what arrived meanwhile"
+            git pull --rebase
+          done
+          echo "::error::The captures were made but could not be pushed. Re-run this job: they are lost when the runner is."
+          exit 1
+
+      - name: Fail if the capture was refused, failed or incomplete
+        if: steps.capture.outcome != 'success'
+        run: |
+          echo "::error::The capture did not end clean. See the Capture step; anything it did fetch has been committed."
+          exit 1
