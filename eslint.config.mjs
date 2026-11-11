@@ -8,6 +8,8 @@ export default defineConfig([
     ".venv/**",
     ".remember/**",
     "var/**",
+    // The site lints itself with Next's rules (site/eslint.config.mjs); `npm run lint` runs both.
+    "site/**",
     // v1 (untouched until cutover, ADR 0010)
     "web/**",
     "dist/**",

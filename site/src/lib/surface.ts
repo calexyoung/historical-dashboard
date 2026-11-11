@@ -8,7 +8,10 @@
  *
  * Pure: no file or network access, and nothing here reads `process.env` by itself.
  */
-import { SURFACES, type Surface } from "@macro-atlas/core";
+import type { Surface } from "@macro-atlas/core";
+
+// Kept as a literal (not imported from core) so next.config.ts can load this file as it is.
+const SURFACES = ["local", "staging", "production"] as const satisfies readonly Surface[];
 
 export const PRODUCTION_BASE_PATH = "/macro-atlas";
 export const STAGING_BASE_PATH = "/macro-atlas-staging";

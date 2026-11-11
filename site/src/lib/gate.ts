@@ -18,6 +18,7 @@ import type { ReleaseReader } from "./release/reader";
 export const RELEASE_HEADER = "x-atlas-release";
 export const REFRESH_FAILED_HEADER = "x-atlas-refresh-failed";
 export const NONCE_HEADER = "x-nonce";
+export const PATH_HEADER = "x-atlas-path";
 
 export type Decision =
   | {
@@ -40,7 +41,7 @@ const LOOPBACK_HOST = /^(localhost|[a-z0-9-]+\.localhost|127\.0\.0\.1|\[::1\])(:
 
 export async function gate(
   config: GateConfig,
-  request: { host: string | null; /** Without the base path. */ pathname: string },
+  request: { host: string | null; /** Without the base path. */ pathname: string; search?: string },
 ): Promise<Decision> {
   const { reader, surface } = config;
   const csp = buildCsp(config.nonce, { dev: config.dev });
@@ -79,6 +80,7 @@ export async function gate(
       [RELEASE_HEADER]: opened.release.id,
       [REFRESH_FAILED_HEADER]: opened.refreshFailed ? JSON.stringify(opened.refreshFailed) : null,
       [NONCE_HEADER]: config.nonce,
+      [PATH_HEADER]: request.pathname + (request.search ?? ""),
       "content-security-policy": csp,
     },
     responseHeaders: security,

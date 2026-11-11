@@ -4,11 +4,11 @@
   "private": true,
   "description": "The Macro Atlas web app (ADR 0001). Reads Releases through the ReleaseReader; never writes one.",
   "scripts": {
-    "dev": "next dev",
+    "dev": "ATLAS_SURFACE=local BASE_PATH=/macro-atlas ATLAS_RELEASE_ROOT=${ATLAS_RELEASE_ROOT:-../fixtures/public} next dev --hostname 127.0.0.1",
     "build": "next build",
     "start": "node scripts/start.mjs",
     "lint": "eslint",
-    "typecheck": "next typegen && tsc --noEmit",
+    "typecheck": "ATLAS_SURFACE=local BASE_PATH=/macro-atlas next typegen && tsc --noEmit",
     "test:built": "vitest run --config vitest.built.config.mts",
     "test:e2e": "playwright test",
     "measure:js": "node scripts/measure-js.mjs"
