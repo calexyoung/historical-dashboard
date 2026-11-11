@@ -206,3 +206,17 @@ describe("a logarithmic axis", () => {
     expect(labels.length).toBeGreaterThanOrEqual(2);
   });
 });
+
+describe("a second run of a Series (the Explorer's compare ranges)", () => {
+  const month = (key: string, values: number[]) => series({ key, name: key, unit: "%", observations: observations("monthly", "2024-01", values) });
+
+  it("takes the style of the Series it is a run of; one whose Series is not in the figure takes the next free place, never a used one", () => {
+    const own = ["a", "b", "c", "d", "e"].map((k, i) => month(k, [i + 1, i + 2]));
+    const runs = own.map((s) => ({ ...s, key: `${s.key}.2`, name: `${s.name} again`, ghost: { of: s.key } }));
+    const orphan = { ...month("f.2", [9, 8]), ghost: { of: "f" } };
+    const figure = renderFigure(spec(), [...own, ...runs, orphan]);
+    const styles = figure.plots[0]!.series;
+    expect(styles.slice(5, 10).map((s) => s.color)).toEqual([1, 2, 3, 4, 5]);
+    expect(styles.at(-1)).toMatchObject({ key: "f.2", color: 6, ghost: true });
+  });
+});

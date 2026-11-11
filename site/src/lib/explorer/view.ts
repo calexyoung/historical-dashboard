@@ -541,7 +541,11 @@ export function explorerView(release: OpenedRelease, surface: Surface, state: Ex
   // A Period's last day, laid over the window, is the day before the next Period's first day is
   // laid: a February that ends on the 28th covers all of the January it is drawn over.
   const dayFrom = (date: string, days: number): string => new Date(Date.parse(`${date}T00:00:00Z`) + days * 86_400_000).toISOString().slice(0, 10);
-  const laidEnd = (date: string): string => dayFrom(laid(dayFrom(date, 1)), -1);
+  // (Two days at the end of a long month can be laid on one day of a shorter one; a Period never ends before it starts.)
+  const laidEnd = (start: string, end: string): string => {
+    const at = dayFrom(laid(dayFrom(end, 1)), -1);
+    return at < laid(start) ? laid(start) : at;
+  };
   const stops =
     start === null
       ? []
@@ -577,7 +581,7 @@ export function explorerView(release: OpenedRelease, surface: Surface, state: Ex
       style: { ...styles.get(ghostKey(g.entry.key))!, ghost: true },
       decimals: Math.max(0, ...values.map(readingDecimals)),
       // Laid over the window; each row keeps its own first day, which is what the readout names.
-      rows: run.raw.map((o) => [o.period, laid(o.period_start), laidEnd(o.period_end), o.value, drawnBy.get(o.period) ?? null, o.period_start]),
+      rows: run.raw.map((o) => [o.period, laid(o.period_start), laidEnd(o.period_start, o.period_end), o.value, drawnBy.get(o.period) ?? null, o.period_start]),
       until: comparedUntil ?? undefined,
       absent: null,
     });

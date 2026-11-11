@@ -64,8 +64,15 @@ const line = (cells: (string | number | null)[]): string => cells.map(cell).join
 /**
  * A comment line: one line, whatever the text holds. A spreadsheet does not know `#` and splits
  * the line at its commas like any other, so no part after a comma may begin as a formula either.
+ * (The line stays a `#` line, not one quoted cell, so that `comment="#"` still skips it.)
  */
-const note = (text: string): string => `# ${text.replace(/\s+/g, " ").trim().replace(/,(\s*)(?=[=+\-@])/g, ",$1'")}`;
+const note = (text: string): string =>
+  `# ${text
+    .replace(/\s+/g, " ")
+    .trim()
+    // No straight double quote, so nothing in the line can open a quoted cell and hide a comma.
+    .replace(/"/g, "”")
+    .replace(/,(\s*)(?=[=+\-@])/g, ",$1'")}`;
 
 /** Read a CSV back into rows of cells (RFC 4180). For tests and for anything that checks a file. */
 export function parseCsv(text: string): string[][] {

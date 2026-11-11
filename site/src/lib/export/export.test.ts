@@ -81,12 +81,17 @@ describe("the CSV of a view", () => {
   it("text that a spreadsheet would run as a formula is written as text, in a row and in a comment line", async () => {
     const root = tempRoot();
     const id = "20260301T000000Z-f0f0f0f";
-    addRelease(root, { id, rename: { key: "fx_price_index", name: "=1+1" }, edit: { fx_output_quarterly: (_file, entry) => void (entry.name = "Output, @SUM(A1)") } });
+    addRelease(root, {
+      id,
+      rename: { key: "fx_price_index", name: "=1+1" },
+      edit: { fx_output_quarterly: (_file, entry) => void (entry.name = "Output, @SUM(A1)"), fx_vote_margin: (_file, entry) => void (entry.name = 'Margin,"=2+2", other') },
+    });
     promote(root, id);
     const opened = await createReleaseReader({ root, surface: "local" }).current();
     if (!opened.ok) throw new Error(opened.reason);
-    const result = exportView(opened.release, "local", state("s=fx_price_index,fx_output_quarterly,fx_exchange_index"), "csv", { address: ADDRESS });
+    const result = exportView(opened.release, "local", state("s=fx_price_index,fx_output_quarterly,fx_exchange_index,fx_vote_margin&mode=pc1"), "csv", { address: ADDRESS });
     if (!result.ok) throw new Error(result.message);
+    expect(result.body).toMatch(/# Not in this file: .*Margin,”=2\+2”, other \(not drawn/); // a name in a comment line: its quotes cannot open a cell
     const rows = table(result.body);
     expect(rows[1]![1]).toBe("'=1+1");
     expect(rows.find((r) => r[0] === "fx_output_quarterly")![1]).toBe("Output, @SUM(A1)"); // quoted whole: one cell, beginning with a letter
