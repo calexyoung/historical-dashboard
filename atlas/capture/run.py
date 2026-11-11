@@ -44,8 +44,9 @@ def endpoints_from_register(table: object) -> list[Endpoint]:
             if not isinstance(entry, dict) or not isinstance(entry.get("id"), str) or not entry["id"]:
                 raise RegisterError(f"{where}: a capture endpoint has no id")
             where = f"{where}, endpoint {entry['id']}"
-            if set(entry) - _ENDPOINT_FIELDS:
-                raise RegisterError(f"{where}: unknown field {sorted(set(entry) - _ENDPOINT_FIELDS)[0]}")
+            extra = set(entry) - _ENDPOINT_FIELDS
+            if extra:
+                raise RegisterError(f"{where}: unknown field {min(extra)}")
             adapter = ADAPTERS.get(entry.get("adapter"))
             if adapter is None:
                 raise RegisterError(f"{where}: there is no adapter called {entry.get('adapter')!r}")
@@ -182,12 +183,14 @@ def _run(store, table, endpoints, transport, register_sha256, hide, sleep, user_
     started = transport.now()
     runs = S.read_runs(store, result.lines)
     fetches = S.read_fetch_log(store, result.lines)
-    kinds = {run.get("transport") for run in runs}
-    if kinds - {transport.kind}:
+    other = next((str(run.get("transport")) for run in runs
+                  if run.get("transport") != transport.kind), None)
+    if other is not None:
         # A store of replayed fixtures is not evidence of what an agency served, and the two
         # must never be mixed.
-        return RunResult(1, [f"REFUSED: this store was written by a {sorted(kinds)[0]} transport "
-                             f"and this run is {transport.kind}. Nothing was fetched."])
+        refusal = (f"REFUSED: this store holds a {other} run and this run is {transport.kind}. "
+                   "Nothing was fetched.")
+        return RunResult(1, [refusal])
     run_id = f"{started.strftime('%Y%m%dT%H%M%SZ')}-{_secrets.token_hex(3)}"
     register = {"version": table["version"], "sha256": register_sha256}
     selected = [endpoint.id for endpoint in endpoints]

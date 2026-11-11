@@ -93,9 +93,9 @@ def _read(path: Path, problems: list[str] | None) -> list[dict]:
             continue
         try:
             record = json.loads(line)
-            if not isinstance(record, dict):
-                raise ValueError("not an object")
         except ValueError:
+            record = None
+        if not isinstance(record, dict):
             if problems is not None:
                 problems.append(f"{path.name} line {number} is not whole and is passed over")
             continue
