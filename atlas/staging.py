@@ -38,13 +38,30 @@ def _check_id(release_id: str) -> None:
         raise PromotionRefused(f"{release_id!r} is not a release id")
 
 
+def _no_links(root: Path) -> None:
+    """The staging area and ``releases/`` are real directories inside the root.
+
+    A link in their place would let a Release be written or promoted somewhere else: into the
+    store, or into a public root (PLAN 6.1 point 2). Checked before anything is written.
+    """
+    for name in (STAGING, "releases"):
+        path = root / name
+        if path.is_symlink() or (path.exists() and not path.is_dir()):
+            raise PromotionRefused(f"{path} is a link or not a directory; a release root holds real directories only")
+        if path.exists() and path.resolve() != root.resolve() / name:
+            raise PromotionRefused(f"{path} is reached through a link; a release root holds real directories only")
+
+
 def stage(root: Path, release_id: str) -> Path:
     """An empty directory to build ``release_id`` in. Its name is the release id."""
     root = Path(root)
     _check_id(release_id)
+    _no_links(root)
     if (root / "releases" / release_id).exists():
         raise PromotionRefused(f"release {release_id} is already promoted; a release is never rewritten")
     directory = root / STAGING / release_id
+    if directory.is_symlink():
+        raise PromotionRefused(f"{directory} is a link; a release is staged in a real directory")
     if directory.exists():
         shutil.rmtree(directory)
     directory.mkdir(parents=True)
@@ -101,7 +118,8 @@ def promote(root: Path, release_id: str, *, profile: str) -> Path:
     staged = root / STAGING / release_id
     target = root / "releases" / release_id
     try:
-        if not staged.is_dir():
+        _no_links(root)
+        if staged.is_symlink() or not staged.is_dir():
             raise PromotionRefused(f"release {release_id} has not been staged")
         if target.exists():
             raise PromotionRefused(f"release {release_id} is already promoted; a release is never rewritten")

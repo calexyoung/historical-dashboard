@@ -59,7 +59,8 @@ Details that decide edge cases:
 - **`rebase`** needs a base above zero. With no window value at all, or a first window value that
   is zero or negative, the Transform is **unavailable** and says why: an index on a negative base
   turns every sign around. The base Period and value are part of the answer.
-- **`z`** is unavailable with no window values or when every window value is the same (*sd* = 0).
+- **`z`** is unavailable with no window values or when every window value is the same (*sd* = 0;
+  this is asked of the values directly, since a rounded mean of identical decimals is not exact).
   The mean, *sd* and *n* are part of the answer. Each Observation counts once, whatever the
   length of its Period or of its hold.
 - **`pc1`** looks back one year by counting Periods at the native frequency: 12 for monthly, 4 for
@@ -84,9 +85,10 @@ them inherits that.
 `site/src/lib/legacy/parity.test.ts` converts v1's committed output with
 `atlas legacy-release` into a temporary directory, runs every one of the 126 Series through all
 six Transforms over three recorded windows (`checks/v1-parity-windows.json`), and compares each
-answer with what v1's own `web/stats.js` gives when driven the way v1's `app.js` drove it. The
-test fails on any difference that is not one of the deliberate ones below, and it checks each
-deliberate one against v1's own function applied at the Series' real cadence.
+answer with what v1's own `web/stats.js` gives when driven the way v1's `app.js` drove it. Which
+Observations belong to each window is worked out from v1's own list of months, not taken from
+the engine. The test fails on any difference that is not one of the deliberate ones below, and
+it checks each deliberate one against v1's own function applied at the Series' real cadence.
 
 | | Where v2 differs from v1, on purpose | Why |
 |---|---|---|

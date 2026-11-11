@@ -170,6 +170,12 @@ export function transform(
     case "z": {
       const n = present.length;
       if (n === 0) return unavailable("no_values", "there is no value in the window");
+      // Identical values have no deviation. Asked directly, because a sum of decimals can
+      // round the mean away from the values and invent one.
+      const first = all[present[0]!]!.value!;
+      if (present.every((i) => all[i]!.value === first)) {
+        return unavailable("no_variation", "every value in the window is the same, so there is no deviation to measure");
+      }
       let sum = 0;
       for (const i of present) sum += all[i]!.value!;
       const mean = sum / n;

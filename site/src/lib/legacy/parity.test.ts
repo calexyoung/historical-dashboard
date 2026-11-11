@@ -76,6 +76,10 @@ type Tally = {
   deliberate: Record<Deliberate, number>;
   /** D5: months where v1 showed a repeated (filled) value and v2 has no row or an explicit gap. */
   plotFill: number;
+  /** D4: months of approval that v1 made by repeating a quarter. */
+  approvalMonths: number;
+  /** Series x windows whose membership was checked against v1's own month list. */
+  windows: number;
   /** D6: `log` values compared through exp(v2) = v1. */
   logMapped: number;
   unexplained: string[];
@@ -89,6 +93,8 @@ function compare(release: OpenedRelease, DB: V1Data, Stats: V1Stats): Tally {
     equal: 0,
     deliberate: { D1: 0, D2: 0, D3: 0, D4: 0 },
     plotFill: 0,
+    approvalMonths: 0,
+    windows: 0,
     logMapped: 0,
     unexplained: [],
     wronglyFixed: [],
@@ -109,6 +115,30 @@ function compare(release: OpenedRelease, DB: V1Data, Stats: V1Stats): Tally {
       if (!members.ok) throw new Error(`${key}: lin is unavailable`);
       const at = members.observations.map((o) => Math.max(i0, page.MI[o.period_start.slice(0, 7)]!));
       const native = members.observations.map((o) => o.value);
+
+      // Which Observations ought to be there is worked out from v1's own month list and the
+      // written rule, not taken from the engine: a dropped Observation must not pass as "fill".
+      const v1Months = DB.series[key]!.d;
+      const inWindow = v1Months.filter((m) => m >= w.from && m <= w.to);
+      let expected = inWindow;
+      if (key === "approval") {
+        expected = inWindow.filter((m) => [1, 4, 7, 10].includes(Number(m.slice(5)))); // one per quarter
+      } else if (entry.continuity === "held") {
+        const standing = v1Months.filter((m) => m < w.from).at(-1);
+        if (standing !== undefined && !v1Months.includes(w.from)) expected = [standing, ...inWindow];
+      }
+      const got = members.observations.filter((o) => o.value !== null).map((o) => o.period_start.slice(0, 7));
+      if (got.length !== expected.length || got.some((m, n) => m !== expected[n])) {
+        tally.unexplained.push(`${key} [${w.from}..${w.to}]: the observations in the window are not the ones v1 holds there`);
+      }
+      const v1Has = new Set(v1Months);
+      for (const o of members.observations) {
+        if (o.value === null && v1Has.has(o.period_start.slice(0, 7))) {
+          tally.unexplained.push(`${key} [${w.from}..${w.to}] ${o.period}: a gap where v1 has a value`);
+        }
+      }
+      const observed = page.observed(key);
+      tally.windows++;
       const onQuarters = [1, 4, 7, 10].includes(Number(w.from.slice(5))) && [3, 6, 9, 12].includes(Number(w.to.slice(5)));
 
       for (const name of TRANSFORMS) {
@@ -117,9 +147,15 @@ function compare(release: OpenedRelease, DB: V1Data, Stats: V1Stats): Tally {
         const v2Values = v2.ok ? v2.observations.map((o) => o.value) : native.map(() => null);
         const where = `${key} ${name} [${w.from}..${w.to}]`;
 
-        // D5: rows v1 showed that are not Observations (count only; v2 has no such rows).
+        // Rows v1 showed that are not Observations. Each must be demonstrably a repeated value:
+        // a month v1 itself holds no value for (D5), or one of approval's extra months (D4).
         const memberMonths = new Set(at);
-        for (let i = i0; i <= i1; i++) if (v1[i] != null && !memberMonths.has(i)) tally.plotFill++;
+        for (let i = i0; i <= i1; i++) {
+          if (v1[i] == null || memberMonths.has(i)) continue;
+          if (observed[i] === null) tally.plotFill++;
+          else if (key === "approval") tally.approvalMonths++;
+          else tally.unexplained.push(`${where}: v1 answers for an observation the engine leaves out`);
+        }
 
         let differs = false;
         members.observations.forEach((o, n) => {
@@ -236,6 +272,7 @@ describe("the six transforms match v1's stats.js for every v1 series", () => {
 
   it("has no difference from v1 that is not a listed, deliberate fix", () => {
     expect(tally.unexplained).toEqual([]);
+    expect(tally.windows).toBe(126 * 3); // every series, every window: membership checked against v1's months
     expect(tally.compared).toBeGreaterThan(100_000);
   });
 
@@ -246,6 +283,7 @@ describe("the six transforms match v1's stats.js for every v1 series", () => {
   it("each listed difference really occurs, so the list in transforms.md is not stale", () => {
     for (const cls of ["D1", "D2", "D3", "D4"] as const) expect(tally.deliberate[cls], cls).toBeGreaterThan(0);
     expect(tally.plotFill, "D5").toBeGreaterThan(0);
+    expect(tally.approvalMonths, "D4 months").toBeGreaterThan(0);
     expect(tally.logMapped, "D6").toBeGreaterThan(0);
     const doc = readFileSync(join(REPO, "docs", "method", "transforms.md"), "utf8");
     for (const cls of ["D1", "D2", "D3", "D4", "D5", "D6"]) expect(doc).toContain(`**${cls}**`);
