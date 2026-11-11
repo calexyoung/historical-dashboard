@@ -261,15 +261,15 @@ describe("series pages, /data/{key} (PLAN section 3, M3)", () => {
     for (const absent of ["data-latest", "data-figure-table", 'role="img"']) expect(html).not.toContain(absent);
   });
 
-  // A public-profile release on the production surface is served (200), but until the rights
-  // register is in force (M6) the gate permits no value there. This is not the 503 a
+  // A public-profile release on the production surface is served (200), but until Alex signs
+  // rows of the rights register (ADR 0020) the gate permits no value there. This is not the 503 a
   // local-profile release gets: the page exists and says why it holds no value.
   it.each(["fx_price_index", "fx_output_quarterly", "fx_vote_margin", "fx_price_index_yoy"])("on the production surface %s is named, with the reason, and not one value", async (key) => {
     const response = await get(production.url(`/data/${key}`));
     expect(response.status).toBe(200);
     const html = await response.text();
     expect(html).toContain("Not shown here");
-    expect(html).toContain("the rights register is not in force yet");
+    expect(html).toContain("(macro-atlas-fixture) is not signed, so it is not permitted on the production surface");
     for (const absent of ["data-latest", "data-figure-table", 'role="img"', "data-takeaway", "data-silence"]) expect(html, absent).not.toContain(absent);
     // Values that exist only in the fixture's series files.
     for (const value of ["109.9", "104.5", "566.4", "510.2", "5.167", "-1.5<"]) expect(html, value).not.toContain(value);

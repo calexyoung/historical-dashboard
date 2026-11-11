@@ -1,0 +1,145 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mydashboards.co/macro-atlas/schema/rights-register.schema.json",
+  "title": "RightsRegister",
+  "description": "The shape of schema/rights-register.json, the rights register (PLAN 6, M6; ADR 0006, ADR 0020). The gate's own rules (who may sign, real dates, rows that may not overlap, channels that take no row) are in atlas/rights.py and packages/core/src/rights.ts and are tested by checks/permits-cases.json.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["format", "version", "about", "cleared_intermediaries", "rows"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "format": { "description": "The shape of this file. A gate refuses a format it does not know.", "const": 1 },
+    "version": { "description": "Changed whenever a row or a decision changes. A Release records it with the file's SHA-256.", "type": "string", "minLength": 1 },
+    "about": { "type": "string" },
+    "cleared_intermediaries": {
+      "description": "Intermediary Channels cleared by a dated amendment to ADR 0006 that Alex approved. A signed row alone does not clear one (PLAN 6.1, point 4).",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["channel", "adr_0006_amendment", "approved_by"],
+        "properties": {
+          "channel": { "type": "string", "minLength": 1 },
+          "adr_0006_amendment": { "$ref": "#/$defs/date" },
+          "approved_by": { "const": "Alex" }
+        }
+      }
+    },
+    "rows": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "oneOf": [{ "$ref": "#/$defs/originRow" }, { "$ref": "#/$defs/channelRow" }] }
+    }
+  },
+  "$defs": {
+    "date": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" },
+    "grants": {
+      "display": { "description": "Show on a public page.", "type": "boolean" },
+      "redistribute": { "description": "Offer as a download or through the API.", "type": "boolean" },
+      "store": { "description": "Keep what the source serves in the capture store.", "type": "boolean" },
+      "ml_use": { "description": "Describe as usable for model training.", "type": "boolean" }
+    },
+    "proposal": {
+      "description": "What the builder proposes, with the reason. It permits nothing.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["display", "redistribute", "store", "ml_use", "note"],
+      "properties": {
+        "display": { "$ref": "#/$defs/grants/display" },
+        "redistribute": { "$ref": "#/$defs/grants/redistribute" },
+        "store": { "$ref": "#/$defs/grants/store" },
+        "ml_use": { "$ref": "#/$defs/grants/ml_use" },
+        "note": { "type": "string", "minLength": 1 }
+      }
+    },
+    "decision": {
+      "description": "Alex's decision. null until he signs. Only a signed decision permits anything on a public Surface.",
+      "anyOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["display", "redistribute", "store", "ml_use", "signed_by", "signed_on"],
+          "properties": {
+            "display": { "$ref": "#/$defs/grants/display" },
+            "redistribute": { "$ref": "#/$defs/grants/redistribute" },
+            "store": { "$ref": "#/$defs/grants/store" },
+            "ml_use": { "$ref": "#/$defs/grants/ml_use" },
+            "signed_by": { "const": "Alex" },
+            "signed_on": { "$ref": "#/$defs/date" },
+            "note": { "type": "string" }
+          }
+        }
+      ]
+    },
+    "terms": {
+      "description": "One page of terms and what was read there.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["url", "read_on", "how", "quotes"],
+      "properties": {
+        "url": { "type": "string", "pattern": "^https://" },
+        "read_on": { "description": "The date the page was read; null when it was not.", "anyOf": [{ "$ref": "#/$defs/date" }, { "type": "null" }] },
+        "how": {
+          "description": "page: the quotations are from the page's own text as fetched. extract: read through a tool that returns short extracts, so the wording is to be checked against the page before signing. not_read: the page could not be read.",
+          "enum": ["page", "extract", "not_read"]
+        },
+        "quotes": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "note": { "type": "string" }
+      }
+    },
+    "licenceClass": { "enum": ["public_domain", "cc_by", "citation_required", "permission_required", "no_redistribution", "unknown"] },
+    "common": {
+      "id": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
+      "name": { "type": "string", "minLength": 1 },
+      "used_for": { "description": "What the plan takes from this source, and when.", "type": "string", "minLength": 1 },
+      "terms": { "type": "array", "items": { "$ref": "#/$defs/terms" } },
+      "terms_note": { "description": "Why a row has no terms page.", "type": "string" },
+      "attribution": { "anyOf": [{ "type": "string", "minLength": 1 }, { "type": "null" }] },
+      "open_questions": { "type": "array", "items": { "type": "string", "minLength": 1 } }
+    },
+    "originRow": {
+      "title": "OriginRow",
+      "description": "The terms of one Origin, for all of its datasets or for those listed. Two rows may not cover the same Origin and dataset.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "name", "origins", "datasets", "used_for", "terms", "licence_class", "attribution", "proposal", "open_questions", "decision"],
+      "properties": {
+        "id": { "$ref": "#/$defs/common/id" },
+        "kind": { "const": "origin" },
+        "name": { "$ref": "#/$defs/common/name" },
+        "origins": { "description": "The producer names this row covers, exactly as a Catalog entry writes them.", "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+        "datasets": { "anyOf": [{ "const": "*" }, { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } }] },
+        "used_for": { "$ref": "#/$defs/common/used_for" },
+        "terms": { "$ref": "#/$defs/common/terms" },
+        "terms_note": { "$ref": "#/$defs/common/terms_note" },
+        "licence_class": { "$ref": "#/$defs/licenceClass" },
+        "attribution": { "$ref": "#/$defs/common/attribution" },
+        "proposal": { "$ref": "#/$defs/proposal" },
+        "open_questions": { "$ref": "#/$defs/common/open_questions" },
+        "decision": { "$ref": "#/$defs/decision" }
+      }
+    },
+    "channelRow": {
+      "title": "ChannelRow",
+      "description": "The terms of one intermediary Channel. A value that came through it needs this row and its Origin's row.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "name", "channel", "used_for", "terms", "licence_class", "attribution", "proposal", "open_questions", "decision"],
+      "properties": {
+        "id": { "$ref": "#/$defs/common/id" },
+        "kind": { "const": "channel" },
+        "name": { "$ref": "#/$defs/common/name" },
+        "channel": { "description": "The Channel as a Catalog entry writes it (source.channel.via).", "type": "string", "minLength": 1 },
+        "used_for": { "$ref": "#/$defs/common/used_for" },
+        "terms": { "$ref": "#/$defs/common/terms" },
+        "terms_note": { "$ref": "#/$defs/common/terms_note" },
+        "licence_class": { "$ref": "#/$defs/licenceClass" },
+        "attribution": { "$ref": "#/$defs/common/attribution" },
+        "proposal": { "$ref": "#/$defs/proposal" },
+        "open_questions": { "$ref": "#/$defs/common/open_questions" },
+        "decision": { "$ref": "#/$defs/decision" }
+      }
+    }
+  }
+}

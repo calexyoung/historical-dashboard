@@ -53,6 +53,16 @@ def cmd_legacy_release(a) -> int:
     return legacy.main()
 
 
+def cmd_rights(a) -> int:
+    from pathlib import Path
+
+    from . import rights  # v2 (PLAN M6): the rights register; reads one file, fetches nothing
+
+    status, text = rights.report(Path(a.register) if a.register else None)
+    print(text, file=sys.stderr if status else sys.stdout)
+    return status
+
+
 def main(argv=None) -> int:
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
     p = argparse.ArgumentParser(prog="atlas")
@@ -69,9 +79,11 @@ def main(argv=None) -> int:
         "legacy-release",
         help="v2: convert v1's committed output into a local-profile release under $ATLAS_LOCAL",
     )
+    r = sub.add_parser("rights", help="v2: list the rights register, each row's proposal and what is signed")
+    r.add_argument("--register", help="another register file to check (default schema/rights-register.json)")
     a = p.parse_args(argv)
     commands = {"fetch": cmd_fetch, "build": cmd_build, "check": cmd_check, "serve": cmd_serve,
-                "legacy-release": cmd_legacy_release}
+                "legacy-release": cmd_legacy_release, "rights": cmd_rights}
     return commands[a.cmd](a)
 
 

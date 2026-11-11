@@ -138,7 +138,7 @@ Checks run in stages and stop at the first stage that reports something.
 **A valid Release is not thereby permitted anywhere.** The last three rules are a second line of
 defence for the interim data rule (PLAN 6.1). Whether a Series may be shown or handed out on a
 Surface is decided by `permits(rightsUsed, surface)` (`atlas/rights.py`,
-`packages/core/src/rights.ts`) and, from M6, by the rights register. `rights_register.signed` in
+`packages/core/src/rights.ts`) over the rights register (`schema/rights-register.json`, ADR 0020). `rights_register.signed` in
 a manifest records which register a writer built against; it does not authorise any Series by
 itself, and a writer may set it only as M9 specifies. The fixture sets it because every value in
 the fixture is invented by this project.

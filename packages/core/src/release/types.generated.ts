@@ -175,7 +175,7 @@ export interface Manifest {
 export interface RightsRegisterRef {
   version: string;
   /**
-   * Hash of the register file at that version; null before the register exists (M6).
+   * SHA-256 of the bytes of schema/rights-register.json at that version (ADR 0020); null in a Release built without the register (the legacy converter, the fixture).
    */
   sha256: Sha256 | null;
   signed: boolean;

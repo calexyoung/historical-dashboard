@@ -7,7 +7,7 @@ The TypeScript twin is ``packages/core/src/release``; both run ``checks/release-
 report the same issue codes.
 
 Structural validity is not authorisation. Whether a Series may appear on a Surface is decided by
-``atlas.rights.permits`` and, from M6, the rights register. The profile rules here (a public
+``atlas.rights.permits`` over the rights register. The profile rules here (a public
 Release holds no legacy data, no drafts, and names a signed register) are a second, independent
 line of defence for the interim data rule (PLAN 6.1).
 """

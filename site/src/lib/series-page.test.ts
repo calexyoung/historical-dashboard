@@ -112,7 +112,7 @@ describe("a series whose values may not be shown", () => {
   it("not permitted on this Surface: the same page with no value anywhere in it", () => {
     const v = page("fx_price_index", "production");
     expect(v.state).toBe("not_permitted");
-    expect(v.reason).toMatch(/rights register is not in force/);
+    expect(v.reason).toMatch(/rights register row for Macro Atlas fixture \(synthetic\) \(macro-atlas-fixture\) is not signed/);
     expect(v.latest).toBeNull();
     expect(v.figure.plots).toEqual([]);
     expect(v.figure.tables).toEqual([]);
