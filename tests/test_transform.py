@@ -136,3 +136,52 @@ def test_fallback_source_used_when_primary_fails(monkeypatch):
     cat = [{"key": "x", "source": "csv_url", "id": "X", "fallback": {"source": "fred", "id": "OLD"}}]
     raw, failures, seeded = B.fetch_all(cat)
     assert raw["x"] == [("2020-01-01", 1.0)] and not failures and seeded["x"].startswith("fallback fred OLD")
+
+
+def test_parse_yahoo_uses_bar_offset_not_current_offset():
+    # Real ^GSPC bars: Mar 2009 starts 05:00 UTC (EST), Apr 2009 starts 04:00 UTC (EDT).
+    # Fetched in winter, meta.gmtoffset is -18000; applying it to the April bar gave Mar 31 and
+    # mislabelled April's close as March (spx 2009-03 = 872.81 instead of 797.87).
+    payload = {"chart": {"result": [{
+        "meta": {"gmtoffset": -18000, "exchangeTimezoneName": "America/New_York"},
+        "timestamp": [1235883600, 1238558400],
+        "indicators": {"quote": [{"close": [797.87, 872.81]}]},
+    }]}}
+    assert parse_yahoo_json(payload, "^GSPC") == [("2009-03-01", 797.87), ("2009-04-01", 872.81)]
+
+
+@pytest.mark.parametrize("current_offset", [-18000, -14400])  # fetched in winter (EST) or summer (EDT)
+def test_parse_yahoo_month_independent_of_fetch_season(current_offset):
+    def payload(ts, closes):
+        return {"chart": {"result": [{
+            "meta": {"gmtoffset": current_offset, "exchangeTimezoneName": "America/New_York"},
+            "timestamp": ts, "indicators": {"quote": [{"close": closes}]}}]}}
+    # 2026-10-01 00:00 EDT and 2026-11-01 00:00 EDT (DST ends later that day): each keeps its own month
+    assert parse_yahoo_json(payload([1790827200, 1793505600], [1.0, 2.0]), "^GSPC") == [
+        ("2026-10-01", 1.0), ("2026-11-01", 2.0)]
+    # a live bar on 2026-11-09 (EST) dedupes into November
+    assert parse_yahoo_json(payload([1790827200, 1793505600, 1794200400], [1.0, 2.0, 3.0]), "^GSPC") == [
+        ("2026-10-01", 1.0), ("2026-11-01", 3.0)]
+
+
+def test_parse_yahoo_asian_and_utc_zones():
+    tokyo = {"chart": {"result": [{"meta": {"gmtoffset": 32400, "exchangeTimezoneName": "Asia/Tokyo"},
+             "timestamp": [1580482800], "indicators": {"quote": [{"close": [5.0]}]}}]}}  # 2020-02-01 00:00 JST
+    btc = {"chart": {"result": [{"meta": {"gmtoffset": 0, "exchangeTimezoneName": "UTC"},
+           "timestamp": [1580515200], "indicators": {"quote": [{"close": [6.0]}]}}]}}  # 2020-02-01 00:00 UTC
+    assert parse_yahoo_json(tokyo, "^N225") == [("2020-02-01", 5.0)]
+    assert parse_yahoo_json(btc, "BTC-USD") == [("2020-02-01", 6.0)]
+
+
+@pytest.mark.parametrize("zone", [None, ""])
+def test_parse_yahoo_missing_zone_falls_back_to_offset(zone):
+    payload = {"chart": {"result": [{"meta": {"gmtoffset": 32400, "exchangeTimezoneName": zone},
+               "timestamp": [1580482800], "indicators": {"quote": [{"close": [5.0]}]}}]}}
+    assert parse_yahoo_json(payload, "^N225") == [("2020-02-01", 5.0)]
+
+
+def test_parse_yahoo_unknown_zone_is_an_error():
+    payload = {"chart": {"result": [{"meta": {"gmtoffset": -18000, "exchangeTimezoneName": "Invalid/Zone"},
+               "timestamp": [1235883600], "indicators": {"quote": [{"close": [1.0]}]}}]}}
+    with pytest.raises(FetchError):
+        parse_yahoo_json(payload, "^GSPC")

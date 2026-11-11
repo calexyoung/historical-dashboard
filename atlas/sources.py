@@ -13,6 +13,7 @@ import re
 import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import requests
 
@@ -130,7 +131,13 @@ def fetch_fred(key: str, fred_id: str, force: bool = False) -> list[tuple[str, f
 
 # ---------------------------------------------------------------- Yahoo
 def parse_yahoo_json(payload: dict, symbol: str) -> list[tuple[str, float]]:
-    """Month-start timestamps are in exchange TZ: shift by gmtoffset before taking the month."""
+    """Month-start timestamps are midnight in the exchange's time zone, so take the month in that zone.
+
+    `meta.gmtoffset` is the offset *today*, not at each bar: in winter it is EST (-5h) while a
+    summer bar starts at 04:00 UTC (EDT), so shifting by it lands on the previous month's last day
+    and the dedupe below then overwrites that month with the next one's close. Use the IANA zone
+    (`exchangeTimezoneName`) per timestamp; fall back to gmtoffset only if the zone is missing.
+    """
     try:
         res = payload["chart"]["result"][0]
         ts = res["timestamp"]
@@ -138,12 +145,20 @@ def parse_yahoo_json(payload: dict, symbol: str) -> list[tuple[str, float]]:
     except (KeyError, IndexError, TypeError) as e:
         err = (payload.get("chart") or {}).get("error") if isinstance(payload, dict) else None
         raise FetchError(f"Yahoo {symbol}: unexpected payload ({err or e})")
-    off = int(res.get("meta", {}).get("gmtoffset") or 0)
+    meta = res.get("meta") or {}
+    zone = meta.get("exchangeTimezoneName")
+    if zone:  # present: must resolve, never silently fall back to the current-offset bug
+        try:
+            tz = ZoneInfo(zone)
+        except (ZoneInfoNotFoundError, ValueError) as e:
+            raise FetchError(f"Yahoo {symbol}: unknown exchange time zone {zone!r} ({e})")
+    else:  # missing/null/empty: best effort with today's offset (wrong across DST)
+        tz = timezone(timedelta(seconds=int(meta.get("gmtoffset") or 0)))
     by_month: dict[str, float] = {}
     for t, c in zip(ts, close):
         if c is None:
             continue
-        d = datetime.fromtimestamp(t + off, tz=timezone.utc)
+        d = datetime.fromtimestamp(t, tz=tz)
         by_month[d.strftime("%Y-%m")] = float(c)  # dedupe months: keep last
     if not by_month:
         raise FetchError(f"Yahoo {symbol}: no observations")

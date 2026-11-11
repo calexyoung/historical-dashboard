@@ -95,11 +95,11 @@ def test_desktop(browser):
     page.locator("#matrix .cell[data-a='spx'][data-b='wti']").click()
     cell = page.locator("#matrix .cell[data-a='spx'][data-b='wti']").inner_text().replace("*", "")
     r_sc = page.locator("#rline b").inner_text()
-    assert round(float(r_sc), 2) == float(cell)
+    assert abs(float(r_sc) - float(cell)) <= 0.0051  # same r: matrix shows 2 dp, scatter 3 dp
     page.select_option("#basis", "lvl")
     cell2 = page.locator("#matrix .cell[data-a='spx'][data-b='wti']").inner_text().replace("*", "")
     r_sc2 = page.locator("#rline b").inner_text()
-    assert cell2 != cell and r_sc2 != r_sc and round(float(r_sc2), 2) == float(cell2)
+    assert cell2 != cell and r_sc2 != r_sc and abs(float(r_sc2) - float(cell2)) <= 0.0051
     assert page.evaluate("Chart.getChart('lagChart').data.datasets[0].data.length") == 49
 
     # click an event → highlight in list & chart state
