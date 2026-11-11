@@ -76,7 +76,7 @@ only what Alex has cleared.
 | Line | Meaning | What to do |
 |---|---|---|
 | `CAPTURED id` | The source answered the whole of what was asked | Nothing |
-| `INCOMPLETE id: …` | It answered, but not the whole (a BLS message, a page missing, a column gone). The bytes are kept and flagged; M8 will not treat them as the state of a series | Read the reason. Usually the next run is whole; if the source changed shape, the adapter needs a fix |
+| `INCOMPLETE id: …` | It answered, but not the whole (a BLS message, a page missing, a column gone). The bytes are kept and flagged; `atlas replay` never treats them as the state of a series | Read the reason. Usually the next run is whole; if the source changed shape, the adapter needs a fix |
 | `FAILED id: …` | No usable answer after four tries | Usually the next run succeeds. A day with no whole capture becomes a missed day |
 | `MISSED id: dates` | Finished days (New York time) with no whole capture of that endpoint, counted from the first run that selected it | Nothing can recover them. They become Capture gaps, and as-of answers across them are marked uncertain |
 | `REFUSED …` | The rights gate, the register or the store lock stopped the run before any request | Fix what it names |
@@ -112,7 +112,7 @@ doubled on the way:
    `MISSED`.
 5. Keep the capture repository, read-only, as the off-host copy of the interim captures.
 
-M8's `atlas replay` then builds the vintage store from these files, using each capture's
+`atlas replay` then builds the vintage store from these files, using each capture's
 original retrieval time.
 
 ## Second choice: a cron entry on the VPS

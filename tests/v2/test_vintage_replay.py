@@ -251,6 +251,44 @@ def test_an_endpoint_with_no_parser_yet_is_reported_and_left_for_later(tmp_path)
     assert any("fx-a" in line and "no parser" in line for line in result.lines)
 
 
+def test_a_capture_older_than_what_is_recorded_is_passed_over_with_a_warning(tmp_path, register, three, capsys):
+    store = copy_of(three, tmp_path / "store")
+    log = (three / FETCH_LOG).read_bytes().splitlines(keepends=True)
+    (store / FETCH_LOG).write_bytes(log[1])  # only the second capture has arrived
+    assert run(store, register) == 0
+    before = vintage_files(store)
+    (store / FETCH_LOG).write_bytes(b"".join(log[:2]))  # the first turns up afterwards
+    capsys.readouterr()
+
+    assert run(store, register) == 0
+    out = capsys.readouterr().out
+    assert "WARNING fx_price" in out and "passed over" in out and T1 in out
+    assert vintage_files(store) == before
+
+
+def test_a_capture_todays_adapter_no_longer_reads_as_whole_records_nothing_and_fails(tmp_path, register, three,
+                                                                                    capsys, monkeypatch):
+    from atlas.capture.adapters import ADAPTERS, NormalizedState
+
+    store = copy_of(three, tmp_path / "store", 1)
+    monkeypatch.setattr(type(ADAPTERS["bls"]), "parse",
+                        lambda self, capture: NormalizedState(False, capture.evidence.scope, {}, ["a new check"]))
+    assert run(store, register) == 1
+    assert "INCOMPLETE" in capsys.readouterr().out and vintage_files(store) == {}
+
+
+def test_a_series_whose_identifier_is_not_in_the_answer_is_refused_and_the_rest_recorded(tmp_path, register, three,
+                                                                                         capsys):
+    table = json.loads(SERIES.read_text())
+    table["series"][1]["origin_id"] = "FXNOTTHERE1"
+    series = tmp_path / "series.json"
+    series.write_text(json.dumps(table))
+    store = copy_of(three, tmp_path / "store", 1)
+    assert main(["--store", str(store), "--register", str(register), "--series", str(series)]) == 1
+    assert "REFUSED fx_jobs: FXNOTTHERE1 is not in the answer" in capsys.readouterr().out
+    assert VintageStore(store).series_keys() == ["fx_price"]
+
+
 def test_a_blob_that_was_altered_stops_the_replay(tmp_path, register, capsys):
     store = tmp_path / "store"
     capture(store, register, "1-initial", "2-revision")

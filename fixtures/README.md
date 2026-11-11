@@ -20,10 +20,15 @@ tests that need v1's values build a local release in a temporary directory inste
 | `fx_permits_stale` | stale: ends eighteen months before the release was created |
 
 Annotations cover every anchor type (date, span, open-ended span, period) and the kinds event,
-recession, governance, policy and data_note. Vintages arrive with the VintageStore (M8).
+recession, governance, policy and data_note. Vintages reach a Release with the
+release writer (M9).
 
 To change it, edit the literals in `make_fixture.py`, run `python fixtures/make_fixture.py` and
 commit the result. A test fails if the committed files and the script disagree.
 
 `capture/` holds the capture kit's recorded exchanges, one per first source, also invented: see
 `capture/README.md`.
+
+`vintage/` holds the vintage store's fixture: three recorded fetches of one endpoint (initial,
+revision, withdrawal), invented, for a made-up Origin. `python fixtures/vintage/demo.py` replays
+them and prints the store. See `docs/method/vintage-store.md`.
