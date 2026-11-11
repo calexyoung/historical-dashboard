@@ -123,7 +123,9 @@ describe("the catalog page, /data (PLAN section 3, M2)", () => {
 
   it("searches and filters with a plain GET form: no JavaScript is needed", async () => {
     const html = await page();
-    expect(html).toContain('<form method="get" action="/macro-atlas/data"');
+    const form = /<form[^>]*role="search"[^>]*>/.exec(html)![0];
+    expect(form).toContain('action="/macro-atlas/data"');
+    expect(form).toContain('method="get"');
     expect(html).toMatch(/<input[^>]*type="search"[^>]*name="q"/);
     for (const name of ["segment", "freq", "via", "rights"]) expect(html).toMatch(new RegExp(`<select[^>]*name="${name}"`));
     expect(rows(await page("?q=vote"))).toEqual(["fx_vote_margin"]);

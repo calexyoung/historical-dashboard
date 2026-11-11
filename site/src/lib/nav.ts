@@ -2,10 +2,13 @@
  * The tab bar's contents. A tab is listed here only once its pages exist (PLAN section 3), so
  * nothing in the bar leads to a page that is not built. Paths are without the base path.
  *
- * Still to come: Topics (M23), Claims (M21, once the first claim is public), Events (M19),
- * Data (M2).
+ * In the plan's order: Topics · Claims · Explore · Events · Data. Still to come: Topics (M23),
+ * Claims (M21, once the first claim is public), Events (M19).
  */
-export const TABS: readonly { href: string; label: string }[] = [{ href: "/explore", label: "Explore" }];
+export const TABS: readonly { href: string; label: string }[] = [
+  { href: "/explore", label: "Explore" },
+  { href: "/data", label: "Data" },
+];
 
 const under = (pathname: string, href: string): boolean => pathname === href || pathname.startsWith(`${href}/`);
 

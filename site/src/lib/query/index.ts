@@ -226,8 +226,7 @@ export function query(
 }
 
 export type Latest =
-  | { ok: true; period: string; period_end: string; value: number; status: string }
-  | { ok: true; period: null }
+  | { ok: true; /** null when the Series has no Observation with a value. */ latest: { period: string; period_end: string; value: number; status: string } | null }
   | QueryFailure;
 
 /**
@@ -241,7 +240,7 @@ export function latestValue(release: OpenedRelease, surface: Surface, key: strin
   const observations = fileOf(release, key)?.observations ?? [];
   for (let i = observations.length - 1; i >= 0; i--) {
     const o = observations[i]!;
-    if (o.value !== null) return { ok: true, period: o.period, period_end: o.period_end, value: o.value, status: o.status };
+    if (o.value !== null) return { ok: true, latest: { period: o.period, period_end: o.period_end, value: o.value, status: o.status } };
   }
-  return { ok: true, period: null };
+  return { ok: true, latest: null };
 }

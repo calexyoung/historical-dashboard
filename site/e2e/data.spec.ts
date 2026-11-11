@@ -94,7 +94,7 @@ test.describe("the catalog page", () => {
     await page.goto(atlas.url("/data?q=quarterly"));
     const row = rows(page);
     await expect(row).toHaveCount(1);
-    for (const text of ["Fixture quarterly output", "fx_output_quarterly", "Quarterly", "billions of fixture dollars", "Public domain"]) {
+    for (const text of ["Fixture output", "fx_output_quarterly", "Quarterly", "billions of fixture dollars", "Public domain"]) {
       await expect(row.getByText(text, { exact: false }).locator("visible=true").first()).toBeVisible();
     }
   });

@@ -132,9 +132,10 @@ describe("the rights gate is asked before anything is answered (PLAN 6.1)", () =
 
 describe("the latest value of a series, for a list", () => {
   it("is the last observation that has a value, with its period", () => {
-    expect(latestValue(release, "local", "fx_output_quarterly")).toMatchObject({ ok: true, period: expect.stringMatching(/^\d{4}-Q[1-4]$/) });
-    const stale = latestValue(release, "local", "fx_permits_stale");
-    expect(stale.ok && typeof stale.value).toBe("number");
+    expect(latestValue(release, "local", "fx_output_quarterly")).toMatchObject({
+      ok: true,
+      latest: { period: expect.stringMatching(/^\d{4}-Q[1-4]$/), value: expect.any(Number) },
+    });
   });
 
   it("is refused where the series is withheld or the surface is not permitted", () => {

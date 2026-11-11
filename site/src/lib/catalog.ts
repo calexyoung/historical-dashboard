@@ -171,7 +171,7 @@ export function catalogView(release: OpenedRelease, surface: Surface, asked: Cat
       const file = release.series[entry.key] ?? release.derived[entry.key];
       row.first = file?.observations[0]?.period ?? null;
       row.last = file?.observations.at(-1)?.period ?? null;
-      if (latest.period !== null) row.latest = { period: latest.period, text: formatValue(latest.value) };
+      if (latest.latest) row.latest = { period: latest.latest.period, text: formatValue(latest.latest.value) };
     }
     rows.push(row);
   }
