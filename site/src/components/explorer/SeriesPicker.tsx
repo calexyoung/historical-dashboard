@@ -83,6 +83,7 @@ export function SeriesPicker({
     const d = dialog.current;
     if (!d) return;
     if (event && event.detail === 0) d.dataset.instant = "";
+    else delete d.dataset.instant; // a pointer shut it: it slides away
     d.close();
   };
   const onClose = () => {
@@ -130,6 +131,8 @@ export function SeriesPicker({
         // The server's `open` (for `pick=1`) is left as it arrived; from then on the browser owns it.
         open={typeof window === "undefined" ? initialOpen : undefined}
         suppressHydrationWarning
+        // Escape: shut from the keyboard, so at once.
+        onCancel={(event) => (event.currentTarget.dataset.instant = "")}
         onClose={onClose}
         onClick={(event) => {
           if (event.target === event.currentTarget) close(); // the backdrop

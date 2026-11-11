@@ -18,7 +18,7 @@ import type { Annotation, CatalogEntry } from "@macro-atlas/core/release";
 import { FREQUENCIES, SEGMENTS } from "../catalog";
 import { NO_ANSWER, renderFigure, type Figure, type Layers, type SeriesStyle, type ShownSeries } from "../figure";
 import { dayWords, labelStart, periodWords, readingDecimals } from "../figure/words";
-import { MAX_ROWS, MAX_SERIES, query, type QueryFailure } from "../query";
+import { latestValue, MAX_ROWS, MAX_SERIES, query, type QueryFailure } from "../query";
 import type { OpenedRelease } from "../release/reader";
 import { sourceWords } from "../series-page";
 import { stopWords, type ReadoutModel, type ReadoutSeries } from "./readout";
@@ -306,6 +306,10 @@ export function explorerView(release: OpenedRelease, surface: Surface, state: Ex
   for (const g of got) {
     if (g.drawn !== null && g.reason === null && !drawnGot.includes(g)) g.reason = g.raw.some((o) => o.value !== null) ? "Shown this way, this series has no value in the window." : "This series has no value in the window.";
   }
+  const showsLatest = (key: string, raw: TransformedObservation[]): boolean => {
+    const latest = latestValue(release, surface, key);
+    return latest.ok && latest.latest !== null && [...raw].reverse().find((o) => o.value !== null)?.period === latest.latest.period;
+  };
   const shown: ShownSeries[] = drawnGot.map((g) => {
     const e = g.entry;
     const unit = mode === "lin" ? e.unit : mode === "log" ? `${e.unit}, on a logarithmic scale` : DRAWN[mode].unit;
@@ -331,8 +335,8 @@ export function explorerView(release: OpenedRelease, surface: Surface, state: Ex
       seasonalAdjustment: mode === "lin" || mode === "log" ? e.seasonal_adjustment : undefined,
       priceBasis: mode === "lin" || mode === "log" ? e.price_basis : undefined,
       country: e.country,
-      // Stale is said of a Series' latest value, which a window that closes earlier does not show.
-      maxLag: state.to === null ? e.max_lag : undefined,
+      // Stale is said of a Series' latest value: only where the window still shows that value.
+      maxLag: showsLatest(e.key, g.raw) ? e.max_lag : undefined,
       breaks: e.breaks,
       source: sourceWords(e),
       observations,
@@ -371,7 +375,8 @@ export function explorerView(release: OpenedRelease, surface: Surface, state: Ex
   });
 
   // --- the readout ---
-  const stops = start === null ? [] : [...new Set(withValues.flatMap((g) => g.raw.map((o) => o.period_start)))].filter(inWindow).sort();
+  // A value standing since before the window opened can be read where the window opens.
+  const stops = start === null ? [] : [...new Set(withValues.flatMap((g) => g.raw.map((o) => (o.period_start < start! ? start! : o.period_start))))].filter(inWindow).sort();
   const readoutSeries: ReadoutSeries[] = got.map((g, i): ReadoutSeries => {
     const s = selection[i]!;
     const values = g.raw.map((o) => o.value).filter((v): v is number => v !== null);

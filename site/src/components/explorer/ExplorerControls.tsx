@@ -24,7 +24,6 @@ export function ExplorerControls({
   selected,
   from,
   to,
-  span,
   hidden,
 }: {
   action: string;
@@ -33,8 +32,6 @@ export function ExplorerControls({
   selected: number;
   from: string | null;
   to: string | null;
-  /** The months the selected Series cover, as the fields' limits. */
-  span: { min: string; max: string } | null;
   /** What the form must carry that it has no field for: the Series, the pin, the chosen Event. */
   hidden: [string, string][];
 }) {
@@ -90,11 +87,11 @@ export function ExplorerControls({
       </label>
       <label className="flex min-w-0 flex-1 basis-[9.5rem] flex-col gap-1 text-xs text-ink-2 sm:flex-none sm:basis-auto">
         From
-        <input type="month" name="from" value={window_.from} onChange={onMonth("from")} min={span?.min} max={span?.max} placeholder="YYYY-MM" pattern="\d{4}-(0[1-9]|1[0-2])" className={`${control} num w-full sm:w-40`} />
+        <input type="month" name="from" value={window_.from} onChange={onMonth("from")} placeholder="YYYY-MM" pattern="\d{4}-(0[1-9]|1[0-2])" className={`${control} num w-full sm:w-40`} />
       </label>
       <label className="flex min-w-0 flex-1 basis-[9.5rem] flex-col gap-1 text-xs text-ink-2 sm:flex-none sm:basis-auto">
         To
-        <input type="month" name="to" value={window_.to} onChange={onMonth("to")} min={span?.min} max={span?.max} placeholder="YYYY-MM" pattern="\d{4}-(0[1-9]|1[0-2])" className={`${control} num w-full sm:w-40`} />
+        <input type="month" name="to" value={window_.to} onChange={onMonth("to")} placeholder="YYYY-MM" pattern="\d{4}-(0[1-9]|1[0-2])" className={`${control} num w-full sm:w-40`} />
       </label>
       <button type="submit" className="press h-9 rounded border border-accent bg-accent px-3 text-sm font-semibold text-void">
         Show

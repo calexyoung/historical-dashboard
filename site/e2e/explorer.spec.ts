@@ -80,9 +80,9 @@ test.describe("the Explorer", () => {
 
   test("the window is two month fields; a narrower window redraws the time axis", async ({ page, atlas }) => {
     await page.goto(atlas.url(TWO));
-    await page.locator("input[name=from]").fill("2024-01");
+    await page.locator("#explorer-view input[name=from]").fill("2024-01");
     await expect(page).toHaveURL(/from=2024-01/);
-    await page.locator("input[name=to]").fill("2025-06");
+    await page.locator("#explorer-view input[name=to]").fill("2025-06");
     await expect(page).toHaveURL(/from=2024-01&to=2025-06/);
     await expect(page.locator("#chart")).toContainText("Jan 2024 to Jun 2025");
     await expect(readoutDate(page)).toHaveText("Jun 2025");
@@ -393,7 +393,7 @@ test.describe("with JavaScript off", () => {
   test("the form changes mode and window, keeps the series, and a form with every layer cleared stays cleared", async ({ page, atlas }) => {
     await page.goto(atlas.url(TWO));
     await page.getByLabel("Show as").selectOption("rebase");
-    await page.locator("input[name=from]").fill("2024-01");
+    await page.locator("#explorer-view input[name=from]").fill("2024-01");
     await page.getByLabel("Recessions").uncheck();
     await page.getByLabel("Economic policy").uncheck();
     await page.getByRole("button", { name: "Show" }).click();
@@ -409,8 +409,8 @@ test.describe("with JavaScript off", () => {
 
   test("a narrowed window can be widened again", async ({ page, atlas }) => {
     await page.goto(atlas.url("/explore?s=fx_price_index&from=2025-01&to=2025-06"));
-    await page.locator("input[name=from]").fill("2024-03");
-    await page.locator("input[name=to]").fill("2025-11");
+    await page.locator("#explorer-view input[name=from]").fill("2024-03");
+    await page.locator("#explorer-view input[name=to]").fill("2025-11");
     await page.getByRole("button", { name: "Show" }).click();
     await expect(page).toHaveURL(/from=2024-03&to=2025-11/);
     await expect(page.locator("#chart")).toContainText("Mar 2024 to Nov 2025");

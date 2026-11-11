@@ -57,8 +57,6 @@ export default async function ExplorePage({ searchParams }: PageProps<"/explore"
     ...carried,
     ...table,
   ];
-  const months = view.readout.stops.map((stop) => stop.slice(0, 7));
-  const span = months.length > 0 && view.window.start && view.window.end ? { min: months[0]! < view.window.start.slice(0, 7) ? months[0]! : view.window.start.slice(0, 7), max: view.window.end.slice(0, 7) } : null;
   const kept = view.selection.filter((s) => s.state !== "drawn");
   const drawn = view.selection.filter((s) => s.state === "drawn").length;
 
@@ -114,7 +112,7 @@ export default async function ExplorePage({ searchParams }: PageProps<"/explore"
           </ul>
         )}
 
-        <ExplorerControls action={here} modes={view.modes} selected={view.selection.length} from={view.window.from} to={view.window.to} span={span} hidden={controlsHidden} />
+        <ExplorerControls action={here} modes={view.modes} selected={view.selection.length} from={view.window.from} to={view.window.to} hidden={controlsHidden} />
 
         {(view.notes.length > 0 || view.carriedNote) && (
           <ul data-notes className="flex max-w-[80ch] flex-col gap-1 text-sm text-ink-2">
