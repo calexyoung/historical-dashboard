@@ -1,0 +1,44 @@
+# Macro Atlas on your own machine: the web app alone, at both base paths, on loopback only.
+#
+#   docker compose -f deploy/compose.web.yaml up --build
+#   open http://localhost:3101/macro-atlas/explore
+#   open http://localhost:3102/macro-atlas-staging/explore
+#
+# Both are builds for the LOCAL Surface (PLAN 6.1): they answer only to this machine's names and
+# must never be put behind a public reverse proxy. Staging and production builds are separate
+# (M26, M27) and are Alex's to deploy.
+#
+# By default they serve the committed fixture release (synthetic data). To serve a local release
+# instead (from M2): ATLAS_RELEASES=../var/local docker compose -f deploy/compose.web.yaml up
+name: macro-atlas-local
+
+x-web: &web
+  restart: "no"
+  read_only: true
+  cap_drop: [ALL]
+  security_opt: ["no-new-privileges:true"]
+  volumes:
+    - "${ATLAS_RELEASES:-../fixtures/public}:/releases:ro"
+
+services:
+  web:
+    <<: *web
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+      args:
+        ATLAS_SURFACE: local
+        BASE_PATH: /macro-atlas
+    ports:
+      - "127.0.0.1:3101:3000"
+
+  web-staging-path:
+    <<: *web
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+      args:
+        ATLAS_SURFACE: local
+        BASE_PATH: /macro-atlas-staging
+    ports:
+      - "127.0.0.1:3102:3000"

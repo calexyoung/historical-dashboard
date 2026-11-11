@@ -1,0 +1,32 @@
+{
+  "name": "@macro-atlas/site",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "The Macro Atlas web app (ADR 0001). Reads Releases through the ReleaseReader; never writes one.",
+  "scripts": {
+    "dev": "ATLAS_SURFACE=local BASE_PATH=/macro-atlas ATLAS_RELEASE_ROOT=${ATLAS_RELEASE_ROOT:-../fixtures/public} next dev --hostname 127.0.0.1",
+    "build": "next build",
+    "start": "node scripts/start.mjs",
+    "lint": "eslint",
+    "typecheck": "ATLAS_SURFACE=local BASE_PATH=/macro-atlas next typegen && tsc --noEmit",
+    "test:built": "vitest run --config vitest.built.config.mts",
+    "test:e2e": "playwright test",
+    "measure:js": "node scripts/measure-js.mjs"
+  },
+  "dependencies": {
+    "@macro-atlas/core": "*",
+    "next": "16.4.5",
+    "react": "19.3.0",
+    "react-dom": "19.3.0"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "^4.14.0",
+    "@playwright/test": "^1.56.0",
+    "@tailwindcss/turbopack": "^4",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint-config-next": "16.4.5",
+    "tailwindcss": "^4"
+  }
+}

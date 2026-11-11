@@ -1,0 +1,215 @@
+@import "tailwindcss";
+
+/*
+ * Tokens copied from /missions (mission-dashboard @ 6e5c3f9, src/app/globals.css), ADR 0009:
+ * white ground, near-black ink, hairline rules, Plot Navy as the only interactive colour.
+ * What /missions needs and Macro Atlas does not (map, publication-route and lag colours) is left
+ * out. What Macro Atlas adds is marked "Atlas" and recorded in /DESIGN.md.
+ * site/src/lib/tokens.test.ts checks the contrast of every pair DESIGN.md promises.
+ */
+@theme {
+  --color-void: #ffffff;
+  --color-panel: #ffffff;
+  --color-raised: #f2f5f8;
+  --color-line: #dde3ea;
+  --color-line-strong: #b4bfcc;
+  --color-ink: #111418;
+  --color-ink-2: #434d5b;
+  --color-ink-3: #5b6676;
+  --color-accent: #2f5e95;
+
+  --color-band: #d3e2f2;
+  --color-rule: #2f5e95;
+
+  --color-nominal: #1d7a3a;
+  --color-delayed: #985600;
+  --color-outage: #c0392b;
+  --color-unknown: #5b6676;
+
+  --color-scrim: #111418;
+
+  /* Atlas: a control's border. /missions' line-strong is under 3:1 on white. */
+  --color-control: #7b8797;
+
+  /* Atlas: the series palette. Okabe-Ito based, no navy (navy means "interactive"). Each holds
+     3:1 on the page; line style is the second channel. Validated for colour vision in M3. */
+  --color-series-1: #d55e00;
+  --color-series-2: #007a5a;
+  --color-series-3: #1f8ac0;
+  --color-series-4: #a8528a;
+  --color-series-5: #b97700;
+  --color-series-6: #111418;
+  --color-series-7: #7d7400;
+  --color-series-8: #6b7480;
+
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", "Cascadia Mono", Menlo, Consolas, monospace;
+
+  /* Atlas: motion (PLAN section 8). Strong ease-out for anything that responds to a press. */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+/*
+ * Theme. The OS setting decides unless the reader chose: <html data-theme="light|dark"> is
+ * rendered by the server from the reader's cookie (src/lib/theme.ts). The dark tokens appear
+ * twice because CSS cannot share one declaration block between a media query and a selector;
+ * tokens.test.ts fails if the two copies differ.
+ */
+:root {
+  color-scheme: light dark;
+}
+:root[data-theme="light"] {
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --color-void: #0f1318;
+    --color-panel: #0f1318;
+    --color-raised: #1c2430;
+    --color-line: #2a3544;
+    --color-line-strong: #55657b;
+    --color-ink: #e6ebf1;
+    --color-ink-2: #b3bdca;
+    --color-ink-3: #8d99a9;
+    --color-accent: #7fb0ea;
+    --color-band: #2f4d70;
+    --color-rule: #7fb0ea;
+    --color-nominal: #4cc17a;
+    --color-delayed: #e0a33a;
+    --color-outage: #ff6b5e;
+    --color-unknown: #8d99a9;
+    --color-scrim: #000000;
+    --color-control: #66768c;
+    --color-series-1: #ff8a4c;
+    --color-series-2: #3fbf95;
+    --color-series-3: #56b4e9;
+    --color-series-4: #d78bbd;
+    --color-series-5: #e69f00;
+    --color-series-6: #e6ebf1;
+    --color-series-7: #f0e442;
+    --color-series-8: #9aa6b5;
+  }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --color-void: #0f1318;
+  --color-panel: #0f1318;
+  --color-raised: #1c2430;
+  --color-line: #2a3544;
+  --color-line-strong: #55657b;
+  --color-ink: #e6ebf1;
+  --color-ink-2: #b3bdca;
+  --color-ink-3: #8d99a9;
+  --color-accent: #7fb0ea;
+  --color-band: #2f4d70;
+  --color-rule: #7fb0ea;
+  --color-nominal: #4cc17a;
+  --color-delayed: #e0a33a;
+  --color-outage: #ff6b5e;
+  --color-unknown: #8d99a9;
+  --color-scrim: #000000;
+  --color-control: #66768c;
+  --color-series-1: #ff8a4c;
+  --color-series-2: #3fbf95;
+  --color-series-3: #56b4e9;
+  --color-series-4: #d78bbd;
+  --color-series-5: #e69f00;
+  --color-series-6: #e6ebf1;
+  --color-series-7: #f0e442;
+  --color-series-8: #9aa6b5;
+}
+
+::selection {
+  background: var(--color-band);
+  color: var(--color-ink);
+}
+
+html {
+  background: var(--color-void);
+}
+
+body {
+  background: var(--color-void);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.45;
+  font-feature-settings: "tnum" 1;
+}
+
+@media (min-width: 1800px) {
+  body {
+    font-size: 15px;
+  }
+}
+
+/* Numbers and dates align in columns. */
+.num {
+  font-family: var(--font-sans);
+  font-variant-numeric: tabular-nums;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+svg :focus-visible {
+  outline: none;
+}
+
+@layer components {
+  /*
+   * Anything pressable answers the press at once (PLAN section 8): scale(0.97), 120 ms, strong
+   * ease-out. Colour on hover only where there is a fine pointer, so a tap never leaves a
+   * hover state behind. Only transform and colour move; nothing here is a keyframe.
+   */
+  .press {
+    transition:
+      transform 120ms var(--ease-out),
+      color 120ms ease,
+      background-color 120ms ease,
+      border-color 120ms ease;
+  }
+  .press:active {
+    transform: scale(0.97);
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .hover-ink:hover {
+      color: var(--color-ink);
+    }
+    .hover-line:hover {
+      border-color: var(--color-line-strong);
+    }
+  }
+
+  /* The skip link: off screen until it has keyboard focus. Appears at once, no animation. */
+  .skip-link {
+    position: absolute;
+    left: 8px;
+    top: -100px;
+    z-index: 50;
+  }
+  .skip-link:focus {
+    top: 8px;
+  }
+}
+
+/* Reduced motion: keep colour fades, remove movement. */
+@media (prefers-reduced-motion: reduce) {
+  .press {
+    transition:
+      color 120ms ease,
+      background-color 120ms ease,
+      border-color 120ms ease;
+  }
+  .press:active {
+    transform: none;
+  }
+}

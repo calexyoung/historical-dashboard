@@ -16,5 +16,8 @@
 
 **/node_modules
 **/.next
+**/.builds
+**/test-results
+**/playwright-report
 **/.env
 **/.env.local
