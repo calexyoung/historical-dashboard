@@ -163,9 +163,17 @@ class BlsAdapter:
         results = answer.get("Results")
         listed = results.get("series") if isinstance(results, dict) else None
         found: dict[str, list[dict]] = {}
-        for entry in listed if isinstance(listed, list) else []:
-            if isinstance(entry, dict) and isinstance(entry.get("data"), list):
-                found[str(entry.get("seriesID"))] = entry["data"]
+        if not isinstance(listed, list):
+            problems.append("the answer lists no series")
+            listed = []
+        for entry in listed:
+            if not (isinstance(entry, dict) and isinstance(entry.get("seriesID"), str)
+                    and isinstance(entry.get("data"), list)):
+                problems.append("the answer lists something that is not a series")
+            elif entry["seriesID"] in found:
+                problems.append(f"series {entry['seriesID']} is in the answer twice")
+            else:
+                found[entry["seriesID"]] = entry["data"]
         for series in scope["series"]:
             if series not in found:
                 problems.append(f"series {series} is not in the answer")

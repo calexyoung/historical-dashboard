@@ -106,6 +106,16 @@ def test_a_bls_answer_in_a_shape_nobody_expected_is_incomplete_not_a_crash(answe
     assert ADAPTERS["bls"].parse(raw).complete is False
 
 
+def test_a_bls_series_listed_twice_is_not_whole_whichever_copy_reads_well():
+    listed = [{"seriesID": name, "data": [bls_row(2026, 1, "2.0")]} for name in BLS.params["series"]]
+    listed.insert(0, {"seriesID": "CUUR0000SA0", "data": [bls_row(2026, 1, "bad")]})
+    answer = json.dumps({"status": "REQUEST_SUCCEEDED", "message": [], "Results": {"series": listed}})
+    raw, _ = fetch(BLS, {BLS_URL: [(200, answer)]})
+    assert raw.evidence.complete is False
+    assert "series CUUR0000SA0 is in the answer twice" in raw.evidence.problems
+    assert ADAPTERS["bls"].parse(raw).complete is False
+
+
 def test_a_bls_failure_raises():
     with pytest.raises(CaptureError, match="HTTP 403"):
         fetch(BLS, {BLS_URL: [(403, "Access Denied")]})
