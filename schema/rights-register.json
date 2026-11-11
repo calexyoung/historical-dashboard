@@ -1,0 +1,1030 @@
+{
+  "$schema": "./rights-register.schema.json",
+  "format": 1,
+  "version": "2026-11-11.draft-1",
+  "about": "The rights register (CONTEXT.md; PLAN 6 and 6.1; ADR 0006, ADR 0020): one row per Origin and per intermediary Channel, with the terms read, a proposal, and Alex's decision. This file is the single table. docs/v2/rights-register.md and packages/core/src/rights-register.generated.ts are generated from it (npm run gen); atlas/rights.py reads it. A row permits something on a public Surface only when its decision is signed by Alex. The builder proposes and never fills in a decision.",
+  "cleared_intermediaries": [],
+  "rows": [
+    {
+      "id": "bls",
+      "kind": "origin",
+      "name": "Bureau of Labor Statistics",
+      "origins": [
+        "U.S. Bureau of Labor Statistics"
+      ],
+      "datasets": "*",
+      "used_for": "CPI, payrolls, unemployment, participation, wages. v2.0 (M7, M13).",
+      "terms": [
+        {
+          "url": "https://www.bls.gov/bls/linksite.htm",
+          "read_on": "2026-11-11",
+          "how": "extract",
+          "quotes": [
+            "everything that we publish, both in hard copy and electronically, is in the public domain, except for previously copyrighted photographs and illustrations",
+            "You are free to use our public domain material without specific permission",
+            "we do ask that you cite the Bureau of Labor Statistics as the source"
+          ]
+        },
+        {
+          "url": "https://www.bls.gov/developers/termsOfService.htm",
+          "read_on": null,
+          "how": "not_read",
+          "quotes": [],
+          "note": "The site refused the automated request (HTTP 403)."
+        }
+      ],
+      "licence_class": "public_domain",
+      "attribution": "Source: U.S. Bureau of Labor Statistics.",
+      "proposal": {
+        "display": true,
+        "redistribute": true,
+        "store": true,
+        "ml_use": true,
+        "note": "Public domain by the Bureau's own statement. Cite the Bureau on every figure and download."
+      },
+      "open_questions": [
+        "The API terms of service were not read. Read them, and confirm the limit on requests without a key, before the capture job runs daily (PLAN 6, still unverified)."
+      ],
+      "decision": null
+    },
+    {
+      "id": "bea",
+      "kind": "origin",
+      "name": "Bureau of Economic Analysis",
+      "origins": [
+        "U.S. Bureau of Economic Analysis"
+      ],
+      "datasets": "*",
+      "used_for": "GDP, PCE, income, profits, trade balance. v2.0 (M15). Needs a free API key from Alex.",
+      "terms": [
+        {
+          "url": "https://www.bea.gov/help/guidelines-for-citing-bea",
+          "read_on": "2026-11-11",
+          "how": "page",
+          "quotes": [
+            "Citations are appreciated and appropriate."
+          ]
+        },
+        {
+          "url": "https://apps.bea.gov/API/signup/",
+          "read_on": "2026-11-11",
+          "how": "page",
+          "quotes": [],
+          "note": "The sign-up form asks for agreement to published terms of service; the terms document itself was not read."
+        }
+      ],
+      "licence_class": "public_domain",
+      "attribution": "Source: U.S. Bureau of Economic Analysis.",
+      "proposal": {
+        "display": true,
+        "redistribute": true,
+        "store": true,
+        "ml_use": true,
+        "note": "U.S. federal works are not subject to copyright in the United States (17 U.S.C. 105). That is the basis proposed here; the pages read do not themselves state a licence. Cite the Bureau."
+      },
+      "open_questions": [
+        "Read the API terms of service when the key is requested, and record any required notice or request limit here before M15."
+      ],
+      "decision": null
+    },
+    {
+      "id": "census",
+      "kind": "origin",
+      "name": "Census Bureau",
+      "origins": [
+        "U.S. Census Bureau"
+      ],
+      "datasets": "*",
+      "used_for": "Construction spending (C30 files), retail, housing. v2.0 top lines (M16); v2.1.",
+      "terms": [
+        {
+          "url": "https://www.census.gov/data/developers/about/terms-of-service.html",
+          "read_on": "2026-11-11",
+          "how": "page",
+          "quotes": [
+            "This product uses the Census Bureau Data API but is not endorsed or certified by the Census Bureau.",
+            "You may not modify or falsely represent content accessed through the API and still claim the source is the Census Bureau."
+          ]
+        },
+        {
+          "url": "https://www.census.gov/about/policies/citation.html",
+          "read_on": "2026-11-11",
+          "how": "page",
+          "quotes": [
+            "Use the suggested citation if one is provided with the publication, data, code, or tool."
+          ]
+        }
+      ],
+      "licence_class": "public_domain",
+      "attribution": "Source: U.S. Census Bureau.",
+      "proposal": {
+        "display": true,
+        "redistribute": true,
+        "store": true,
+        "ml_use": true,
+        "note": "U.S. federal works are not subject to copyright in the United States (17 U.S.C. 105). That is the basis proposed here; the pages read do not themselves state a licence. The plan uses published files, not the API. If the API is ever used, the API notice quoted above must be shown."
+      },
+      "open_questions": [
+        "The API terms forbid using the data to identify a person or business. Macro Atlas uses published aggregates only; confirm that is enough."
+      ],
+      "decision": null
+    },
+    {
+      "id": "treasury-fiscal-data",
+      "kind": "origin",
+      "name": "Treasury Fiscal Data",
+      "origins": [
+        "U.S. Department of the Treasury, Bureau of the Fiscal Service"
+      ],
+      "datasets": "*",
+      "used_for": "Debt, Monthly Treasury Statement receipts and outlays. v2.0 (M13).",
+      "terms": [
+        {
+          "url": "https://fiscaldata.treasury.gov/api-documentation/",
+          "read_on": "2026-11-11",
+          "how": "page",
+          "quotes": [
+            "The data is offered free, without restriction, and available to copy, adapt, redistribute, or otherwise use for non-commercial or commercial purposes."
+          ]
+        },
+        {
+          "url": "https://fiscaldata.treasury.gov/about-us/",
+          "read_on": "2026-11-11",
+          "how": "page",
+          "quotes": [
+            "The data on this site is available to copy, adapt, redistribute, or otherwise use for non-commercial and commercial purposes."
+          ]
+        }
+      ],
+      "licence_class": "public_domain",
+      "attribution": "Source: U.S. Department of the Treasury, Fiscal Data.",
+      "proposal": {
+        "display": true,
+        "redistribute": true,
+        "store": true,
+        "ml_use": true,
+        "note": "Open by the Bureau's own statement, with no condition attached."
+      },
+      "open_questions": [],
+      "decision": null
+    },
+    {
+      "id": "fed-board",
+      "kind": "origin",
+      "name": "Federal Reserve Board",
+      "origins": [
+        "Board of Governors of the Federal Reserve System"
+      ],
+      "datasets": "*",
+      "used_for": "H.15 rates, H.10 exchange rates, H.4.1 balance sheet, Z.1 net worth, through the Data Download Program. v2.0 (M13).",
+      "terms": [
+        {
+          "url": "https://www.federalreserve.gov/disclaimer.htm",
+          "read_on": "2026-11-11",
+          "how": "page",
+          "quotes": [
+            "Unless otherwise indicated, information on Board's website is in the public domain and may be copied and distributed without permission.",
+            "Please cite to the Board as the source of the information."
+          ]
+        }
+      ],
+      "licence_class": "public_domain",
+      "attribution": "Source: Board of Governors of the Federal Reserve System.",
+      "proposal": {
+        "display": true,
+        "redistribute": true,
+        "store": true,
+        "ml_use": true,
+        "note": "Public domain by the Board's own statement, unless a release says otherwise. Cite the Board."
+      },
+      "open_questions": [
+        "Some releases carry data the Board marks as coming from a non-Board source. Each series added in M13 is checked for such a mark before it is listed under this row."
+      ],
+      "decision": null
+    },
+    {
+      "id": "eia",
+      "kind": "origin",
+      "name": "Energy Information Administration",
+      "origins": [
+        "U.S. Energy Information Administration"
+      ],
+      "datasets": "*",
+      "used_for": "Energy prices; generation and capacity. v2.0 headline (M15); depth in v2.1. Needs a free API key from Alex.",
+      "terms": [
+        {
+          "url": "https://www.eia.gov/about/copyrights_reuse.php",
+          "read_on": "2026-11-11",
+          "how": "page",
+          "quotes": [
+            "U.S. government publications are in the public domain and are not subject to copyright protection.",
+            "You may use and/or distribute any of our data, files, databases, reports, graphs, charts, and other information products",
+            "you should use an acknowledgment, which includes the publication date"
+          ]
+        }
+      ],
+      "licence_class": "public_domain",
+      "attribution": "Source: U.S. Energy Information Administration (with the publication date).",
+      "proposal": {
+        "display": true,
+        "redistribute": true,
+        "store": true,
+        "ml_use": true,
+        "note": "Public domain by the Administration's own statement. The acknowledgement carries the publication date."
+      },
+      "open_questions": [
+        "API rate limits are still unverified (PLAN 6)."
+      ],
+      "decision": null
+    },
+    {
+      "id": "fred",
+      "kind": "channel",
+      "name": "FRED (Federal Reserve Bank of St. Louis), as a channel",
+      "channel": "fred",
+      "used_for": "Was v1's main channel (83 entries). Not fetched, stored or shown publicly by v2 (PLAN 6, 6.1).",
+      "terms": [
+        {
+          "url": "https://fred.stlouisfed.org/legal/",
+          "read_on": "2026-11-11",
+          "how": "extract",
+          "quotes": [
+            "you are free to use FRED for your own non-commercial, educational, and personal uses",
+            "Series with a copyright notice are owned by third parties and have special restrictions."
+          ],
+          "note": "The same page lists, among the things a user may not do: storing, caching or archiving any portion of the content; republishing or distributing it; and using it to develop or train software. Those items are paraphrased here, not quoted."
+        }
+      ],
+      "licence_class": "permission_required",
+      "attribution": null,
+      "proposal": {
+        "display": false,
+        "redistribute": false,
+        "store": false,
+        "ml_use": false,
+        "note": "Do not clear. The terms as read forbid storing and republishing what FRED serves, whatever the status of the underlying series. v2 re-sources every series from its origin instead. Clearing this row would also need a dated amendment to ADR 0006."
+      },
+      "open_questions": [
+        "Whether to ask the Bank for written permission is D2, Alex's decision.",
+        "v1's public site and committed data file already hold values fetched through FRED. That exposure is the separate question D4."
+      ],
+      "decision": null
+    },
+    {
+      "id": "alfred",
+      "kind": "channel",
+      "name": "ALFRED (Federal Reserve Bank of St. Louis), as a channel",
+      "channel": "alfred",
+      "used_for": "Would give provider vintages. Not used by v2.",
+      "terms": [
+        {
+          "url": "https://alfred.stlouisfed.org/legal/",
+          "read_on": null,
+          "how": "not_read",
+          "quotes": [],
+          "note": "The request did not complete. ALFRED is served by the same Bank; its terms are assumed, not confirmed, to match FRED's."
+        }
+      ],
+      "licence_class": "unknown",
+      "attribution": null,
+      "proposal": {
+        "display": false,
+        "redistribute": false,
+        "store": false,
+        "ml_use": false,
+        "note": "Do not clear. Treat as FRED until the page is read. Vintages come from v2's own capture (M7, M8) and, later, the origin agencies' archives."
+      },
+      "open_questions": [
+        "Read the page and record whether its terms differ from FRED's."
+      ],
+      "decision": null
+    },
+    {
+      "id": "yahoo",
+      "kind": "channel",
+      "name": "Yahoo Finance, as a channel",
+      "channel": "yahoo",
+      "used_for": "Was v1's channel for index levels, exchange rates and commodities (25 entries). Withheld from every public surface (PLAN 6).",
+      "terms": [
+        {
+          "url": "https://legal.yahoo.com/us/en/yahoo/terms/otos/index.html",
+          "read_on": "2026-11-11",
+          "how": "page",
+          "quotes": [
+            "Unless you have explicit written permission, you must not reproduce, modify, rent, lease, sell, trade, distribute, transmit, broadcast"
+          ],
+          "note": "The same terms forbid collecting data from the services by automated means without prior permission (paraphrased)."
+        }
+      ],
+      "licence_class": "permission_required",
+      "attribution": null,
+      "proposal": {
+        "display": false,
+        "redistribute": false,
+        "store": false,
+        "ml_use": false,
+        "note": "Do not clear. Exchange rates and interest rates are re-sourced from the Federal Reserve Board. Index levels (S&P 500, Dow, Nasdaq and others) have no free publishable source and stay withheld."
+      },
+      "open_questions": [
+        "The index providers (S&P Dow Jones Indices, Nasdaq and others) own the index levels whatever the channel; a publishable source would need their licence."
+      ],
+      "decision": null
+    },
+    {
+      "id": "philadelphia-fed",
+      "kind": "origin",
+      "name": "Federal Reserve Bank of Philadelphia, Real-Time Data Set",
+      "origins": [
+        "Federal Reserve Bank of Philadelphia"
+      ],
+      "datasets": "*",
+      "used_for": "Provider vintages for GDP, payrolls, unemployment, CPI. v2.1, after a spike.",
+      "terms": [
+        {
+          "url": "https://www.philadelphiafed.org/",
+          "read_on": null,
+          "how": "not_read",
+          "quotes": [],
+          "note": "No terms-of-use page was found at the addresses tried (HTTP 404). The site footer reads: Copyright 2026. All rights reserved."
+        }
+      ],
+      "licence_class": "unknown",
+      "attribution": null,
+      "proposal": {
+        "display": false,
+        "redistribute": false,
+        "store": false,
+        "ml_use": false,
+        "note": "No proposal to allow until terms for the data set are found and read. The footer reserves all rights, so nothing is assumed."
+      },
+      "open_questions": [
+        "Find the terms that apply to the Real-Time Data Set for Macroeconomists, or ask the Bank (PLAN 6: terms unclear)."
+      ],
+      "decision": null
+    },
+    {
+      "id": "imf",
+      "kind": "origin",
+      "name": "International Monetary Fund",
+      "origins": [
+        "International Monetary Fund"
+      ],
+      "datasets": "*",
+      "used_for": "Japan CPI fix; G20 CPI and exchange rates (SDMX 3.0). v2.0 (M14). Later WEO GDP and commodity prices, v2.2.",
+      "terms": [
+        {
+          "url": "https://www.imf.org/en/About/copyright-and-terms",
+          "read_on": "2026-11-11",
+          "how": "extract",
+          "quotes": [
+            "Distributed or reproduced Data must appear accurately with attribution to the IMF as the source.",
+            "Users shall not infringe upon the integrity of the Data"
+          ],
+          "note": "As summarised from the page: data may be downloaded, copied, published and distributed with attribution; commercial reuse needs permission; automated bulk downloading needs explicit permission; use to train large language models needs explicit permission."
+        }
+      ],
+      "licence_class": "citation_required",
+      "attribution": "Source: International Monetary Fund.",
+      "proposal": {
+        "display": true,
+        "redistribute": true,
+        "store": true,
+        "ml_use": false,
+        "note": "Allow display, download and storage with attribution, for a non-commercial site. Do not describe as usable for model training: the terms as summarised reserve that."
+      },
+      "open_questions": [
+        "Does a daily request to the SDMX API for a few dozen series count as automated bulk downloading, which the terms as summarised reserve? Confirm with the page or with the Fund before M14.",
+        "The wording was read through a tool that returns short extracts. Open the page before signing (PLAN 6: IMF reuse wording still unverified)."
+      ],
+      "decision": null
+    },
+    {
+      "id": "oecd",
+      "kind": "origin",
+      "name": "OECD",
+      "origins": [
+        "Organisation for Economic Co-operation and Development"
+      ],
+      "datasets": "*",
+      "used_for": "G20 unemployment and gaps (SDMX). v2.2.",
+      "terms": [
+        {
+          "url": "https://www.oecd.org/en/about/terms-conditions.html",
+          "read_on": null,
+          "how": "not_read",
+          "quotes": [],
+          "note": "The site refused the automated request (HTTP 403)."
+        }
+      ],
+      "licence_class": "unknown",
+      "attribution": "Source: OECD.",
+      "proposal": {
+        "display": false,
+        "redistribute": false,
+        "store": false,
+        "ml_use": false,
+        "note": "No proposal to allow until the page is read. The builder's understanding, not confirmed here, is that OECD data have been under CC BY 4.0 since July 2024; if the page says so, the proposal becomes allow with attribution."
+      },
+      "open_questions": [
+        "Read the terms page in a browser and record the licence and any exceptions for third-party data."
+      ],
+      "decision": null
+    },
+    {
+      "id": "world-bank",
+      "kind": "origin",
+      "name": "World Bank",
+      "origins": [
+        "World Bank"
+      ],
+      "datasets": "*",
+      "used_for": "Annual GDP, population, trade share. v2.2.",
+      "terms": [
+        {
+          "url": "https://datacatalog.worldbank.org/public-licenses",
+          "read_on": "2026-11-11",
+          "how": "extract",
+          "quotes": [
+            "licenses datasets under the Creative Commons Attribution 4.0 International license (CC-BY 4.0)",
+            "is the default license for all Datasets produced by the World Bank itself"
+          ]
+        },
+        {
+          "url": "https://www.worldbank.org/ext/en/legal/terms-conditions",
+          "read_on": "2026-11-11",
+          "how": "page",
+          "quotes": [
+            "Other parties may have ownership interests in some of the Materials contained on the Site."
+          ]
+        }
+      ],
+      "licence_class": "cc_by",
+      "attribution": "Source: World Bank (CC BY 4.0), with the indicator name and code.",
+      "proposal": {
+        "display": true,
+        "redistribute": true,
+        "store": true,
+        "ml_use": true,
+        "note": "CC BY 4.0 for data sets the Bank produces itself. Give credit and say if values were changed."
+      },
+      "open_questions": [
+        "Some catalogue data sets come from third parties under other licences. Each indicator added is checked on its own catalogue page before it is listed under this row."
+      ],
+      "decision": null
+    },
+    {
+      "id": "bis",
+      "kind": "origin",
+      "name": "Bank for International Settlements",
+      "origins": [
+        "Bank for International Settlements"
+      ],
+      "datasets": "*",
+      "used_for": "Policy rates for 18 G20 economies and the euro area. v2.2.",
+      "terms": [
+        {
+          "url": "https://data.bis.org/help/legal",
+          "read_on": "2026-11-11",
+          "how": "page",
+          "quotes": [
+            "The use of the statistics is unrestricted, provided that:",
+            "if the statistics are reproduced, the BIS must be cited in your publication or product as the source of the statistics;",
+            "No other use is permissible."
+          ]
+        }
+      ],
+      "licence_class": "citation_required",
+      "attribution": "Source: Bank for International Settlements.",
+      "proposal": {
+        "display": true,
+        "redistribute": true,
+        "store": true,
+        "ml_use": true,
+        "note": "Unrestricted with citation. Macro Atlas is free, so the condition that inclusion must not add a charge is met. The use must not suggest endorsement by the BIS."
+      },
+      "open_questions": [],
+      "decision": null
+    },
+    {
+      "id": "eurostat",
+      "kind": "origin",
+      "name": "Eurostat",
+      "origins": [
+        "Eurostat"
+      ],
+      "datasets": "*",
+      "used_for": "Named in the plan's register list; euro-area context for the G20 table. v2.2.",
+      "terms": [
+        {
+          "url": "https://ec.europa.eu/eurostat/web/main/help/copyright-notice",
+          "read_on": "2026-11-11",
+          "how": "extract",
+          "quotes": [
+            "for commercial or non-commercial purposes is authorised provided the source is acknowledged",
+            "The permission granted above does not extend to any material whose copyright is identified as belonging to a third-party"
+          ]
+        }
+      ],
+      "licence_class": "citation_required",
+      "attribution": "Source: Eurostat.",
+      "proposal": {
+        "display": true,
+        "redistribute": true,
+        "store": true,
+        "ml_use": true,
+        "note": "Reuse is authorised with the source acknowledged. Changes to the data must be stated."
+      },
+      "open_questions": [
+        "Some data sets are marked as third-party or non-commercial only; each one added is checked for that mark."
+      ],
+      "decision": null
+    },
+    {
+      "id": "e-stat",
+      "kind": "origin",
+      "name": "e-Stat, Portal Site of Official Statistics of Japan",
+      "origins": [
+        "Statistics Bureau of Japan"
+      ],
+      "datasets": "*",
+      "used_for": "Japan CPI source of record, as a cross-check. v2.0 test only.",
+      "terms": [
+        {
+          "url": "https://www.e-stat.go.jp/en/terms-of-use",
+          "read_on": "2026-11-11",
+          "how": "page",
+          "quotes": [
+            "may be freely used, copied, publicly transmitted, translated or otherwise modified on condition that the user complies with provisions 1) to 6) below. Commercial use of Content is also permitted.",
+            "numerical data and data in Simple tables, graphs, and so forth are not subject to copyright"
+          ]
+        }
+      ],
+      "licence_class": "citation_required",
+      "attribution": "Source: Portal Site of Official Statistics of Japan (https://www.e-stat.go.jp/), Consumer Price Index (Statistics Bureau of Japan).",
+      "proposal": {
+        "display": true,
+        "redistribute": true,
+        "store": true,
+        "ml_use": true,
+        "note": "Free use with source citation; edited content must say that it was edited."
+      },
+      "open_questions": [
+        "The plan uses e-Stat only in a test in v2.0. Whether the file ID survives a rebase is still unverified (PLAN 6)."
+      ],
+      "decision": null
+    },
+    {
+      "id": "bts",
+      "kind": "origin",
+      "name": "Bureau of Transportation Statistics",
+      "origins": [
+        "U.S. Bureau of Transportation Statistics"
+      ],
+      "datasets": "*",
+      "used_for": "Freight TSI, rail, trucking, annual port TEU (Socrata). v2.1.",
+      "terms": [
+        {
+          "url": "https://www.bts.gov/copyright",
+          "read_on": null,
+          "how": "not_read",
+          "quotes": [],
+          "note": "The site refused the automated request (HTTP 403)."
+        }
+      ],
+      "licence_class": "unknown",
+      "attribution": "Source: U.S. Bureau of Transportation Statistics.",
+      "proposal": {
+        "display": false,
+        "redistribute": false,
+        "store": false,
+        "ml_use": false,
+        "note": "No proposal to allow until the page is read. The Bureau's own series are expected to be public domain as federal work."
+      },
+      "open_questions": [
+        "BTS republishes series owned by others, such as the American Trucking Associations' tonnage index and the Association of American Railroads' carloads. Those need their owners' terms and may have to be withheld.",
+        "Socrata rate limits are still unverified (PLAN 6)."
+      ],
+      "decision": null
+    },
+    {
+      "id": "usaspending",
+      "kind": "origin",
+      "name": "USAspending",
+      "origins": [
+        "USAspending.gov (U.S. Department of the Treasury)"
+      ],
+      "datasets": "*",
+      "used_for": "IIJA by DEF code; CHIPS by federal account. v2.1.",
+      "terms": [
+        {
+          "url": "https://api.usaspending.gov/",
+          "read_on": "2026-11-11",
+          "how": "page",
+          "quotes": [
+            "allows the public to access comprehensive U.S. government spending data"
+          ]
+        },
+        {
+          "url": "https://www.usaspending.gov/about",
+          "read_on": null,
+          "how": "not_read",
+          "quotes": [],
+          "note": "The page is drawn by script and returned no text to the request."
+        }
+      ],
+      "licence_class": "public_domain",
+      "attribution": "Source: USAspending.gov.",
+      "proposal": {
+        "display": true,
+        "redistribute": true,
+        "store": true,
+        "ml_use": true,
+        "note": "U.S. federal works are not subject to copyright in the United States (17 U.S.C. 105). That is the basis proposed here; the pages read do not themselves state a licence."
+      },
+      "open_questions": [
+        "Find and record the site's own statement on reuse.",
+        "State-level IIJA and the BEAD account are still unverified (PLAN 6)."
+      ],
+      "decision": null
+    },
+    {
+      "id": "openfema",
+      "kind": "origin",
+      "name": "OpenFEMA",
+      "origins": [
+        "Federal Emergency Management Agency"
+      ],
+      "datasets": "*",
+      "used_for": "Disaster declarations. v2.2.",
+      "terms": [
+        {
+          "url": "https://www.fema.gov/about/openfema/terms-conditions",
+          "read_on": "2026-11-11",
+          "how": "extract",
+          "quotes": [
+            "This product uses the Federal Emergency Management Agency's OpenFEMA API, but is not endorsed by FEMA.",
+            "You may not modify or falsely represent content accessed through FEMA's API and still claim the source is FEMA or FEMA.gov."
+          ],
+          "note": "As summarised from the page: cite the endpoint and its version and the date the data were retrieved; no FEMA or DHS logo or seal without written authorisation."
+        }
+      ],
+      "licence_class": "citation_required",
+      "attribution": "This product uses the Federal Emergency Management Agency's OpenFEMA API, but is not endorsed by FEMA. (With the endpoint, its version and the date retrieved.)",
+      "proposal": {
+        "display": true,
+        "redistribute": true,
+        "store": true,
+        "ml_use": true,
+        "note": "Allow, with the required statement shown wherever the data appear and in every download."
+      },
+      "open_questions": [],
+      "decision": null
+    },
+    {
+      "id": "cdc-nchs",
+      "kind": "origin",
+      "name": "CDC, National Center for Health Statistics",
+      "origins": [
+        "CDC National Center for Health Statistics"
+      ],
+      "datasets": "*",
+      "used_for": "Deaths. v2.2.",
+      "terms": [
+        {
+          "url": "https://www.cdc.gov/other/agencymaterials.html",
+          "read_on": "2026-11-11",
+          "how": "extract",
+          "quotes": [
+            "is in the public domain, and may be freely used or reproduced without obtaining copyright permission",
+            "Attribution to the agency that developed the material must be provided in your use of the materials."
+          ]
+        },
+        {
+          "url": "https://www.cdc.gov/nchs/policy/data-user-agreement.html",
+          "read_on": null,
+          "how": "not_read",
+          "quotes": [],
+          "note": "The site refused the automated request (HTTP 403)."
+        }
+      ],
+      "licence_class": "public_domain",
+      "attribution": "Source: Centers for Disease Control and Prevention, National Center for Health Statistics.",
+      "proposal": {
+        "display": true,
+        "redistribute": true,
+        "store": true,
+        "ml_use": true,
+        "note": "Public domain with attribution, for published aggregates."
+      },
+      "open_questions": [
+        "The NCHS data user agreement was not read. It is expected to forbid attempts to identify individuals; Macro Atlas uses published national and state totals only. Read it before v2.2."
+      ],
+      "decision": null
+    },
+    {
+      "id": "noaa-ncei",
+      "kind": "origin",
+      "name": "NOAA National Centers for Environmental Information",
+      "origins": [
+        "NOAA National Centers for Environmental Information"
+      ],
+      "datasets": "*",
+      "used_for": "Billion-dollar disasters, frozen at 2024 and shown with its end stated. v2.2.",
+      "terms": [
+        {
+          "url": "https://www.ncei.noaa.gov/access/billions/",
+          "read_on": "2026-11-11",
+          "how": "page",
+          "quotes": [
+            "NOAA National Centers for Environmental Information (NCEI) U.S. Billion-Dollar Weather and Climate Disasters (2025). https://www.ncei.noaa.gov/access/billions/, DOI: 10.25921/stkw-7w73"
+          ],
+          "note": "The quotation is the citation the page asks for. The page states no licence."
+        }
+      ],
+      "licence_class": "public_domain",
+      "attribution": "NOAA National Centers for Environmental Information (NCEI) U.S. Billion-Dollar Weather and Climate Disasters, DOI: 10.25921/stkw-7w73.",
+      "proposal": {
+        "display": true,
+        "redistribute": true,
+        "store": true,
+        "ml_use": true,
+        "note": "U.S. federal works are not subject to copyright in the United States (17 U.S.C. 105). That is the basis proposed here; the pages read do not themselves state a licence. Use the citation the page gives."
+      },
+      "open_questions": [
+        "The continuation of the series by Climate Central has no known licence and is not covered by this row."
+      ],
+      "decision": null
+    },
+    {
+      "id": "owid",
+      "kind": "origin",
+      "name": "Our World in Data",
+      "origins": [
+        "Our World in Data"
+      ],
+      "datasets": "*",
+      "used_for": "COVID history. v2.2.",
+      "terms": [
+        {
+          "url": "https://ourworldindata.org/faqs",
+          "read_on": "2026-11-11",
+          "how": "page",
+          "quotes": [
+            "Data produced by us falls under our permissive CC BY license; you have permission to use, reproduce, and distribute it, provided that you cite us.",
+            "Most of the data on Our World in Data comes from third-party providers (such as the WHO, UN, and World Bank) and is subject to the license terms of those providers."
+          ]
+        }
+      ],
+      "licence_class": "cc_by",
+      "attribution": "Source: Our World in Data (CC BY), with the upstream provider named.",
+      "proposal": {
+        "display": true,
+        "redistribute": true,
+        "store": true,
+        "ml_use": true,
+        "note": "Allow only for data that Our World in Data marks as produced or collated by itself. Data it passes on from another provider is that provider's, and needs that provider's row."
+      },
+      "open_questions": [
+        "The COVID series rest on WHO data. Decide whether the series wanted counts as collated by Our World in Data or needs a WHO row."
+      ],
+      "decision": null
+    },
+    {
+      "id": "em-dat",
+      "kind": "origin",
+      "name": "EM-DAT (CRED, UCLouvain)",
+      "origins": [
+        "EM-DAT, CRED / UCLouvain"
+      ],
+      "datasets": "*",
+      "used_for": "Disasters. Link only.",
+      "terms": [
+        {
+          "url": "https://doc.emdat.be/docs/legal/terms-of-use/",
+          "read_on": "2026-11-11",
+          "how": "page",
+          "quotes": [
+            "Reproduce, copy, communicate, lend, or otherwise distribute EM-DAT or a substantial part of EM-DAT.",
+            "Create substitute or derivative databases of EM-DAT."
+          ],
+          "note": "Both quotations are items in the page's list of things users declare they will not do."
+        }
+      ],
+      "licence_class": "no_redistribution",
+      "attribution": null,
+      "proposal": {
+        "display": false,
+        "redistribute": false,
+        "store": false,
+        "ml_use": false,
+        "note": "Do not clear. Link to EM-DAT; hold and show none of its values."
+      },
+      "open_questions": [],
+      "decision": null
+    },
+    {
+      "id": "ntia",
+      "kind": "origin",
+      "name": "NTIA Internet Use Survey",
+      "origins": [
+        "National Telecommunications and Information Administration"
+      ],
+      "datasets": "*",
+      "used_for": "Broadband adoption. v2.1.",
+      "terms": [
+        {
+          "url": "https://www.ntia.gov/data/explorer",
+          "read_on": "2026-11-11",
+          "how": "extract",
+          "quotes": [
+            "Source: NTIA Internet Use Survey."
+          ],
+          "note": "The quotation is the source label on the page's own charts. The page states no reuse terms."
+        },
+        {
+          "url": "https://www.ntia.gov/page/web-policies",
+          "read_on": "2026-11-11",
+          "how": "page",
+          "quotes": [],
+          "note": "Read; it says nothing about reuse of data."
+        }
+      ],
+      "licence_class": "public_domain",
+      "attribution": "Source: NTIA Internet Use Survey.",
+      "proposal": {
+        "display": true,
+        "redistribute": true,
+        "store": true,
+        "ml_use": true,
+        "note": "U.S. federal works are not subject to copyright in the United States (17 U.S.C. 105). That is the basis proposed here; the pages read do not themselves state a licence."
+      },
+      "open_questions": [
+        "Find and record NTIA's own statement on reuse, if there is one."
+      ],
+      "decision": null
+    },
+    {
+      "id": "national-statistics-offices",
+      "kind": "origin",
+      "name": "National statistics offices (placeholder)",
+      "origins": [
+        "National statistics offices (not yet listed)"
+      ],
+      "datasets": "*",
+      "used_for": "G20 unemployment gaps the OECD does not fill (ONS, INDEC, Stats SA, MOSPI, BPS and others). v2.2.",
+      "terms": [],
+      "licence_class": "unknown",
+      "attribution": null,
+      "proposal": {
+        "display": false,
+        "redistribute": false,
+        "store": false,
+        "ml_use": false,
+        "note": "Nothing to allow. A placeholder so that the plan's source is not forgotten."
+      },
+      "open_questions": [
+        "Add one row per office when v2.2 chooses them."
+      ],
+      "decision": null,
+      "terms_note": "No office has been chosen yet, so no terms have been read. This row matches no real origin; each office gets its own row before any of its data is fetched."
+    },
+    {
+      "id": "gallup",
+      "kind": "origin",
+      "name": "Gallup (hand-entered presidential approval)",
+      "origins": [
+        "Gallup"
+      ],
+      "datasets": "*",
+      "used_for": "Presidential approval, quarterly averages, entered by hand in v1. v2.0 hand-entered files (M16).",
+      "terms": [
+        {
+          "url": "https://www.gallup.com/",
+          "read_on": null,
+          "how": "not_read",
+          "quotes": [],
+          "note": "No terms-of-use page was found at the addresses tried (HTTP 404)."
+        }
+      ],
+      "licence_class": "unknown",
+      "attribution": null,
+      "proposal": {
+        "display": false,
+        "redistribute": false,
+        "store": false,
+        "ml_use": false,
+        "note": "No proposal to allow. Gallup is a private company and its figures are its own; nothing is assumed from an unread page. Consider a source with clear terms for approval ratings, or written permission."
+      },
+      "open_questions": [
+        "Read Gallup's terms, or choose another source for approval ratings, before M16."
+      ],
+      "decision": null
+    },
+    {
+      "id": "wikipedia",
+      "kind": "origin",
+      "name": "Wikipedia (hand-entered election results)",
+      "origins": [
+        "Wikipedia election infoboxes",
+        "Wikipedia"
+      ],
+      "datasets": "*",
+      "used_for": "Election popular-vote margins, entered by hand in v1 from election infoboxes. v2.0 hand-entered files (M16).",
+      "terms": [
+        {
+          "url": "https://foundation.wikimedia.org/wiki/Policy:Terms_of_Use",
+          "read_on": "2026-11-11",
+          "how": "page",
+          "quotes": [
+            "Reuse of content that we host is welcome, though exceptions exist for content contributed under \"fair use\" or similar exemptions under applicable copyright law. Any reuse must comply with the underlying license(s)."
+          ],
+          "note": "Text on Wikipedia is under CC BY-SA 4.0, which asks that adaptations carry the same licence."
+        }
+      ],
+      "licence_class": "citation_required",
+      "attribution": "Source: Wikipedia, with the article and the date read (CC BY-SA 4.0).",
+      "proposal": {
+        "display": false,
+        "redistribute": false,
+        "store": false,
+        "ml_use": false,
+        "note": "Do not clear; re-source instead. Election results are public facts with official records (the Federal Election Commission, the Clerk of the House, the National Archives). M16 should enter them from those, each with its citation, which avoids a share-alike condition on Macro Atlas's downloads."
+      },
+      "open_questions": [
+        "Choose the official source for presidential and congressional results in M16 and give it its own row."
+      ],
+      "decision": null
+    },
+    {
+      "id": "public-record",
+      "kind": "origin",
+      "name": "Hand-entered facts from the public record",
+      "origins": [
+        "Macro Atlas, from the public record"
+      ],
+      "datasets": "*",
+      "used_for": "Terms of government (who held the presidency and each chamber, and when), each entry with a citation. v2.0 hand-entered files (M16).",
+      "terms": [],
+      "licence_class": "public_domain",
+      "attribution": "Each entry carries its own citation.",
+      "proposal": {
+        "display": true,
+        "redistribute": true,
+        "store": true,
+        "ml_use": true,
+        "note": "Dates and office-holders are facts of public record, entered by hand with a citation each. A file that takes its figures from a private compiler does not belong under this row."
+      },
+      "open_questions": [
+        "M16 decides which hand-entered files qualify and names the record each one cites."
+      ],
+      "decision": null,
+      "terms_note": "There is no single terms page: each entry cites the official record it was taken from."
+    },
+    {
+      "id": "macro-atlas-computed",
+      "kind": "origin",
+      "name": "Macro Atlas, computed series",
+      "origins": [
+        "Macro Atlas"
+      ],
+      "datasets": "*",
+      "used_for": "Derived series the engine computes (M11). The row covers the computation only: every input is asked about on its own row, and the most restrictive answer wins.",
+      "terms": [],
+      "licence_class": "public_domain",
+      "attribution": "Computed by Macro Atlas from the sources named.",
+      "proposal": {
+        "display": true,
+        "redistribute": true,
+        "store": true,
+        "ml_use": true,
+        "note": "Allow. This adds nothing to what the inputs allow and cannot widen it."
+      },
+      "open_questions": [],
+      "decision": null,
+      "terms_note": "Macro Atlas's own work; there are no outside terms to read."
+    },
+    {
+      "id": "macro-atlas-fixture",
+      "kind": "origin",
+      "name": "Macro Atlas, synthetic fixture",
+      "origins": [
+        "Macro Atlas fixture (synthetic)"
+      ],
+      "datasets": "*",
+      "used_for": "The made-up release used by tests, previews and CI (fixtures/public).",
+      "terms": [],
+      "licence_class": "public_domain",
+      "attribution": "Synthetic data, not a measurement of anything.",
+      "proposal": {
+        "display": true,
+        "redistribute": true,
+        "store": true,
+        "ml_use": true,
+        "note": "Allow, when a milestone needs fixture values on a public Surface in its tests (the release writer, M9). Until it is signed the fixture, like everything else, is refused by the gate on staging and production, and the site's tests of the production Surface expect that; signing this row is done together with changing those tests."
+      },
+      "open_questions": [],
+      "decision": null,
+      "terms_note": "Macro Atlas's own synthetic numbers; there are no outside terms to read."
+    }
+  ]
+}

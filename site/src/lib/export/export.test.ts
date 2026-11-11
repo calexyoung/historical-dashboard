@@ -1,7 +1,7 @@
 /**
  * Export (PLAN M5): CSV and the chart, through one function that asks the rights gate. On the
  * local surface every export is allowed and is stamped "not for publication"; on any other
- * surface it is refused (until M6's register says otherwise) and nothing of the data leaves.
+ * surface it is refused (until the rights register's rows are signed) and nothing of the data leaves.
  * On the synthetic fixture release.
  */
 import { readFileSync } from "node:fs";

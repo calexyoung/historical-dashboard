@@ -10,7 +10,7 @@
  * only; it is kept out of the package's main entry so the schema compiler never reaches a browser.
  *
  * Structural validity is not authorisation. Whether a Series may appear on a Surface is decided
- * by `permits()` and, from M6, the rights register. The profile rules here are a second,
+ * by `permits()` over the rights register. The profile rules here are a second,
  * independent line of defence for the interim data rule (PLAN 6.1).
  */
 import { createHash } from "node:crypto";

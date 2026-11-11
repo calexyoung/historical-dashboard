@@ -6,7 +6,7 @@
  * refusal that carries no data. It asks `permits()` for the Permission to redistribute, with the
  * full lineage of every Series the file would hold. On the local surface that is allowed and the
  * file is stamped "not for publication", in its content and in its name; on any other surface
- * the gate's default body refuses, until M6's register says otherwise (PLAN 6.1).
+ * the gate refuses until Alex has signed the rows in the rights register (PLAN 6.1, ADR 0020).
  *
  *   csv   the values on screen: every row of the chart's table, the Series' own value beside the
  *         value as drawn
