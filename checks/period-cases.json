@@ -1,5 +1,5 @@
 {
-  "about": "Shared table for Period arithmetic (schema/README.md, 'Periods'). Expected values were worked out from a calendar, not from either implementation. Run by tests/v2/test_period.py and packages/core/src/period.test.ts.",
+  "about": "Shared table for Period arithmetic (schema/README.md, 'Periods'). The calendar runs from 0001-01-01 to 9999-12-31: a Period that does not lie wholly inside it does not exist, and the last Period of each frequency has no successor. Expected values were worked out from a calendar, not from either implementation. Run by tests/v2/test_period.py and packages/core/src/period.test.ts.",
   "valid": [
     { "freq": "annual", "label": "2024", "start": "2024-01-01", "end": "2024-12-31", "next": "2025" },
     { "freq": "quarterly", "label": "2024-Q1", "start": "2024-01-01", "end": "2024-03-31", "next": "2024-Q2" },
@@ -16,6 +16,13 @@
     { "freq": "daily", "label": "2024-03-02", "start": "2024-03-02", "end": "2024-03-02", "next": "2024-03-03" },
     { "freq": "business_daily", "label": "2024-02-29", "start": "2024-02-29", "end": "2024-02-29", "next": "2024-03-01" },
     { "freq": "business_daily", "label": "2024-03-01", "start": "2024-03-01", "end": "2024-03-01", "next": "2024-03-04" },
+    { "freq": "monthly", "label": "9999-12", "start": "9999-12-01", "end": "9999-12-31", "next": null },
+    { "freq": "quarterly", "label": "9999-Q4", "start": "9999-10-01", "end": "9999-12-31", "next": null },
+    { "freq": "annual", "label": "9999", "start": "9999-01-01", "end": "9999-12-31", "next": null },
+    { "freq": "daily", "label": "9999-12-31", "start": "9999-12-31", "end": "9999-12-31", "next": null },
+    { "freq": "business_daily", "label": "9999-12-31", "start": "9999-12-31", "end": "9999-12-31", "next": null },
+    { "freq": "weekly", "label": "9999-W51", "start": "9999-12-20", "end": "9999-12-26", "next": null },
+    { "freq": "weekly", "label": "0001-W01", "start": "0001-01-01", "end": "0001-01-07", "next": "0001-W02" },
     { "freq": "irregular", "label": "2024-11-05", "start": "2024-11-05", "end": "2024-11-05", "next": null }
   ],
   "invalid": [
@@ -38,6 +45,7 @@
     { "freq": "daily", "label": "0000-01-01", "why": "there is no year 0000" },
     { "freq": "annual", "label": "0000", "why": "there is no year 0000" },
     { "freq": "weekly", "label": "0000-W01", "why": "there is no year 0000" },
+    { "freq": "weekly", "label": "9999-W52", "why": "its Sunday would fall in year 10000; the calendar here ends on 9999-12-31" },
     { "freq": "fortnightly", "label": "2024-01-01", "why": "not a frequency" }
   ]
 }
