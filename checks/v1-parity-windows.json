@@ -1,0 +1,8 @@
+{
+  "description": "The three recorded windows for the comparison of the engine's Transforms with v1 (PLAN M2; docs/method/transforms.md). Months are v1's: a window runs from the first day of `from` to the last day of `to`. They are fixed here, not read from the data, so the comparison does not move when v1's data is refreshed.",
+  "windows": [
+    { "name": "the whole of v1's axis as recorded on 2026-11-11", "from": "2000-01", "to": "2026-10" },
+    { "name": "v1's preset '2008 vs 2020'", "from": "2007-10", "to": "2010-10" },
+    { "name": "v1's preset 'COVID shock'", "from": "2019-06", "to": "2022-06" }
+  ]
+}
