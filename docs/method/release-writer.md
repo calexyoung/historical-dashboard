@@ -148,9 +148,9 @@ gives a Release whose source is `stale`.
 ## Retention, pins, rollback
 
 After each promotion the newest 30 Releases are kept, with `CURRENT` and every pinned Release.
-The rest are renamed into `trash/` and deleted by the first run a day later. A request that
-already holds a Release when it is pruned finishes with what it has; the next request for that
-id finds it gone.
+The rest are renamed into `trash/` and deleted by the first run a day later. A site that
+already has a pruned Release in memory can go on serving it while it is in the trash, so a
+request that was given its id a moment before finishes. Nothing is opened from the trash.
 
 ```
 python -m atlas pin ID --profile public --reason "claim lock cpi-2022"
@@ -167,8 +167,8 @@ three.
 `python -m atlas release --profile P --reuse-data` writes a new Release that hard-links the
 current one's data files and writes its content afresh. Until M19 the only content is the
 Annotations file. A reuse does not read the store: each source's `fetched` time, and a `failed`
-outcome, are carried over from the Release it reuses, while `stale` is judged afresh against
-the new Release's own date.
+outcome, are carried over from the Release it reuses, while `stale` is judged afresh over the
+Series the new Release holds and against its own date.
 
 `python -m atlas legacy-release` (M2) keeps to the same rules: it takes the root's lock, does
 not write into a root that `root.json` says is public or holds invented values, and refuses a
@@ -195,8 +195,8 @@ Once step 1 is written nothing stops the rest: a journal or a status file that c
 written is reported, with exit status 1, and passed over.
 
 A running site lets go of a retired Release at once. The reader serves a Release from memory
-only while its directory is still in `releases/`, so a Release that was pruned or retired is
-not opened again, by id or as `CURRENT`, without a restart.
+only while its directory is still in `releases/` or `trash/`; a retired one is in neither, so
+it is not served again, by id or as `CURRENT`, and no restart is needed.
 
 Running the command again finishes a withdrawal that was cut off; `atlas doctor` fails while
 one is unfinished. To allow the Series again, remove its entry from `withdrawn.json` by hand.

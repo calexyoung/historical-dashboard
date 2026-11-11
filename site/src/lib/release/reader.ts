@@ -182,17 +182,22 @@ export function createReleaseReader(options: {
   }
 
   /**
-   * Whether a Release this process has in memory is still in the root. The writer takes a
-   * Release out of `releases/` by one rename: into the trash when retention prunes it, and out
-   * of the root altogether when a Series in it is withdrawn (ADR 0023). A copy in memory must
-   * not outlive that, or a withdrawn value would be served until the process restarts.
+   * Whether a Release this process has in memory may still be served from there. The writer
+   * takes a Release out of `releases/` by one rename. Retention moves it to `trash/`, where it
+   * stays a day: a request that was given its id a moment ago must still be able to finish.
+   * A withdrawal moves it out of the root altogether (ADR 0023), and then a copy in memory
+   * must not outlive it, or a withdrawn value would be served until the process restarts.
+   * Only what is already in memory is served from the trash; nothing is opened from there.
    */
   async function stillThere(id: string): Promise<boolean> {
-    try {
-      return (await stat(join(root, "releases", id, "manifest.json"))).isFile();
-    } catch {
-      return false;
+    for (const folder of ["releases", "trash"]) {
+      try {
+        if ((await stat(join(root, folder, id, "manifest.json"))).isFile()) return true;
+      } catch {
+        // not in this folder
+      }
     }
+    return false;
   }
 
   async function open(id: string): Promise<Opened> {
@@ -255,9 +260,10 @@ export function createReleaseReader(options: {
       lastGood = null;
       return opened;
     }
-    if (lastGood && (await stillThere(lastGood.id))) {
+    const standIn = lastGood; // held here: another request may clear lastGood while this one waits
+    if (standIn && (await stillThere(standIn.id))) {
       const { kind, id, reason } = opened;
-      return { ok: true, release: lastGood, refreshFailed: { kind, id, reason } };
+      return { ok: true, release: standIn, refreshFailed: { kind, id, reason } };
     }
     return opened;
   }

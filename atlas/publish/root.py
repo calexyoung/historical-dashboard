@@ -185,11 +185,14 @@ def read_release(root: Path, release_id: str, folder: str = "releases") -> dict[
     if directory.resolve() != root.resolve() / folder / release_id:
         return f"release {release_id} is reached through a link"
     files: dict[str, bytes] = {}
-    for path in sorted(directory.rglob("*")):
-        if path.is_symlink() or not (path.is_dir() or path.is_file()):
-            return f"release {release_id}: {path.relative_to(directory).as_posix()} is not a regular file"
-        if path.is_file():
-            files[path.relative_to(directory).as_posix()] = path.read_bytes()
+    try:
+        for path in sorted(directory.rglob("*")):
+            if path.is_symlink() or not (path.is_dir() or path.is_file()):
+                return f"release {release_id}: {path.relative_to(directory).as_posix()} is not a regular file"
+            if path.is_file():
+                files[path.relative_to(directory).as_posix()] = path.read_bytes()
+    except OSError as error:  # a Release that cannot be read is not one anything may build on
+        return f"release {release_id} cannot be read ({error})"
     return files
 
 
@@ -284,20 +287,31 @@ def recover(root: Path, now: datetime) -> tuple[list[str], str | None]:
         intended = last.get("release_id")
         if last["outcome"] == "promoting" and intended:
             if current(root) == intended:
+                # The caller journals it and then closes the intent (``close_promotion``), in
+                # that order: cut off in between, the next run does both again.
                 promoted = intended
                 notes.append(f"it had promoted {intended}; CURRENT names it")
-                write_status(root, started=last.get("started"), finished=S.stamp(now), outcome="promoted",
-                             release_id=intended, profile=last.get("profile"), failed_checks=[],
-                             note="recorded by the next run: the run that promoted it was cut off")
-            elif (root / "releases" / intended).is_dir() and intended not in {
-                    pin["release_id"] for pin in pins(root)}:
-                _to_trash(root, intended, now)
-                notes.append(f"it had moved {intended} into releases/ without naming it in CURRENT; "
-                             "that release is in the trash")
+            elif (root / "releases" / intended).is_dir():
+                if intended in {pin["release_id"] for pin in pins(root)}:
+                    # No command pins a Release nothing names; someone wrote the pin by hand.
+                    notes.append(f"it had moved {intended} into releases/ without naming it in "
+                                 "CURRENT; that release is pinned and was left where it is")
+                else:
+                    _to_trash(root, intended, now)
+                    notes.append(f"it had moved {intended} into releases/ without naming it in "
+                                 "CURRENT; that release is in the trash")
                 write_status(root, started=last.get("started"), finished=S.stamp(now), outcome="failed",
                              release_id=intended, profile=last.get("profile"), failed_checks=[],
                              reason="the run was cut off before CURRENT was replaced")
     return notes, promoted
+
+
+def close_promotion(root: Path, release_id: str, now: datetime) -> None:
+    """Close the intent of a promotion that happened and was cut off before its record."""
+    last = status(root) or {}
+    write_status(root, started=last.get("started"), finished=S.stamp(now), outcome="promoted",
+                 release_id=release_id, profile=last.get("profile"), failed_checks=[],
+                 note="recorded by the next run: the run that promoted it was cut off")
 
 
 def _to_trash(root: Path, release_id: str, now: datetime) -> None:

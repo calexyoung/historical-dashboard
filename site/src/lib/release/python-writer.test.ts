@@ -51,25 +51,21 @@ describe("a Release written by the Python release writer", () => {
     expect(opened.ok).toBe(true);
   });
 
-  it("is served from memory only while it is still in the root: a pruned or retired Release is gone at once", async () => {
+  it("is let go by a running reader the moment a withdrawal retires it", async () => {
     const reader = createReleaseReader({ root, surface: "production" });
     const before = await reader.open(id);
     if (!before.ok) throw new Error(before.reason);
-    expect((await reader.open(id)).ok).toBe(true);
-    // What the writer does to prune a Release, and to retire one that holds a withdrawn Series:
-    // one rename out of releases/.
-    mkdirSync(join(root, "trash"), { recursive: true });
-    renameSync(join(root, "releases", id), join(root, "trash", id));
+    // What `atlas withdraw` does to every Release that holds the Series: out of the root.
+    const elsewhere = join(root, "..", "retired");
+    mkdirSync(elsewhere, { recursive: true });
+    renameSync(join(root, "releases", id), join(elsewhere, id));
     try {
-      // A request that already holds the Release finishes with what it has...
-      expect(before.release.series.fx_jobs!.observations.length).toBe(3);
-      // ...and nothing opens it again, by id or as CURRENT.
       const after = await reader.open(id);
       expect(after.ok).toBe(false);
       expect(!after.ok && after.kind).toBe("unavailable");
       expect((await reader.current()).ok).toBe(false);
     } finally {
-      renameSync(join(root, "trash", id), join(root, "releases", id));
+      renameSync(join(elsewhere, id), join(root, "releases", id));
     }
   });
 });

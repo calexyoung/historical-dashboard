@@ -63,10 +63,10 @@ This records the choices the plan left open and the places M9 departs from it.
     Retired Releases go to the store, which no web container mounts. After the first write
     nothing stops the rest: a journal that cannot be written is reported and passed over.
     The legacy converter refuses a root with a withdrawal. And the site's reader now serves
-    a Release from memory only while its directory is still in `releases/`: before M9 a
-    Release that had been opened once was served until the process restarted, which would
-    have kept a withdrawn value up. This also means a pruned Release is gone for the next
-    request, where M1's reader went on serving it.
+    a Release from memory only while its directory is still in `releases/` or `trash/`:
+    before M9 a Release that had been opened once was served until the process restarted,
+    which would have kept a withdrawn value up. A pruned Release stays servable from memory
+    for its day in the trash, so a request under way finishes; a retired one is gone at once.
 12. **The preflight asks the committed register and checks every Release in the root.**
     `atlas doctor --surface production` has no register option and does not read a manifest's
     word for what was allowed. A reader opens any Release by id, so one unfit Release anywhere

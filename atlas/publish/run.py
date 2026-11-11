@@ -118,6 +118,7 @@ class _Run:
             rows = {} if isinstance(files, str) else json.loads(files[MANIFEST])["series"]
             self.journal(event="finished", outcome="promoted", release_id=promoted, recovered=True,
                          published={key: row.get("state_hash") for key, row in sorted(rows.items())})
+            R.close_promotion(self.root, promoted, self.now)
 
 
 def _guarded(command: Callable[[], Result]) -> Result:
@@ -341,8 +342,8 @@ def _reuse(run: _Run, legacy: dict[str, bytes] | None, drop: dict[str, str] | No
     built = Built(reused_data_from=source, semantics_version=manifest["semantics_version"],
                   sources=manifest.get("sources", []), inputs=manifest.get("inputs", []))
     # A reuse does not read the store: when each source was last fetched, and a fetch that
-    # failed, are carried over. Whether its newest Period is too old is judged against this
-    # Release's own date.
+    # failed, are carried over. Whether its newest Period is too old is judged afresh, over
+    # the Series this Release still holds and against its own date.
     today = f"{run.now:%Y-%m-%d}"
     for line in built.sources:
         late = sorted(
@@ -352,9 +353,11 @@ def _reuse(run: _Run, legacy: dict[str, bytes] | None, drop: dict[str, str] | No
             == (line["producer"], line["via"])
             and (lag_limit(json.loads(files[f"series/{entry['key']}.json"])["period_end"],
                            entry.get("max_lag")) or today) < today)
-        if late and line.get("outcome", "ok") == "ok":
-            line["outcome"] = "stale"
-            line["detail"] = f"{', '.join(late)}: the last Period is older than max_lag allows"
+        if line.get("outcome") != "failed":
+            line.pop("detail", None)
+            line["outcome"] = "stale" if late else "ok"
+            if late:
+                line["detail"] = f"{', '.join(late)}: the last Period is older than max_lag allows"
     built.withheld = [row for row in manifest["withheld"] if row["key"] not in gone]
     for key in sorted(gone & {entry["key"] for entry in entries}):
         reason = (drop or {}).get(key) or "computed from a Series that was withdrawn"

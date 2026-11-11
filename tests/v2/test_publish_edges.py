@@ -265,3 +265,59 @@ def test_the_legacy_converter_does_not_write_into_a_public_root_or_bring_back_a_
     with pytest.raises(LegacyRefused, match="cpi was withdrawn"):
         legacy_release(out=local, now=NOW + HOUR)
     assert current(local) == promoted.name
+
+
+def test_a_release_that_cannot_be_read_does_not_stop_a_withdrawal(tmp_path, register):
+    store = build_store(tmp_path / "store", register)
+    root = tmp_path / "public"
+    first = publish(tmp_path, register, store)
+    damaged = root / "releases" / first.release_id / "series" / "fx_jobs.json"
+    damaged.chmod(0o000)
+    try:
+        result = withdraw(key="fx_jobs", reason="wrong", profile="public", root=root, store=store,
+                          register=register, now=NOW + HOUR)
+    finally:
+        if damaged.exists():
+            damaged.chmod(0o644)
+
+    # No replacement could be built on a release that cannot be read: fail closed.
+    assert result.outcome == "withdrawn" and result.exit_code == 1, result.lines
+    assert current(root) is None and R.release_ids(root) == []
+    assert not any(value in all_bytes(root) for value in JOBS)
+
+
+def test_recovery_closes_a_cut_off_promotion_only_after_its_journal_line_is_written(
+        tmp_path, register, monkeypatch):
+    store = build_store(tmp_path / "store", register)
+    root = tmp_path / "public"
+    publish(tmp_path, register, store)
+    assert killed_run(root, register, store, NOW + HOUR, "run._Run.finish = die") == 9
+    second = current(root)
+
+    def full(path, record):
+        raise OSError(errno.ENOSPC, os.strerror(errno.ENOSPC), str(path))
+
+    monkeypatch.setattr(S, "append_line", full)
+    assert publish(tmp_path, register, store, now=NOW + 2 * HOUR).outcome == "failed"
+    assert read_json(root / "STATUS.json")["outcome"] == "promoting"      # still owed its line
+    monkeypatch.undo()
+
+    publish(tmp_path, register, store, now=NOW + 3 * HOUR)
+    assert [r.get("recovered") for r in S.read_release_runs(store) if r.get("release_id") == second] == [True]
+
+
+def test_a_withdrawal_judges_the_sources_freshness_over_the_series_that_are_left(tmp_path, register):
+    """On 15 July the jobs Series (ends March, three months allowed) is stale and the price
+    Series (ends April) is not."""
+    store = build_store(tmp_path / "store", register)
+    root = tmp_path / "public"
+    july = datetime(2026, 7, 15, 15, 7, 11, tzinfo=UTC)
+    first = publish(tmp_path, register, store, now=july)
+    (source,) = manifest_of(tmp_path, first)["sources"]
+    assert source["outcome"] == "stale" and "fx_jobs" in source["detail"] and "fx_price" not in source["detail"]
+
+    result = withdraw(key="fx_jobs", reason="wrong", profile="public", root=root, store=store,
+                      register=register, now=july + HOUR)
+
+    (source,) = manifest_of(tmp_path, result)["sources"]
+    assert source == {"producer": ORIGIN, "via": "fixture", "fetched": "2026-05-12T12:30:01Z", "outcome": "ok"}
