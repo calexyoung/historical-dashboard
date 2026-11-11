@@ -12,7 +12,7 @@
  * and Period wording. Pure: the only clock is `spec.created`, the Release's own.
  */
 import { staleness, type Frequency } from "@macro-atlas/core";
-import { drawnAs, drawPlot, GAP_MARKS, STATUS_MARKS, statusRuns, styleFor, yAxis, type YAxis } from "./plot";
+import { drawnAs, drawPlot, GAP_MARKS, leftMargin, STATUS_MARKS, statusRuns, styleFor, yAxis, type YAxis } from "./plot";
 import { MARK_NAMES, STATE_INFO, stateOfStatus, type MarkName } from "./states";
 import type { SvgNode } from "./svg";
 import { takeawayFor, type Silence } from "./takeaway";
@@ -39,6 +39,13 @@ export type ShownSeries = {
   country?: string;
   maxLag?: string;
   breaks?: { period: string; note: string }[];
+  /**
+   * "ln": the values are natural logarithms (the engine's `log`). They are drawn as they are and
+   * the axis is labelled with the values themselves, which makes it a logarithmic axis.
+   */
+  scale?: "ln";
+  /** The unit as the table should name it, where it differs from the axis's (a logarithm). */
+  tableUnit?: string;
   /** Where the values came from, in words, for the source line. */
   source: string;
   /** In Period order, every gap explicit, as a Release holds them. */
@@ -55,6 +62,31 @@ export type FigureSpec = {
   created: string;
   /** When the values were obtained, already in words ("retrieved 11 Nov 2026"), if known. */
   retrieved?: string | null;
+  /** False: no Takeaway and no reason for its absence (the Explorer shows re-expressed values). */
+  takeaway?: boolean;
+  /** False: no Series is named at the end of its line (the page lists them itself). */
+  endLabels?: boolean;
+  /** Calendar dates, both inclusive: one time axis for every plot of the figure. */
+  domain?: { from: string; to: string };
+  /** Annotations to draw on every plot. */
+  layers?: Layers;
+  /** A date the reader pinned: one upright line in every plot. */
+  pin?: string;
+};
+
+/**
+ * Annotations as the drawing needs them: dates only. Which Annotations, in which order and with
+ * which names is the caller's business. A band's tint is one of two pale neutrals; it never
+ * stands for a party (DESIGN.md), so whatever it distinguishes is also in the band's name.
+ */
+export type Layers = {
+  /** Spans drawn as pale bands the height of the plot; `end` is inclusive, null is still running. */
+  bands: { start: string; end: string | null; label: string; tint: "a" | "b" }[];
+  recessions: { start: string; end: string | null }[];
+  /** Dated Events, drawn as ticks at the foot of the plot. */
+  events: { id: string; date: string }[];
+  /** The Event the reader chose: a line the height of the plot, with its name. */
+  highlight?: { id: string; date: string; label: string } | null;
 };
 
 export type LayoutName = "narrow" | "medium" | "wide";
@@ -154,7 +186,7 @@ function tableFor(s: ShownSeries, stale: boolean): FigureTable {
       states,
     };
   });
-  return { key: s.key, name: s.name, unit: s.unit, decimals, rounded, rows };
+  return { key: s.key, name: s.name, unit: s.tableUnit ?? s.unit, decimals, rounded, rows };
 }
 
 /** "Aug 2025", "2020 Q1 to 2024 Q4 (20 periods)"; at most three runs, then a count of the rest. */
@@ -203,7 +235,10 @@ function howToRead(plots: { group: ShownSeries[]; axis: YAxis }[], notes: StateN
   if (kinds.has("step")) lines.push({ text: `Each value stands from its date until the next one, drawn as a step. The last value stands until the day this release was made, ${dayWords(created.slice(0, 10))}.` });
   for (const { axis, group } of plots) {
     const [lo, hi] = axis.domain;
-    if (lo > 0 || hi < 0) {
+    if (axis.log) {
+      const which = plots.length > 1 ? ` for ${group[0]!.unit}` : "";
+      lines.push({ text: `The vertical axis${which} is logarithmic: equal distances are equal percent changes.` });
+    } else if (lo > 0 || hi < 0) {
       const which = plots.length > 1 ? ` for ${group[0]!.unit}` : "";
       lines.push({ text: `The vertical axis${which} runs from ${axis.format(lo)} to ${axis.format(hi)}. It does not start at zero.` });
     }
@@ -221,7 +256,7 @@ function howToRead(plots: { group: ShownSeries[]; axis: YAxis }[], notes: StateN
 
 export function renderFigure(spec: FigureSpec, series: readonly FigureSeries[]): Figure {
   const shown = series.filter(isShown);
-  const { takeaway, silence } = takeawayFor(shown, spec.created);
+  const { takeaway, silence } = spec.takeaway === false ? { takeaway: null, silence: null } : takeawayFor(shown, spec.created);
 
   const states: StateNote[] = [];
   const stale = new Set<string>();
@@ -245,12 +280,15 @@ export function renderFigure(spec: FigureSpec, series: readonly FigureSeries[]):
     groups.set(s.unit, [...(groups.get(s.unit) ?? []), s]);
   }
   const measured = [...groups.values()].map((group) => ({ group, axis: yAxis(group) }));
+  // Plots stacked in one figure share their left edge, so a date is at one place in all of them.
+  const minLeft = Math.max(0, ...measured.map(({ axis }) => leftMargin(axis)));
+  const options = { domain: spec.domain, minLeft, layers: spec.layers, pin: spec.pin };
   const plots = measured.map(({ group, axis }): Plot => {
     const input = group.map((s) => ({ series: s, style: styles.get(s.key)!, stale: stale.has(s.key) }));
     const layouts = {} as Record<LayoutName, SvgNode>;
     let endLabels = false;
     for (const layout of ["narrow", "medium", "wide"] as const) {
-      const drawing = drawPlot(input, spec.created, layout, axis, layout === "wide");
+      const drawing = drawPlot(input, spec.created, layout, axis, layout === "wide" && spec.endLabels !== false, options);
       layouts[layout] = drawing.svg;
       if (layout === "wide") endLabels = drawing.endLabels;
     }

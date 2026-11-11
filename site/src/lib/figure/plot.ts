@@ -10,7 +10,7 @@
  */
 import { scaleLinear } from "d3-scale";
 import { curveStepAfter, line as d3line } from "d3-shape";
-import type { FigureObservation, LayoutName, SeriesStyle, ShownSeries } from "./index";
+import type { FigureObservation, LayoutName, Layers, SeriesStyle, ShownSeries } from "./index";
 import { mark, stateOfStatus, type MarkName } from "./states";
 import { h, r2, type SvgNode } from "./svg";
 import { dayWords, labelStart, periodWords } from "./words";
@@ -97,11 +97,43 @@ function tickDecimals(step: number): number {
   return Math.max(0, -Math.floor(Math.log10(step) + 1e-9));
 }
 
-export type YAxis = { domain: [number, number]; ticks: number[]; format: (v: number) => string };
+export type YAxis = { domain: [number, number]; ticks: number[]; format: (v: number) => string; /** Values are natural logs; ticks are labelled with the values themselves. */ log?: true };
+
+/**
+ * A logarithmic axis for values that arrive as natural logs (the engine's `log`). Ticks sit at
+ * round values of the Series itself (1, 2 and 5 times a power of ten; then every digit; then a
+ * plain linear division for a range too narrow for either) and are labelled with those values.
+ */
+function logAxis(values: number[]): YAxis {
+  let lo = Math.min(...values);
+  let hi = Math.max(...values);
+  if (lo === hi) [lo, hi] = [lo - 0.05, hi + 0.05];
+  const pad = (hi - lo) * 0.04;
+  const [a, b] = [Math.exp(lo), Math.exp(hi)];
+  const round = (multiples: number[]): number[] => {
+    const out: number[] = [];
+    for (let k = Math.floor(Math.log10(a)) - 1; k <= Math.ceil(Math.log10(b)); k++) {
+      for (const m of multiples) {
+        const v = Number((m * 10 ** k).toPrecision(12));
+        if (v >= a * (1 - 1e-9) && v <= b * (1 + 1e-9)) out.push(v);
+      }
+    }
+    return out;
+  };
+  let shown = [[1], [1, 2, 5], [1, 2, 3, 4, 5, 6, 7, 8, 9]].map(round).filter((t) => t.length >= 2 && t.length <= 7).sort((x, y) => y.length - x.length)[0];
+  if (!shown) {
+    const decades = round([1]);
+    shown = decades.length > 7 ? decades.filter((_, i) => i % Math.ceil(decades.length / 6) === 0) : scaleLinear().domain([a, b]).ticks(4).filter((v) => v > 0);
+  }
+  const steps = shown.slice(1).map((v, i) => v - shown![i]!);
+  const write = tickFormat(shown, steps.length > 0 ? Math.min(...steps) : 1);
+  return { domain: [lo - pad, hi + pad], ticks: shown.map(Math.log), format: (v) => write(Number(Math.exp(v).toPrecision(12))), log: true };
+}
 
 /** One vertical axis for a plot, the same at every width. */
 export function yAxis(series: readonly ShownSeries[]): YAxis {
   const values = series.flatMap((s) => s.observations.map((o) => o.value).filter((v): v is number => v !== null));
+  if (values.length > 0 && series.every((s) => s.scale === "ln")) return logAxis(values);
   let lo = Math.min(...values);
   let hi = Math.max(...values);
   if (values.length === 0) [lo, hi] = [0, 1];
@@ -180,22 +212,36 @@ function timeTicks(t0: number, t1: number, room: number): { t: number; label: st
 
 export type PlotInput = { series: ShownSeries; style: SeriesStyle; /** Stale in this Release: marked on its last value. */ stale: boolean }[];
 
-export function drawPlot(input: PlotInput, created: string, layout: LayoutName, axis: YAxis, wantEndLabels: boolean): { svg: SvgNode; endLabels: boolean } {
+/** The room a plot's own tick labels need at its left. */
+export const leftMargin = (axis: YAxis): number => Math.max(30, Math.max(...axis.ticks.map(axis.format).map(textWidth)) + 10);
+
+export type PlotOptions = {
+  /** Calendar dates, both inclusive: the time axis, whatever the Series hold. Several plots given one domain line up. */
+  domain?: { from: string; to: string };
+  /** At least this much room at the left, so plots stacked in one figure share an edge. */
+  minLeft?: number;
+  layers?: Layers;
+  /** A date the reader pinned. */
+  pin?: string;
+};
+
+export function drawPlot(input: PlotInput, created: string, layout: LayoutName, axis: YAxis, wantEndLabels: boolean, options: PlotOptions = {}): { svg: SvgNode; endLabels: boolean } {
   const { width: W, height: H } = LAYOUT_SIZES[layout];
   const all = input.map((i) => i.series);
 
   // The time axis runs from the first Period's start to the last one's, or to the day the Release
-  // was made where a held value is still standing.
+  // was made where a held value is still standing; or over exactly the window it is given.
   const starts = all.flatMap((s) => s.observations.map((o) => ms(o.period_start)));
   let t0 = Math.min(...starts);
   let t1 = Math.max(...starts);
   const madeOn = ms(created);
   const standing = (s: ShownSeries) => s.continuity === "held" && s.observations.at(-1)?.value !== null && madeOn > ms(s.observations.at(-1)!.period_start);
   if (all.some(standing)) t1 = Math.max(t1, madeOn);
+  if (options.domain) [t0, t1] = [ms(options.domain.from), ms(options.domain.to)];
   if (t1 - t0 < 60 * DAY_MS) [t0, t1] = [t0 - 45 * DAY_MS, t1 + 45 * DAY_MS];
 
   const yLabels = axis.ticks.map(axis.format);
-  const left = Math.max(30, Math.max(...yLabels.map(textWidth)) + 10);
+  const left = Math.max(leftMargin(axis), options.minLeft ?? 0);
   const top = 12;
   const bottom = 28;
 
@@ -211,7 +257,10 @@ export function drawPlot(input: PlotInput, created: string, layout: LayoutName, 
   const yBottom = H - bottom;
   // Values keep clear of the plot's edges by the size of a symbol, so none is cut by an axis.
   const INSET = 4;
-  const x = (t: number) => x0 + INSET + ((t - t0) / (t1 - t0)) * (x1 - x0 - 2 * INSET);
+  const xFree = (t: number) => x0 + INSET + ((t - t0) / (t1 - t0)) * (x1 - x0 - 2 * INSET);
+  // Nothing is drawn outside the window: a value standing since before it starts at its edge.
+  const x = (t: number) => Math.min(xFree(t1), Math.max(xFree(t0), xFree(t)));
+  const inWindow = (t: number) => t >= t0 && t <= t1;
   const yScale = scaleLinear().domain(axis.domain).range([yBottom, yTop]);
   const y = (v: number) => yScale(v);
 
@@ -238,6 +287,66 @@ export function drawPlot(input: PlotInput, created: string, layout: LayoutName, 
     if (labelLeft - lastRight < 6) continue;
     timeAxis.push(text(tick.label, { x: r2(tx), y: H - 8, "text-anchor": anchor }));
     lastRight = labelLeft + w;
+  }
+
+  // --- annotation layers: bands and recessions behind everything, event ticks at the foot ---
+  const behind: SvgNode[] = [];
+  const front: SvgNode[] = [];
+  const layers = options.layers;
+  if (layers) {
+    const span = (start: string, end: string | null): [number, number] | null => {
+      const a = Math.max(ms(start), t0);
+      const b = Math.min(end === null ? t1 : ms(end) + DAY_MS, t1); // the last day is inclusive
+      return b > a ? [r2(xFree(a)), r2(xFree(b))] : null;
+    };
+    for (const band of layers.bands) {
+      const at = span(band.start, band.end);
+      if (!at) continue;
+      const [ax, bx] = at;
+      const fits = textWidth(band.label) + 8 <= bx - ax;
+      behind.push(
+        h(
+          "g",
+          { "data-layer": "band", "data-tint": band.tint },
+          h("rect", { x: ax, y: yTop, width: r2(bx - ax), height: yBottom - yTop, fill: "var(--color-band)", "fill-opacity": band.tint === "a" ? 0.55 : 0.22 }),
+          // A hairline where a band begins, so two bands of one tint in a row are still two.
+          h("line", { x1: ax, y1: yTop, x2: ax, y2: yBottom, stroke: LINE_STRONG, "stroke-width": 1 }),
+          fits && text(band.label, { x: r2(ax + 4), y: yTop + 12 }),
+        ),
+      );
+    }
+    for (const recession of layers.recessions) {
+      const at = span(recession.start, recession.end);
+      if (!at) continue;
+      behind.push(h("g", { "data-layer": "recession" }, h("rect", { x: at[0], y: yTop, width: r2(at[1] - at[0]), height: yBottom - yTop, fill: INK, "fill-opacity": 0.1 })));
+    }
+    for (const event of layers.events) {
+      if (!inWindow(ms(event.date))) continue;
+      const ex = r2(xFree(ms(event.date)));
+      front.push(h("g", { "data-layer": "event", "data-event": event.id }, h("line", { x1: ex, y1: yBottom - 10, x2: ex, y2: yBottom, stroke: INK_2, "stroke-width": 1.5 })));
+    }
+    const chosen = layers.highlight;
+    if (chosen && inWindow(ms(chosen.date))) {
+      const ex = r2(xFree(ms(chosen.date)));
+      // The name is cut to what the drawing can hold; the list under the chart has it whole.
+      const room = Math.floor((W - 16) / CHAR);
+      const name = chosen.label.length > room ? `${chosen.label.slice(0, room - 1).trimEnd()}…` : chosen.label;
+      const w = textWidth(name) + 10;
+      const lx = Math.max(0, Math.min(W - w, ex + 6 + w > W ? ex - 6 - w : ex + 6));
+      front.push(
+        h(
+          "g",
+          { "data-layer": "chosen-event", "data-event": chosen.id },
+          h("line", { x1: ex, y1: yTop, x2: ex, y2: yBottom, stroke: INK, "stroke-width": 1.5 }),
+          h("rect", { x: r2(lx), y: yTop + 2, width: w, height: 18, fill: "var(--color-panel)", stroke: INK, "stroke-width": 1 }),
+          h("text", { x: r2(lx + 5), y: yTop + 15, "font-size": FONT, fill: INK }, name),
+        ),
+      );
+    }
+  }
+  if (options.pin && inWindow(ms(options.pin))) {
+    const px = r2(xFree(ms(options.pin)));
+    front.push(h("g", { "data-pin": options.pin.slice(0, 10) }, h("line", { x1: px, y1: yTop, x2: px, y2: yBottom, stroke: "var(--color-accent)", "stroke-width": 1.5 })));
   }
 
   // --- states that belong to the plot, behind the Series ---
@@ -344,14 +453,29 @@ export function drawPlot(input: PlotInput, created: string, layout: LayoutName, 
 
   const svg = h(
     "svg",
-    { viewBox: `0 0 ${W} ${H}`, width: W, height: H, role: "img", "aria-label": label, "data-layout": layout, preserveAspectRatio: "xMinYMin meet" },
+    {
+      viewBox: `0 0 ${W} ${H}`,
+      width: W,
+      height: H,
+      role: "img",
+      "aria-label": label,
+      "data-layout": layout,
+      // The time axis in the drawing's own terms, for anything that must place a date on it.
+      "data-t0": t0,
+      "data-t1": t1,
+      "data-x0": r2(xFree(t0)),
+      "data-x1": r2(xFree(t1)),
+      preserveAspectRatio: "xMinYMin meet",
+    },
     h("rect", { "data-plot-area": "", x: x0, y: yTop, width: r2(x1 - x0), height: yBottom - yTop, fill: "none" }),
+    ...behind,
     h("g", { "data-axis": "y" }, ...grid),
     h("g", { "data-axis": "time" }, ...timeAxis),
     ...stateMarks,
     ...drawn,
     ...overlay,
     ...labels,
+    ...front,
   );
   return { svg, endLabels };
 }
