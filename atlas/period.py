@@ -7,6 +7,7 @@ which Period comes next. It is the Python twin of ``packages/core/src/period.ts`
 """
 from __future__ import annotations
 
+import calendar
 import re
 from datetime import date, timedelta
 
@@ -69,15 +70,13 @@ def _span_unchecked(freq: str, label: str) -> tuple[date, date] | None:
         if not m or not 1 <= int(m[2]) <= 12:
             return None
         year, month = int(m[1]), int(m[2])
-        after = date(year + 1, 1, 1) if month == 12 else date(year, month + 1, 1)
-        return date(year, month, 1), after - _ONE_DAY
+        return date(year, month, 1), date(year, month, calendar.monthrange(year, month)[1])
     if freq == "quarterly":
         m = _QUARTER.fullmatch(label)
         if not m:
             return None
-        year, quarter = int(m[1]), int(m[2])
-        after = date(year + 1, 1, 1) if quarter == 4 else date(year, quarter * 3 + 1, 1)
-        return date(year, quarter * 3 - 2, 1), after - _ONE_DAY
+        year, last = int(m[1]), int(m[2]) * 3
+        return date(year, last - 2, 1), date(year, last, calendar.monthrange(year, last)[1])
     if freq == "annual":
         m = _YEAR.fullmatch(label)
         if not m or int(m[1]) < 1:
@@ -95,22 +94,29 @@ def period_bounds(freq: str, label: str) -> tuple[str, str] | None:
 
 
 def next_period(freq: str, label: str) -> str | None:
-    """The label of the Period that follows. None for an irregular Series or a bad label."""
+    """The label of the Period that follows.
+
+    None for an irregular Series, a bad label, or the last Period of the calendar (which ends on
+    9999-12-31): a successor that would not lie wholly inside the calendar does not exist.
+    """
     span = _span(freq, label)
     if span is None or freq == "irregular":
         return None
-    after = span[1] + _ONE_DAY
-    if freq == "daily":
-        return after.isoformat()
-    if freq == "business_daily":
-        while after.isoweekday() > 5:
+    try:
+        after = span[1] + _ONE_DAY
+        while freq == "business_daily" and after.isoweekday() > 5:
             after += _ONE_DAY
-        return after.isoformat()
-    if freq == "weekly":
+    except OverflowError:
+        return None
+    if freq in ("daily", "business_daily"):
+        candidate = after.isoformat()
+    elif freq == "weekly":
         iso = after.isocalendar()
-        return f"{iso[0]:04d}-W{iso[1]:02d}"
-    if freq == "monthly":
-        return f"{after.year:04d}-{after.month:02d}"
-    if freq == "quarterly":
-        return f"{after.year:04d}-Q{(after.month - 1) // 3 + 1}"
-    return f"{after.year:04d}"
+        candidate = f"{iso[0]:04d}-W{iso[1]:02d}"
+    elif freq == "monthly":
+        candidate = f"{after.year:04d}-{after.month:02d}"
+    elif freq == "quarterly":
+        candidate = f"{after.year:04d}-Q{(after.month - 1) // 3 + 1}"
+    else:
+        candidate = f"{after.year:04d}"
+    return candidate if _span(freq, candidate) is not None else None

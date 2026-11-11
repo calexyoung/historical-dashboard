@@ -8,7 +8,7 @@
  */
 export type Profile = "public" | "local";
 /**
- * An instant in UTC, RFC 3339 with a Z suffix.
+ * An instant in UTC, written exactly as YYYY-MM-DDTHH:MM:SS, an optional fraction of up to nine digits, then Z. No offsets, no leap seconds, no lower case.
  *
  * This interface was referenced by `Release`'s JSON-Schema
  * via the `definition` "datetime".
@@ -66,6 +66,20 @@ export type CalendarDate = string;
  * via the `definition` "period".
  */
 export type PeriodLabel = string;
+/**
+ * The declared rule that produces a Derived series. inputs are ordered: ratio is inputs[0] / inputs[1] and difference is inputs[0] - inputs[1], each with exactly two inputs; sum and product take two or more; pct_change takes one input and params.lag, a whole number of the input's Periods. order is always stated. The output's unit is the entry's own unit. Only the engine in packages/core computes a Recipe (ADR 0003); other code may only check its structure.
+ *
+ * This interface was referenced by `Release`'s JSON-Schema
+ * via the `definition` "recipe".
+ */
+export type Recipe = PairRecipe | CombineRecipe | PercentChangeRecipe;
+/**
+ * Whether inputs are brought to the output frequency before or after the arithmetic. Always stated; there is no default.
+ *
+ * This interface was referenced by `Release`'s JSON-Schema
+ * via the `definition` "recipeOrder".
+ */
+export type RecipeOrder = "aggregate_then_compute" | "compute_then_aggregate";
 /**
  * What kind of value an Observation is. missing and suppressed carry no value. projected is never presented as observed.
  *
@@ -359,24 +373,42 @@ export interface SeriesBreak {
   note: string;
 }
 /**
- * The declared rule that produces a Derived series. inputs are ordered: ratio is inputs[0] / inputs[1], difference is inputs[0] - inputs[1]; sum and product take two or more; pct_change takes one input and params.lag (in periods of the input). The output's unit is the entry's own unit. Only the engine in packages/core computes a Recipe (ADR 0003); other code may only check its structure.
- *
- * This interface was referenced by `Release`'s JSON-Schema
- * via the `definition` "recipe".
+ * ratio is inputs[0] / inputs[1]; difference is inputs[0] - inputs[1].
  */
-export interface Recipe {
-  op: "ratio" | "difference" | "sum" | "product" | "pct_change";
+export interface PairRecipe {
+  op: "ratio" | "difference";
+  /**
+   * @minItems 2
+   * @maxItems 2
+   */
+  inputs: [SeriesKey, SeriesKey];
+  order: RecipeOrder;
+}
+/**
+ * sum and product of two or more inputs.
+ */
+export interface CombineRecipe {
+  op: "sum" | "product";
+  /**
+   * @minItems 2
+   */
+  inputs: [SeriesKey, SeriesKey, ...SeriesKey[]];
+  order: RecipeOrder;
+}
+/**
+ * Percent change of one input from params.lag of its Periods earlier.
+ */
+export interface PercentChangeRecipe {
+  op: "pct_change";
   /**
    * @minItems 1
+   * @maxItems 1
    */
-  inputs: [SeriesKey, ...SeriesKey[]];
-  params?: {
-    [k: string]: number | string | boolean;
+  inputs: [SeriesKey];
+  order: RecipeOrder;
+  params: {
+    lag: number;
   };
-  /**
-   * Whether inputs are brought to the output frequency before or after the arithmetic.
-   */
-  order?: "aggregate_then_compute" | "compute_then_aggregate";
 }
 /**
  * series/{key}.json or derived/{key}.json. Observations are in Period order at the native frequency with no Period left out between the bounds (irregular series excepted). period_start and period_end are the bounds: the first Observation's period_start and the last one's period_end.

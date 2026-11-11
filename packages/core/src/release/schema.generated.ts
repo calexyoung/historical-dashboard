@@ -63,10 +63,10 @@ export const releaseSchema: Record<string, unknown> = {
     },
     "datetime": {
       "title": "Instant",
-      "description": "An instant in UTC, RFC 3339 with a Z suffix.",
+      "description": "An instant in UTC, written exactly as YYYY-MM-DDTHH:MM:SS, an optional fraction of up to nine digits, then Z. No offsets, no leap seconds, no lower case.",
       "type": "string",
       "format": "date-time",
-      "pattern": "Z$"
+      "pattern": "^(?!0000)[0-9]{4}-[0-9]{2}-[0-9]{2}T([01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9](\\.[0-9]{1,9})?Z$"
     },
     "sha256": {
       "title": "Sha256",
@@ -529,50 +529,119 @@ export const releaseSchema: Record<string, unknown> = {
         }
       }
     },
+    "recipeOrder": {
+      "title": "RecipeOrder",
+      "description": "Whether inputs are brought to the output frequency before or after the arithmetic. Always stated; there is no default.",
+      "enum": [
+        "aggregate_then_compute",
+        "compute_then_aggregate"
+      ]
+    },
     "recipe": {
       "title": "Recipe",
-      "description": "The declared rule that produces a Derived series. inputs are ordered: ratio is inputs[0] / inputs[1], difference is inputs[0] - inputs[1]; sum and product take two or more; pct_change takes one input and params.lag (in periods of the input). The output's unit is the entry's own unit. Only the engine in packages/core computes a Recipe (ADR 0003); other code may only check its structure.",
-      "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "op",
-        "inputs"
-      ],
-      "properties": {
-        "op": {
-          "enum": [
-            "ratio",
-            "difference",
-            "sum",
-            "product",
-            "pct_change"
-          ]
-        },
-        "inputs": {
-          "type": "array",
-          "minItems": 1,
-          "items": {
-            "$ref": "#/$defs/key"
-          }
-        },
-        "params": {
+      "description": "The declared rule that produces a Derived series. inputs are ordered: ratio is inputs[0] / inputs[1] and difference is inputs[0] - inputs[1], each with exactly two inputs; sum and product take two or more; pct_change takes one input and params.lag, a whole number of the input's Periods. order is always stated. The output's unit is the entry's own unit. Only the engine in packages/core computes a Recipe (ADR 0003); other code may only check its structure.",
+      "oneOf": [
+        {
+          "title": "PairRecipe",
+          "description": "ratio is inputs[0] / inputs[1]; difference is inputs[0] - inputs[1].",
           "type": "object",
-          "additionalProperties": {
-            "type": [
-              "number",
-              "string",
-              "boolean"
-            ]
+          "additionalProperties": false,
+          "required": [
+            "op",
+            "inputs",
+            "order"
+          ],
+          "properties": {
+            "op": {
+              "enum": [
+                "ratio",
+                "difference"
+              ]
+            },
+            "inputs": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/key"
+              },
+              "minItems": 2,
+              "maxItems": 2
+            },
+            "order": {
+              "$ref": "#/$defs/recipeOrder"
+            }
           }
         },
-        "order": {
-          "description": "Whether inputs are brought to the output frequency before or after the arithmetic.",
-          "enum": [
-            "aggregate_then_compute",
-            "compute_then_aggregate"
-          ]
+        {
+          "title": "CombineRecipe",
+          "description": "sum and product of two or more inputs.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "op",
+            "inputs",
+            "order"
+          ],
+          "properties": {
+            "op": {
+              "enum": [
+                "sum",
+                "product"
+              ]
+            },
+            "inputs": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/key"
+              },
+              "minItems": 2
+            },
+            "order": {
+              "$ref": "#/$defs/recipeOrder"
+            }
+          }
+        },
+        {
+          "title": "PercentChangeRecipe",
+          "description": "Percent change of one input from params.lag of its Periods earlier.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "op",
+            "inputs",
+            "order",
+            "params"
+          ],
+          "properties": {
+            "op": {
+              "const": "pct_change"
+            },
+            "inputs": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/key"
+              },
+              "minItems": 1,
+              "maxItems": 1
+            },
+            "order": {
+              "$ref": "#/$defs/recipeOrder"
+            },
+            "params": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "lag"
+              ],
+              "properties": {
+                "lag": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          }
         }
-      }
+      ]
     },
     "catalogEntry": {
       "title": "CatalogEntry",

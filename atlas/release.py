@@ -119,7 +119,12 @@ def validate_files(release_id: str, files: Mapping[str, bytes]) -> list[Issue]:
     known = list(REQUIRED_FILES) + [p for folder in series_paths.values() for p in folder.values()]
     for path in known:
         try:
-            parsed[path] = json.loads(bytes(files[path]).decode("utf-8"), parse_constant=_no_constant)
+            parsed[path] = json.loads(
+                bytes(files[path]).decode("utf-8"),
+                parse_constant=_no_constant,
+                parse_float=_finite_float,
+                parse_int=_finite_int,
+            )
         except (ValueError, UnicodeDecodeError) as error:
             issues.append(Issue("invalid_json", path, str(error)))
     if any(i.code == "invalid_json" for i in issues):
@@ -156,6 +161,24 @@ def validate_files(release_id: str, files: Mapping[str, bytes]) -> list[Issue]:
 
 def _no_constant(name: str):
     raise ValueError(f"{name} is not JSON")
+
+
+# Every number in a Release is a finite double, in both languages. Python would otherwise read
+# 1e400 as infinity and an enormous integer exactly, where JavaScript reads both as Infinity.
+def _finite_float(text: str) -> float:
+    value = float(text)
+    if value in (float("inf"), float("-inf")):
+        raise ValueError(f"{text[:24]} is too large to be a number")
+    return value
+
+
+def _finite_int(text: str) -> int:
+    try:
+        value = int(text)
+        float(value)
+    except (ValueError, OverflowError):  # ValueError: past Python's digit limit for int()
+        raise ValueError(f"{text[:24]}... is too large to be a number") from None
+    return value
 
 
 def _locate(parts: list) -> tuple:

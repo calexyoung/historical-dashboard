@@ -54,6 +54,17 @@ inclusive**, with no time and no zone.
 
 A Series whose year does not follow the calendar (a fiscal year) is not expressible in v0.
 
+The calendar runs from 0001-01-01 to 9999-12-31. A Period that does not lie wholly inside it does
+not exist, and the last Period of each frequency has no successor. `checks/period-cases.json`
+pins the arithmetic down for both languages.
+
+**Instants** (`created`, a source's `fetched`, an input's `generated`) are written exactly as
+`YYYY-MM-DDTHH:MM:SS`, an optional fraction, then `Z`: UTC only, capital `T` and `Z`, no leap
+seconds. A time that is not known is `null`, never a stand-in.
+
+**Numbers** are finite doubles. A literal too large to be one (`1e400`) is not JSON here, in
+either language.
+
 **Gaps are explicit.** Between a file's bounds every Period at the native frequency is present.
 A Period with no value is an Observation with `value: null` and `status: "missing"` (or
 `"suppressed"`); leaving the Period out is an error (`implicit_gap`). A "sparse" Series is simply
@@ -78,9 +89,13 @@ legacy one never appears in a public Release.
 **Hashes.** A manifest row's `sha256` is the hash of the file's exact bytes. `state_hash` is the
 writer's hash of the normalized state (PLAN 4.3) and is opaque to readers.
 
-**Recipes.** `recipe.inputs` is ordered (`ratio` is `inputs[0] / inputs[1]`). Validators check a
-Recipe's structure only: inputs exist, there is no cycle, nothing shown rests on a withheld input.
-Only the engine in `packages/core` computes one (ADR 0003).
+**Recipes.** `recipe.inputs` is ordered. `ratio` (`inputs[0] / inputs[1]`) and `difference`
+(`inputs[0] - inputs[1]`) take exactly two inputs; `sum` and `product` take two or more;
+`pct_change` takes one input and `params.lag`, a whole number of the input's Periods. `order`
+(aggregate before or after the arithmetic) is always stated; there is no default to guess. The
+output's unit is the entry's own. Validators check structure only: the shape above, inputs exist,
+no cycle, nothing shown rests on a withheld input. Only the engine in `packages/core` computes a
+Recipe (ADR 0003).
 
 **Annotations.** One shape for every layer. `category` is the layer within a kind (an Event's
 category); `attributes` holds named facts a layer needs to draw itself (the party of a term of

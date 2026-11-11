@@ -60,7 +60,15 @@ function isoWeekLabel(ms: number): string {
   return `${pad(year, 4)}-W${pad(week, 2)}`;
 }
 
+/** The calendar runs from 0001-01-01 to 9999-12-31; a Period must lie wholly inside it. */
+const CALENDAR_END = utc(9999, 12, 31);
+
 function span(freq: string, label: string): Span | null {
+  const s = spanUnchecked(freq, label);
+  return s && s.end <= CALENDAR_END ? s : null;
+}
+
+function spanUnchecked(freq: string, label: string): Span | null {
   if (typeof label !== "string") return null;
   let m: RegExpExecArray | null;
   switch (freq) {
@@ -113,25 +121,33 @@ export function periodBounds(freq: string, label: string): PeriodBounds | null {
   return s ? { start: iso(s.start), end: iso(s.end) } : null;
 }
 
-/** The label of the Period that follows. Null for an irregular Series or a bad label. */
+/**
+ * The label of the Period that follows. Null for an irregular Series, a bad label, or the last
+ * Period of the calendar: a successor that would not lie wholly inside it does not exist.
+ */
 export function nextPeriod(freq: string, label: string): string | null {
   const s = span(freq, label);
   if (!s || freq === "irregular") return null;
   let after = s.end + DAY_MS;
+  while (freq === "business_daily" && isoWeekday(after) > 5) after += DAY_MS;
   const d = new Date(after);
+  let candidate: string;
   switch (freq) {
     case "daily":
-      return iso(after);
     case "business_daily":
-      while (isoWeekday(after) > 5) after += DAY_MS;
-      return iso(after);
+      candidate = iso(after);
+      break;
     case "weekly":
-      return isoWeekLabel(after);
+      candidate = isoWeekLabel(after);
+      break;
     case "monthly":
-      return `${pad(d.getUTCFullYear(), 4)}-${pad(d.getUTCMonth() + 1, 2)}`;
+      candidate = `${pad(d.getUTCFullYear(), 4)}-${pad(d.getUTCMonth() + 1, 2)}`;
+      break;
     case "quarterly":
-      return `${pad(d.getUTCFullYear(), 4)}-Q${Math.floor(d.getUTCMonth() / 3) + 1}`;
+      candidate = `${pad(d.getUTCFullYear(), 4)}-Q${Math.floor(d.getUTCMonth() / 3) + 1}`;
+      break;
     default:
-      return pad(d.getUTCFullYear(), 4);
+      candidate = pad(d.getUTCFullYear(), 4);
   }
+  return span(freq, candidate) ? candidate : null;
 }

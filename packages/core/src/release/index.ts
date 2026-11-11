@@ -86,6 +86,15 @@ const decoder = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
 const sha256 = (data: Uint8Array): string => createHash("sha256").update(data).digest("hex");
 const quote = (value: unknown): string => JSON.stringify(value);
 
+/**
+ * Every number in a Release is a finite double, in both languages. JSON.parse reads 1e400 as
+ * Infinity without complaint; refuse it here as the Python twin does.
+ */
+function finiteNumbers(_key: string, value: unknown): unknown {
+  if (typeof value === "number" && !Number.isFinite(value)) throw new SyntaxError("a number is too large");
+  return value;
+}
+
 /** Turn a path inside the bundle into [file, JSON pointer inside that file]. */
 function locate(instancePath: string): [string, string] {
   const parts = instancePath.split("/").slice(1);
@@ -126,7 +135,7 @@ export function validateRelease(releaseId: string, files: ReleaseFiles): Issue[]
   const known = [...REQUIRED_FILES, ...FOLDERS.flatMap((f) => [...seriesPaths[f].values()])];
   for (const path of known) {
     try {
-      parsed.set(path, JSON.parse(decoder.decode(files[path]!)));
+      parsed.set(path, JSON.parse(decoder.decode(files[path]!), finiteNumbers));
     } catch (error) {
       issues.push({ code: "invalid_json", path, message: String((error as Error).message) });
     }
