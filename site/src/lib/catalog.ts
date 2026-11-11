@@ -10,7 +10,7 @@ import type { CatalogEntry } from "@macro-atlas/core/release";
 import { latestValue } from "./query";
 import type { OpenedRelease } from "./release/reader";
 
-const SEGMENTS: Record<string, string> = {
+export const SEGMENTS: Record<string, string> = {
   economy_jobs: "Economy & jobs",
   markets_money: "Markets & money",
   infrastructure: "Infrastructure",
@@ -28,14 +28,14 @@ export const FREQUENCIES: Record<string, string> = {
   irregular: "Irregular",
 };
 /** How a Series was obtained (its Channel). An unknown one is shown as it is written. */
-const VIAS: Record<string, string> = {
+export const VIAS: Record<string, string> = {
   direct: "Direct from the origin",
   fred: "FRED",
   yahoo: "Yahoo Finance",
   hand_entered: "Entered by hand",
   computed: "Computed by v1",
 };
-const RIGHTS: Record<string, string> = {
+export const RIGHTS: Record<string, string> = {
   public_domain: "Public domain",
   cc_by: "CC BY",
   citation_required: "Citation required",

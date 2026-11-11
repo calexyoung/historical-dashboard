@@ -122,11 +122,26 @@ test.describe("the catalog page", () => {
     await page.goto(atlas.url("/data"));
     expect(scripts.length).toBeLessThanOrEqual(onExplore); // a reading page: within the M1 budget
     const animated = await page.evaluate(() =>
-      [...document.querySelectorAll("main table *")].filter((el) => {
+      // Since M3 each name is a link to its series page. A link answers a press like every other
+      // pressable (DESIGN.md, Motion); the data around it still never moves.
+      [...document.querySelectorAll("main table *:not(a)")].filter((el) => {
         const style = getComputedStyle(el);
         return style.animationName !== "none" || parseFloat(style.transitionDuration) > 0;
       }).length,
     );
     expect(animated).toBe(0);
+    // The links: no keyframe animation, and only the press and hover transitions DESIGN.md allows.
+    const links = await page.evaluate(() =>
+      [...document.querySelectorAll("main table a")].map((el) => {
+        const style = getComputedStyle(el);
+        return { animation: style.animationName, properties: style.transitionProperty.split(",").map((p) => p.trim()).sort().join(","), longest: Math.max(...style.transitionDuration.split(",").map(parseFloat)) };
+      }),
+    );
+    expect(links.length).toBeGreaterThan(0);
+    for (const link of links) {
+      expect(link.animation).toBe("none");
+      expect(link.properties).toBe("background-color,border-color,color,transform");
+      expect(link.longest).toBeLessThanOrEqual(0.12);
+    }
   });
 });

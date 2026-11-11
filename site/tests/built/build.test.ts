@@ -88,6 +88,15 @@ describe("the Content Security Policy is enforced with a nonce (ADR 0013)", () =
     }
   });
 
+  it("a series page and the glossary are reading pages: within the same budget, and they add no script of their own (ADR 0014)", async () => {
+    const shell = await measureJs(server.url("/explore"));
+    for (const path of ["/data/fx_price_index", "/docs/glossary"]) {
+      const measured = await measureJs(server.url(path));
+      expect(measured.gzipBytes, path).toBeLessThanOrEqual(JS_BUDGET.budgetBytes);
+      expect(measured.gzipBytes, path).toBeLessThanOrEqual(shell.gzipBytes);
+    }
+  });
+
   it("the JavaScript a reading page loads is within the budget (ADR 0014)", async () => {
     const measured = await measureJs(server.url("/explore"));
     expect(measured.scripts).toBeGreaterThan(0);
