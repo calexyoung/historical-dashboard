@@ -150,11 +150,11 @@ describe("pairFrame: two Series on one axis of Periods", () => {
 
 describe("caveat 1: the floor on pairs (minN) is honoured", () => {
   const six = [1, 2, 3, 4, 5, 6];
-  const other = [2, 1, 4, 3, 6, 5]; // Sxy = 13.5, Sxx = Syy = 17.5
+  const other = [2, 1, 4, 3, 6, 5]; // Sxy = 14.5, Sxx = Syy = 17.5
 
   it("pearson answers from the floor it is given", () => {
     expect(pearson(six, other).r).toBeNull(); // the default floor is 8
-    expect(pearson(six, other, { minN: 6 }).r).toBeCloseTo(13.5 / 17.5, 12);
+    expect(pearson(six, other, { minN: 6 }).r).toBeCloseTo(14.5 / 17.5, 12);
     expect(pearson(six, other, { minN: 7 })).toMatchObject({ r: null, n: 6, why: "too_few_pairs" });
   });
 
@@ -168,7 +168,7 @@ describe("caveat 1: the floor on pairs (minN) is honoured", () => {
     expect(rollingCorrelation(x, y, { window: 6 }).every((w) => w === null || w.r === null)).toBe(true);
     const out = rollingCorrelation(x, y, { window: 6, minN: 6 });
     expect(out[4]).toBeNull();
-    expect(out[5]!.r).toBeCloseTo(13.5 / 17.5, 12);
+    expect(out[5]!.r).toBeCloseTo(14.5 / 17.5, 12);
     expect(out[11]).toMatchObject({ n: 6 });
     // A window with gaps: twelve Periods, nine pairs. A floor of ten leaves it unanswered.
     const gappy = [1, null, 3, 4, null, 6, 7, 8, null, 10, 11, 12];
