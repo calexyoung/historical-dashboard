@@ -4,3 +4,4 @@
 export * from "./rights";
 export * from "./period";
 export * from "./transform";
+export * from "./staleness";
