@@ -119,7 +119,7 @@ describe("small multiples for mixed units", () => {
 
   it("an open window runs over everything the selected series hold", () => {
     const v = view("s=fx_price_index,fx_output_quarterly");
-    expect(v.window).toMatchObject({ from: null, to: null, start: "2022-01-01", end: "2025-12-01" });
+    expect(v.window).toMatchObject({ from: null, to: null, start: "2022-01-01", end: "2025-12-31" });
   });
 
   it("periods a mode has no answer for are not called missing", () => {
@@ -206,8 +206,8 @@ describe("the readout", () => {
     const rows = readoutAt(v.readout, v.pinned!).rows;
     expect(rows.map((r) => [r.value, r.period])).toEqual([
       ["101.6", "May 2024"],
-      ["529.0", "2024 Q2"],
-      ["11.5", "2024"],
+      ["543.6", "2024 Q2"],
+      ["10.6", "2024"],
       ["4.5", "3 Nov 2020"], // the result standing in May 2024
     ]);
   });
@@ -278,7 +278,7 @@ describe("the picker", () => {
     const v = view("s=fx_price_index");
     const all = v.picker.flatMap((g) => g.series);
     expect(all).toHaveLength(release.catalog.series.length);
-    expect(v.picker.map((g) => g.label)).toEqual(["Economy & jobs", "Markets & money", "Governance & politics"]);
+    expect(v.picker.map((g) => g.label)).toEqual(["Economy & jobs", "Markets & money", "Infrastructure", "Governance & politics"]);
     expect(all.filter((s) => s.checked).map((s) => s.key)).toEqual(["fx_price_index"]);
     expect(all.find((s) => s.key === "fx_exchange_index")).toMatchObject({ available: false, detail: "Withheld" });
   });

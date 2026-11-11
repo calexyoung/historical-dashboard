@@ -12,7 +12,7 @@
  * and Period wording. Pure: the only clock is `spec.created`, the Release's own.
  */
 import { staleness, type Frequency } from "@macro-atlas/core";
-import { drawnAs, drawPlot, GAP_MARKS, leftMargin, STATUS_MARKS, statusRuns, styleFor, yAxis, type YAxis } from "./plot";
+import { drawnAs, drawPlot, GAP_MARKS, leftMargin, NO_ANSWER, STATUS_MARKS, statusRuns, styleFor, yAxis, type YAxis } from "./plot";
 import { MARK_NAMES, STATE_INFO, stateOfStatus, type MarkName } from "./states";
 import type { SvgNode } from "./svg";
 import { takeawayFor, type Silence } from "./takeaway";
@@ -90,7 +90,7 @@ export type Layers = {
 };
 
 export type LayoutName = "narrow" | "medium" | "wide";
-export { LAYOUT_SIZES as LAYOUTS, swatch } from "./plot";
+export { LAYOUT_SIZES as LAYOUTS, NO_ANSWER, swatch } from "./plot";
 
 export type SeriesStyle = { key: string; name: string; /** 1 to 8: `--color-series-n`. */ color: number; dash: string | null; symbol: "circle" | "square" | "triangle" | "diamond"; drawnAs: "line" | "points" | "step" };
 
@@ -173,7 +173,7 @@ function tableFor(s: ShownSeries, stale: boolean): FigureTable {
     const states: TableRow["states"] = [];
     const state = stateOfStatus(o.status);
     if (state) states.push({ mark: state, word: STATE_INFO[state].word });
-    else if (o.value === null) states.push({ mark: "missing", word: STATE_INFO.missing.word });
+    else if (o.value === null && o.status !== NO_ANSWER) states.push({ mark: "missing", word: STATE_INFO.missing.word });
     const note = breaks.get(o.period);
     if (note !== undefined) states.push({ mark: "break", word: STATE_INFO.break.word, note });
     if (o.period === lastValued) states.push({ mark: "stale", word: STATE_INFO.stale.word });

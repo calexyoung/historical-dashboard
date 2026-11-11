@@ -44,7 +44,7 @@ describe("small multiples: one plot per unit on one time axis", () => {
   });
 
   it("names no Series at the end of a line when the page lists them itself", () => {
-    const two = renderFigure(spec(), [rate, series({ ...rate, key: "fx_other", name: "Other rate" })]);
+    const two = renderFigure(spec(), [rate, series({ ...rate, observations: [...rate.observations], key: "fx_other", name: "Other rate" })]);
     expect(two.plots[0]!.endLabels).toBe(false);
     expect(find(two.plots[0]!.layouts.wide, (n) => n.attrs["data-end-label"] !== undefined)).toEqual([]);
   });

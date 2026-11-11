@@ -86,11 +86,18 @@ function runs(observations: readonly FigureObservation[], test: (o: FigureObserv
   return out;
 }
 
+/**
+ * The status of a Period that a reader-chosen Transform has no answer for (the first year of a
+ * change from a year earlier). The Series is not missing a value there, so it is not marked
+ * Missing; the line still stops, and the table says "No value".
+ */
+export const NO_ANSWER = "no_answer";
+
 export const STATUS_MARKS: readonly MarkName[] = ["preliminary", "revised", "estimate", "projected", "partial"];
 export const GAP_MARKS: readonly MarkName[] = ["missing", "suppressed"];
 /** Runs of one state. Missing is any Observation with no value that is not marked suppressed. */
 export const statusRuns = (observations: readonly FigureObservation[], state: MarkName): [number, number][] =>
-  runs(observations, (o) => (state === "missing" ? o.value === null && o.status !== "suppressed" : stateOfStatus(o.status) === state));
+  runs(observations, (o) => (state === "missing" ? o.value === null && o.status !== "suppressed" && o.status !== NO_ANSWER : stateOfStatus(o.status) === state));
 
 function tickDecimals(step: number): number {
   if (!(step > 0) || !Number.isFinite(step)) return 0;
