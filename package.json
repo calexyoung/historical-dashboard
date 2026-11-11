@@ -3,7 +3,8 @@
   "private": true,
   "description": "Macro Atlas v2 workspace (TypeScript side). The Python side is atlas/ with pyproject.toml.",
   "workspaces": [
-    "packages/*"
+    "packages/*",
+    "site"
   ],
   "engines": {
     "node": ">=22"
@@ -11,7 +12,7 @@
   "scripts": {
     "gen": "node scripts/gen-schema.mjs",
     "gen:check": "node scripts/gen-schema.mjs --check",
-    "lint": "eslint",
+    "lint": "eslint && npm run lint -w @macro-atlas/site",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "test": "vitest run"
   },
