@@ -14,7 +14,9 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { transform, TRANSFORMS, type TransformName, type TransformResult } from "@macro-atlas/core";
 import type { CatalogEntry, SeriesFile } from "@macro-atlas/core/release";
 import { createReleaseReader, type OpenedRelease } from "../release/reader";
-import { buildLegacyRelease, REPO, v1Stats, type V1Data, type V1Stats } from "./testing";
+import { catalogView, parseCatalogFilters, releaseHoldsLegacy } from "../catalog";
+import { query } from "../query";
+import { buildLegacyRelease, REPO, v1Stats, type LegacyFixture, type V1Data, type V1Stats } from "./testing";
 
 type Arr = (number | null)[];
 type WindowSpec = { name: string; from: string; to: string };
@@ -169,17 +171,53 @@ function compare(release: OpenedRelease, DB: V1Data, Stats: V1Stats): Tally {
   return tally;
 }
 
-describe("the six transforms match v1's stats.js for every v1 series", () => {
-  let release: OpenedRelease;
-  let tally: Tally;
+let legacy: LegacyFixture;
+let release: OpenedRelease;
+let tally: Tally;
 
-  beforeAll(async () => {
-    const legacy = buildLegacyRelease();
-    const opened = await createReleaseReader({ root: legacy.root, surface: "local" }).current();
-    if (!opened.ok) throw new Error(`the legacy release could not be opened: ${opened.kind}: ${opened.reason}`);
-    release = opened.release;
-    tally = compare(release, legacy.v1, v1Stats());
-  }, 120_000);
+beforeAll(async () => {
+  legacy = buildLegacyRelease();
+  const opened = await createReleaseReader({ root: legacy.root, surface: "local" }).current();
+  if (!opened.ok) throw new Error(`the legacy release could not be opened: ${opened.kind}: ${opened.reason}`);
+  release = opened.release;
+  tally = compare(release, legacy.v1, v1Stats());
+}, 120_000);
+
+describe("v1's data through the release reader, Query and the catalog (PLAN M2, 6.1)", () => {
+  it("the local surface lists all 126 series with a latest value, every one marked as v1's legacy output", () => {
+    const view = catalogView(release, "local", parseCatalogFilters({}));
+    expect(view.total).toBe(126);
+    expect(view.rows.every((row) => row.legacy && row.state === "shown" && row.latest !== null && row.rights === "Not settled")).toBe(true);
+    expect(view.facets.freq.map((f) => [f.label, f.count])).toEqual([
+      ["Monthly", 105],
+      ["Quarterly", 13],
+      ["Annual", 6],
+      ["Irregular", 2],
+    ]);
+    expect(releaseHoldsLegacy(release)).toBe(true);
+  });
+
+  it("Query answers on the local surface and names the lineage of a computed series, both inputs included", () => {
+    const answer = query(release, "local", { series: ["gold_eur"], transform: "lin", permission: "display" });
+    if (!answer.ok) throw new Error(answer.code);
+    expect(answer.series[0]!.representation).toBe("legacy_monthly_rounded");
+    expect(answer.rights_used.map((row) => row.channel).sort()).toEqual(["computed", "fred", "yahoo"]);
+    expect(new Set(answer.rights_used.map((row) => row.representation))).toEqual(new Set(["legacy_monthly_rounded"]));
+  });
+
+  it("no other surface gets a value out of it: the gate denies, and the reader refuses the release outright", async () => {
+    for (const surface of ["staging", "production"] as const) {
+      const answer = query(release, surface, { series: ["unrate"], transform: "lin", permission: "display" });
+      expect(answer).toMatchObject({ ok: false, status: 403, code: "not_permitted" });
+      const rows = catalogView(release, surface, parseCatalogFilters({})).rows;
+      expect(rows.every((row) => row.latest === null && row.first === null)).toBe(true);
+      const opened = await createReleaseReader({ root: legacy.root, surface }).current();
+      expect(opened).toMatchObject({ ok: false, kind: "refused" });
+    }
+  });
+});
+
+describe("the six transforms match v1's stats.js for every v1 series", () => {
 
   it("reads all 126 series through the release reader, with a quarterly, an annual and a held one among them", () => {
     expect(release.catalog.series).toHaveLength(126);
