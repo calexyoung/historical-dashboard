@@ -13,7 +13,7 @@ import { curveStepAfter, line as d3line } from "d3-shape";
 import type { FigureObservation, LayoutName, SeriesStyle, ShownSeries } from "./index";
 import { mark, stateOfStatus, type MarkName } from "./states";
 import { h, r2, type SvgNode } from "./svg";
-import { dayWords, periodWords } from "./words";
+import { dayWords, labelStart, periodWords } from "./words";
 
 export const LAYOUT_SIZES: Record<LayoutName, { width: number; height: number }> = {
   // 256px is what a 320px phone leaves a figure inside the page's and the panel's padding.
@@ -88,12 +88,13 @@ function runs(observations: readonly FigureObservation[], test: (o: FigureObserv
 
 export const STATUS_MARKS: readonly MarkName[] = ["preliminary", "revised", "estimate", "projected", "partial"];
 export const GAP_MARKS: readonly MarkName[] = ["missing", "suppressed"];
+/** Runs of one state. Missing is any Observation with no value that is not marked suppressed. */
 export const statusRuns = (observations: readonly FigureObservation[], state: MarkName): [number, number][] =>
-  runs(observations, (o) => stateOfStatus(o.status) === state);
+  runs(observations, (o) => (state === "missing" ? o.value === null && o.status !== "suppressed" : stateOfStatus(o.status) === state));
 
 function tickDecimals(step: number): number {
   if (!(step > 0) || !Number.isFinite(step)) return 0;
-  return Math.min(8, Math.max(0, -Math.floor(Math.log10(step) + 1e-9)));
+  return Math.max(0, -Math.floor(Math.log10(step) + 1e-9));
 }
 
 export type YAxis = { domain: [number, number]; ticks: number[]; format: (v: number) => string };
@@ -111,12 +112,33 @@ export function yAxis(series: readonly ShownSeries[]): YAxis {
   const scale = scaleLinear().domain([lo, hi]).nice(5);
   const ticks = scale.ticks(5);
   const step = ticks.length > 1 ? ticks[1]! - ticks[0]! : 1;
-  const decimals = tickDecimals(step);
-  const big = Math.max(Math.abs(ticks[0]!), Math.abs(ticks.at(-1)!)) >= 1e6;
-  const plain = new Intl.NumberFormat("en-US", { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
-  const compact = new Intl.NumberFormat("en-US", { notation: "compact", maximumFractionDigits: 2 });
   const [d0, d1] = scale.domain() as [number, number];
-  return { domain: [d0, d1], ticks, format: (v) => (big ? compact.format(v) : plain.format(v)) };
+  return { domain: [d0, d1], ticks, format: tickFormat(ticks, step) };
+}
+
+/**
+ * How tick values are written: the shortest of a fixed list of forms in which every tick reads
+ * differently from its neighbours. Precision follows the spacing of the ticks, never a fixed
+ * number of places, so a narrow range far from zero is not flattened into one repeated label.
+ */
+function tickFormat(ticks: number[], step: number): (v: number) => string {
+  const distinct = (format: (v: number) => string) => new Set(ticks.map(format)).size === ticks.length;
+  const size = Math.max(...ticks.map(Math.abs));
+  const plain = (decimals: number) => {
+    const f = new Intl.NumberFormat("en-US", { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+    return (v: number) => f.format(v);
+  };
+  const compact = (decimals: number) => {
+    const f = new Intl.NumberFormat("en-US", { notation: "compact", maximumFractionDigits: decimals });
+    return (v: number) => f.format(v);
+  };
+  const exponent = (digits: number) => (v: number) => (v === 0 ? "0" : v.toExponential(digits));
+  const candidates: ((v: number) => string)[] = [];
+  if (size >= 1e6) candidates.push(compact(0), compact(1), compact(2), compact(3));
+  const decimals = tickDecimals(step);
+  if (decimals <= 6) candidates.push(plain(decimals));
+  for (let digits = 0; digits <= 12; digits++) candidates.push(exponent(digits));
+  return candidates.find(distinct) ?? plain(Math.min(20, decimals));
 }
 
 const MONTH = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -223,7 +245,7 @@ export function drawPlot(input: PlotInput, created: string, layout: LayoutName, 
   const within = (px: number) => px >= x0 - 0.01 && px <= x1 + 0.01;
   for (const { series: s } of input) {
     for (const b of s.breaks ?? []) {
-      const at = s.observations.find((o) => o.period === b.period);
+      const at = labelStart(s.freq, b.period);
       if (!at || !within(x(ms(at.period_start)))) continue;
       const bx = r2(x(ms(at.period_start)));
       stateMarks.push(

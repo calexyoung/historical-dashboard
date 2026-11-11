@@ -72,7 +72,7 @@ export function Figure({ figure, basePath, explorerHref }: { figure: FigureData;
         </p>
       ) : (
         figure.silence &&
-        figure.plots.length > 0 && (
+        figure.tables.length > 0 && (
           <p data-silence={figure.silence.rule} className="max-w-[68ch] text-ink-2">
             {figure.silence.text}
           </p>

@@ -16,7 +16,7 @@ import { drawnAs, drawPlot, GAP_MARKS, STATUS_MARKS, statusRuns, styleFor, yAxis
 import { MARK_NAMES, STATE_INFO, stateOfStatus, type MarkName } from "./states";
 import type { SvgNode } from "./svg";
 import { takeawayFor, type Silence } from "./takeaway";
-import { dayWords, exactDecimals, fixed, FREQ_NOUN, FREQ_WORD, list, periodWords } from "./words";
+import { dayWords, exactDecimals, fixed, FREQ_NOUN, FREQ_WORD, labelStart, list, periodWords } from "./words";
 
 export { DATA_STATES, MARK_NAMES, STATE_INFO, mark, markIcon, type DataState, type MarkName } from "./states";
 export { svgString, type SvgNode } from "./svg";
@@ -122,13 +122,21 @@ function unitLine(group: ShownSeries[]): string {
   return parts.join(" · ");
 }
 
-function tableFor(s: ShownSeries): FigureTable {
+function tableFor(s: ShownSeries, stale: boolean): FigureTable {
   const CAP = 6;
   const values = s.observations.map((o) => o.value).filter((v): v is number => v !== null);
   const needed = values.map((v) => exactDecimals(v, CAP));
   const rounded = needed.some((d) => d === null);
   const decimals = rounded ? CAP : Math.max(0, ...(needed as number[]));
-  const breaks = new Map((s.breaks ?? []).map((b) => [b.period, b.note]));
+  // A break belongs to the first Observation on the new basis: the first that starts on or after
+  // the break's own date. Stale belongs to the last value.
+  const breaks = new Map<string, string>();
+  for (const b of s.breaks ?? []) {
+    const at = labelStart(s.freq, b.period);
+    const first = at && s.observations.find((o) => o.period_start >= at.period_start);
+    if (first) breaks.set(first.period, b.note);
+  }
+  const lastValued = stale ? [...s.observations].reverse().find((o) => o.value !== null)?.period : undefined;
   const rows = s.observations.map((o): TableRow => {
     const states: TableRow["states"] = [];
     const state = stateOfStatus(o.status);
@@ -136,6 +144,7 @@ function tableFor(s: ShownSeries): FigureTable {
     else if (o.value === null) states.push({ mark: "missing", word: STATE_INFO.missing.word });
     const note = breaks.get(o.period);
     if (note !== undefined) states.push({ mark: "break", word: STATE_INFO.break.word, note });
+    if (o.period === lastValued) states.push({ mark: "stale", word: STATE_INFO.stale.word });
     const tiny = o.value !== null && o.value !== 0 && Math.abs(o.value) < 10 ** -CAP;
     return {
       period: o.period,
@@ -164,12 +173,12 @@ function statesOf(s: ShownSeries, created: string): { notes: StateNote[]; stale:
   const note = (mark: MarkName, text: string) => notes.push({ mark, word: STATE_INFO[mark].word, series: s.name, text });
   const obs = s.observations;
   for (const state of [...STATUS_MARKS, ...GAP_MARKS]) {
-    const found = state === "missing" ? gapRuns(obs) : statusRuns(obs, state);
+    const found = statusRuns(obs, state);
     if (found.length > 0) note(state, runsInWords(s, found));
   }
   for (const b of s.breaks ?? []) {
-    const at = obs.find((o) => o.period === b.period);
-    note("break", `at ${at ? periodWords(s.freq, at, "short") : b.period}. ${b.note}`);
+    const at = labelStart(s.freq, b.period);
+    note("break", `at ${at ? periodWords(at.freq, at, "short") : b.period}. ${b.note}`);
   }
   const latest = [...obs].reverse().find((o) => o.value !== null);
   const age = latest ? staleness(latest.period_end, s.maxLag, created) : { known: false as const };
@@ -180,22 +189,6 @@ function statesOf(s: ShownSeries, created: string): { notes: StateNote[]; stale:
   const order = (n: StateNote) => MARK_NAMES.indexOf(n.mark);
   return { notes: notes.sort((a, b) => order(a) - order(b)), stale };
 }
-
-/** A missing run: no value and not marked suppressed (whatever else its Status says). */
-const gapRuns = (obs: readonly FigureObservation[]): [number, number][] => {
-  const out: [number, number][] = [];
-  let start = -1;
-  obs.forEach((o, i) => {
-    const gap = o.value === null && o.status !== "suppressed";
-    if (gap && start < 0) start = i;
-    if (!gap && start >= 0) {
-      out.push([start, i - 1]);
-      start = -1;
-    }
-  });
-  if (start >= 0) out.push([start, obs.length - 1]);
-  return out;
-};
 
 function howToRead(plots: { group: ShownSeries[]; axis: YAxis }[], notes: StateNote[], created: string): Figure["howToRead"] {
   const lines: Figure["howToRead"] = [];
@@ -271,6 +264,6 @@ export function renderFigure(spec: FigureSpec, series: readonly FigureSeries[]):
     states,
     sourceLine: sourceLine(spec, shown),
     howToRead: howToRead(measured, states, spec.created),
-    tables: shown.map(tableFor),
+    tables: shown.map((s) => tableFor(s, stale.has(s.key))),
   };
 }

@@ -1,5 +1,5 @@
 /** Periods and numbers in words. Pure; the calendar is UTC and the language is fixed (en). */
-import type { Frequency } from "@macro-atlas/core";
+import { FREQUENCIES, periodBounds, type Frequency } from "@macro-atlas/core";
 
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 const ORDINALS = ["first", "second", "third", "fourth"];
@@ -81,3 +81,16 @@ export function exactDecimals(value: number, cap: number): number | null {
 
 export const list = (items: string[]): string =>
   items.length <= 1 ? items.join("") : items.length === 2 ? items.join(" and ") : `${items.slice(0, -1).join(", ")} and ${items.at(-1)}`;
+
+/**
+ * Where a Period label written in the Catalog (a break's) starts, whether or not the Series has
+ * an Observation there. The Series' own frequency is tried first, then any other the label fits
+ * (a break in an irregular Series may be dated by a month). Null when the label fits none.
+ */
+export function labelStart(freq: Frequency, label: string): { freq: Frequency; period: string; period_start: string } | null {
+  for (const candidate of [freq, ...FREQUENCIES.filter((f) => f !== freq)]) {
+    const bounds = periodBounds(candidate, label);
+    if (bounds) return { freq: candidate, period: label, period_start: bounds.start };
+  }
+  return null;
+}

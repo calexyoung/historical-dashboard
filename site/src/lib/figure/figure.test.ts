@@ -155,7 +155,8 @@ describe("every Data state has a mark and a word", () => {
     const f = everything();
     const rows = Object.fromEntries(f.tables[0]!.rows.map((r) => [r.period, r]));
     expect(rows["2025-12"]).toBeUndefined(); // the Series ends in November
-    expect(rows["2025-11"]!.states).toEqual([{ mark: "partial", word: "Partial period" }]);
+    // The Series is stale, and its last value is the partial November: the row says both.
+    expect(rows["2025-11"]!.states).toEqual([{ mark: "partial", word: "Partial period" }, { mark: "stale", word: "Stale" }]);
     expect(rows["2025-04"]).toMatchObject({ value: null, exact: null, states: [{ mark: "missing", word: "Missing" }] });
     expect(rows["2025-05"]!.states).toEqual([{ mark: "suppressed", word: "Suppressed" }]);
     expect(rows["2025-03"]!.states).toEqual([{ mark: "break", word: "Break", note: "New population controls." }]);
@@ -305,5 +306,90 @@ describe("the words under the drawing", () => {
       ["missing", "Missing. There is no value for this period. Nothing is filled in or carried forward."],
     ]);
     expect(lines.at(-1)).toBe("The table holds every value drawn here.");
+  });
+});
+
+describe("a Series with nothing to draw", () => {
+  it("all gaps: no plot, the reason in words, the gaps named, and still a table", () => {
+    const f = figure({ observations: observations("monthly", "2025-01", [null, null, null]) });
+    expect(f.plots).toEqual([]);
+    expect(f.silence).toEqual({ rule: "no_values", text: "No summary sentence: the series has no values." });
+    expect(f.states).toEqual([{ mark: "missing", word: "Missing", series: "Fixture rate", text: "Jan 2025 to Mar 2025 (3 periods)" }]);
+    expect(f.tables[0]!.rows.map((r) => r.value)).toEqual([null, null, null]);
+  });
+
+  it("a break at a Period the Series does not hold is named as written and stops no sentence", () => {
+    const f = figure({ breaks: [{ period: "1990-01", note: "Earlier basis." }], observations: observations("monthly", "2025-11", [4.2, 4.3]) });
+    expect(f.takeaway).toBe("Fixture rate was 4.3% in December 2025, up from 4.2% in November 2025.");
+    expect(f.states).toEqual([{ mark: "break", word: "Break", series: "Fixture rate", text: "at Jan 1990. Earlier basis." }]);
+  });
+
+  it("a weekly Series is a line, dated by the week", () => {
+    const f = figure({ freq: "weekly", observations: observations("weekly", "2025-W50", [4.1, 4.2, 4.3]) });
+    expect(f.plots[0]!.series[0]!.drawnAs).toBe("line");
+    expect(f.takeaway).toBe("Fixture rate was 4.3% in the week of 22 December 2025, up from 4.2% in the week of 15 December 2025.");
+  });
+});
+
+describe("a break is dated by its own label, not by an Observation", () => {
+  const elections = onDays({ "2016-11-08": 2.1, "2020-11-03": 4.5, "2024-11-05": -1.5 });
+  const broken = { freq: "irregular" as const, continuity: "held" as const, unit: "percentage points", breaks: [{ period: "2023-01", note: "New district lines." }], observations: elections };
+
+  it("one that falls between two Observations silences the sentence that would span it", () => {
+    const f = figure(broken);
+    expect(f.takeaway).toBeNull();
+    expect(f.silence).toEqual({ rule: "break", text: "No summary sentence: the series has a break at January 2023, between the two periods a sentence would compare." });
+  });
+
+  it("is drawn where it falls, named in words, and put on the first row of the new basis", () => {
+    const f = figure(broken);
+    for (const layout of EACH_LAYOUT) {
+      const root = f.plots[0]!.layouts[layout];
+      const [line] = find(marks(root, "break")[0]!, (n) => n.tag === "line");
+      const [points] = drawn(root, "fx_rate").filter((n) => n.attrs["data-drawn"] === "points");
+      const at = [...String(points!.attrs.d).matchAll(/M(-?[\d.]+)/g)].map((m) => Number(m[1]));
+      // Between the second and third elections (a symbol's path starts just left of its centre).
+      expect(Number(line!.attrs.x1)).toBeGreaterThan(at[1]! + 5);
+      expect(Number(line!.attrs.x1)).toBeLessThan(at[2]! - 5);
+    }
+    expect(f.states.find((n) => n.mark === "break")!.text).toBe("at Jan 2023. New district lines.");
+    expect(f.tables[0]!.rows.map((r) => r.states.map((st) => st.mark))).toEqual([[], [], ["break"]]);
+  });
+
+  it("a label that cannot be dated never lets a comparison through", () => {
+    const f = figure({ breaks: [{ period: "sometime", note: "n" }], observations: observations("monthly", "2025-11", [4.2, 4.3]) });
+    expect(f.takeaway).toBeNull();
+    expect(f.silence?.rule).toBe("break");
+  });
+});
+
+describe("the vertical axis tells its ticks apart", () => {
+  const labelsOf = (root: SvgNode) => find(root, (n) => n.tag === "text" && n.attrs["text-anchor"] === "end").map(textOf);
+  it.each([
+    ["a narrow range far from zero", [1_000_000_000, 1_000_000_001, 1_000_000_000.5]],
+    ["a wide range of large values", [1.2e12, 4.6e12, 9.4e12]],
+    ["values in the millions a few thousand apart", [5_000_000, 5_001_000, 5_002_500]],
+    ["very small values", [1.1e-10, 1.4e-10, 1.9e-10]],
+    ["ordinary values", [3.9, 4.1, 4.4]],
+  ])("%s", (_name, values) => {
+    const f = figure({ unit: "units", unitKind: "other", observations: observations("monthly", "2025-01", values) });
+    for (const layout of EACH_LAYOUT) {
+      const labels = labelsOf(f.plots[0]!.layouts[layout]);
+      expect(labels.length).toBeGreaterThanOrEqual(3);
+      expect(new Set(labels).size, `${layout}: ${labels.join(" | ")}`).toBe(labels.length);
+      for (const label of labels) expect(label.length * 7, `${layout}: ${label}`).toBeLessThanOrEqual(LAYOUTS[layout].width * 0.5);
+    }
+    const axisLine = f.howToRead.map((l) => l.text).find((t) => t.startsWith("The vertical axis runs from"));
+    if (axisLine) {
+      const [, lo, hi] = /runs from (.+) to (.+)\. It does not/.exec(axisLine)!;
+      expect(lo).not.toBe(hi);
+    }
+  });
+
+  it("ordinary values keep ordinary labels", () => {
+    const f = figure({ observations: observations("monthly", "2025-01", [3.9, 4.1, 4.4]) });
+    expect(labelsOf(f.plots[0]!.layouts.wide)).toEqual(["3.9", "4.0", "4.1", "4.2", "4.3", "4.4"]);
+    const big = figure({ unit: "dollars", unitKind: "currency", freq: "annual", observations: observations("annual", "2000", [1.2e12, 4.6e12, 9.4e12]) });
+    expect(labelsOf(big.plots[0]!.layouts.wide)).toEqual(["0", "2T", "4T", "6T", "8T", "10T"]);
   });
 });

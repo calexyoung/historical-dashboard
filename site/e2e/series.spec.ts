@@ -242,6 +242,7 @@ test.describe("every data state renders with a mark and a word", () => {
 
   test("on series pages: in the drawing, under it and in the table", async ({ page, atlas, states }) => {
     const seen = new Set<string>();
+    const located = new Set<string>();
     for (const [server, key] of [[states, "fx_price_index"], [atlas, "fx_payrolls_break"], [atlas, "fx_permits_stale"], [atlas, "fx_exchange_index"]] as const) {
       await page.goto(server.url(`/data/${key}`));
       const found = await page.evaluate(() =>
@@ -258,14 +259,21 @@ test.describe("every data state renders with a mark and a word", () => {
         expect(item.shapes).toBeGreaterThan(0);
         seen.add(item.state);
       }
-      // What is named under the drawing is marked in the drawing.
+      // Each state named under the drawing is also marked in the drawing and named, with its
+      // mark, in the table: three places, each checked where it is.
       const under = await page.locator("[data-states] [data-state]").evaluateAll((els) => els.map((el) => el.getAttribute("data-state")!));
       for (const state of under) {
-        if (state === "withheld") continue;
+        if (state === "withheld") continue; // a withheld series has no drawing and no table
         expect(await visibleSvgs(page).locator(`[data-mark=${state}]`).count(), `${key}: ${state} in the drawing`).toBeGreaterThan(0);
+        const inTable = page.locator(`[data-figure-table] tbody td:nth-child(3) [data-state=${state}]`);
+        expect(await inTable.count(), `${key}: ${state} in the table`).toBeGreaterThan(0);
+        expect((await inTable.first().textContent())!.trim(), `${key}: ${state} in the table`).toBe(WORDS[state]);
+        expect(await inTable.first().locator(`svg [data-mark=${state}]`).count()).toBe(1);
+        located.add(state);
       }
     }
     expect([...seen].sort()).toEqual(Object.keys(WORDS).sort());
+    expect([...located].sort()).toEqual(Object.keys(WORDS).filter((state) => state !== "withheld").sort());
   });
 
   test("the marks are ink, not a colour of their own, in both themes", async ({ page, states }) => {

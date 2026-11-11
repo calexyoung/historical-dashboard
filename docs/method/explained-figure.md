@@ -22,7 +22,9 @@ Decided by the Catalog entry, never by how dense the data looks.
 Every Observation is placed at the **start of its Period**. Nothing is filled, interpolated or
 carried forward. Series in different units are never put on one axis: each unit gets its own
 plot. The vertical axis is fitted to the data; when it does not start at zero, "How to read
-this" says so, with the two ends.
+this" says so, with the two ends. Tick labels are written in the shortest form in which every
+tick reads differently from its neighbours (compact, then plain, then exponent), so a narrow
+range far from zero is never flattened into one repeated label.
 
 ## Data states
 
@@ -50,7 +52,12 @@ In the drawing a status mark sits on its Observation; where several in a row sha
 mark is on the first and the last of the run, and the line under the drawing gives the span
 ("2020 Q1 to 2024 Q4 (20 periods)"). Gaps are bars along the baseline. A break is a dashed line
 at the Period from which the new basis applies. The stale mark sits on the last value. The same
-states are named under the drawing and in the table's State column.
+states are named under the drawing and in the table's State column: a status on its own row, a
+break on the first row of the new basis, stale on the row of the last value.
+
+A break is dated by **its own Period label**, whether or not the Series has an Observation
+there: a break in January 2023 separates an election in 2020 from one in 2024. A label that
+cannot be dated at all is treated as lying between any two values, so it can only cause silence.
 
 ## The Takeaway
 

@@ -130,5 +130,18 @@ test.describe("the catalog page", () => {
       }).length,
     );
     expect(animated).toBe(0);
+    // The links: no keyframe animation, and only the press and hover transitions DESIGN.md allows.
+    const links = await page.evaluate(() =>
+      [...document.querySelectorAll("main table a")].map((el) => {
+        const style = getComputedStyle(el);
+        return { animation: style.animationName, properties: style.transitionProperty.split(",").map((p) => p.trim()).sort().join(","), longest: Math.max(...style.transitionDuration.split(",").map(parseFloat)) };
+      }),
+    );
+    expect(links.length).toBeGreaterThan(0);
+    for (const link of links) {
+      expect(link.animation).toBe("none");
+      expect(link.properties).toBe("background-color,border-color,color,transform");
+      expect(link.longest).toBeLessThanOrEqual(0.12);
+    }
   });
 });

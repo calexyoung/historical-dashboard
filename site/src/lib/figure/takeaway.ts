@@ -20,12 +20,13 @@
  *   stale                the Series trails the Release by more than its limit
  *   partial, estimate, projected   on either value a sentence would use
  *   break                a break lies after the earlier value, up to and including the latest
+ *                        (dated by its own label, whether or not an Observation sits on it)
  *   not_comparable       two Series that differ, or whose difference is not recorded
  * The reason is returned in words, and the figure prints it where the sentence would be.
  */
 import { staleness, transform } from "@macro-atlas/core";
 import type { FigureObservation, ShownSeries } from "./index";
-import { dayWords, fixed, list, periodWords, preposition, together } from "./words";
+import { dayWords, fixed, labelStart, list, periodWords, preposition, together } from "./words";
 
 export type SilenceRule = "no_values" | "missing" | "stale" | "partial" | "estimate" | "projected" | "break" | "not_comparable";
 export type Silence = { rule: SilenceRule; text: string };
@@ -71,14 +72,17 @@ function single(s: ShownSeries, created: string): Single {
   const latest = last as FigureObservation & { value: number };
   const prep = preposition(s.freq);
   const head = (value: string) => `${s.name} was ${valueText(value, s.unit)} ${prep} ${when}${unitNote(s.unit)}`;
+  // A break is dated by its own label, not by an Observation: one that falls between two
+  // Observations of a slow or irregular Series still separates them. A label that cannot be
+  // dated is treated as lying between, so an unreadable break never lets a sentence through.
   const brokenSince = (earlier: FigureObservation) =>
     (s.breaks ?? []).find((b) => {
-      const at = obs.find((o) => o.period === b.period);
-      return at !== undefined && at.period_start > earlier.period_start && at.period_start <= latest.period_start;
+      const at = labelStart(s.freq, b.period);
+      return at === null || (at.period_start > earlier.period_start && at.period_start <= latest.period_start);
     });
   const breakSilence = (period: string) => {
-    const at = obs.find((o) => o.period === period)!;
-    return no(quiet("break", `the series has a break at ${periodWords(s.freq, at)}, between the two periods a sentence would compare`));
+    const at = labelStart(s.freq, period);
+    return no(quiet("break", `the series has a break at ${at ? periodWords(at.freq, at) : period}, between the two periods a sentence would compare`));
   };
 
   // T2: against the same Period a year earlier, computed by the engine.
