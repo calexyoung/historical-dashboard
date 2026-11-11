@@ -43,6 +43,9 @@ CATALOG_FIELDS = ("measure_kind", "unit_kind", "segment", "continuity", "agg", "
                   "breaks")
 REQUIRED_CATALOG_FIELDS = ("measure_kind", "segment", "continuity")
 _EXACT_INTEGER = 2 ** 53
+#: How a source's freshness line says a Series is too old. A reuse judges age afresh and so
+#: drops the notes that say this, and keeps the others.
+AGE_NOTE = ", past its limit of "
 
 
 class ExportError(Exception):
@@ -236,7 +239,7 @@ def _freshness(store: Path, vintages: VintageStore, published: list[tuple[dict, 
                                       f"{newest['retrieved_at']} is not recorded yet (atlas replay)")
         limit = lag_limit(document["period_end"], entry.get("max_lag"))
         if limit is not None and f"{created:%Y-%m-%d}" > limit:
-            group["stale"].append(f"{key} ends {document['period_end']}, past its limit of {limit}")
+            group["stale"].append(f"{key} ends {document['period_end']}{AGE_NOTE}{limit}")
     lines = []
     for (producer, via), group in sorted(groups.items()):
         line = {"producer": producer, "via": via, "fetched": group["fetched"], "outcome": "ok"}

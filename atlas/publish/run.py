@@ -42,7 +42,7 @@ from ..staging import STAGING, PromotionRefused, _write_current, promote, stage
 from ..vintage.replay import SeriesTableError, load_series
 from ..vintage.store import VintageStore
 from . import root as R
-from .export import Built, ExportError, build, dump, lag_limit
+from .export import AGE_NOTE, Built, ExportError, build, dump, lag_limit
 
 REJECTED, RETIRED = "rejected", "retired"
 
@@ -115,7 +115,10 @@ class _Run:
         self.lines.extend(notes)
         if promoted:
             files = R.read_release(self.root, promoted)
-            rows = {} if isinstance(files, str) else json.loads(files[MANIFEST])["series"]
+            try:
+                rows = {} if isinstance(files, str) else json.loads(files[MANIFEST])["series"]
+            except (KeyError, ValueError, TypeError, AttributeError):
+                rows = {}  # damaged since: the promotion is still recorded, without its keys
             self.journal(event="finished", outcome="promoted", release_id=promoted, recovered=True,
                          published={key: row.get("state_hash") for key, row in sorted(rows.items())})
             R.close_promotion(self.root, promoted, self.now)
@@ -346,18 +349,25 @@ def _reuse(run: _Run, legacy: dict[str, bytes] | None, drop: dict[str, str] | No
     # the Series this Release still holds and against its own date.
     today = f"{run.now:%Y-%m-%d}"
     for line in built.sources:
-        late = sorted(
-            entry["key"] for entry in entries
-            if entry["key"] not in gone and f"series/{entry['key']}.json" in files
-            and (entry["source"]["origin"]["producer"], entry["source"]["channel"]["via"])
-            == (line["producer"], line["via"])
-            and (lag_limit(json.loads(files[f"series/{entry['key']}.json"])["period_end"],
-                           entry.get("max_lag")) or today) < today)
-        if line.get("outcome") != "failed":
-            line.pop("detail", None)
-            line["outcome"] = "stale" if late else "ok"
-            if late:
-                line["detail"] = f"{', '.join(late)}: the last Period is older than max_lag allows"
+        if line.get("outcome") == "failed":
+            continue
+        # Kept: anything the reused Release said that is not about age (a Capture that had
+        # not been replayed is still not in this data). Age is said again, in the same words
+        # the export uses, so a reuse of a reuse neither repeats nor keeps an old age note.
+        notes = [note for note in line.pop("detail", "").split("; ") if note and AGE_NOTE not in note]
+        for entry in sorted(entries, key=lambda e: e["key"]):
+            path = f"series/{entry['key']}.json"
+            if entry["key"] in gone or path not in files or (
+                    entry["source"]["origin"]["producer"], entry["source"]["channel"]["via"]) != (
+                    line["producer"], line["via"]):
+                continue
+            ends = json.loads(files[path])["period_end"]
+            limit = lag_limit(ends, entry.get("max_lag"))
+            if limit is not None and today > limit:
+                notes.append(f"{entry['key']} ends {ends}{AGE_NOTE}{limit}")
+        line["outcome"] = "stale" if notes else "ok"
+        if notes:
+            line["detail"] = "; ".join(notes)
     built.withheld = [row for row in manifest["withheld"] if row["key"] not in gone]
     for key in sorted(gone & {entry["key"] for entry in entries}):
         reason = (drop or {}).get(key) or "computed from a Series that was withdrawn"
@@ -574,7 +584,7 @@ def _withdraw(run: _Run, key: str, reason: str, write) -> Result:
     try:
         run.recover()
         run.journal(event="started", store=str(run.store), key=key)
-    except OSError as error:
+    except Exception as error:  # noqa: BLE001 - whatever it is, the Series still comes down
         exit_code = 1
         run.lines.append(f"WARNING: the run's record could not be written ({error}); the "
                          "withdrawal goes on")

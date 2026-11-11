@@ -316,8 +316,39 @@ def test_a_withdrawal_judges_the_sources_freshness_over_the_series_that_are_left
     (source,) = manifest_of(tmp_path, first)["sources"]
     assert source["outcome"] == "stale" and "fx_jobs" in source["detail"] and "fx_price" not in source["detail"]
 
+    # A reuse in between says the same thing once, in the same words.
+    reused = publish(tmp_path, register, store, now=july + HOUR, reuse_data=True)
+    assert manifest_of(tmp_path, reused)["sources"] == [source]
+
     result = withdraw(key="fx_jobs", reason="wrong", profile="public", root=root, store=store,
-                      register=register, now=july + HOUR)
+                      register=register, now=july + 2 * HOUR)
 
     (source,) = manifest_of(tmp_path, result)["sources"]
     assert source == {"producer": ORIGIN, "via": "fixture", "fetched": "2026-05-12T12:30:01Z", "outcome": "ok"}
+
+
+def test_a_reuse_keeps_saying_that_a_capture_was_never_replayed(tmp_path, register):
+    store = build_store(tmp_path / "store", register, "1-initial", "2-revision")
+    assert capture_main(["--store", str(store), "--register", str(register),
+                         "--replay", str(THREE / "3-withdrawal")]) == 0
+    publish(tmp_path, register, store)
+    again = publish(tmp_path, register, store, now=NOW + HOUR, reuse_data=True)
+    (source,) = manifest_of(tmp_path, again)["sources"]
+    assert source["outcome"] == "stale" and "is not recorded yet" in source["detail"]
+
+
+def test_a_damaged_manifest_left_by_a_killed_run_does_not_stop_a_withdrawal(tmp_path, register):
+    store = build_store(tmp_path / "store", register)
+    root = tmp_path / "public"
+    first = publish(tmp_path, register, store)
+    assert killed_run(root, register, store, NOW + HOUR, "run._Run.finish = die") == 9
+    second = current(root)
+    (root / "releases" / second / "manifest.json").write_text("{ not JSON")
+
+    result = withdraw(key="fx_jobs", reason="wrong", profile="public", root=root, store=store,
+                      register=register, now=NOW + 2 * HOUR)
+
+    assert result.outcome == "withdrawn" and result.exit_code == 1, result.lines
+    assert current(root) is None and R.release_ids(root) == []
+    assert sorted(p.name for p in (store / "retired").iterdir()) == [first.release_id, second]
+    assert not any(value in all_bytes(root) for value in JOBS)
