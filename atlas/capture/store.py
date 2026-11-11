@@ -72,7 +72,7 @@ def read_blob(store: Path, relative: str) -> bytes:
     return body
 
 
-def _append(path: Path, record: dict) -> None:
+def append_line(path: Path, record: dict) -> None:
     line = json.dumps(record, ensure_ascii=False, separators=(",", ":"), sort_keys=True)
     with open(path, "a+b") as handle:
         handle.seek(0, os.SEEK_END)
@@ -85,7 +85,7 @@ def _append(path: Path, record: dict) -> None:
         os.fsync(handle.fileno())
 
 
-def _read(path: Path, problems: list[str] | None) -> list[dict]:
+def read_lines(path: Path, problems: list[str] | None) -> list[dict]:
     if not path.exists():
         return []
     records = []
@@ -105,21 +105,21 @@ def _read(path: Path, problems: list[str] | None) -> list[dict]:
 
 
 def append_fetch(store: Path, record: dict) -> None:
-    _append(store / FETCH_LOG, {"format": LOG_FORMAT, **record})
+    append_line(store / FETCH_LOG, {"format": LOG_FORMAT, **record})
 
 
 def append_run(store: Path, record: dict) -> None:
-    _append(store / RUNS, {"format": LOG_FORMAT, **record})
+    append_line(store / RUNS, {"format": LOG_FORMAT, **record})
 
 
 def read_fetch_log(store: Path, problems: list[str] | None = None) -> list[dict]:
     """Every whole line of the fetch log, oldest first. A line cut off by a crash is passed
     over and named in ``problems``."""
-    return _read(Path(store) / FETCH_LOG, problems)
+    return read_lines(Path(store) / FETCH_LOG, problems)
 
 
 def read_runs(store: Path, problems: list[str] | None = None) -> list[dict]:
-    return _read(Path(store) / RUNS, problems)
+    return read_lines(Path(store) / RUNS, problems)
 
 
 @contextmanager

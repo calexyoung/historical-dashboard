@@ -3,10 +3,25 @@ name = "macro-atlas"
 version = "1.0.0"
 description = "Macro Atlas 2000–2026: monthly economic/financial/political series, events, and a self-contained dashboard"
 requires-python = ">=3.11"
-dependencies = ["pandas", "requests", "curl_cffi", "pyyaml", "jinja2", "tzdata", "jsonschema>=4.18", "rfc3339-validator"]
+dependencies = [
+    "pandas",
+    "requests",
+    "curl_cffi",
+    "pyyaml",
+    "jinja2",
+    "tzdata",
+    "jsonschema>=4.18",
+    "rfc3339-validator",
+    "pyarrow>=26.0.1",
+]
 
 [project.optional-dependencies]
-dev = ["pytest", "playwright", "ruff"]
+dev = [
+    "pytest",
+    "playwright",
+    "ruff",
+    "hypothesis>=6.170.15",
+]
 
 [tool.setuptools]
 packages = ["atlas", "atlas.capture"]
