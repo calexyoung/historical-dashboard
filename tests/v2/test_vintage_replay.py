@@ -357,6 +357,8 @@ def test_declared_metadata_changes_on_its_own_date_however_late_the_replay(tmp_p
     (lambda t: t["series"][0]["metadata"].extend([{"from": "2026-05-01T00:00:00Z"}, {"from": "2026-04-01T00:00:00Z"}]),
      "order"),
     (lambda t: t["series"][1].update(origin_id="FXPRICE0001"), "bound to two"),
+    # Not padded: it would sort after "2026-05" as text and never take effect.
+    (lambda t: t["series"][0]["metadata"].append({"from": "2026-4-01T00:00:00Z"}), "does not say from when"),
     (lambda t: t.update(format=2), "format"),
 ])
 def test_a_series_table_that_cannot_be_trusted_is_refused(tmp_path, damage, message):

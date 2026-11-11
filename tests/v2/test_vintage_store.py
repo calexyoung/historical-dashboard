@@ -323,6 +323,54 @@ def test_a_record_cut_off_part_way_is_finished_by_recording_the_capture_again(tm
     assert files(cut.dir) == files(whole.dir)
 
 
+def test_a_first_record_cut_off_still_decides_what_kind_of_store_this_is(tmp_path, monkeypatch):
+    import atlas.vintage.store as module
+
+    store = VintageStore(tmp_path / "store")
+    real = module.append_line
+
+    def dies_at_the_capture_log(path, record):
+        if path.parent.name == "caplog":
+            raise OSError("the machine stopped")
+        real(path, record)
+
+    monkeypatch.setattr(module, "append_line", dies_at_the_capture_log)
+    with pytest.raises(OSError):
+        store.record(state({"2026-01": "1.0"}), ref("c1", T1, real_bytes=True))
+    monkeypatch.setattr(module, "append_line", real)
+
+    # No capture-log line exists yet, and the store already refuses the other kind.
+    with pytest.raises(StoreError, match="invented"):
+        store.record(state({"2026-01": "1.0"}, key="fx_other"), ref("x1", T1, real_bytes=False))
+    assert store.record(state({"2026-01": "1.0"}), ref("c1", T1, real_bytes=True)).change == "first"
+
+
+def test_a_capture_log_line_cut_off_mid_write_does_not_block_finishing_the_record(tmp_path, monkeypatch):
+    import atlas.vintage.store as module
+
+    whole, cut = VintageStore(tmp_path / "whole"), VintageStore(tmp_path / "cut")
+    expected = whole.record(state({"2026-01": "1.0"}), ref("c1", T1))
+    real = module.append_line
+
+    def half_a_line(path, record):
+        if path.parent.name == "caplog":
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(b'{"capture_id":"c1","retr')
+            raise OSError("the machine stopped")
+        real(path, record)
+
+    monkeypatch.setattr(module, "append_line", half_a_line)
+    with pytest.raises(OSError):
+        cut.record(state({"2026-01": "1.0"}), ref("c1", T1))
+    monkeypatch.setattr(module, "append_line", real)
+
+    assert cut.series_keys() == []  # nothing whole has been recorded for it yet
+    # Another Series can still be recorded, and the cut-off one finished.
+    assert cut.record(state({"2026-01": "2.0"}, key="fx_other"), ref("c1", T1)).change == "first"
+    assert cut.record(state({"2026-01": "1.0"}), ref("c1", T1)) == expected
+    assert cut.series_keys() == ["fx_other", KEY] and cut.vintage(KEY) == whole.vintage(KEY)
+
+
 # --- the properties of PLAN section 9 ---------------------------------------------------------
 
 PERIODS = [f"2025-{month:02d}" for month in range(1, 9)]
