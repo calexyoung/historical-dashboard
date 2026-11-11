@@ -181,3 +181,35 @@ describe("refusal: each condition of the Surface guard on its own", () => {
     expect(refusal(await load({}), "production")).toBeNull();
   });
 });
+
+describe("ReleaseReader: a release that breaks the interim data rule is refused, never 'merely invalid'", () => {
+  // The validator reports these as contract issues. If the reader called them "invalid" it would
+  // fall back to the last good release and keep answering 200 (Codex, M1 plan review).
+  const mislabelled = [
+    ["public profile, unsigned register", { signed: false }],
+    ["public profile, a legacy series", { legacy: "fx_price_index" }],
+  ] as const;
+
+  it.each(mislabelled)("production: %s is refused even after a good release was served", async (_n, variant) => {
+    const root = tempRoot();
+    addRelease(root, { id: A });
+    addRelease(root, { id: B, ...variant });
+    promote(root, A);
+    const reader = createReleaseReader({ root, surface: "production" });
+    expect((await reader.current()).ok).toBe(true);
+    promote(root, B);
+    expect(await reader.current()).toMatchObject({ ok: false, kind: "refused", id: B });
+  });
+
+  it("production: a local-profile release that is also broken is refused, not treated as a failed refresh", async () => {
+    const root = tempRoot();
+    addRelease(root, { id: A });
+    const dir = addRelease(root, { id: B, profile: "local" });
+    writeFileSync(join(dir, "series", "fx_price_index.json"), "{}");
+    promote(root, A);
+    const reader = createReleaseReader({ root, surface: "production" });
+    await reader.current();
+    promote(root, B);
+    expect(await reader.current()).toMatchObject({ ok: false, kind: "refused", id: B });
+  });
+});
