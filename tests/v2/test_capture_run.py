@@ -321,3 +321,12 @@ def test_set_cookie_values_and_secrets_never_reach_the_log(tmp_path):
     assert "abc123" not in text and "s3cret" not in text
     assert "REDACTED" in text
     assert transport.sent[0].url.endswith("key=s3cret")  # the real request is not altered
+
+
+def test_a_fetch_log_line_keeps_what_the_register_row_said_on_the_day(tmp_path):
+    table = fixture_register()
+    run_capture(tmp_path, table, Scripted({"https://fixture.invalid/a": [(200, "x\n# end\n")]}))
+    table["rows"][0]["decision"]["ml_use"] = False  # a later change to the table changes no line
+    (line,) = read_fetch_log(tmp_path)
+    assert line["rights"] == {"row": "fx", "licence_class": "public_domain", "attribution": None,
+                              "display": True, "redistribute": True, "store": True, "ml_use": True}

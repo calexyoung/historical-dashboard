@@ -1,0 +1,45 @@
+{
+  "format": 1,
+  "source": "fx",
+  "endpoint": "fx-bls-shape",
+  "recorded_at": "2026-04-10T12:30:00Z",
+  "provenance": {
+    "synthetic": true,
+    "transport": "synthetic",
+    "origin": "Macro Atlas fixture (synthetic)",
+    "datasets": [
+      "fixture prices",
+      "fixture jobs"
+    ],
+    "retrieved_at": "2026-04-10T12:30:01Z",
+    "capture_id": null,
+    "note": "Invented values for invented Series, in the shape of a BLS answer. Not a measurement of anything and not a capture: written by fixtures/vintage/make_fixtures.py."
+  },
+  "exchanges": [
+    {
+      "request": {
+        "method": "POST",
+        "url": "https://api.bls.gov/publicAPI/v2/timeseries/data/",
+        "body": "{\"seriesid\": [\"FXPRICE0001\", \"FXJOBS00001\"], \"startyear\": \"2026\", \"endyear\": \"2026\"}"
+      },
+      "status": 200,
+      "headers": [
+        [
+          "Content-Type",
+          "application/json"
+        ],
+        [
+          "Date",
+          "Fri, 10 Apr 2026 12:30:01 GMT"
+        ],
+        [
+          "Content-Length",
+          "782"
+        ]
+      ],
+      "received_at": "2026-04-10T12:30:01Z",
+      "body_file": "part-1.json",
+      "sha256": "c1edb5594df675874f826be674e6d3fbc420ed8b6b3ec1e11c9b362dfe27ce95"
+    }
+  ]
+}
