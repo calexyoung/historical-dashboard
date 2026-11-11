@@ -53,10 +53,14 @@ describe("a Series is drawn at its real cadence, never as an invented monthly li
     const [step] = drawn(root, "fx_rate").filter((n) => n.attrs["data-drawn"] === "step");
     const d = String(step!.attrs.d);
     expect(d).not.toMatch(/[CQSA]/); // only straight, axis-parallel moves
-    const visited = xs(d);
+    const visited = [...new Set(xs(d))]; // a step visits each x twice: across, then up or down
+    expect(visited).toHaveLength(5);
     const plot = find(root, (n) => n.attrs["data-plot-area"] !== undefined)[0]!;
     // The last x is the release date, at the right edge of the plot, beyond the last Observation.
-    expect(visited.at(-1)).toBeCloseTo(Number(plot.attrs.x) + Number(plot.attrs.width), 1);
+    const rightEdge = Number(plot.attrs.x) + Number(plot.attrs.width);
+    expect(rightEdge - visited.at(-1)!).toBeGreaterThanOrEqual(0);
+    expect(rightEdge - visited.at(-1)!).toBeLessThanOrEqual(5);
+    expect(visited.at(-1)!).toBeGreaterThan(visited.at(-2)! + 5); // 5 Nov 2024 to 1 Jan 2026 is drawn
     expect(drawn(root, "fx_rate").find((n) => n.attrs["data-drawn"] === "points")!.attrs["data-count"]).toBe(4);
   });
 
@@ -91,7 +95,7 @@ describe("every Data state has a mark and a word", () => {
     }
   });
 
-  const statuses = { "2025-08": "revised", "2025-09": "estimate", "2025-10": "projected", "2025-11": "partial", "2025-12": "preliminary" };
+  const statuses = { "2025-07": "preliminary", "2025-08": "revised", "2025-09": "estimate", "2025-10": "projected", "2025-11": "partial" };
   const everything = () =>
     renderFigure({ created: CREATED }, [
       series({
@@ -137,7 +141,7 @@ describe("every Data state has a mark and a word", () => {
     expect(text("missing")).toBe("Apr 2025");
     expect(text("suppressed")).toBe("May 2025");
     expect(text("break")).toBe("at Mar 2025. New population controls.");
-    expect(text("stale")).toBe("the latest value is for Nov 2025; the limit for this series ran out on 31 December 2025.");
+    expect(text("stale")).toBe("the latest value is for Nov 2025; the limit for this series ran out on 30 December 2025.");
   });
 
   it("a long run of one state is marked at its two ends and described as a span", () => {
