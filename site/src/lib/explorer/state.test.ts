@@ -88,9 +88,21 @@ describe("a view written back as an address", () => {
     expect(explorerQuery(parse("to=2022-06&mode=z&s=spx&s=unrate&from=2019-06&layers=ev.policy&layers=rec"))).toBe("s=spx,unrate&mode=z&from=2019-06&to=2022-06&layers=ev.policy,rec");
   });
 
-  it("keeps what v1 links ask of features the Explorer does not have yet, and nothing else", () => {
-    const state = parse("s=spx&cmp=2020-01&roll=24&basis=lvl&lag=-3&sx=spx&sy=vix&ext=1&utm_source=x&basis=bogus");
-    expect(Object.fromEntries(state.carried)).toEqual({ cmp: "2020-01", basis: "lvl", lag: "-3", sx: "spx", sy: "vix", roll: "24", ext: "1" });
+  it("reads a second range, the marks at the extremes and the relationship settings, and nothing it does not know", () => {
+    const state = parse("s=spx&cmp=2020-01&roll=24&basis=lvl&lag=-3&sx=spx&sy=vix&ext=1&utm_source=x");
+    expect(state).toMatchObject({ cmp: "2020-01", levels: true, lag: -3, sx: "spx", sy: "vix", roll: 24, ext: true, notes: [] });
+    expect(explorerQuery(state)).toBe("s=spx&cmp=2020-01&basis=lvl&lag=-3&sx=spx&sy=vix&roll=24&ext=1");
+  });
+
+  it("with none of them said: no second range, no marks, changes, no lag, a 36-month rolling window", () => {
+    expect(parse("s=spx")).toMatchObject({ cmp: null, ext: false, levels: false, lag: 0, sx: null, sy: null, roll: 36 });
+    expect(parse("s=spx&basis=bogus&roll=12&ext=yes&lag=0")).toMatchObject({ levels: false, roll: 36, ext: false, lag: 0 });
+  });
+
+  it("notes a lag or a second range it cannot read", () => {
+    expect(parse("s=spx&lag=25").notes.join(" ")).toMatch(/lag/);
+    expect(parse("s=spx&lag=25").lag).toBe(0);
+    expect(parse("s=spx&cmp=2020").notes.join(" ")).toMatch(/compare/);
   });
 });
 
@@ -115,14 +127,13 @@ describe("v1's hash links (the shim)", () => {
     expect(categories).toEqual(v1.events ? v1.event_categories : []);
     expect(layers.filter((l) => l.startsWith("gov."))).toEqual(v1.bands === "none" ? [] : [`gov.${v1.bands}`]);
     expect(state.hi !== null).toBe(v1.highlighted_event !== null);
-    const carried = Object.fromEntries(state.carried);
-    expect(carried.cmp ?? null).toBe(v1.compare_from);
-    expect(carried.ext === "1").toBe(v1.max_min);
-    expect(carried.basis ?? "chg").toBe(v1.basis);
-    expect(Number(carried.lag ?? 0)).toBe(v1.lag);
-    expect(carried.sx ?? null).toBe(v1.sx);
-    expect(carried.sy ?? null).toBe(v1.sy);
-    expect(Number(carried.roll ?? 36)).toBe(v1.roll);
+    expect(state.cmp).toBe(v1.compare_from);
+    expect(state.ext).toBe(v1.max_min);
+    expect(state.levels ? "lvl" : "chg").toBe(v1.basis);
+    expect(state.lag).toBe(v1.lag);
+    expect(state.sx).toBe(v1.sx);
+    expect(state.sy).toBe(v1.sy);
+    expect(state.roll).toBe(v1.roll);
     // The selection is checked against a release (view.legacy.test.ts): v1 dropped series it did
     // not have before counting to eight, and only a release knows which those are.
     expect(state.series!.filter((k) => v1.sel.includes(k))).toEqual(v1.sel);

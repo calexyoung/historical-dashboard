@@ -2,6 +2,7 @@
  * The Explorer's address (PLAN section 3: "its address fully describes what is shown").
  *
  *   /explore?s=spx,unrate&mode=z&from=2019-06&to=2022-06&layers=rec,ev.policy,gov.pres&at=2020-04-01&event={id}
+ *           &cmp=2020-01&basis=lvl&lag=3&sx=spx&sy=unrate&roll=24&ext=1
  *
  * `parseExplorerParams` reads an address leniently: what it cannot read it leaves unsaid and
  * notes, so a damaged link still opens. It keeps "not said" (null: the page's default applies)
@@ -36,8 +37,19 @@ export type ExplorerState = {
   pick: boolean;
   /** The table of values is asked for. It is hundreds of rows a Series, so it is sent only then. */
   table: boolean;
-  /** What a v1 link asks of features that arrive with Explorer II, kept so the link loses nothing. */
-  carried: [name: CarriedName, value: string][];
+  /** Compare ranges: the month a second range of the same length starts. */
+  cmp: string | null;
+  /** Mark each drawn Series' highest and lowest value. */
+  ext: boolean;
+  /** Relationships are taken on levels, not on changes (the default). */
+  levels: boolean;
+  /** The lag of the chosen pair, in Periods of their common frequency, −24 to 24: positive, X leads Y. */
+  lag: number;
+  /** The chosen pair. Null: not said (the first two Series). */
+  sx: string | null;
+  sy: string | null;
+  /** The rolling correlation's span in months: 24, or 36 when not said. */
+  roll: 24 | 36;
   /** What the address said that could not be read, in words. Never the unread text itself. */
   notes: string[];
 };
@@ -47,17 +59,7 @@ const MONTH = /^\d{4}-(0[1-9]|1[0-2])$/;
 const LAYER = /^(rec|pol|(ev|gov)(\.[a-z0-9_]{1,40})?)$/;
 const EVENT_ID = /^[a-z0-9][a-z0-9_.-]{0,127}$/;
 
-const CARRIED = {
-  cmp: (v: string) => MONTH.test(v),
-  basis: (v: string) => v === "lvl",
-  lag: (v: string) => /^-?\d{1,2}$/.test(v) && Math.abs(Number(v)) <= 24 && Number(v) !== 0,
-  sx: (v: string) => KEY.test(v),
-  sy: (v: string) => KEY.test(v),
-  roll: (v: string) => v === "24",
-  ext: (v: string) => v === "1",
-} as const;
-export type CarriedName = keyof typeof CARRIED;
-const CARRIED_NAMES = Object.keys(CARRIED) as CarriedName[];
+export const MAX_LAG = 24;
 
 function isDate(text: string): boolean {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(text) || text.startsWith("0000")) return false;
@@ -138,13 +140,44 @@ export function parseExplorerParams(input: URLSearchParams | Record<string, stri
   const askedHi = params.get("hi");
   if (event === null && askedHi !== null && /^\d{1,4}$/.test(askedHi)) hi = Number(askedHi);
 
-  const carried: ExplorerState["carried"] = [];
-  for (const name of CARRIED_NAMES) {
-    const value = params.get(name);
-    if (value !== null && CARRIED[name](value)) carried.push([name, String(name === "lag" ? Number(value) : value)]);
+  let cmp: string | null = null;
+  const askedCmp = params.get("cmp");
+  if (askedCmp !== null && askedCmp !== "") {
+    if (MONTH.test(askedCmp) && !askedCmp.startsWith("0000")) cmp = askedCmp;
+    else notes.push("The start of the range to compare with is not a month written YYYY-MM.");
   }
 
-  return { series, mode, from, to, layers, at, event, hi, pick: params.get("pick") === "1", table: params.get("table") === "1", carried, notes };
+  let lag = 0;
+  const askedLag = params.get("lag");
+  if (askedLag !== null && askedLag !== "") {
+    if (/^-?\d{1,2}$/.test(askedLag) && Math.abs(Number(askedLag)) <= MAX_LAG) lag = Number(askedLag) + 0;
+    else notes.push(`The lag in the address is not a whole number from −${MAX_LAG} to ${MAX_LAG}.`);
+  }
+  const key = (name: "sx" | "sy"): string | null => {
+    const value = params.get(name);
+    return value !== null && KEY.test(value) ? value : null;
+  };
+
+  return {
+    series,
+    mode,
+    from,
+    to,
+    layers,
+    at,
+    event,
+    hi,
+    cmp,
+    ext: params.get("ext") === "1",
+    levels: params.get("basis") === "lvl",
+    lag: lag === 0 ? 0 : lag,
+    sx: key("sx"),
+    sy: key("sy"),
+    roll: params.get("roll") === "24" ? 24 : 36,
+    pick: params.get("pick") === "1",
+    table: params.get("table") === "1",
+    notes,
+  };
 }
 
 /**
@@ -161,7 +194,13 @@ export function explorerQuery(state: Omit<ExplorerState, "notes">): string {
   if (state.at !== null) parts.push(`at=${state.at}`);
   if (state.event !== null) parts.push(`event=${state.event}`);
   else if (state.hi !== null) parts.push(`hi=${state.hi}`);
-  for (const [name, value] of state.carried) parts.push(`${name}=${value}`);
+  if (state.cmp !== null) parts.push(`cmp=${state.cmp}`);
+  if (state.levels) parts.push("basis=lvl");
+  if (state.lag !== 0) parts.push(`lag=${state.lag}`);
+  if (state.sx !== null) parts.push(`sx=${state.sx}`);
+  if (state.sy !== null) parts.push(`sy=${state.sy}`);
+  if (state.roll === 24) parts.push("roll=24");
+  if (state.ext) parts.push("ext=1");
   if (state.table) parts.push("table=1");
   if (state.pick) parts.push("pick=1");
   return parts.join("&");
@@ -184,7 +223,7 @@ const monthIndex = (month: string): number => Number(month.slice(0, 4)) * 12 + N
  * Null when the hash is not a v1 link (v1 required `sel`).
  *
  * v1's quirks, kept because a v1 link must open the view it opened in v1 (checks/v1-links.json):
- * no mode, or an unknown one, is z-scores; a range of fewer than six months is the whole axis;
+ * no mode, or an unknown one, is z-scores; a lag is held to ±24; a range of fewer than six months is the whole axis;
  * a month off v1's axis is the end of the axis on that side; a switch is on only when it is
  * "1"; with no `ev` every category is on; `shPres=1` is the oldest spelling of `bands=pres`.
  * Two things only a Release can settle are left to the view: v1 dropped Series it did not have
@@ -218,12 +257,27 @@ export function v1HashToQuery(hash: string): string | null {
 
   const hi = /^\d{1,4}$/.test(p.get("hi") ?? "") ? Number(p.get("hi")) : null;
 
-  const carried: ExplorerState["carried"] = [];
-  const lag = Math.max(-24, Math.min(24, parseInt(p.get("lag") ?? "0", 10) || 0)); // v1 clamped
-  for (const name of CARRIED_NAMES) {
-    const value = name === "lag" ? String(lag) : p.get(name);
-    if (value !== null && CARRIED[name](value)) carried.push([name, value]);
-  }
+  const lag = Math.max(-MAX_LAG, Math.min(MAX_LAG, parseInt(p.get("lag") ?? "0", 10) || 0)); // v1 clamped
+  const cmp = p.get("cmp");
+  const key = (name: string): string | null => (KEY.test(p.get(name) ?? "") ? p.get(name) : null);
 
-  return explorerQuery({ series, mode, from, to, layers, at: null, event: null, hi, pick: false, table: false, carried });
+  return explorerQuery({
+    series,
+    mode,
+    from,
+    to,
+    layers,
+    at: null,
+    event: null,
+    hi,
+    cmp: cmp !== null && MONTH.test(cmp) && cmp >= V1_FIRST_MONTH ? cmp : null,
+    ext: p.get("ext") === "1",
+    levels: p.get("basis") === "lvl",
+    lag,
+    sx: key("sx"),
+    sy: key("sy"),
+    roll: p.get("roll") === "24" ? 24 : 36,
+    pick: false,
+    table: false,
+  });
 }

@@ -22,7 +22,19 @@ export { DATA_STATES, MARK_NAMES, STATE_INFO, mark, markIcon, type DataState, ty
 export { svgString, type SvgNode } from "./svg";
 export type { Silence, SilenceRule } from "./takeaway";
 
-export type FigureObservation = { period: string; period_start: string; period_end: string; value: number | null; status: string };
+export type FigureObservation = {
+  period: string;
+  period_start: string;
+  period_end: string;
+  value: number | null;
+  status: string;
+  /**
+   * Where on the time axis the Observation is drawn, when that is not its own first day: a run
+   * from another range laid over the window (the Explorer's compare ranges). The table and every
+   * word still use the Period itself.
+   */
+  at?: string;
+};
 
 /** A Series whose values the figure may show. Optional facts are absent when not recorded. */
 export type ShownSeries = {
@@ -48,6 +60,14 @@ export type ShownSeries = {
   tableUnit?: string;
   /** Where the values came from, in words, for the source line. */
   source: string;
+  /**
+   * A second run of a Series already in the figure (`of` is that Series' key): drawn in its
+   * colour, line style and symbol, but pale and wide, with hollow symbols, so the two runs are
+   * told apart by weight, never by colour alone.
+   */
+  ghost?: { of: string; /** The last day a standing (held) value is drawn to, on the time axis. */ standsUntil?: string };
+  /** The highest and lowest drawn values to mark, each with what to write beside it. */
+  extremes?: { period: string; label: string; kind: "max" | "min" }[];
   /** In Period order, every gap explicit, as a Release holds them. */
   observations: readonly FigureObservation[];
 };
@@ -92,7 +112,17 @@ export type Layers = {
 export type LayoutName = "narrow" | "medium" | "wide";
 export { LAYOUT_SIZES as LAYOUTS, NO_ANSWER, swatch } from "./plot";
 
-export type SeriesStyle = { key: string; name: string; /** 1 to 8: `--color-series-n`. */ color: number; dash: string | null; symbol: "circle" | "square" | "triangle" | "diamond"; drawnAs: "line" | "points" | "step" };
+export type SeriesStyle = {
+  key: string;
+  name: string;
+  /** 1 to 8: `--color-series-n`. */
+  color: number;
+  dash: string | null;
+  symbol: "circle" | "square" | "triangle" | "diamond";
+  drawnAs: "line" | "points" | "step";
+  /** A second run of another Series: pale and wide, hollow symbols. */
+  ghost?: true;
+};
 
 export type Plot = {
   unit: string;
@@ -243,7 +273,9 @@ function howToRead(plots: { group: ShownSeries[]; axis: YAxis }[], notes: StateN
       lines.push({ text: `The vertical axis${which} runs from ${axis.format(lo)} to ${axis.format(hi)}. It does not start at zero.` });
     }
   }
-  if (all.length > 1) lines.push({ text: "Each series has its own colour, line style and symbol; none of the three is used alone." });
+  if (all.filter((s) => !s.ghost).length > 1) lines.push({ text: "Each series has its own colour, line style and symbol; none of the three is used alone." });
+  if (all.some((s) => s.ghost)) lines.push({ text: "A pale, wide line with hollow symbols is the same series over the range compared with, laid over the window so that both start at the left edge. Its dates are in the readout and the table, not on the axis." });
+  if (all.some((s) => s.extremes && s.extremes.length > 0)) lines.push({ text: "A ring marks each series' highest and lowest value in the window, as drawn; the figure beside it is the series' own value." });
   if (all.some((s) => STATUS_MARKS.some((m) => statusRuns(s.observations, m).some(([a, b]) => b > a)))) {
     lines.push({ text: "Where several values in a row share a state, the mark is drawn on the first and the last of them." });
   }
@@ -262,7 +294,12 @@ export function renderFigure(spec: FigureSpec, series: readonly FigureSeries[]):
   const stale = new Set<string>();
   // A Series keeps one colour, line style and symbol wherever it is drawn.
   const styles = new Map<string, SeriesStyle>();
-  shown.forEach((s, i) => styles.set(s.key, { key: s.key, name: s.name, ...styleFor(i), drawnAs: drawnAs(s) }));
+  // A second run takes the style of the Series it is a run of, and no place in the palette.
+  shown.filter((s) => !s.ghost).forEach((s, i) => styles.set(s.key, { key: s.key, name: s.name, ...styleFor(i), drawnAs: drawnAs(s) }));
+  shown.filter((s) => s.ghost).forEach((s, i) => {
+    const of = styles.get(s.ghost!.of);
+    styles.set(s.key, { key: s.key, name: s.name, ...(of ? { color: of.color, dash: of.dash, symbol: of.symbol } : styleFor(i)), drawnAs: drawnAs(s), ghost: true });
+  });
   for (const s of series) {
     if (isShown(s)) {
       const of = statesOf(s, spec.created);
