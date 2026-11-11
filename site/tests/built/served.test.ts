@@ -262,6 +262,31 @@ describe("a production-surface build fails closed (PLAN 6.1 point 5, reader)", (
     expect((await get(server.url("/api/health"))).status).toBe(503);
   });
 
+  it("never stands an earlier release in for one it cannot open: 503, not the last good one", async () => {
+    promote(root, A);
+    expect((await get(server.url("/explore"))).status).toBe(200);
+    const broken = addRelease(root, { id: B, signed: false });
+    writeFileSync(join(broken, "content", "annotations.json"), "{ not json");
+    promote(root, B);
+    expect((await get(server.url("/explore"))).status).toBe(503);
+    expect(await (await get(server.url("/api/health"))).json()).toMatchObject({ status: "unavailable", release_id: B });
+    rmSync(broken, { recursive: true });
+    promote(root, "20260209T000000Z-0dead00"); // not on disk
+    expect((await get(server.url("/explore"))).status).toBe(503);
+  });
+
+  it("a path Next normalises before the proxy runs gets a bare redirect, and the redirect leads to 503", async () => {
+    // The one place the proxy is not first (ADR 0015): doubled slashes are redirected by Next's
+    // router. The redirect carries no page, and what it points at is answered by the proxy.
+    promote(root, LOCAL);
+    const response = await get(server.url("//explore"));
+    expect(response.status).toBe(308);
+    expect(await response.text()).not.toMatch(/SEEDED-FRED-VALUE|fx_price_index/);
+    const target = new URL(response.headers.get("location")!, server.origin);
+    expect(target.pathname).toBe("/macro-atlas/explore");
+    expect((await get(target.href)).status).toBe(503);
+  });
+
   it("answers 503 when there is no release at all", async () => {
     const empty = await startVariant("production", { root: tempRoot() });
     const unset = await startVariant("production");

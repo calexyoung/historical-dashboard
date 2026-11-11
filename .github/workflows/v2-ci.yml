@@ -63,7 +63,9 @@ jobs:
       - name: Built-server suite (builds three variants)
         run: npm run test:built -w @macro-atlas/site
       - name: Install Chromium
-        run: npx playwright install --with-deps chromium
+        # No --with-deps: the runner image already has Chromium's libraries, and apt was the
+        # step that failed when Ubuntu's mirrors were slow.
+        run: npx playwright install chromium
       - name: Playwright (both base paths, phone and desktop)
         run: ATLAS_SKIP_BUILD=1 npm run test:e2e -w @macro-atlas/site
 

@@ -174,10 +174,49 @@ test.describe("accessibility and layout", () => {
     await expect(mark.locator("svg")).toHaveCount(1);
   });
 
-  test("the phone layout keeps every control reachable at 200% zoom of a 640px window", async ({ page, atlas }) => {
-    await page.setViewportSize({ width: 320, height: 480 }); // 640 CSS px at 200%
+  test("at 200% zoom of a 640px window, every control can still be reached and used", async ({ browser, atlas }) => {
+    // Browser zoom halves the layout viewport: 640px at 200% lays out as 320 CSS px at 2x.
+    const context = await browser.newContext({ viewport: { width: 320, height: 480 }, deviceScaleFactor: 2, colorScheme: "light" });
+    const page = await context.newPage();
     await page.goto(atlas.url("/explore"));
-    for (const name of ["Auto", "Light", "Dark"]) await expect(page.getByRole("button", { name })).toBeVisible();
-    await expect(page.getByRole("link", { name: "Explore" }).first()).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);
+    const controls = page.locator("a[href], button");
+    const count = await controls.count();
+    expect(count).toBeGreaterThanOrEqual(7);
+    for (let i = 0; i < count; i++) {
+      const control = controls.nth(i);
+      if ((await control.textContent())?.trim() === "Skip to content") continue; // keyboard only, tested above
+      await control.scrollIntoViewIfNeeded();
+      await expect(control).toBeInViewport({ ratio: 1 });
+      await control.click({ trial: true, timeout: 2000 }); // hit-tested: not clipped, not covered
+    }
+    // And one of them really works at this size.
+    await page.getByRole("button", { name: "Dark" }).click();
+    await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+    await context.close();
+  });
+
+  test("largest contentful paint is under 2.5 s on a throttled phone", async ({ browser, atlas }) => {
+    const context = await browser.newContext({ viewport: { width: 360, height: 740 }, deviceScaleFactor: 3, isMobile: true });
+    const page = await context.newPage();
+    const cdp = await context.newCDPSession(page);
+    // Slow 4G and a CPU four times slower, as Lighthouse's phone profile does.
+    await cdp.send("Network.enable");
+    await cdp.send("Network.emulateNetworkConditions", { offline: false, latency: 150, downloadThroughput: (1.6 * 1024 * 1024) / 8, uploadThroughput: (750 * 1024) / 8 });
+    await cdp.send("Emulation.setCPUThrottlingRate", { rate: 4 });
+    await page.goto(atlas.url("/explore"), { waitUntil: "load" });
+    const lcp = await page.evaluate(
+      () =>
+        new Promise<number>((resolve) => {
+          let latest = 0;
+          new PerformanceObserver((list) => {
+            for (const entry of list.getEntries()) latest = entry.startTime;
+          }).observe({ type: "largest-contentful-paint", buffered: true });
+          setTimeout(() => resolve(latest), 500);
+        }),
+    );
+    expect(lcp).toBeGreaterThan(0);
+    expect(lcp).toBeLessThan(2500);
+    await context.close();
   });
 });

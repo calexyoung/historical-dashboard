@@ -30,22 +30,26 @@ Release it is pointed at may not be served there (PLAN 6.1, ADR 0006). This reco
    document is one request is one Release. The Explorer (M4) changes its own state in place
    without leaving its page.
 
-4. **The reader refuses, on a public Surface, any Release that is not public-profile, names an
-   unsigned rights register or holds a legacy Series**, checking the manifest's profile before
-   validation and the rest after. The contract's own profile rules (`unsigned_register`,
-   `legacy_in_public`, `draft_in_public`) count as refusals too. A refused Release is never
-   replaced by an earlier good one: the answer is 503 until `CURRENT` names a Release that may be
-   served.
+4. **On a public Surface the reader serves the Release `CURRENT` names, or nothing.** It refuses
+   any Release that is not public-profile, names an unsigned rights register or holds a legacy
+   Series: the manifest's profile is checked before validation and the rest after, and the
+   contract's own profile rules (`unsigned_register`, `legacy_in_public`, `draft_in_public`) count
+   as refusals. And it never stands an earlier Release in for one it cannot open, for any reason
+   (missing, unreadable, a link in place of a file, malformed JSON, a schema error): a problem of
+   that kind can hide a rule breach behind it, so the answer is 503 until `CURRENT` names a
+   Release that opens and may be served. The check is made again for every request; a failure
+   to open is remembered for five seconds, during which the answer stays 503.
 
 5. **Staging is held to production's rule for now.** The plan lets staging show a local-profile
    Release only behind a password that covers every route (D9, still open). The app cannot see
    whether Caddy asks for a password, so until a deploy step can prove it (M27), a staging build
    refuses what a production build refuses. This is the stricter reading and is Alex's to relax.
 
-6. **A failed refresh is not a refusal.** If `CURRENT` names a Release that is missing or breaks
-   the contract in some other way, and this process has already served a good one, it keeps
-   serving that one; the top bar says "Refresh failed" and `/api/health` reports `degraded` with
-   the reason. With no earlier good Release the answer is 503.
+6. **Only the local Surface has a failed-refresh state.** There, if `CURRENT` names a Release
+   that is missing or breaks the contract, and this process has already served a good one, it
+   keeps serving that one; the top bar says "Refresh failed" and `/api/health` reports `degraded`
+   with the reason. The local Surface has no rule to break, and a half-written release should not
+   blank the page Alex is working in. With no earlier good Release the answer is 503.
 
 7. **A local-surface build answers only to this machine's names** (`localhost`, `*.localhost`,
    `127.0.0.1`, `[::1]`); any other `Host` gets 421. A local build may hold v1's data (PLAN 6.1),
@@ -64,17 +68,26 @@ Release it is pointed at may not be served there (PLAN 6.1, ADR 0006). This reco
   turn a production container into a local one.
 - **Treat a rule-breaking Release as "invalid" and fall back** to the last good one. The site
   would keep answering 200 while pointed at something it must refuse, and nobody would notice.
+- **Fall back on public Surfaces too, but only for "harmless" failures.** Telling a harmless
+  failure from one that hides a breach means trusting bytes that just failed to parse. Codex
+  showed two ways through an earlier version that tried. Availability on a public Surface is the
+  publisher's job: it validates before it promotes.
 
 ## Consequences
 
 - No page is prerendered, and nothing from a Release is in the build output or the image; tests
   search both for seeded values.
-- Next documents that redirects and headers from `next.config` run before the proxy. This app
-  defines none, and sets `skipTrailingSlashRedirect` so the proxy sees every path as asked. A
-  request outside the base path never reaches the app's routes and gets Next's own 404.
+- **Where the proxy is not first.** Next documents that redirects and headers from `next.config`
+  run before the proxy; this app defines none, and sets `skipTrailingSlashRedirect` so the proxy
+  sees a trailing slash as asked. Two things remain outside it. Next's router redirects a path
+  with doubled slashes or a backslash (308) before the proxy runs: that redirect has no body, no
+  security headers and no Host check, and what it points at is answered by the proxy (a test pins
+  this). And a request outside the base path never reaches the app and gets Next's own 404. So
+  "every route answers 503" means: every request that would otherwise have been answered with
+  content from this app.
 - The proxy and the pages may not share memory, so they share nothing but request headers. A page
   re-opens the Release by id from its own cache or from disk. If a last-good Release has been
   pruned from disk while a refresh is failing, the page fails with a 500, not with other data.
-- Withdrawal (ADR 0006) and the failed-refresh state interact: if the Release that replaces a
-  withdrawn one is broken, the old one would still be served by a running process. The publisher
-  validates before promotion, and `atlas withdraw` (M9) must end by checking `/api/health`.
+- On a public Surface a broken or missing `CURRENT` takes the site down (503) until it is
+  repaired or rolled back. That is the intended trade: loud and empty, not quiet and wrong. It
+  also means a withdrawn Release (ADR 0006) can never linger in a running process.

@@ -32,17 +32,18 @@ echo "== build both images"
 "${COMPOSE[@]}" build
 
 echo "== read every layer of both images"
-NEEDLES=("$SEED" "20260101T000000Z-0000000" "Fixture price index")
+NEEDLES=("seed=$SEED" "fixture-release-id=20260101T000000Z-0000000" "fixture-series-name=Fixture price index")
 if [ -f data/atlas.json ]; then
   # A stretch of v1's real output: values that came through FRED and Yahoo.
-  NEEDLES+=("$(head -c 4000 data/atlas.json | tail -c 60)")
+  # scan_image.py reports a hit by its label, never by these bytes.
+  NEEDLES+=("v1-data-sample=$(head -c 4000 data/atlas.json | tail -c 60)")
 fi
 for service in web web-staging-path; do
   python3 deploy/scan_image.py "macro-atlas-local-${service}" "${NEEDLES[@]}"
 done
 
 # The scanner must be able to find something that IS there, or its silence means nothing.
-if python3 deploy/scan_image.py macro-atlas-local-web "strict-dynamic" >/dev/null 2>&1; then
+if python3 deploy/scan_image.py macro-atlas-local-web "known=strict-dynamic" >/dev/null 2>&1; then
   echo "FAIL: the layer scan did not find a string the image is known to hold"; exit 1
 fi
 echo "ok  the scan finds a string that is in the image"

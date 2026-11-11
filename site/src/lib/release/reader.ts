@@ -8,9 +8,9 @@
  *
  * The Surface guard is the reader's part of the interim data rule (PLAN 6.1 point 5): a build for
  * a public Surface refuses every Release that is not public-profile, names an unsigned rights
- * register or holds a legacy Series. A refused Release is never replaced by an earlier one: the
- * caller answers 503. Staging is held to production's rule until it has a password that the
- * deploy step can prove (ADR 0015).
+ * register or holds a legacy Series, and never stands an earlier Release in for one it cannot
+ * open: the caller answers 503. Staging is held to production's rule until it has a password
+ * that the deploy step can prove (ADR 0015). Only the local Surface has the failed-refresh state.
  *
  * Node only. A Release is immutable once promoted, so a good one is read and validated once.
  */
@@ -51,7 +51,7 @@ export type Opened =
   | {
       ok: true;
       release: OpenedRelease;
-      /** Set when CURRENT could not be opened and an earlier good Release is being served. */
+      /** Local Surface only: CURRENT could not be opened and an earlier good Release is being served. */
       refreshFailed: Omit<Failure, "ok"> | null;
     }
   | Failure;
@@ -229,8 +229,10 @@ export function createReleaseReader(options: {
       lastGood = opened.release;
       return opened;
     }
-    // Fail closed: a Release this Surface may not serve is never papered over with an older one.
-    if (opened.kind === "refused") {
+    // Fail closed. On a public Surface there is no fallback at all: an earlier Release is only a
+    // safe stand-in when the one CURRENT names would itself have been allowed, and when that one
+    // cannot be read or parsed, nobody knows. (ADR 0015.)
+    if (surface !== "local" || opened.kind === "refused") {
       lastGood = null;
       return opened;
     }

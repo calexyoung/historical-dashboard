@@ -133,7 +133,8 @@ This is a tool its main reader opens many times a day, so almost nothing moves.
 
 ## Accessibility floor (checked by Playwright on the fixture release)
 
-axe-core clean in both themes; no horizontal page scroll at 320px; everything reachable at 200%
-zoom; keyboard order follows reading order, starting with the skip link; text at least 4.5:1,
+axe-core clean in both themes; no horizontal page scroll at 320px; every link and button in view
+and hit-testable at 320 CSS px (a 640px window at 200% zoom); largest contentful paint under
+2.5 s on a throttled phone profile; keyboard order follows reading order, starting with the skip link; text at least 4.5:1,
 control borders and data marks at least 3:1; targets at least 24px; reading pages complete with
 JavaScript off.
