@@ -6,6 +6,11 @@ directory against the Release contract, renames it into ``{root}/releases/`` and
 replaces ``{root}/CURRENT`` in one atomic step. A failure at any point leaves ``CURRENT`` as it
 was, so a reader keeps the last good Release.
 
+The commit point is the replacement of ``CURRENT``. If that fails, the Release that was just
+moved into ``releases/`` is taken back out, so nothing unnamed is left behind and the id can be
+staged again. The rename into ``releases/`` is the no-clobber step: of two writers with one id,
+the second is refused. (Serialising whole runs with ``LOCK`` is the publisher's job, M9.)
+
 A root is for one Profile: ``promote`` is told which, and refuses a Release of the other kind,
 so a local-profile Release cannot land in a public root (PLAN 6.1 point 2) whoever calls it.
 """
@@ -57,6 +62,29 @@ def _write_current(root: Path, release_id: str) -> None:
         os.replace(temporary, root / "CURRENT")
     finally:
         temporary.unlink(missing_ok=True)
+    _sync_directory(root)
+
+
+def _sync_directory(directory: Path) -> None:
+    """Best effort: make a rename in ``directory`` durable. Not every platform allows it."""
+    try:
+        descriptor = os.open(directory, os.O_RDONLY)
+    except OSError:
+        return
+    try:
+        os.fsync(descriptor)
+    except OSError:
+        pass
+    finally:
+        os.close(descriptor)
+
+
+def _irregular_file(directory: Path) -> str | None:
+    """The first thing under ``directory`` that is neither a directory nor a plain file."""
+    for path in sorted(directory.rglob("*")):
+        if path.is_symlink() or not (path.is_dir() or path.is_file()):
+            return path.relative_to(directory).as_posix()
+    return None
 
 
 def promote(root: Path, release_id: str, *, profile: str) -> Path:
@@ -77,6 +105,9 @@ def promote(root: Path, release_id: str, *, profile: str) -> Path:
             raise PromotionRefused(f"release {release_id} has not been staged")
         if target.exists():
             raise PromotionRefused(f"release {release_id} is already promoted; a release is never rewritten")
+        odd = _irregular_file(staged)
+        if odd:
+            raise PromotionRefused(f"release {release_id}: {odd} is not a regular file")
         issues = validate_release(staged)
         if issues:
             more = f" (and {len(issues) - 1} more)" if len(issues) > 1 else ""
@@ -87,9 +118,21 @@ def promote(root: Path, release_id: str, *, profile: str) -> Path:
                 f"this root takes {profile}-profile releases; release {release_id} has profile {found!r}"
             )
         target.parent.mkdir(parents=True, exist_ok=True)
-        os.rename(staged, target)
+        try:
+            os.rename(staged, target)  # fails if another writer's release is already there
+        except OSError as error:
+            raise PromotionRefused(
+                f"release {release_id} is already promoted; a release is never rewritten ({error.strerror})"
+            ) from error
+        _sync_directory(target.parent)
     except BaseException:
         shutil.rmtree(staged, ignore_errors=True)
         raise
-    _write_current(root, release_id)
+    try:
+        _write_current(root, release_id)
+    except BaseException as error:
+        shutil.rmtree(target, ignore_errors=True)  # never named by CURRENT, so nobody has read it
+        if isinstance(error, OSError):
+            raise PromotionRefused(f"CURRENT could not be replaced ({error}); it is unchanged") from error
+        raise
     return target

@@ -6,10 +6,12 @@ then named by ``CURRENT``. Anything that goes wrong leaves ``CURRENT`` as it was
 """
 import json
 import shutil
+import unittest.mock
 from pathlib import Path
 
 import pytest
 
+from atlas import staging
 from atlas.release import validate_release
 from atlas.staging import PromotionRefused, promote, stage
 
@@ -91,3 +93,54 @@ def test_only_a_release_id_can_be_staged(tmp_path):
     for bad in ("../escape", "releases", "20260101T000000Z", ""):
         with pytest.raises(PromotionRefused, match="release id"):
             stage(tmp_path, bad)
+
+
+def test_a_failure_while_replacing_current_takes_the_release_back_out(tmp_path, monkeypatch):
+    """The commit point is the replacement of CURRENT. Before it, nothing has happened: a
+    release that was moved into place but never named is removed, so the id can be staged again."""
+    (tmp_path / "CURRENT").write_text("20250101T000000Z-1111111\n")
+    staged_fixture(tmp_path)
+    def fail(*args, **kwargs):
+        raise OSError("disk full")
+
+    monkeypatch.setattr(staging.os, "replace", fail)
+    with pytest.raises(PromotionRefused, match="CURRENT"):
+        promote(tmp_path, FIXTURE_ID, profile="public")
+    monkeypatch.undo()
+    assert (tmp_path / "CURRENT").read_text() == "20250101T000000Z-1111111\n"
+    assert not (tmp_path / "releases" / FIXTURE_ID).exists()
+    assert [p.name for p in tmp_path.iterdir() if "CURRENT" in p.name] == ["CURRENT"]
+    staged_fixture(tmp_path)
+    promote(tmp_path, FIXTURE_ID, profile="public")  # and it can be done again
+
+
+def test_a_staged_release_holds_plain_files_only(tmp_path):
+    """A link could point outside the Release. The TypeScript reader refuses one; so does this."""
+    directory = staged_fixture(tmp_path)
+    outside = tmp_path / "outside.json"
+    outside.write_bytes((directory / "series" / "fx_price_index.json").read_bytes())
+    (directory / "series" / "fx_price_index.json").unlink()
+    (directory / "series" / "fx_price_index.json").symlink_to(outside)
+    with pytest.raises(PromotionRefused, match="not a regular file"):
+        promote(tmp_path, FIXTURE_ID, profile="public")
+    assert not (tmp_path / "CURRENT").exists()
+
+
+def test_two_writers_cannot_both_promote_one_id(tmp_path):
+    """The rename into releases/ is the no-clobber step: the loser is refused, not merged."""
+    staged_fixture(tmp_path)
+    winner = tmp_path / "releases" / FIXTURE_ID
+    shutil.copytree(FIXTURE, winner)  # another writer got there between the check and the rename
+    real_exists = staging.Path.exists
+    staging_check = {"skipped": False}
+
+    def exists(self):
+        if self == winner and not staging_check["skipped"]:
+            staging_check["skipped"] = True
+            return False
+        return real_exists(self)
+
+    with unittest.mock.patch.object(staging.Path, "exists", exists), pytest.raises(PromotionRefused, match="already"):
+        promote(tmp_path, FIXTURE_ID, profile="public")
+    assert validate_release(winner) == []
+    assert not (tmp_path / "CURRENT").exists()
