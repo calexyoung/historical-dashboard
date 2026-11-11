@@ -199,6 +199,11 @@ Where a build of the site is reachable: local (one machine), staging or producti
 public unless it is local or behind a password.
 _Avoid_: Environment, tier
 
+**Withdrawal**:
+Taking a Series down because a permission was wrong: a new Release without it and without
+anything computed from it, and every Release that held it retired out of the release root.
+_Avoid_: Unpublish, takedown, delete
+
 **Pin**:
 A reference from a link, a Claim lock or an Edition to one specific Release, so the reader sees the
 data as it was then.

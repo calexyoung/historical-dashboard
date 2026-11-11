@@ -13,7 +13,15 @@ from atlas.publish import release
 from atlas.release import validate_release
 
 from .release_helpers import (
-    NOW, ORIGIN, SERIES, all_bytes, build_store, current, fixture_table, read_json, write_register,
+    NOW,
+    ORIGIN,
+    SERIES,
+    all_bytes,
+    build_store,
+    current,
+    fixture_table,
+    read_json,
+    write_register,
 )
 
 

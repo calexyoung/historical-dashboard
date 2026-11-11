@@ -120,7 +120,8 @@ def test_nothing_is_written_to_the_store_and_no_network_call_is_made(tmp_path, m
     assert promoted.parent == local / "releases"
     assert not store.exists() and not public.exists()
     assert sorted(p.name for p in tmp_path.iterdir()) == ["local"]
-    assert sorted(p.name for p in local.iterdir()) == ["CURRENT", "releases"]
+    # LOCK is the root's own lock, held while the Release is staged and promoted (M9).
+    assert sorted(p.name for p in local.iterdir()) == ["CURRENT", "LOCK", "releases"]
 
 
 def test_the_converter_does_not_write_through_a_link_into_the_store_or_a_public_root(tmp_path, monkeypatch):

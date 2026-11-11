@@ -29,6 +29,7 @@ from pathlib import Path
 
 import yaml
 
+from atlas.capture.store import StoreLocked, locked
 from atlas.period import next_period, period_bounds
 from atlas.release import LEGACY, SCHEMA_VERSION
 from atlas.staging import promote, stage
@@ -643,12 +644,19 @@ def legacy_release(*, repo: Path = ROOT, out: Path | None = None, now: datetime 
     """
     root = local_root(repo, out)
     release_id, files = build_release(repo, now)
-    directory = stage(root, release_id)
-    for path, data in files.items():
-        target = directory / path
-        target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_bytes(data)
-    return promote(root, release_id, profile="local")
+    root.mkdir(parents=True, exist_ok=True)
+    try:
+        # The root's own lock, the one the release writer holds (M9): two writers never stage
+        # and promote in one root at the same time.
+        with locked(root):
+            directory = stage(root, release_id)
+            for path, data in files.items():
+                target = directory / path
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_bytes(data)
+            return promote(root, release_id, profile="local")
+    except StoreLocked:
+        raise LegacyRefused(f"another run holds {root / 'LOCK'}; nothing was changed") from None
 
 
 def main() -> int:

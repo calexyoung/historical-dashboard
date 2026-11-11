@@ -95,7 +95,8 @@ class _Run:
             R.write_status(self.root, started=self.started, finished=S.stamp(_clock(None)),
                            outcome=outcome, release_id=release_id, profile=self.profile,
                            command=self.command, failed_checks=failed,
-                           reason=self.lines[-1] if exit_code and self.lines else None)
+                           reason=next((line for line in self.lines if line.startswith(
+                               ("REFUSED", "FAILED", "REJECTED"))), None) if exit_code else None)
             self.journal(event="finished", outcome=outcome, release_id=release_id,
                          failed_checks=[check["check"] for check in failed], **more)
         except OSError as error:
@@ -351,6 +352,10 @@ def release(*, profile: str, root: Path, store: Path, register: Path | None = No
     store at ``store``. ``legacy`` (local profile only; default yes) adds v1's Series for the
     keys the store does not hold. ``reuse_data`` keeps the current Release's data files and
     rewrites only its content."""
+    wants_legacy = profile == "local" and legacy is not False
+    if not reuse_data and not wants_legacy and not VintageStore(store).series_keys():
+        # Before a directory, a lock or a status file is made for a run with nothing to do.
+        return _refused(f"REFUSED: there is nothing to release: {store} holds no Series")
     try:
         with _opened("release", profile=profile, root=root, store=store, register=register, now=now) as run:
             return _release(run, series, legacy, legacy_repo, reuse_data, keep, write)
