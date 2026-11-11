@@ -12,7 +12,6 @@ from atlas.capture.store import read_fetch_log, read_runs
 
 from .capture_helpers import (
     Scripted,
-    at,
     fixture_endpoint,
     fixture_register,
     refused,
@@ -242,7 +241,3 @@ def test_set_cookie_values_and_secrets_never_reach_the_log(tmp_path):
     assert "abc123" not in text and "s3cret" not in text
     assert "REDACTED" in text
     assert transport.sent[0].url.endswith("key=s3cret")  # the real request is not altered
-
-
-def test_at_is_a_helper():
-    assert at("2026-11-11T00:00:00").tzinfo is not None

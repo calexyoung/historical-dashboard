@@ -3,7 +3,7 @@ that answers from a script. No test of the capture kit touches the network (PLAN
 from __future__ import annotations
 
 import copy
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from atlas.capture.http import Response, TransportError
 
@@ -41,7 +41,7 @@ def fixture_register(*, signed=True, store=True, endpoints=None):
 
 
 def at(text: str) -> datetime:
-    return datetime.fromisoformat(text).replace(tzinfo=timezone.utc)
+    return datetime.fromisoformat(text).replace(tzinfo=UTC)
 
 
 class Scripted:
