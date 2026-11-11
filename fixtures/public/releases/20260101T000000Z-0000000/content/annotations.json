@@ -1,0 +1,101 @@
+{
+  "annotations": [
+    {
+      "id": "event-2024-09-18-fixture-rate-decision",
+      "kind": "event",
+      "anchor": {
+        "type": "date",
+        "date": "2024-09-18"
+      },
+      "label": "Fixture central bank changes its rate",
+      "ref": null,
+      "source": {
+        "name": "Fixture gazette (synthetic)",
+        "url": "https://example.org/fixture-gazette"
+      },
+      "category": "policy"
+    },
+    {
+      "id": "recession-2022-fixture",
+      "kind": "recession",
+      "anchor": {
+        "type": "span",
+        "start": "2022-07-01",
+        "end": "2023-03-31"
+      },
+      "label": "Fixture recession",
+      "ref": null,
+      "source": {
+        "name": "Fixture gazette (synthetic)",
+        "url": "https://example.org/fixture-gazette"
+      }
+    },
+    {
+      "id": "governance-2021-fixture-term",
+      "kind": "governance",
+      "anchor": {
+        "type": "span",
+        "start": "2021-01-20",
+        "end": "2025-01-19"
+      },
+      "label": "Fixture head of government, first term",
+      "ref": null,
+      "source": {
+        "name": "Fixture gazette (synthetic)",
+        "url": "https://example.org/fixture-gazette"
+      },
+      "attributes": {
+        "office": "head of government",
+        "party": "Fixture Party A"
+      }
+    },
+    {
+      "id": "governance-2025-fixture-term",
+      "kind": "governance",
+      "anchor": {
+        "type": "span",
+        "start": "2025-01-20",
+        "end": null
+      },
+      "label": "Fixture head of government, second term",
+      "ref": null,
+      "source": {
+        "name": "Fixture gazette (synthetic)",
+        "url": "https://example.org/fixture-gazette"
+      },
+      "attributes": {
+        "office": "head of government",
+        "party": "Fixture Party B"
+      }
+    },
+    {
+      "id": "policy-2024-fixture-tariff",
+      "kind": "policy",
+      "anchor": {
+        "type": "span",
+        "start": "2024-04-01",
+        "end": "2024-12-31"
+      },
+      "label": "Fixture tariff schedule in force",
+      "ref": null,
+      "source": {
+        "name": "Fixture gazette (synthetic)",
+        "url": "https://example.org/fixture-gazette"
+      }
+    },
+    {
+      "id": "data-note-fx-payrolls-break-2025-01",
+      "kind": "data_note",
+      "anchor": {
+        "type": "period",
+        "period": "2025-01"
+      },
+      "series": [
+        "fx_payrolls_break"
+      ],
+      "label": "New population controls; earlier months are not comparable",
+      "ref": null,
+      "source": null
+    }
+  ]
+}

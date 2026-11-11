@@ -1,0 +1,346 @@
+{
+  "series": [
+    {
+      "key": "fx_price_index",
+      "name": "Fixture price index",
+      "description": "Synthetic monthly index with one missing month and a preliminary latest value.",
+      "definition": {
+        "population": "All synthetic households",
+        "geography": "Fixtureland"
+      },
+      "unit": "index, 2024-01 = 100",
+      "unit_kind": "index",
+      "measure_kind": "index",
+      "agg": "mean",
+      "freq": "monthly",
+      "continuity": "discrete",
+      "representation": "native",
+      "seasonal_adjustment": "sa",
+      "price_basis": "not_applicable",
+      "base_period": "2024-01",
+      "country": "USA",
+      "segment": "economy_jobs",
+      "topics": [
+        "inflation"
+      ],
+      "source": {
+        "origin": {
+          "producer": "Macro Atlas fixture (synthetic)",
+          "dataset": "fixture",
+          "origin_id": "FX-PRICE",
+          "url": null
+        },
+        "channel": {
+          "via": "fixture",
+          "adapter": "hand_written",
+          "auth": "none"
+        }
+      },
+      "rights": {
+        "owner": "Macro Atlas project",
+        "terms_url": null,
+        "status": "public_domain",
+        "attribution": "Synthetic test data, Macro Atlas project",
+        "reviewed": "2026-01-01"
+      },
+      "status": "active",
+      "max_lag": "P2M"
+    },
+    {
+      "key": "fx_output_quarterly",
+      "name": "Fixture output",
+      "description": "Synthetic quarterly flow with one missing quarter.",
+      "unit": "billions of fixture dollars",
+      "unit_kind": "currency",
+      "measure_kind": "flow",
+      "agg": "sum",
+      "freq": "quarterly",
+      "continuity": "discrete",
+      "representation": "native",
+      "seasonal_adjustment": "sa",
+      "price_basis": "real",
+      "country": "USA",
+      "segment": "economy_jobs",
+      "topics": [
+        "growth"
+      ],
+      "source": {
+        "origin": {
+          "producer": "Macro Atlas fixture (synthetic)",
+          "dataset": "fixture",
+          "origin_id": "FX-OUTPUT",
+          "url": null
+        },
+        "channel": {
+          "via": "fixture",
+          "adapter": "hand_written",
+          "auth": "none"
+        }
+      },
+      "rights": {
+        "owner": "Macro Atlas project",
+        "terms_url": null,
+        "status": "public_domain",
+        "attribution": "Synthetic test data, Macro Atlas project",
+        "reviewed": "2026-01-01"
+      },
+      "status": "active",
+      "max_lag": "P6M"
+    },
+    {
+      "key": "fx_poverty_rate_annual",
+      "name": "Fixture poverty rate",
+      "description": "Synthetic annual rate. Its rights status asks for a citation.",
+      "definition": {
+        "population": "All synthetic residents",
+        "geography": "Fixtureland",
+        "denominator": "Resident population"
+      },
+      "unit": "percent of residents",
+      "unit_kind": "percent",
+      "measure_kind": "rate",
+      "agg": "mean",
+      "freq": "annual",
+      "continuity": "discrete",
+      "representation": "native",
+      "seasonal_adjustment": "not_applicable",
+      "country": "USA",
+      "segment": "economy_jobs",
+      "topics": [
+        "poverty"
+      ],
+      "source": {
+        "origin": {
+          "producer": "Macro Atlas fixture (synthetic)",
+          "dataset": "fixture",
+          "origin_id": "FX-POVERTY",
+          "url": null
+        },
+        "channel": {
+          "via": "fixture",
+          "adapter": "hand_written",
+          "auth": "none"
+        }
+      },
+      "rights": {
+        "owner": "Macro Atlas project",
+        "terms_url": null,
+        "status": "citation_required",
+        "attribution": "Synthetic test data, Macro Atlas project",
+        "reviewed": "2026-01-01"
+      },
+      "status": "active",
+      "max_lag": "P2Y"
+    },
+    {
+      "key": "fx_vote_margin",
+      "name": "Fixture election margin",
+      "description": "Synthetic result per election. Each value stands until the next election.",
+      "unit": "percentage points",
+      "unit_kind": "percentage_points",
+      "measure_kind": "rate",
+      "agg": "last",
+      "freq": "irregular",
+      "continuity": "held",
+      "representation": "native",
+      "country": "USA",
+      "segment": "governance_politics",
+      "topics": [
+        "elections"
+      ],
+      "source": {
+        "origin": {
+          "producer": "Macro Atlas fixture (synthetic)",
+          "dataset": "fixture",
+          "origin_id": "FX-VOTE",
+          "url": null
+        },
+        "channel": {
+          "via": "fixture",
+          "adapter": "hand_written",
+          "auth": "none"
+        }
+      },
+      "rights": {
+        "owner": "Macro Atlas project",
+        "terms_url": null,
+        "status": "public_domain",
+        "attribution": "Synthetic test data, Macro Atlas project",
+        "reviewed": "2026-01-01"
+      },
+      "status": "active"
+    },
+    {
+      "key": "fx_price_index_yoy",
+      "name": "Fixture price index, change from a year earlier",
+      "description": "Derived from the fixture price index by a recipe.",
+      "unit": "percent change from a year earlier",
+      "unit_kind": "percent",
+      "measure_kind": "rate",
+      "agg": "none",
+      "freq": "monthly",
+      "continuity": "discrete",
+      "representation": "native",
+      "country": "USA",
+      "segment": "economy_jobs",
+      "topics": [
+        "inflation"
+      ],
+      "source": {
+        "origin": {
+          "producer": "Macro Atlas fixture (synthetic)",
+          "dataset": "fixture",
+          "origin_id": "FX-PRICE",
+          "url": null
+        },
+        "channel": {
+          "via": "fixture",
+          "adapter": "hand_written",
+          "auth": "none"
+        }
+      },
+      "rights": {
+        "owner": "Macro Atlas project",
+        "terms_url": null,
+        "status": "public_domain",
+        "attribution": "Synthetic test data, Macro Atlas project",
+        "reviewed": "2026-01-01"
+      },
+      "status": "active",
+      "recipe": {
+        "op": "pct_change",
+        "inputs": [
+          "fx_price_index"
+        ],
+        "params": {
+          "lag": 12
+        },
+        "order": "compute_then_aggregate"
+      }
+    },
+    {
+      "key": "fx_exchange_index",
+      "name": "Fixture exchange index",
+      "description": "Stands for a licensed index: listed by name, values withheld.",
+      "unit": "index",
+      "unit_kind": "index",
+      "measure_kind": "index",
+      "agg": "last",
+      "freq": "monthly",
+      "continuity": "discrete",
+      "representation": "native",
+      "country": "USA",
+      "segment": "markets_money",
+      "topics": [
+        "markets"
+      ],
+      "source": {
+        "origin": {
+          "producer": "Macro Atlas fixture (synthetic)",
+          "dataset": "fixture",
+          "origin_id": "FX-EXCH",
+          "url": null
+        },
+        "channel": {
+          "via": "fixture_vendor",
+          "adapter": "hand_written",
+          "auth": "none"
+        }
+      },
+      "rights": {
+        "owner": "Fixture Exchange Ltd (synthetic)",
+        "terms_url": null,
+        "status": "no_redistribution",
+        "attribution": "Synthetic test data, Macro Atlas project",
+        "reviewed": "2026-01-01"
+      },
+      "status": "active"
+    },
+    {
+      "key": "fx_payrolls_break",
+      "name": "Fixture payrolls",
+      "description": "Synthetic monthly count with a break in January 2025.",
+      "unit": "thousands of jobs",
+      "unit_kind": "count",
+      "measure_kind": "stock",
+      "agg": "mean",
+      "freq": "monthly",
+      "continuity": "discrete",
+      "representation": "native",
+      "seasonal_adjustment": "sa",
+      "country": "USA",
+      "segment": "economy_jobs",
+      "topics": [
+        "jobs"
+      ],
+      "source": {
+        "origin": {
+          "producer": "Macro Atlas fixture (synthetic)",
+          "dataset": "fixture",
+          "origin_id": "FX-PAYROLLS",
+          "url": null
+        },
+        "channel": {
+          "via": "fixture",
+          "adapter": "hand_written",
+          "auth": "none"
+        }
+      },
+      "rights": {
+        "owner": "Macro Atlas project",
+        "terms_url": null,
+        "status": "public_domain",
+        "attribution": "Synthetic test data, Macro Atlas project",
+        "reviewed": "2026-01-01"
+      },
+      "status": "active",
+      "max_lag": "P2M",
+      "breaks": [
+        {
+          "period": "2025-01",
+          "note": "New population controls from January 2025; earlier months are not comparable."
+        }
+      ]
+    },
+    {
+      "key": "fx_permits_stale",
+      "name": "Fixture building permits",
+      "description": "Synthetic monthly series whose source stopped in June 2024.",
+      "unit": "thousands of units, annual rate",
+      "unit_kind": "count",
+      "measure_kind": "annualized",
+      "agg": "mean",
+      "freq": "monthly",
+      "continuity": "discrete",
+      "representation": "native",
+      "seasonal_adjustment": "saar",
+      "country": "USA",
+      "segment": "infrastructure",
+      "topics": [
+        "construction"
+      ],
+      "source": {
+        "origin": {
+          "producer": "Macro Atlas fixture (synthetic)",
+          "dataset": "fixture",
+          "origin_id": "FX-PERMITS",
+          "url": null
+        },
+        "channel": {
+          "via": "fixture",
+          "adapter": "hand_written",
+          "auth": "none"
+        }
+      },
+      "rights": {
+        "owner": "Macro Atlas project",
+        "terms_url": null,
+        "status": "public_domain",
+        "attribution": "Synthetic test data, Macro Atlas project",
+        "reviewed": "2026-01-01"
+      },
+      "status": "active",
+      "max_lag": "P3M"
+    }
+  ]
+}
