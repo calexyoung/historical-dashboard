@@ -91,7 +91,9 @@ export type ViewRun = {
   /** The table's key: the Series' key, or that of its run over the second range. */
   key: string;
   series: string;
+  /** The run's name as the table has it; `seriesName` is the Series' own. */
   name: string;
+  seriesName: string;
   run: "window" | "comparison";
   unit: string;
   /** The unit of the value as drawn. */
@@ -415,6 +417,7 @@ export function explorerView(release: OpenedRelease, surface: Surface, state: Ex
       key: over.key,
       series: e.key,
       name: over.name,
+      seriesName: e.name,
       run: over.which,
       unit: e.unit,
       shownUnit: mode === "log" ? `natural logarithm of ${e.unit}` : unit,
