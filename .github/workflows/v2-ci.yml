@@ -1,0 +1,50 @@
+# CI for Macro Atlas v2: runs on pull requests into the long-lived `v2` branch (ADR 0010).
+# It never deploys, never fetches data and uploads no artefact (PLAN 6.1): tests use only the
+# synthetic fixture release in fixtures/public. v1's refresh workflow (refresh.yml) is separate
+# and only runs from `main`.
+name: v2-ci
+
+on:
+  pull_request:
+    branches: [v2]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: v2-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  python:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.2.0
+      - uses: actions/setup-node@v7
+        with: { node-version: "22" } # v1's statistics tests shell out to node
+      - name: Install
+        run: uv sync --locked --extra dev
+      - name: Lint (ruff, v2 modules)
+        run: make lint-py
+      - name: pytest (v1 and v2, no browser smoke test)
+        run: make test
+
+  typescript:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with: { node-version: "22", cache: npm }
+      - name: Install
+        run: npm ci
+      - name: Generated schema module and types are up to date
+        run: npm run gen:check
+      - name: Lint (eslint)
+        run: npm run lint
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Vitest
+        run: npm test

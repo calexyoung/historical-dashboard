@@ -33,7 +33,9 @@ COMMITTED = [
 
 
 def git_ignores(path: str) -> bool:
-    result = subprocess.run(["git", "check-ignore", "-q", "--no-index", path], cwd=ROOT)
+    result = subprocess.run(
+        ["git", "check-ignore", "-q", "--no-index", path], cwd=ROOT, check=False
+    )
     assert result.returncode in (0, 1), result
     return result.returncode == 0
 

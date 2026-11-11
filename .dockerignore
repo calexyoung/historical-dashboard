@@ -1,0 +1,20 @@
+# Docker build context for v2 images. An allowlist: everything is excluded, then only what an
+# image is built from is let back in, so a new directory is excluded until someone decides
+# otherwise (PLAN 6.1, "Build and CI").
+#
+# Never in the context: generated releases and the store (var/), and v1's own files that hold
+# FRED- and Yahoo-sourced values (data/, dist/, web/, .git). tests/v2/test_ignore_rules.py
+# checks this file. Do not add those paths here; a milestone that seems to need them is parked
+# and reported to Alex (build protocol, point 7).
+*
+
+!package.json
+!package-lock.json
+!packages
+!site
+!schema
+
+**/node_modules
+**/.next
+**/.env
+**/.env.local
