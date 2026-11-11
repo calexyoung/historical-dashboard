@@ -42,6 +42,11 @@ export type V1Data = {
   last_month: string;
   series: Record<string, { d: string[]; v: number[] }>;
   meta: Record<string, { name: string; unit: string; freq: string; cat: string }>;
+  /** v1's Events as its page received them, in v1's order. */
+  events: { month: string; day?: number; title: string; cat: string; url?: string }[];
+  /** v1's presidential terms and its other band sets: [from, to (exclusive), name, style]. */
+  pres: [string, string, string, string][];
+  bands: Record<string, { source?: string; rows: [string, string, string, string][] }>;
 };
 
 /** Convert v1's committed output into a fresh temporary release root. Takes a few seconds. */
@@ -58,7 +63,11 @@ export function buildLegacyRelease(): LegacyFixture {
         "from atlas import build as B\n" +
         "data = json.loads(B.DATA_JSON.read_text())\n" +
         "full = B.with_politics(B.with_approval(data, B.load_approval()), B.load_politics())\n" +
-        "json.dump(full, open(sys.argv[1], 'w'))\n",
+        // What v1's build step injects beside the data: EVENTS, PRES and BANDS (atlas/build.py).
+        "full['events'] = B.load_events()\n" +
+        "full['pres'] = B.load_approval()['terms']\n" +
+        "full['bands'] = B.load_politics()['bands']\n" +
+        "json.dump(full, open(sys.argv[1], 'w'), default=str)\n",
       v1Path,
     ],
     env,

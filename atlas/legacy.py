@@ -517,6 +517,31 @@ def _as_utc(moment: datetime | None) -> datetime:
     return moment.astimezone(UTC).replace(microsecond=0)
 
 
+# The engine's Transforms, in its order (packages/core/src/transform.ts).
+TRANSFORMS = ("lin", "log", "rebase", "z", "pc1", "drawdown")
+RATIO_TRANSFORMS = frozenset({"log", "rebase", "pc1", "drawdown"})
+
+
+def _offered_transforms(entry: dict, series_file: dict) -> list[str]:
+    """Which Transforms a Series offers (docs/method/transforms.md).
+
+    The four that divide by one of the Series' own values, or take its logarithm, read the
+    right way only on a Series that stays above zero: a percent change from a negative value
+    has the wrong sign, and an index on a base the Series later crosses means nothing. v1
+    offered all six for everything. An irregular Series has no Observation one year earlier.
+    """
+    observed = [o["value"] for o in series_file["observations"] if o["value"] is not None]
+    positive = bool(observed) and min(observed) > 0
+    offered = []
+    for name in TRANSFORMS:
+        if name in RATIO_TRANSFORMS and not positive:
+            continue
+        if name == "pc1" and entry["freq"] == "irregular":
+            continue
+        offered.append(name)
+    return offered
+
+
 def build_release(repo: Path = ROOT, now: datetime | None = None) -> tuple[str, dict[str, bytes]]:
     """The Release's id and files, in memory. Reads v1's files; writes nothing."""
     repo = Path(repo)
@@ -530,6 +555,8 @@ def build_release(repo: Path = ROOT, now: datetime | None = None) -> tuple[str, 
         raise LegacyRefused(f"v1 holds {', '.join(sorted(clash))} twice")
     entries += more_entries
     files |= more_files
+    for entry in entries:
+        entry["allowed_transforms"] = _offered_transforms(entry, files[entry["key"]])
 
     out: dict[str, bytes] = {}
     rows: dict[str, dict] = {}

@@ -88,8 +88,8 @@ describe("the Content Security Policy is enforced with a nonce (ADR 0013)", () =
     }
   });
 
-  it("a series page and the glossary are reading pages: within the same budget, and they add no script of their own (ADR 0014)", async () => {
-    const shell = await measureJs(server.url("/explore"));
+  it("the catalog, a series page and the glossary are reading pages: within the budget, and none adds script of its own (ADR 0014)", async () => {
+    const shell = await measureJs(server.url("/data"));
     for (const path of ["/data/fx_price_index", "/docs/glossary"]) {
       const measured = await measureJs(server.url(path));
       expect(measured.gzipBytes, path).toBeLessThanOrEqual(JS_BUDGET.budgetBytes);
@@ -98,11 +98,20 @@ describe("the Content Security Policy is enforced with a nonce (ADR 0013)", () =
   });
 
   it("the JavaScript a reading page loads is within the budget (ADR 0014)", async () => {
-    const measured = await measureJs(server.url("/explore"));
+    const measured = await measureJs(server.url("/data"));
     expect(measured.scripts).toBeGreaterThan(0);
     expect(measured.gzipBytes).toBeLessThanOrEqual(JS_BUDGET.budgetBytes);
     // The budget is the floor plus 15 KB, and the floor is still about what Next ships.
     expect(JS_BUDGET.budgetBytes).toBe(JS_BUDGET.floorBytes + 15 * 1024);
     expect(Math.abs(measured.frameworkGzipBytes - JS_BUDGET.floorBytes)).toBeLessThan(0.1 * JS_BUDGET.floorBytes);
+  });
+
+  it("the Explorer is interactive and has its own budget: the floor plus 30 KB (ADR 0014, amended in M4)", async () => {
+    const reading = await measureJs(server.url("/data"));
+    const explorer = await measureJs(server.url("/explore?s=fx_price_index,fx_output_quarterly"));
+    expect(JS_BUDGET.explorerBytes).toBe(JS_BUDGET.floorBytes + 30 * 1024);
+    expect(explorer.gzipBytes).toBeLessThanOrEqual(JS_BUDGET.explorerBytes);
+    expect(explorer.gzipBytes).toBeGreaterThan(reading.gzipBytes);
+    console.info(`Explorer script files: ${explorer.gzipBytes} gzip bytes (${explorer.gzipBytes - explorer.frameworkGzipBytes} its own and the shell's); a reading page: ${reading.gzipBytes}`);
   });
 });

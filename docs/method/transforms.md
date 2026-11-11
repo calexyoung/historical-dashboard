@@ -7,7 +7,8 @@ implements it (`transform()` in `src/transform.ts`) and is tested from this text
 allowlist in PLAN 4.5 (`chg`, `ch1`, `pch`, `pca`), aggregation to a coarser frequency and daily
 year-over-year arrive in M11 and extend this page.
 
-`semantics_version` for this contract: **0.2.0**. A change in behaviour here raises it.
+`semantics_version` for this contract: **0.3.0**. A change in behaviour here raises it.
+(0.3.0, M4: a Series may offer only some Transforms; see "Which Transforms a Series offers".)
 
 ## The request
 
@@ -40,6 +41,31 @@ A missing or suppressed Observation has no value going in and none coming out. I
 filled. Where a Transform needs a second Observation (`pc1`) and that one is missing, the answer
 for that Period is empty too.
 
+## Which Transforms a Series offers
+
+The Catalog may list, per Series, the Transforms it offers (`allowed_transforms`). One that is
+not on the list is **unavailable** for that Series (`not_offered`), whatever the window holds;
+the answer names the ones that are offered. No list, or an empty one, rules nothing out: the
+engine's own rules below still apply. The list is a fact about the Series, not about a window,
+so that a Transform does not come and go as a reader moves the window.
+
+The Explorer never hides this: a selected Series that does not offer the chosen Transform stays
+selected and is listed as not drawn, with the reason.
+
+How the list is made is the business of whoever writes the Catalog. The legacy converter
+(`atlas legacy-release`) writes it from v1's values by one rule:
+
+- `lin` and `z`: always.
+- `log`, `rebase`, `pc1` and `drawdown`: only where **every** value the Series holds is above
+  zero. Each of them divides by one of the Series' own values or takes its logarithm. On a
+  Series that reaches zero or goes below it (a yield spread, a balance, a growth rate, a 0/1
+  flag, a vote margin) the result reads the wrong way round or means nothing: a percent change
+  from a negative value has the wrong sign, and an index whose base the Series later crosses is
+  not an index.
+- `pc1`: never for an irregular Series.
+
+On v1's data that leaves 104 of the 126 Series with all six and 22 with `lin` and `z` only.
+
 ## The six Transforms
 
 Below, *x* is an Observation's value and the *window values* are the non-missing values of the
@@ -68,8 +94,8 @@ Details that decide edge cases:
   window is not empty if the Release holds the year before. It is unavailable for an irregular
   Series (there is no "one year earlier" Observation) and, until M11, for weekly and daily ones
   (which must be aggregated first). A negative *x₋₁* is computed as written; the sign of the
-  answer then runs against the direction of the move, which is why `allowed_transforms` (M4) will
-  keep `pc1` off Series that cross zero.
+  answer then runs against the direction of the move, which is why `allowed_transforms` keeps
+  `pc1` off Series that cross zero (above).
 - **`drawdown`** starts its running peak at the first Observation in the window, the standing one
   included for a held Series.
 - **`log`** is a value, not an axis setting. A chart of `log` values is drawn on a linear axis.
@@ -98,6 +124,8 @@ it checks each deliberate one against v1's own function applied at the Series' r
 | **D4** | Presidential approval is quarterly, as it was entered. v1 repeated each quarter over its three months, so a window that does not open on a quarter boundary took a part-quarter as its start, and a window that does not close on one weighted the last quarter less in `z`. v2 applies the membership rule above to quarters. | The three months were one figure. |
 | **D5** | The plot fill: for a sparse series v1 repeated the last answer across the months up to the next Observation (and across months v1 had no value for). v2's answer has one row per Observation and an explicit empty row for a gap. | Drawing a step or a point at the real cadence is the figure's job (M3), not the data's. |
 | **D6** | `log`: v1 passed positive values through and drew them on a logarithmic axis; v2 returns the natural logarithm. The comparison is `exp(v2) = v1`. | One meaning for `log`, the same as FRED's, wherever the answer is used (a table or a download has no axis). |
+
+| **D7** | Which Transforms a Series offers (M4): v1 offered all six for every series. In v2 a Series that is not above zero throughout offers only `lin` and `z`, by the Catalog's list. The comparison above is run without the list, so it still covers every Series and Transform. | A percent change, an index or a logarithm of a series that crosses zero misleads. The Explorer says which Series is not drawn and why. |
 
 Everything else is equal to v1 to within floating-point error (a relative difference under
 10⁻⁹), for every Series, Transform and window.

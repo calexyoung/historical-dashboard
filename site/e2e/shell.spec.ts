@@ -64,11 +64,11 @@ test.describe("with JavaScript off", () => {
 
   test("the page is complete and the theme control still works", async ({ page, atlas }) => {
     await page.emulateMedia({ colorScheme: "light" });
-    await page.goto(atlas.url("/explore?x=1"));
+    await page.goto(atlas.url("/explore?s=fx_price_index"));
     await expect(page.getByRole("heading", { level: 1, name: "Explore" })).toBeVisible();
-    await expect(page.getByRole("rowheader", { name: /Fixture price index fx_price_index\b/ })).toBeVisible();
+    await expect(page.locator("[data-selected=fx_price_index]")).toContainText("Fixture price index");
     await page.getByRole("button", { name: "Dark" }).click();
-    await expect(page).toHaveURL(atlas.url("/explore?x=1"));
+    await expect(page).toHaveURL(atlas.url("/explore?s=fx_price_index"));
     expect(await ground(page)).toBe(DARK);
     await expect(page.getByRole("button", { name: "Dark" })).toHaveAttribute("aria-pressed", "true");
   });
@@ -180,7 +180,7 @@ test.describe("accessibility and layout", () => {
     const page = await context.newPage();
     await page.goto(atlas.url("/explore"));
     expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);
-    const controls = page.locator("a[href], button");
+    const controls = page.locator("a[href], button").locator("visible=true"); // not what is inside the shut picker
     const count = await controls.count();
     expect(count).toBeGreaterThanOrEqual(7);
     for (let i = 0; i < count; i++) {

@@ -58,7 +58,7 @@ const close = (got: (number | null)[], want: (number | null)[]): void => {
 describe("the six transforms v1 had", () => {
   it("are named as FRED names them, plus drawdown", () => {
     expect(TRANSFORMS).toEqual(["lin", "log", "rebase", "z", "pc1", "drawdown"]);
-    expect(SEMANTICS_VERSION).toBe("0.2.0");
+    expect(SEMANTICS_VERSION).toBe("0.3.0");
   });
 
   it("lin returns the values in the window unchanged", () => {
@@ -237,5 +237,29 @@ describe("which observations belong to a window", () => {
 
   it("refuses a transform it does not know", () => {
     expect(transform(quarterly, "pch" as never)).toMatchObject({ ok: false, reason: "unknown_transform" });
+  });
+});
+
+describe("a Series may offer only some transforms (transforms.md, \"Which transforms a Series offers\")", () => {
+  const spread = series("monthly", "2024-01", [0.4, -0.1, 0.2]);
+
+  it("a transform the Catalog does not offer for the Series is unavailable, whatever the window holds", () => {
+    const result = transform({ ...spread, allowed: ["lin", "z"] }, "pc1");
+    expect(result).toMatchObject({ ok: false, reason: "not_offered" });
+    if (!result.ok) expect(result.message).toBe("this series does not offer pc1; it offers lin and z");
+    expect(transform({ ...spread, allowed: ["lin", "z"] }, "rebase")).toMatchObject({ ok: false, reason: "not_offered" });
+  });
+
+  it("an offered transform answers as it always did", () => {
+    expect(values(transform({ ...spread, allowed: ["lin", "z"] }, "lin"))).toEqual([0.4, -0.1, 0.2]);
+  });
+
+  it("no list recorded means nothing is ruled out, and an empty list is no list", () => {
+    expect(transform(spread, "pc1").ok).toBe(true);
+    expect(transform({ ...spread, allowed: [] }, "pc1").ok).toBe(true);
+  });
+
+  it("an unknown transform is still unknown, not merely not offered", () => {
+    expect(transform({ ...spread, allowed: ["lin"] }, "sqrt" as never)).toMatchObject({ ok: false, reason: "unknown_transform" });
   });
 });

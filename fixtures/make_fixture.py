@@ -268,6 +268,8 @@ CATALOG = {
             "key": "fx_price_index_yoy",
             "name": "Fixture price index, change from a year earlier",
             "description": "Derived from the fixture price index by a recipe.",
+            # Declared by hand: a change of a change is not offered (docs/method/transforms.md).
+            "allowed_transforms": ["lin", "z"],
             "unit": "percent change from a year earlier",
             "unit_kind": "percent",
             "measure_kind": "rate",
