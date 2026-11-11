@@ -80,8 +80,8 @@ Release it is pointed at may not be served there (PLAN 6.1, ADR 0006). This reco
 - **Where the proxy is not first.** Next documents that redirects and headers from `next.config`
   run before the proxy; this app defines none, and sets `skipTrailingSlashRedirect` so the proxy
   sees a trailing slash as asked. Two things remain outside it. Next's router redirects a path
-  with doubled slashes or a backslash (308) before the proxy runs: that redirect has no body, no
-  security headers and no Host check, and what it points at is answered by the proxy (a test pins
+  with doubled slashes or a backslash (308) before the proxy runs: that redirect carries no release content
+  (its body is the address it points to), no security headers and no Host check, and what it points at is answered by the proxy (a test pins
   this). And a request outside the base path never reaches the app and gets Next's own 404. So
   "every route answers 503" means: every request that would otherwise have been answered with
   content from this app.
@@ -90,4 +90,6 @@ Release it is pointed at may not be served there (PLAN 6.1, ADR 0006). This reco
   pruned from disk while a refresh is failing, the page fails with a 500, not with other data.
 - On a public Surface a broken or missing `CURRENT` takes the site down (503) until it is
   repaired or rolled back. That is the intended trade: loud and empty, not quiet and wrong. It
-  also means a withdrawn Release (ADR 0006) can never linger in a running process.
+  also means that once `CURRENT` has moved on from a withdrawn Release (ADR 0006), no later
+  request can fall back to it. (A request already in flight finishes on the Release it was
+  given, and the reader may still hold it in memory; opening a Release by id is not exposed.)

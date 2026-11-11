@@ -29,6 +29,8 @@ describe("theme: the OS setting unless the reader chose otherwise", () => {
     const base = "/macro-atlas";
     expect(safeReturnPath("/macro-atlas/explore?s=a,b", base)).toBe("/macro-atlas/explore?s=a,b");
     expect(safeReturnPath("/macro-atlas", base)).toBe("/macro-atlas");
+    expect(safeReturnPath("/macro-atlas/explore?s=spx,unrate&from=2000-01", base)).toBe("/macro-atlas/explore?s=spx,unrate&from=2000-01");
+    expect(safeReturnPath("/macro-atlas/explore?q=a%2Fb%2E", base)).toBe("/macro-atlas/explore?q=a%2Fb%2E");
     expect(safeReturnPath("/macro-atlas/data/unrate?from=2020-01&s=a%2Cb#table", base)).toBe("/macro-atlas/data/unrate?from=2020-01&s=a%2Cb#table");
     for (const bad of [
       null,

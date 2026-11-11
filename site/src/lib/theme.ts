@@ -39,8 +39,8 @@ export function safeReturnPath(value: unknown, basePath: string): string {
   if (typeof value !== "string" || value.length > 2000) return home;
   // A path, in printable ASCII, with nothing a browser could read as another origin.
   if (!/^\/[\x21-\x7e]*$/.test(value) || value.includes("\\") || value.includes("//")) return home;
-  // An encoded dot, slash or backslash has no business in a path of this app.
-  if (/%(2e|2f|5c)/i.test(value)) return home;
+  // An encoded dot, slash or backslash has no business in a path of this app (a query may have them).
+  if (/%(2e|2f|5c)/i.test(value.split(/[?#]/)[0]!)) return home;
   let url: URL;
   try {
     url = new URL(value, "http://atlas.invalid");
