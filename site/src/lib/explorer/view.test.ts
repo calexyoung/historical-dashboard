@@ -308,3 +308,21 @@ describe("stale is said of a series' latest value only", () => {
     expect(view("s=fx_permits_stale&to=2023-12").figure!.states.some((s) => s.mark === "stale")).toBe(false);
   });
 });
+
+describe("found in review", () => {
+  it("the link to copy keeps a stale mark: a window that still shows the series' latest value still says it is stale", () => {
+    const v = view("s=fx_permits_stale");
+    expect(v.figure!.states.some((s) => s.mark === "stale")).toBe(true);
+    const copied = view(v.resolvedQuery);
+    expect(copied.figure!.states.some((s) => s.mark === "stale")).toBe(true);
+    expect(JSON.stringify(copied.figure!.plots.map((p) => p.layouts))).toBe(JSON.stringify(v.figure!.plots.map((p) => p.layouts)));
+  });
+
+  it("a held value standing through a window that holds no observation of its own can still be read out and pinned", () => {
+    const v = view("s=fx_vote_margin&from=2025-01&to=2025-12");
+    expect(v.figure).not.toBeNull();
+    expect(v.readout.stops).toEqual(["2025-01-01"]);
+    expect(v.shownAt).toBe("2025-01-01");
+    expect(readoutAt(v.readout, v.shownAt!).rows[0]).toMatchObject({ value: "−1.5", period: "5 Nov 2024" });
+  });
+});

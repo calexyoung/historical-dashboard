@@ -319,6 +319,7 @@ test.describe("the series picker", () => {
     expect(await durations()).toContain("0.24s");
     expect(await sheet(page).evaluate((d) => getComputedStyle(d).transitionProperty)).not.toContain("all");
     await page.keyboard.press("Escape");
+    expect(await sheet(page).evaluate((d) => d.hasAttribute("data-instant"))).toBe(true); // shut from the keyboard: at once
     await expect(sheet(page)).toBeHidden();
     await opener.focus();
     await page.keyboard.press("Enter");
@@ -404,6 +405,15 @@ test.describe("with JavaScript off", () => {
     await expect(page.getByLabel("Economic policy")).not.toBeChecked();
     await expect(shown(page).locator("[data-layer]")).toHaveCount(0);
     await expect(shown(page)).toHaveCount(1);
+  });
+
+  test("a narrowed window can be widened again", async ({ page, atlas }) => {
+    await page.goto(atlas.url("/explore?s=fx_price_index&from=2025-01&to=2025-06"));
+    await page.locator("input[name=from]").fill("2024-03");
+    await page.locator("input[name=to]").fill("2025-11");
+    await page.getByRole("button", { name: "Show" }).click();
+    await expect(page).toHaveURL(/from=2024-03&to=2025-11/);
+    await expect(page.locator("#chart")).toContainText("Mar 2024 to Nov 2025");
   });
 
   test("the picker opens by a link, adds a series by its form, and keeps mode, window, layers and pin", async ({ page, atlas }) => {
