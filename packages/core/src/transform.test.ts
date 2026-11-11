@@ -111,6 +111,10 @@ describe("the six transforms v1 had", () => {
 
   it("z is unavailable when the window values do not vary, or there are none", () => {
     expect(transform(series("monthly", "2024-01", [7, 7, 7]), "z")).toMatchObject({ ok: false, reason: "no_variation" });
+    // identical decimals: summing 0.1 three times does not give exactly 0.3, which must not
+    // turn into a deviation
+    expect(transform(series("monthly", "2024-01", [0.1, 0.1, 0.1]), "z")).toMatchObject({ ok: false, reason: "no_variation" });
+    expect(transform(series("monthly", "2024-01", [4.35, null, 4.35, 4.35, 4.35, 4.35, 4.35]), "z")).toMatchObject({ ok: false, reason: "no_variation" });
     expect(transform(series("monthly", "2024-01", [null]), "z")).toMatchObject({ ok: false, reason: "no_values" });
   });
 

@@ -144,3 +144,34 @@ def test_two_writers_cannot_both_promote_one_id(tmp_path):
         promote(tmp_path, FIXTURE_ID, profile="public")
     assert validate_release(winner) == []
     assert not (tmp_path / "CURRENT").exists()
+
+
+def test_nothing_is_staged_or_promoted_through_a_link(tmp_path):
+    """The staging area and releases/ must be real directories inside the root. A link there
+    would let a Release be written, or promoted, somewhere else entirely."""
+    elsewhere = tmp_path / "elsewhere"
+    elsewhere.mkdir()
+
+    root = tmp_path / "a"
+    root.mkdir()
+    (root / ".staging").symlink_to(elsewhere, target_is_directory=True)
+    with pytest.raises(PromotionRefused, match="link"):
+        stage(root, FIXTURE_ID)
+    assert list(elsewhere.iterdir()) == []
+
+    root = tmp_path / "b"
+    root.mkdir()
+    (root / "releases").symlink_to(elsewhere, target_is_directory=True)
+    with pytest.raises(PromotionRefused, match="link"):
+        stage(root, FIXTURE_ID)
+    assert not (root / ".staging").exists()
+
+    # ... and if the link appears after staging, promotion still refuses and cleans up
+    root = tmp_path / "c"
+    staged_fixture(root)
+    (root / "releases").symlink_to(elsewhere, target_is_directory=True)
+    with pytest.raises(PromotionRefused, match="link"):
+        promote(root, FIXTURE_ID, profile="public")
+    assert list(elsewhere.iterdir()) == []
+    assert not (root / "CURRENT").exists()
+    assert not (root / ".staging" / FIXTURE_ID).exists()

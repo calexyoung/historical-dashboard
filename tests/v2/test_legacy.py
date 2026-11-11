@@ -16,6 +16,7 @@ import yaml
 from atlas import cli
 from atlas.legacy import LegacyRefused, legacy_release
 from atlas.release import validate_release
+from atlas.staging import PromotionRefused
 
 ROOT = Path(__file__).resolve().parents[2]
 NOW = datetime(2026, 11, 11, 16, 30, 0, tzinfo=UTC)
@@ -42,6 +43,21 @@ def series(release: Path, key: str) -> dict:
 
 def values(release: Path, key: str) -> dict:
     return {o["period"]: o["value"] for o in series(release, key)["observations"]}
+
+
+def assert_same_values(got, expected, what: str) -> None:
+    """Compare v1's real values without ever printing one (PLAN 6.1: CI logs hold no v1 data).
+
+    A plain ``assert got == expected`` would have pytest print both sides. This names the
+    Series and the Periods that differ and nothing else.
+    """
+    if isinstance(got, dict) and isinstance(expected, dict):
+        differing = sorted(k for k in got.keys() | expected.keys() if got.get(k, ...) != expected.get(k, ...))
+    else:
+        got, expected = list(got), list(expected)
+        differing = [i for i in range(max(len(got), len(expected))) if got[i : i + 1] != expected[i : i + 1]]
+    if differing:
+        pytest.fail(f"{what}: {len(differing)} values differ (first at {differing[0]}); values are not printed", pytrace=False)
 
 
 # --- the acceptance criteria ---------------------------------------------------------------
@@ -107,6 +123,24 @@ def test_nothing_is_written_to_the_store_and_no_network_call_is_made(tmp_path, m
     assert sorted(p.name for p in local.iterdir()) == ["CURRENT", "releases"]
 
 
+def test_the_converter_does_not_write_through_a_link_into_the_store_or_a_public_root(tmp_path, monkeypatch):
+    """Resolving the root is not enough: a link *under* it could lead anywhere."""
+    public, store = tmp_path / "public", tmp_path / "store"
+    monkeypatch.setenv("ATLAS_PUBLIC", str(public))
+    monkeypatch.setenv("ATLAS_STORE", str(store))
+    (public / "releases").mkdir(parents=True)
+    store.mkdir()
+    for name, target in ((".staging", store), ("releases", public / "releases")):
+        local = tmp_path / f"local-{name.strip('.')}"
+        local.mkdir()
+        (local / name).symlink_to(target, target_is_directory=True)
+        with pytest.raises((LegacyRefused, PromotionRefused)):
+            legacy_release(out=local, now=NOW)
+        assert not (local / "CURRENT").exists()
+    assert list(store.iterdir()) == []
+    assert list((public / "releases").iterdir()) == []
+
+
 def test_v1_files_are_read_in_place_and_left_as_they_were(tmp_path):
     inputs = ["data/atlas.json", "atlas/catalog.yaml", "atlas/events.yaml", "atlas/politics.yaml", "atlas/approval.yaml"]
     before = {p: hashlib.sha256((ROOT / p).read_bytes()).hexdigest() for p in inputs}
@@ -146,7 +180,7 @@ def test_every_v1_value_is_carried_over_unchanged_at_its_real_cadence(release):
         assert item["continuity"] == "discrete", key
         expected = {month_to_period(freq, m): v for m, v in zip(v1["d"], v1["v"], strict=True)}
         got = {p: v for p, v in values(release, key).items() if v is not None}
-        assert got == expected, key  # pytest prints the key only when this fails on the dict
+        assert_same_values(got, expected, key)
         assert item["name"] == V1["meta"][key]["name"]
 
 
@@ -181,9 +215,11 @@ def test_election_margins_are_held_and_dated_to_election_day(release):
         assert item["source"]["channel"]["via"] == "hand_entered"
         got = values(release, key)
         assert len(got) == len(politics["elections"][kind])
+        expected = {}
         for year, (dem, rep) in politics["elections"][kind].items():
             day = next(p for p in got if p.startswith(f"{year}-11-"))
-            assert got[day] == round((dem - rep) / (dem + rep) * 100, 2)
+            expected[day] = round((dem - rep) / (dem + rep) * 100, 2)
+        assert_same_values(got, expected, key)
     days = list(values(release, "pres_margin"))
     assert days[0] == "2000-11-07" and "2012-11-06" in days and days[-1] == "2024-11-05"
 
@@ -193,7 +229,7 @@ def test_election_margins_equal_what_v1_built(release):
 
     data = v1_build.with_politics({"series": {}, "meta": {}}, v1_build.load_politics())
     for key in ("pres_margin", "house_margin"):
-        assert list(values(release, key).values()) == data["series"][key]["v"]
+        assert_same_values(list(values(release, key).values()), data["series"][key]["v"], key)
 
 
 def test_approval_is_quarterly_as_it_was_entered(release):
@@ -202,9 +238,9 @@ def test_approval_is_quarterly_as_it_was_entered(release):
     assert (item["freq"], item["continuity"]) == ("quarterly", "discrete")
     assert item["source"]["channel"]["via"] == "hand_entered"
     got = values(release, "approval")
-    assert got["2001-Q4"] == approval[2001][3]
     entered = {f"{y}-Q{q + 1}": float(v) for y, row in approval.items() for q, v in enumerate(row) if v is not None}
-    assert {p: v for p, v in got.items() if v is not None} == entered
+    assert "2001-Q4" in entered
+    assert_same_values({p: v for p, v in got.items() if v is not None}, entered, "approval")
 
 
 def test_each_series_keeps_its_v1_channel_and_the_origin_is_not_invented(release):
@@ -317,7 +353,8 @@ def test_the_same_inputs_and_time_give_the_same_release(release, tmp_path):
     again = legacy_release(out=tmp_path / "again", now=NOW)
     assert again.name == release.name
     for path in sorted(p.relative_to(release) for p in release.rglob("*") if p.is_file()):
-        assert (again / path).read_bytes() == (release / path).read_bytes(), path
+        same = hashlib.sha256((again / path).read_bytes()).digest() == hashlib.sha256((release / path).read_bytes()).digest()
+        assert same, path  # compared by hash: a failure names the file and prints no bytes
 
 
 def test_a_later_run_promotes_a_new_release_and_keeps_the_earlier_one(tmp_path):
