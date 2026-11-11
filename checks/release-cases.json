@@ -297,6 +297,7 @@
     {"name": "Captures are oldest first", "steps": [{"op": "set", "file": "vintages/fx_price_index.json", "path": ["captures", 1, "retrieved_at"], "value": "2025-12-01T15:45:00Z"}], "expect": ["vintage_mismatch"]},
     {"name": "a Capture's scope does not end before it begins", "steps": [{"op": "set", "file": "vintages/fx_price_index.json", "path": ["captures", 0, "scope"], "value": ["2025-12-31", "2024-01-01"]}], "expect": ["vintage_mismatch"]},
     {"name": "recorded metadata holds only the fields the contract names", "steps": [{"op": "set", "file": "vintages/fx_price_index.json", "path": ["metadata", 0, "metadata", "api_key"], "value": "not-a-real-key"}], "expect": ["schema"]},
-    {"name": "a vintage file is never in the legacy representation", "steps": [{"op": "set", "file": "vintages/fx_price_index.json", "path": ["representation"], "value": "legacy_monthly_rounded"}], "expect": ["schema"]}
+    {"name": "a vintage file is never in the legacy representation", "steps": [{"op": "set", "file": "vintages/fx_price_index.json", "path": ["representation"], "value": "legacy_monthly_rounded"}], "expect": ["schema"]},
+    {"name": "a legacy Series has no vintage file (local profile, where a legacy Series may be)", "steps": [{"op": "set", "file": "manifest.json", "path": ["profile"], "value": "local"}, {"op": "set", "file": "catalog.json", "path": ["series", 0, "representation"], "value": "legacy_monthly_rounded"}, {"op": "set", "file": "series/fx_price_index.json", "path": ["representation"], "value": "legacy_monthly_rounded"}, {"op": "set", "file": "manifest.json", "path": ["series", "fx_price_index", "representation"], "value": "legacy_monthly_rounded"}], "expect": ["vintage_mismatch"]}
   ]
 }

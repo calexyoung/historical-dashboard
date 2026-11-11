@@ -16,6 +16,7 @@ import { LAYOUTS, type LayoutName, type SvgNode } from "../figure";
 import { textOf, walk } from "../figure/svg";
 import { createReleaseReader, type OpenedRelease } from "../release/reader";
 import { seriesPageView, type SeriesPageView } from "../series-page";
+import { asOf } from "../release/as-of";
 import { buildLegacyRelease } from "./testing";
 
 let release: OpenedRelease;
@@ -137,5 +138,24 @@ describe("series pages for all of v1's series", () => {
   it("a page's HTML stays small enough to read on a phone (ADR 0017)", () => {
     const sizes = pages.map((p) => Buffer.byteLength(p.html));
     expect(Math.max(...sizes)).toBeLessThan(100_000);
+  });
+});
+
+describe("as-of questions of v1's series (M10)", () => {
+  it("are answered on the legacy basis or not at all, and never with today's figures for an earlier date", () => {
+    expect(release.vintages).toEqual({});
+    const generated = release.manifest.inputs?.map((input) => input.generated).find((time) => typeof time === "string");
+    expect(generated, "the legacy Release says when v1's output was generated").toBeTruthy();
+    const dayAfter = new Date(Date.parse(generated!) + 2 * 86_400_000).toISOString().slice(0, 10);
+    const wrong: string[] = [];
+    for (const { entry, file } of pages) {
+      for (const early of ["1999-12-31", "2008-09-15", generated!.slice(0, 10)]) {
+        const answer = asOf(release, entry.key, early)!;
+        if (answer.basis !== "unavailable" || answer.observations.length > 0) wrong.push(`${entry.key} as of ${early}: ${answer.basis}`);
+      }
+      const later = asOf(release, entry.key, dayAfter)!;
+      if (later.basis !== "legacy" || later.observations.length !== file.observations.length) wrong.push(`${entry.key} as of ${dayAfter}: ${later.basis}`);
+    }
+    problems(wrong);
   });
 });

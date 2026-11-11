@@ -3,7 +3,7 @@
  * Used by unit tests, the built-server suite and Playwright. Never imported by the app.
  */
 import { createHash } from "node:crypto";
-import { cpSync, mkdirSync, mkdtempSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import { cpSync, mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -47,6 +47,12 @@ export function addRelease(root: string, variant: Variant): string {
   manifest.release_id = variant.id;
   if (variant.profile) manifest.profile = variant.profile;
   if (variant.signed !== undefined) manifest.rights_register.signed = variant.signed;
+  // A Series whose file is changed here no longer has the history the fixture wrote for it,
+  // and a legacy Series never has one: its vintage file goes.
+  for (const key of [...(variant.legacy ? [variant.legacy] : []), ...Object.keys(variant.edit ?? {})]) {
+    rmSync(join(dir, "vintages", `${key}.json`), { force: true });
+    delete manifest.series[key].vintages_sha256;
+  }
   if (variant.legacy) {
     const key = variant.legacy;
     const path = join(dir, "series", `${key}.json`);

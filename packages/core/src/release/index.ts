@@ -538,6 +538,10 @@ function vintageRules(bundle: Release, files: ReleaseFiles, vintagePaths: Map<st
       bad(`freq ${quote(doc.freq)} is not the catalog's ${quote(entry.freq)}`);
       continue;
     }
+    if (series.representation !== doc.representation) {
+      bad(`series/${key}.json is not in the native representation, so it has no vintages`);
+      continue;
+    }
 
     const coverage = doc.provider_coverage;
     if (coverage && instantKey(coverage.from) > instantKey(coverage.to)) bad("provider_coverage ends before it begins");

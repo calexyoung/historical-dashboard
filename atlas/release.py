@@ -454,6 +454,9 @@ def _vintage_rules(bundle, files, vintage_paths: dict[str, str]) -> list[Issue]:
         if doc["freq"] != entries[key]["freq"]:
             bad(f"freq {doc['freq']!r} is not the catalog's {entries[key]['freq']!r}")
             continue
+        if series["representation"] != doc["representation"]:
+            bad(f"series/{key}.json is not in the native representation, so it has no vintages")
+            continue
 
         coverage = doc["provider_coverage"]
         if coverage is not None and instant_key(coverage["from"]) > instant_key(coverage["to"]):

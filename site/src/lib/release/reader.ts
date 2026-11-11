@@ -26,6 +26,7 @@ import {
   type Release,
   type ReleaseFiles,
   type SeriesFile,
+  type VintageFile,
 } from "@macro-atlas/core/release";
 
 /** A Release that passed validation and the Surface guard. Treat as immutable. */
@@ -36,6 +37,8 @@ export type OpenedRelease = {
   annotations: AnnotationsFile;
   series: Record<string, SeriesFile>;
   derived: Record<string, SeriesFile>;
+  /** `vintages/{key}.json`: what was held for a stored Series over time. Not every Series has one. */
+  vintages: Record<string, VintageFile>;
 };
 
 export type FailureKind =
@@ -162,11 +165,11 @@ export function createReleaseReader(options: {
     }
     const decoder = new TextDecoder();
     const parse = <T>(path: string): T => JSON.parse(decoder.decode(files[path])) as T;
-    const folder = (name: "series" | "derived"): Record<string, SeriesFile> =>
+    const folder = <T = SeriesFile>(name: "series" | "derived" | "vintages"): Record<string, T> =>
       Object.fromEntries(
         Object.keys(files)
           .filter((path) => path.startsWith(`${name}/`))
-          .map((path) => [path.slice(name.length + 1, -".json".length), parse<SeriesFile>(path)]),
+          .map((path) => [path.slice(name.length + 1, -".json".length), parse<T>(path)]),
       );
     const release: OpenedRelease = {
       id,
@@ -175,6 +178,7 @@ export function createReleaseReader(options: {
       annotations: parse<AnnotationsFile>("content/annotations.json"),
       series: folder("series"),
       derived: folder("derived"),
+      vintages: folder<VintageFile>("vintages"),
     };
     const refused = refusal(release, surface);
     if (refused) return fail("refused", id, refused);
