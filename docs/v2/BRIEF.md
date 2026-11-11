@@ -48,3 +48,29 @@ Inspiration: Meredith E. Bagby, *The First Annual Report of the United States of
   mydashboards.co/macro-atlas-staging. v1 stays live on GitHub Pages until v2 is approved.
 - v1 lives in this repo (atlas/ Python pipeline, web/ front end, 126 series, 83 cited events,
   weekly GitHub Actions refresh). docs/v2/SPEC-v1.md is the original v1 spec.
+
+## Decisions added 2026-11-11 (Alex, after reading research/04) — these override the research and drafts
+
+**Core principle: Macro Atlas is a neutral source of data and facts, not opinion and not partisan.**
+It is *inspired by* the annual-report idea but is not an annual report. It is a tool to collect,
+view and access this data in the most useful and diverse ways. Verdicts and opinions are things a
+*user* (Alex now, others later) may produce with the tool; they are separate from the site's
+content and up to that user.
+
+1. Bagby's first edition is 1995 (HarperBusiness), not 1999.
+2. **No Letter**, no signed or opinion prose anywhere in the site's own content.
+3. **No verdicts/findings on claims.** A claim record holds the quote, speaker, date, source and the
+   data needed to examine it (series, windows, vintage as of the claim date, window sensitivity).
+   No finding, rating or label from the site. Any judgment lives in a separate, user-owned layer
+   (e.g. personal notes/annotations clearly marked as that user's), not in the neutral data.
+   Avoid neutral-looking labels that function as verdicts (e.g. "Selective").
+4. Type: system sans everywhere (no serif).
+5. Theme follows the OS setting (prefers-color-scheme), with a manual toggle; differs from /missions.
+6. Segments: Economy & jobs · Markets & money · Infrastructure · Governance & politics ·
+   Disasters & health · The US in the world.
+7. Add a small "mydashboards" home link to both apps' top bars.
+
+Implications for planners: drop "Competing explanations" written by the site unless it is a sourced
+list of published explanations with citations and no ranking; keep "What else moved", window
+sensitivity, vintages, data states, US-vs-G20 bands, provenance, and data out. Favor breadth of
+access (views, exports, API, MCP) over editorial content.
