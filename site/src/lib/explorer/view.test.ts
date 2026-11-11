@@ -324,6 +324,16 @@ describe("found in review", () => {
 
 // --- Explorer II (PLAN M5) ----------------------------------------------------------------------
 
+describe("clearing the selection (v1's \"Clear all\")", () => {
+  it("an address that says no series is not the same as one that does not say: it stays empty", () => {
+    const v = view("s=fx_price_index,fx_output_quarterly&mode=z");
+    const cleared = v.queryWith({ series: [], sx: null, sy: null });
+    expect(cleared).toBe("s=&mode=z");
+    expect(view(cleared).selection).toEqual([]);
+    expect(view(cleared).figure).toBeNull();
+  });
+});
+
 describe("the snapshot table", () => {
   it("gives each series' first and latest value in the window, the change, and the low and high, each with its period", () => {
     const [row] = view("s=fx_price_index").snapshot;

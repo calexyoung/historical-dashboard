@@ -151,6 +151,13 @@ export default async function ExplorePage({ searchParams }: PageProps<"/explore"
                 </Link>
               </li>
             ))}
+            {view.selection.length > 1 && (
+              <li className="inline-flex h-8 items-center">
+                <Link href={to(view.queryWith({ series: [], sx: null, sy: null }))} prefetch={false} scroll={false} data-clear-all className={`${link} inline-flex h-8 items-center px-1 text-sm`}>
+                  Clear all
+                </Link>
+              </li>
+            )}
           </ul>
         )}
 

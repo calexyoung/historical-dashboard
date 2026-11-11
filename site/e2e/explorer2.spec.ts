@@ -55,6 +55,18 @@ test.describe("compare ranges and the marks at the extremes", () => {
   });
 });
 
+test.describe("clearing the selection", () => {
+  test("Clear all empties the view and it stays empty; Back brings the series back", async ({ page, atlas }) => {
+    await page.goto(atlas.url(`${PAIR}&mode=z`));
+    await page.locator("[data-clear-all]").click();
+    await expect(page.locator("[data-empty]")).toContainText("No series is selected");
+    expect(search(page).get("s")).toBe("");
+    await expect(page.locator("#relationships")).toHaveCount(0);
+    await page.goBack();
+    await expect(shown(page)).toHaveCount(1);
+  });
+});
+
 test.describe("the snapshot table", () => {
   test("gives each series' first and latest value, the change, the low and the high, with their periods", async ({ page, atlas }) => {
     await page.goto(atlas.url(`${PAIR},fx_exchange_index&mode=z`));
@@ -75,10 +87,11 @@ test.describe("relationships", () => {
     await page.goto(atlas.url(`${PAIR},fx_permits_stale`));
     await expect(page.locator("[data-matrix] tbody tr")).toHaveCount(3);
     await expect(page.locator("[data-pair-answer]")).toContainText(/r = −?[01]\.\d{3}\s+r² = 0\.\d{3}\s+n = 20/);
-    await expect(page.locator("[data-pair-facts]")).toContainText("20 of 24 months have a value for both; 4 do not.");
+    await expect(page.locator("[data-pair-facts]")).toContainText("20 of 36 months have a value for both; 16 do not.");
     await page.locator('[data-cell="fx_payrolls_break fx_price_index"]').click();
     await expect(page).toHaveURL(/sx=fx_payrolls_break&sy=fx_price_index/);
-    await expect(page.getByLabel("X", { exact: true })).toHaveValue("fx_payrolls_break");
+    await expect(page.locator("[data-relationship-form] select[name=sx]")).toHaveValue("fx_payrolls_break");
+    await expect(page.locator("[data-relationship-form] select[name=sy]")).toHaveValue("fx_price_index");
     await expect(page.locator('[data-cell="fx_payrolls_break fx_price_index"]')).toHaveAttribute("aria-current", "true");
     await expect(page.locator("[data-guard]")).toContainText("do not say that one moved the other");
     await expect(page.locator("[data-guard]")).toContainText("no significance test is shown");
@@ -101,7 +114,7 @@ test.describe("relationships", () => {
     await lag.press("Enter");
     await expect(page).toHaveURL(/lag=3/);
     await expect(page.locator("[data-pair-facts]")).toContainText("Lag +3: each month of Fixture price index is paired with Fixture payrolls 3 months later.");
-    await expect(page.locator("[data-current-lag]").locator("visible=true")).toHaveAttribute("data-current-lag", "3");
+    await expect(page.locator("[data-relationship=lags] [data-current-lag]")).toHaveAttribute("data-current-lag", "3");
     // Every lag is also a link, in the table behind the drawing.
     await page.locator("[data-relationship=lags] summary").click();
     await page.locator("[data-lags]").getByRole("link", { name: "−2 months" }).click();
@@ -137,7 +150,8 @@ test.describe("export", () => {
     expect(download.suggestedFilename()).toBe("macro-atlas_rebase_2024-01_2025-12_not-for-publication.csv");
     const text = readFileSync(await download.path(), "utf8");
     expect(text.split("\n")[0]).toBe("# Macro Atlas · NOT FOR PUBLICATION");
-    const rows = body(text).slice(1).map((line) => line.split(","));
+    // The value as drawn is the tenth field; a unit in quotes may hold a comma, so fields are read, not split.
+    const rows = body(text).slice(1).map((line) => [...line.matchAll(/("(?:[^"]|"")*"|[^,]*)(?:,|$)/g)].map((m) => m[1]!));
     // The table on the page, row for row: the value as drawn, exactly.
     const onScreen = await page.locator("[data-figure-table] tbody tr").evaluateAll((trs) =>
       trs.map((tr) => {
@@ -147,7 +161,7 @@ test.describe("export", () => {
     );
     expect(rows).toHaveLength(onScreen.length);
     expect(rows.length).toBe(48);
-    rows.forEach((row, i) => expect(onScreen[i] === "" ? row.at(-3) : Number(row.at(-3)), `row ${i}`).toBe(onScreen[i] === "" ? "" : Number(onScreen[i])));
+    rows.forEach((row, i) => expect(onScreen[i] === "" ? row[9] : Number(row[9]), `row ${i}`).toBe(onScreen[i] === "" ? "" : Number(onScreen[i])));
   });
 
   test("Copy CSV puts the same file on the clipboard and says so", async ({ page, atlas, context }) => {
@@ -226,7 +240,7 @@ test.describe("Explorer II with JavaScript off", () => {
     const form = page.locator("[data-relationship-form]");
     await form.getByLabel("Compared on").selectOption("lvl");
     await form.getByLabel(/^Lag, in months/).fill("2");
-    await form.getByRole("button", { name: "Show" }).click();
+    await form.getByRole("button", { name: "Apply" }).click();
     await expect(page).toHaveURL(/basis=lvl/);
     await expect(page).toHaveURL(/lag=2/);
     expect(search(page).get("s")).toBe("fx_price_index,fx_payrolls_break");
@@ -239,7 +253,7 @@ test.describe("Explorer II with JavaScript off", () => {
     const form = page.locator("form#explorer-view");
     await form.getByLabel("Compare with the range from").fill("2025-04");
     await form.getByLabel("Mark highest and lowest").check();
-    await form.getByRole("button", { name: "Show" }).click();
+    await form.getByRole("button", { name: "Show", exact: true }).click();
     await expect(page).toHaveURL(/cmp=2025-04/);
     await expect(page).toHaveURL(/ext=1/);
     await expect(shown(page).locator("[data-run=comparison]").first()).toBeAttached();

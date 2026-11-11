@@ -111,7 +111,9 @@ export function lagDrawing(spec: LagSpec): SvgNode {
   const ticks: SvgNode[] = [];
   for (let lag = Math.ceil(lo / 12) * 12; lag <= hi; lag += 12) {
     ticks.push(h("line", { x1: r2(x(lag)), y1: yBottom, x2: r2(x(lag)), y2: yBottom + 4, stroke: LINE_STRONG, "stroke-width": 1 }));
-    ticks.push(text(lag > 0 ? `+${lag}` : String(lag).replace("-", "−"), { x: r2(x(lag)), y: H - 12, "text-anchor": "middle" }));
+    const label = lag > 0 ? `+${lag}` : String(lag).replace("-", "−");
+    const edge = x(lag) + (label.length * CHAR) / 2 > W - 2;
+    ticks.push(text(label, { x: edge ? W - 2 : r2(x(lag)), y: H - 12, "text-anchor": edge ? "end" : "middle" }));
   }
   return frame(
     spec.label,

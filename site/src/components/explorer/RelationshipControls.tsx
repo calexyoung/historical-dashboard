@@ -114,7 +114,7 @@ export function RelationshipControls({
         </select>
       </label>
       <button type="submit" className="press h-9 rounded border border-accent bg-accent px-3 text-sm font-semibold text-void">
-        Show
+        Apply
       </button>
     </form>
   );
