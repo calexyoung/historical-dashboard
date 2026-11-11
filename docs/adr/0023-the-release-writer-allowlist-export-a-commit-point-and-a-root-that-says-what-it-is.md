@@ -36,7 +36,10 @@ This records the choices the plan left open and the places M9 departs from it.
    `promoting` with the release id before the rename into `releases/`. The next run reads it:
    if `CURRENT` names that Release, the promotion happened and is recorded; if not, a Release
    nothing names is moved to the trash. After the commit point a failed write is reported with
-   exit status 1 and outcome `promoted`, never as a rejection.
+   exit status 1 and outcome `promoted`, never as a rejection. Rollback, pin and withdrawal
+   run the same recovery first, so a Release a killed run left unnamed cannot be pinned into
+   staying. The journal line is written before the status, and recovery writes the line a
+   cut-off promotion never got: a duplicate line is possible, a missing one is not.
 7. **A root says what it is, once** (`root.json`): its Profile and whether its values are an
    agency's or invented. A Release of the other kind is refused from then on. A Release of
    invented values, or one decided by a register other than the committed file, is never
@@ -57,7 +60,13 @@ This records the choices the plan left open and the places M9 departs from it.
 11. **Withdrawal is recorded before it is carried out, and fails closed.** `withdrawn.json` is
     written first and is honoured by release, reuse, rollback, pin and doctor. If no
     replacement Release can be promoted, `CURRENT` is removed and the site answers 503.
-    Retired Releases go to the store, which no web container mounts.
+    Retired Releases go to the store, which no web container mounts. After the first write
+    nothing stops the rest: a journal that cannot be written is reported and passed over.
+    The legacy converter refuses a root with a withdrawal. And the site's reader now serves
+    a Release from memory only while its directory is still in `releases/`: before M9 a
+    Release that had been opened once was served until the process restarted, which would
+    have kept a withdrawn value up. This also means a pruned Release is gone for the next
+    request, where M1's reader went on serving it.
 12. **The preflight asks the committed register and checks every Release in the root.**
     `atlas doctor --surface production` has no register option and does not read a manifest's
     word for what was allowed. A reader opens any Release by id, so one unfit Release anywhere

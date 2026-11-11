@@ -92,18 +92,42 @@ class _Run:
         if they cannot be written, the result says so."""
         failed = failed or []
         try:
+            # The journal first: if only the status then fails, the next run finds the intent
+            # still open and records the promotion again, which is better than never.
+            self.journal(event="finished", outcome=outcome, release_id=release_id,
+                         failed_checks=[check["check"] for check in failed], **more)
             R.write_status(self.root, started=self.started, finished=S.stamp(_clock(None)),
                            outcome=outcome, release_id=release_id, profile=self.profile,
                            command=self.command, failed_checks=failed,
                            reason=next((line for line in self.lines if line.startswith(
                                ("REFUSED", "FAILED", "REJECTED"))), None) if exit_code else None)
-            self.journal(event="finished", outcome=outcome, release_id=release_id,
-                         failed_checks=[check["check"] for check in failed], **more)
         except OSError as error:
             self.lines.append(f"WARNING: the run's record could not be written ({error}); "
                               f"CURRENT names {R.current(self.root)}")
             exit_code = 1
         return Result(outcome, exit_code, release_id, self.lines, failed)
+
+
+    def recover(self) -> None:
+        """Put right what a killed run left (``root.recover``), and give a promotion that was
+        cut off before its record the journal line it never got."""
+        notes, promoted = R.recover(self.root, self.now)
+        self.lines.extend(notes)
+        if promoted:
+            files = R.read_release(self.root, promoted)
+            rows = {} if isinstance(files, str) else json.loads(files[MANIFEST])["series"]
+            self.journal(event="finished", outcome="promoted", release_id=promoted, recovered=True,
+                         published={key: row.get("state_hash") for key, row in sorted(rows.items())})
+
+
+def _guarded(command: Callable[[], Result]) -> Result:
+    """A refusal or a failing disk is a result, never an exception out of a command."""
+    try:
+        return command()
+    except _Refusal as refusal:
+        return _refused(f"REFUSED: {refusal}")
+    except OSError as error:
+        return Result("failed", 1, None, [f"FAILED: {error}"])
 
 
 def _clock(now: datetime | None) -> datetime:
@@ -316,6 +340,21 @@ def _reuse(run: _Run, legacy: dict[str, bytes] | None, drop: dict[str, str] | No
     gone = _with_what_rests_on(entries, set(drop or {}))
     built = Built(reused_data_from=source, semantics_version=manifest["semantics_version"],
                   sources=manifest.get("sources", []), inputs=manifest.get("inputs", []))
+    # A reuse does not read the store: when each source was last fetched, and a fetch that
+    # failed, are carried over. Whether its newest Period is too old is judged against this
+    # Release's own date.
+    today = f"{run.now:%Y-%m-%d}"
+    for line in built.sources:
+        late = sorted(
+            entry["key"] for entry in entries
+            if entry["key"] not in gone and f"series/{entry['key']}.json" in files
+            and (entry["source"]["origin"]["producer"], entry["source"]["channel"]["via"])
+            == (line["producer"], line["via"])
+            and (lag_limit(json.loads(files[f"series/{entry['key']}.json"])["period_end"],
+                           entry.get("max_lag")) or today) < today)
+        if late and line.get("outcome", "ok") == "ok":
+            line["outcome"] = "stale"
+            line["detail"] = f"{', '.join(late)}: the last Period is older than max_lag allows"
     built.withheld = [row for row in manifest["withheld"] if row["key"] not in gone]
     for key in sorted(gone & {entry["key"] for entry in entries}):
         reason = (drop or {}).get(key) or "computed from a Series that was withdrawn"
@@ -356,11 +395,11 @@ def release(*, profile: str, root: Path, store: Path, register: Path | None = No
     if not reuse_data and not wants_legacy and not VintageStore(store).series_keys():
         # Before a directory, a lock or a status file is made for a run with nothing to do.
         return _refused(f"REFUSED: there is nothing to release: {store} holds no Series")
-    try:
+    def command() -> Result:
         with _opened("release", profile=profile, root=root, store=store, register=register, now=now) as run:
             return _release(run, series, legacy, legacy_repo, reuse_data, keep, write)
-    except _Refusal as refusal:
-        return _refused(f"REFUSED: {refusal}")
+
+    return _guarded(command)
 
 
 def _release(run: _Run, series, legacy, legacy_repo, reuse_data, keep, write) -> Result:
@@ -372,7 +411,7 @@ def _release(run: _Run, series, legacy, legacy_repo, reuse_data, keep, write) ->
     if with_legacy and real is False:
         raise _Refusal("this store holds invented values; they are never mixed with v1's Series")
     R.claim(run.root, run.profile, real is not False)
-    run.lines.extend(R.recover(run.root, run.now))
+    run.recover()
     R.write_status(run.root, started=run.started, finished=None, outcome="running", release_id=None,
                    profile=run.profile, command=run.command, failed_checks=[])
     run.journal(event="started", store=str(run.store))
@@ -438,8 +477,9 @@ def rollback(*, release_id: str, profile: str, root: Path, store: Path, register
     """Name an earlier Release of this root in CURRENT. It is checked as if it were new: the
     contract, the root's Profile, no link, nothing withdrawn, and for a public root today's
     register."""
-    try:
+    def command() -> Result:
         with _opened("rollback", profile=profile, root=root, store=store, register=register, now=now) as run:
+            run.recover()
             problems = R.release_problems(run.root, release_id, run.profile, run.gate)
             if problems:
                 run.lines.extend(f"REFUSED: {problem}" for problem in problems)
@@ -453,29 +493,30 @@ def rollback(*, release_id: str, profile: str, root: Path, store: Path, register
                 return run.finish("failed", 1)
             run.lines.append(f"ROLLED BACK to {release_id} (was {before})")
             return run.finish("rolled_back", 0, release_id, previous=before)
-    except _Refusal as refusal:
-        return _refused(f"REFUSED: {refusal}")
+
+    return _guarded(command)
 
 
 def pin(*, release_id: str, reason: str, profile: str, root: Path, store: Path,
         register: Path | None = None, now: datetime | None = None) -> Result:
     """Keep a Release of this root through retention. Checked as a rollback is."""
-    try:
+    def command() -> Result:
         with _opened("pin", profile=profile, root=root, store=store, register=register, now=now) as run:
+            run.recover()  # a Release a killed run left unnamed is not one to pin
             problems = R.release_problems(run.root, release_id, run.profile, run.gate)
             if problems:
-                return _refused([f"REFUSED: {problem}" for problem in problems])
+                return _refused([*run.lines, *(f"REFUSED: {problem}" for problem in problems)])
             held = [p for p in R.pins(run.root) if p["release_id"] != release_id]
             held.append({"release_id": release_id, "reason": reason, "pinned_at": run.started})
             R.replace_json(run.root / R.PINS, {"format": R.FORMAT, "pins": held})
-            return Result("pinned", 0, release_id, [f"PINNED {release_id}: {reason}"])
-    except _Refusal as refusal:
-        return _refused(f"REFUSED: {refusal}")
+            return Result("pinned", 0, release_id, [*run.lines, f"PINNED {release_id}: {reason}"])
+
+    return _guarded(command)
 
 
 def unpin(*, release_id: str, profile: str, root: Path, store: Path, register: Path | None = None,
           now: datetime | None = None) -> Result:
-    try:
+    def command() -> Result:
         with _opened("unpin", profile=profile, root=root, store=store, register=register, now=now) as run:
             held = R.pins(run.root)
             if not any(p["release_id"] == release_id for p in held):
@@ -483,8 +524,8 @@ def unpin(*, release_id: str, profile: str, root: Path, store: Path, register: P
             R.replace_json(run.root / R.PINS, {"format": R.FORMAT, "pins": [
                 p for p in held if p["release_id"] != release_id]})
             return Result("unpinned", 0, release_id, [f"UNPINNED {release_id}"])
-    except _Refusal as refusal:
-        return _refused(f"REFUSED: {refusal}")
+
+    return _guarded(command)
 
 
 # --- withdrawal ----------------------------------------------------------------------------------
@@ -502,11 +543,11 @@ def withdraw(*, key: str, reason: str, profile: str, root: Path, store: Path,
     the trash included, is moved out to the store's ``retired/``. If the replacement cannot be
     promoted, CURRENT is removed: the site answers 503 rather than go on serving the Series.
     Running the command again finishes a withdrawal that was cut off."""
-    try:
+    def command() -> Result:
         with _opened("withdraw", profile=profile, root=root, store=store, register=register, now=now) as run:
             return _withdraw(run, key, reason, write)
-    except _Refusal as refusal:
-        return _refused(f"REFUSED: {refusal}")
+
+    return _guarded(command)
 
 
 def _derived_from(files: dict[str, bytes], key: str) -> set[str]:
@@ -520,12 +561,20 @@ def _derived_from(files: dict[str, bytes], key: str) -> set[str]:
 def _withdraw(run: _Run, key: str, reason: str, write) -> Result:
     if not isinstance(key, str) or not key or not reason:
         raise _Refusal("a withdrawal names a Series and gives a reason")
-    run.lines.extend(R.recover(run.root, run.now))
+    # Written down before anything else. If this cannot be written, nothing has changed.
     record = R.withdrawn(run.root)
     record.setdefault(key, {"reason": reason, "withdrawn_at": run.started, "retired": []})
     R.replace_json(run.root / R.WITHDRAWN, {"format": R.FORMAT, "series": record})
-    run.journal(event="started", store=str(run.store), key=key)
     exit_code, replacement = 0, None
+    # From here on nothing may stop the Series coming down: a journal that cannot be written,
+    # or a leftover that cannot be cleared, is said and passed over.
+    try:
+        run.recover()
+        run.journal(event="started", store=str(run.store), key=key)
+    except OSError as error:
+        exit_code = 1
+        run.lines.append(f"WARNING: the run's record could not be written ({error}); the "
+                         "withdrawal goes on")
     source = R.current(run.root)
     files = R.read_release(run.root, source) if source else {}
     if isinstance(files, str) or any(R.holds(files, k) for k in _derived_from(files, key)):
@@ -555,12 +604,26 @@ def _withdraw(run: _Run, key: str, reason: str, write) -> Result:
             while target.exists():
                 number += 1
                 target = run.store / RETIRED / f"{release_id}-{number}"
-            target.parent.mkdir(parents=True, exist_ok=True)
-            shutil.move(str(run.root / folder / release_id), str(target))
-            (run.root / folder / f"{release_id}.json").unlink(missing_ok=True)
+            try:
+                target.parent.mkdir(parents=True, exist_ok=True)
+                shutil.move(str(run.root / folder / release_id), str(target))
+                (run.root / folder / f"{release_id}.json").unlink(missing_ok=True)
+            except OSError as error:
+                # Out of the root one way or the other: a Release that cannot be kept is deleted.
+                shutil.rmtree(run.root / folder / release_id, ignore_errors=True)
+                exit_code = 1
+                run.lines.append(f"WARNING: {release_id} could not be moved to {target} ({error}); "
+                                 "it was deleted from the root instead")
+                if (run.root / folder / release_id).exists():
+                    run.lines.append(f"FAILED: {release_id} is still in the root; run the "
+                                     "withdrawal again")
+                    continue
             retired.append(release_id)
             record[key]["retired"] = sorted({*record[key]["retired"], release_id})
-            R.replace_json(run.root / R.WITHDRAWN, {"format": R.FORMAT, "series": record})
+            try:
+                R.replace_json(run.root / R.WITHDRAWN, {"format": R.FORMAT, "series": record})
+            except OSError:
+                exit_code = 1
     run.lines.append(f"WITHDRAWN {key}: {len(retired)} release(s) retired to {run.store / RETIRED}"
                      + (f" ({', '.join(retired)})" if retired else ""))
     return run.finish("withdrawn", exit_code, replacement, key=key, retired=retired)

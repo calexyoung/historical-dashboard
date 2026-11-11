@@ -38,9 +38,22 @@ describe("ReleaseReader.current: the promoted Release, validated on open", () =>
     promote(root, A);
     const reader = createReleaseReader({ root, surface: "local" });
     const first = await reader.current();
-    rmSync(dir, { recursive: true }); // gone from disk; the opened release is still served
+    // Not read again: a file that would now fail validation changes nothing.
+    writeFileSync(join(dir, "catalog.json"), "not JSON");
     const second = await reader.current();
     expect(second.ok && first.ok && second.release).toBe(first.ok && first.release);
+  });
+
+  it("stops serving a release from memory once it has left the root (pruned, or retired by a withdrawal)", async () => {
+    const root = tempRoot();
+    const dir = addRelease(root, { id: A });
+    promote(root, A);
+    const reader = createReleaseReader({ root, surface: "local" });
+    expect((await reader.current()).ok).toBe(true);
+    rmSync(dir, { recursive: true });
+    expect(await reader.open(A)).toMatchObject({ ok: false, kind: "unavailable", id: A });
+    // Not even as the local Surface's stand-in for a refresh that failed.
+    expect(await reader.current()).toMatchObject({ ok: false, kind: "unavailable" });
   });
 
   it("is unavailable when there is no CURRENT", async () => {

@@ -259,14 +259,17 @@ def release_problems(root: Path, release_id: str, profile: str, gate: RightsGate
 # --- recovery and retention ----------------------------------------------------------------------
 
 
-def recover(root: Path, now: datetime) -> list[str]:
+def recover(root: Path, now: datetime) -> tuple[list[str], str | None]:
     """Put right what a run that was killed left behind. Call with the root locked.
 
     A run writes ``promoting`` with the release id in STATUS.json before it moves anything.
     If CURRENT names that Release, the promotion happened and only the bookkeeping is missing.
     If it does not, the Release may sit in ``releases/`` with nothing naming it: it goes to
-    the trash. Anything left in the staging area was never promoted and is removed."""
-    root, notes = Path(root), []
+    the trash. Anything left in the staging area was never promoted and is removed.
+
+    Returns what was found, and the id of a Release whose promotion had happened and had not
+    been recorded (the caller owes the journal a line for it)."""
+    root, notes, promoted = Path(root), [], None
     staging = root / STAGING
     if staging.is_symlink():
         raise RootRefused(f"{staging} is a link; a release root holds real directories only")
@@ -281,15 +284,20 @@ def recover(root: Path, now: datetime) -> list[str]:
         intended = last.get("release_id")
         if last["outcome"] == "promoting" and intended:
             if current(root) == intended:
+                promoted = intended
                 notes.append(f"it had promoted {intended}; CURRENT names it")
                 write_status(root, started=last.get("started"), finished=S.stamp(now), outcome="promoted",
                              release_id=intended, profile=last.get("profile"), failed_checks=[],
                              note="recorded by the next run: the run that promoted it was cut off")
-            elif (root / "releases" / intended).is_dir():
+            elif (root / "releases" / intended).is_dir() and intended not in {
+                    pin["release_id"] for pin in pins(root)}:
                 _to_trash(root, intended, now)
                 notes.append(f"it had moved {intended} into releases/ without naming it in CURRENT; "
                              "that release is in the trash")
-    return notes
+                write_status(root, started=last.get("started"), finished=S.stamp(now), outcome="failed",
+                             release_id=intended, profile=last.get("profile"), failed_checks=[],
+                             reason="the run was cut off before CURRENT was replaced")
+    return notes, promoted
 
 
 def _to_trash(root: Path, release_id: str, now: datetime) -> None:

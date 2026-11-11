@@ -525,3 +525,23 @@ def test_with_todays_register_and_no_store_the_real_command_refuses_and_writes_n
     assert "there is nothing to release" in capsys.readouterr().out
     assert list(tmp_path.iterdir()) == []
     assert atlas_main(["doctor", "--surface", "production"]) == 1
+
+
+def test_a_series_withdrawn_from_a_local_root_stays_out_of_later_local_releases(tmp_path, v1, seeded):
+    from atlas.publish import withdraw
+
+    store = agency_store(tmp_path / "store")
+    root = tmp_path / "local"
+    release(profile="local", root=root, store=store, now=LATER)
+    assert seeded in all_bytes(root)
+
+    gone = withdraw(key="unrate", reason="asked to take it down", profile="local", root=root,
+                    store=store, now=LATER.replace(hour=16))
+    again = release(profile="local", root=root, store=store, now=LATER.replace(hour=17))
+
+    assert gone.outcome == "withdrawn" and again.outcome == "promoted", gone.lines + again.lines
+    assert seeded not in all_bytes(root)
+    manifest = read_json(root / "releases" / again.release_id / "manifest.json")
+    assert "unrate" not in manifest["series"]
+    assert next(w for w in manifest["withheld"] if w["key"] == "unrate")["reason"].startswith("withdrawn on")
+    assert validate_release(root / "releases" / again.release_id) == []

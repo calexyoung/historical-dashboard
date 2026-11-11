@@ -635,6 +635,31 @@ def local_root(repo: Path = ROOT, out: Path | None = None) -> Path:
     return root
 
 
+def _fit_for_a_legacy_release(root: Path) -> None:
+    """What the release writer (M9, ADR 0023) keeps in a root, honoured here too: a root says
+    once which Profile it is for, and a Series withdrawn from it stays out. This converter
+    carries every Series v1 has, so it does not write into a root with a withdrawal."""
+    def read(name: str) -> dict:
+        try:
+            found = json.loads((root / name).read_text(encoding="utf-8"))
+        except FileNotFoundError:
+            return {}
+        except (OSError, ValueError) as error:
+            raise LegacyRefused(f"{root / name} cannot be read ({error})") from None
+        return found if isinstance(found, dict) else {}
+
+    marker = read("root.json")
+    if marker and marker.get("profile") != "local":
+        raise LegacyRefused(f"{root} is a {marker.get('profile')}-profile root; the legacy "
+                            "converter writes local-profile releases only")
+    if marker and marker.get("real_bytes") is False:
+        raise LegacyRefused(f"{root} holds invented values; v1's Series are never mixed with them")
+    gone = sorted(read("withdrawn.json").get("series", {}))
+    if gone:
+        raise LegacyRefused(f"{', '.join(gone)} was withdrawn from {root}; write the release with "
+                            "`python -m atlas release --profile local`, which leaves it out")
+
+
 def legacy_release(*, repo: Path = ROOT, out: Path | None = None, now: datetime | None = None) -> Path:
     """Convert v1's committed output and promote it as the current local Release.
 
@@ -649,6 +674,7 @@ def legacy_release(*, repo: Path = ROOT, out: Path | None = None, now: datetime 
         # The root's own lock, the one the release writer holds (M9): two writers never stage
         # and promote in one root at the same time.
         with locked(root):
+            _fit_for_a_legacy_release(root)
             directory = stage(root, release_id)
             for path, data in files.items():
                 target = directory / path

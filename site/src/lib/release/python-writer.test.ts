@@ -51,15 +51,25 @@ describe("a Release written by the Python release writer", () => {
     expect(opened.ok).toBe(true);
   });
 
-  it("goes on being served to a request that opened it before retention moved it to the trash", async () => {
-    const reader = createReleaseReader({ root, surface: "local" });
+  it("is served from memory only while it is still in the root: a pruned or retired Release is gone at once", async () => {
+    const reader = createReleaseReader({ root, surface: "production" });
     const before = await reader.open(id);
-    expect(before.ok).toBe(true);
-    // What the writer's retention does: one rename into trash/, never a delete in place.
+    if (!before.ok) throw new Error(before.reason);
+    expect((await reader.open(id)).ok).toBe(true);
+    // What the writer does to prune a Release, and to retire one that holds a withdrawn Series:
+    // one rename out of releases/.
     mkdirSync(join(root, "trash"), { recursive: true });
     renameSync(join(root, "releases", id), join(root, "trash", id));
-    const after = await reader.open(id);
-    expect(after.ok && after.release.series.fx_jobs!.observations.length).toBe(3);
-    renameSync(join(root, "trash", id), join(root, "releases", id));
+    try {
+      // A request that already holds the Release finishes with what it has...
+      expect(before.release.series.fx_jobs!.observations.length).toBe(3);
+      // ...and nothing opens it again, by id or as CURRENT.
+      const after = await reader.open(id);
+      expect(after.ok).toBe(false);
+      expect(!after.ok && after.kind).toBe("unavailable");
+      expect((await reader.current()).ok).toBe(false);
+    } finally {
+      renameSync(join(root, "trash", id), join(root, "releases", id));
+    }
   });
 });

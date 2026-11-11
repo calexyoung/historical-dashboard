@@ -133,7 +133,7 @@ are resolved.
 | The disk filled while staging | Staging removed, STATUS `failed` | — |
 | Killed while staging | Files in `.staging/`, STATUS `running` or `promoting` | Removes them |
 | Killed after the rename into `releases/`, before `CURRENT` | A Release nothing names, STATUS `promoting` | Moves it to the trash |
-| Killed, or the disk filled, after `CURRENT` was replaced | The Release is live; the run's record is missing | Records it as promoted |
+| Killed, or the disk filled, after `CURRENT` was replaced | The Release is live; the run's record is missing | Records it as promoted, with the journal line it never got (`"recovered": true`) |
 
 `CURRENT` is replaced in one atomic step, and that step is the commit point. Before it,
 `CURRENT` names the last good Release whatever happens. After it the Release is live, so a
@@ -148,8 +148,9 @@ gives a Release whose source is `stale`.
 ## Retention, pins, rollback
 
 After each promotion the newest 30 Releases are kept, with `CURRENT` and every pinned Release.
-The rest are renamed into `trash/` and deleted by the first run a day later. A reader that
-opened a Release before it was pruned goes on serving it.
+The rest are renamed into `trash/` and deleted by the first run a day later. A request that
+already holds a Release when it is pruned finishes with what it has; the next request for that
+id finds it gone.
 
 ```
 python -m atlas pin ID --profile public --reason "claim lock cpi-2022"
@@ -165,7 +166,13 @@ three.
 
 `python -m atlas release --profile P --reuse-data` writes a new Release that hard-links the
 current one's data files and writes its content afresh. Until M19 the only content is the
-Annotations file.
+Annotations file. A reuse does not read the store: each source's `fetched` time, and a `failed`
+outcome, are carried over from the Release it reuses, while `stale` is judged afresh against
+the new Release's own date.
+
+`python -m atlas legacy-release` (M2) keeps to the same rules: it takes the root's lock, does
+not write into a root that `root.json` says is public or holds invented values, and refuses a
+root with a withdrawal, since it would bring the Series back.
 
 ## Withdrawal
 
@@ -182,7 +189,14 @@ For a permission that was wrong. In this order:
    is promoted. If it cannot be, `CURRENT` is removed: the site answers 503 rather than go on
    serving the Series, until the next `atlas release` succeeds.
 3. Every Release in the root that holds the Series, the trash included, is moved to
-   `$ATLAS_STORE/retired/`.
+   `$ATLAS_STORE/retired/`. One that cannot be moved is deleted from the root instead.
+
+Once step 1 is written nothing stops the rest: a journal or a status file that cannot be
+written is reported, with exit status 1, and passed over.
+
+A running site lets go of a retired Release at once. The reader serves a Release from memory
+only while its directory is still in `releases/`, so a Release that was pruned or retired is
+not opened again, by id or as `CURRENT`, without a restart.
 
 Running the command again finishes a withdrawal that was cut off; `atlas doctor` fails while
 one is unfinished. To allow the Series again, remove its entry from `withdrawn.json` by hand.
