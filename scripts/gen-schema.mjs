@@ -25,7 +25,9 @@ const outputs = {
   "schema.generated.ts":
     banner +
     "\nexport const SCHEMA_VERSION = " +
-    JSON.stringify(schema.$defs.manifest.properties.schema_version.const) +
+    JSON.stringify(schema.$defs.manifest.properties.schema_version.enum.at(-1)) +
+    ";\n\n/** Every version this reader knows; a writer writes the last. */\nexport const SCHEMA_VERSIONS: readonly string[] = " +
+    JSON.stringify(schema.$defs.manifest.properties.schema_version.enum) +
     ";\n\nexport const releaseSchema: Record<string, unknown> = " +
     JSON.stringify(schema, null, 2) +
     ";\n",

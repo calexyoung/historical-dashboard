@@ -2,6 +2,9 @@
 
 export const SCHEMA_VERSION = "0.2.0";
 
+/** Every version this reader knows; a writer writes the last. */
+export const SCHEMA_VERSIONS: readonly string[] = ["0.1.0","0.2.0"];
+
 export const releaseSchema: Record<string, unknown> = {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://mydashboards.co/macro-atlas/schema/release.schema.json",
@@ -162,8 +165,11 @@ export const releaseSchema: Record<string, unknown> = {
       ],
       "properties": {
         "schema_version": {
-          "description": "Version of this contract. Readers refuse a version they do not know.",
-          "const": "0.2.0"
+          "description": "Version of this contract. Readers refuse a version they do not know. 0.2.0 added vintages/ and vintages_sha256; a 0.1.0 Release holds neither. Writers write the last one listed.",
+          "enum": [
+            "0.1.0",
+            "0.2.0"
+          ]
         },
         "semantics_version": {
           "description": "Version of the engine's behaviour that wrote derived/ (ADR 0003).",

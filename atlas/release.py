@@ -27,6 +27,9 @@ from atlas.period import next_period, period_bounds
 
 SCHEMA_PATH = Path(__file__).resolve().parents[1] / "schema" / "release.schema.json"
 SCHEMA_VERSION = "0.2.0"
+#: Every version this reader knows; a writer writes ``SCHEMA_VERSION``. 0.2.0 (M10) added
+#: ``vintages/`` and ``vintages_sha256``, so a 0.1.0 Release is one that holds neither.
+SCHEMA_VERSIONS = ("0.1.0", SCHEMA_VERSION)
 
 MANIFEST = "manifest.json"
 CATALOG = "catalog.json"
@@ -134,15 +137,20 @@ def validate_files(release_id: str, files: Mapping[str, bytes]) -> list[Issue]:
 
     manifest = parsed[MANIFEST]
     version = manifest.get("schema_version") if isinstance(manifest, dict) else None
-    if version is not None and version != SCHEMA_VERSION:
+    if version is not None and version not in SCHEMA_VERSIONS:
         issues.append(
             Issue(
                 "unsupported_schema_version",
                 MANIFEST,
-                f"this reader knows schema_version {SCHEMA_VERSION}, not {version!r}",
+                f"this reader knows schema_version {' and '.join(SCHEMA_VERSIONS)}, not {version!r}",
             )
         )
         return issues
+    if version == "0.1.0":
+        for path in sorted(series_paths[VINTAGES].values()):
+            issues.append(Issue("unknown_file", path, "schema_version 0.1.0 does not name this file"))
+        if issues:
+            return issues
 
     bundle = {
         "manifest": manifest,

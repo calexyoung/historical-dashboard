@@ -20,8 +20,19 @@ tests that need v1's values build a local release in a temporary directory inste
 | `fx_permits_stale` | stale: ends eighteen months before the release was created |
 
 Annotations cover every anchor type (date, span, open-ended span, period) and the kinds event,
-recession, governance, policy and data_note. Vintages reach a Release with the
-release writer (M9).
+recession, governance, policy and data_note.
+
+Three Series carry a vintage file (`vintages/`), each version written out by hand in
+`make_fixture.py`. Captures are daily from 8 December 2025 with none on 12, 13 and 14 December.
+
+| Series | Its history |
+|---|---|
+| `fx_price_index` | Atlas-observed: October revised on 10 December, November added then and revised on 15 December, after the three-day Capture gap |
+| `fx_output_quarterly` | provider vintages: an archive of the Origin's releases, complete from April 2022 to 8 December 2025; two quarters revised, one of them dated only to the day |
+| `fx_poverty_rate_annual` | a metadata change on 9 December; 2012 to 2015 were not asked about again and keep the earlier unit |
+
+`node scripts/as-of.mjs fx_price_index 2025-12-13` prints an as-of answer from it
+(`docs/method/vintage-resolution.md`).
 
 To change it, edit the literals in `make_fixture.py`, run `python fixtures/make_fixture.py` and
 commit the result. A test fails if the committed files and the script disagree.

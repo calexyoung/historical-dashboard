@@ -17,11 +17,11 @@ import { createHash } from "node:crypto";
 import { Ajv2020, type ErrorObject, type ValidateFunction } from "ajv/dist/2020.js";
 import addFormats from "ajv-formats";
 import { nextPeriod, periodBounds } from "../period";
-import { releaseSchema, SCHEMA_VERSION } from "./schema.generated";
+import { releaseSchema, SCHEMA_VERSION, SCHEMA_VERSIONS } from "./schema.generated";
 import type { CatalogEntry, Release, SeriesFile, VintageRow } from "./types.generated";
 
 export type * from "./types.generated";
-export { SCHEMA_VERSION };
+export { SCHEMA_VERSION, SCHEMA_VERSIONS };
 
 /** A Release read into memory: each file's bytes by its path relative to the release directory. */
 export type ReleaseFiles = Record<string, Uint8Array>;
@@ -201,13 +201,19 @@ export function validateRelease(releaseId: string, files: ReleaseFiles): Issue[]
     typeof manifestDoc === "object" && manifestDoc !== null && !Array.isArray(manifestDoc)
       ? (manifestDoc as Record<string, unknown>).schema_version
       : undefined;
-  if (version !== undefined && version !== null && version !== SCHEMA_VERSION) {
+  if (version !== undefined && version !== null && !SCHEMA_VERSIONS.includes(version as string)) {
     issues.push({
       code: "unsupported_schema_version",
       path: MANIFEST,
-      message: `this reader knows schema_version ${SCHEMA_VERSION}, not ${quote(version)}`,
+      message: `this reader knows schema_version ${SCHEMA_VERSIONS.join(" and ")}, not ${quote(version)}`,
     });
     return issues;
+  }
+  if (version === "0.1.0") {
+    for (const path of [...vintagePaths.values()].sort()) {
+      issues.push({ code: "unknown_file", path, message: "schema_version 0.1.0 does not name this file" });
+    }
+    if (issues.length > 0) return issues;
   }
 
   const collect = (folder: Folder): Record<string, unknown> =>

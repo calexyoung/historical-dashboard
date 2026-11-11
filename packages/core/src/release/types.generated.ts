@@ -137,9 +137,9 @@ export interface Release {
  */
 export interface Manifest {
   /**
-   * Version of this contract. Readers refuse a version they do not know.
+   * Version of this contract. Readers refuse a version they do not know. 0.2.0 added vintages/ and vintages_sha256; a 0.1.0 Release holds neither. Writers write the last one listed.
    */
-  schema_version: "0.2.0";
+  schema_version: "0.1.0" | "0.2.0";
   /**
    * Version of the engine's behaviour that wrote derived/ (ADR 0003).
    */
