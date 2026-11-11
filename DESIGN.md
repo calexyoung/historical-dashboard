@@ -222,6 +222,37 @@ that scrolls on a phone), View, Chart, Layers, Events in the window.
   none when a key opened it; opacity only under reduced motion. "Copied": a 200 ms crossfade.
   Nothing else moves.
 
+Explorer II (M5, ADR 0019) adds two panels after Chart, and controls to View:
+
+- **View, more.** "Download CSV", "Copy CSV" and "Save chart as PNG" sit beside "Copy link", the
+  same 36px controls; a pressed one answers with the same 200 ms crossfade ("Copied", "Saved").
+  A 12px line under them says files are stamped "not for publication" and links to every series
+  as one CSV. Where export is refused there are no buttons, only the reason. "Compare with the
+  range from" is a third month field; "Mark highest and lowest" is a checkbox drawn as the layer
+  switches are.
+- **A second range** is the same Series again in its own colour, line style and symbol, told
+  apart by weight: 4px at 45% for the line, hollow symbols. Never by colour alone, and never a
+  ninth colour. Its dates are in the readout row under its Series, in the table and in the
+  file; the axis keeps the first range's dates.
+- **Marks at the extremes**: a 4.5px ring in the Series' colour and a 12px ink label with a
+  panel-coloured halo, "max 4,766.2 · Dec 2021".
+- **Snapshot.** One `data-table`: Series (name over unit), first and latest in the window, change,
+  low, high, source. Figures are right-aligned tabular numerals, each with its Period beside it
+  in 12px ink-3. The change is a signed number in ink: no green, no red (colour never judges
+  the data). The table scrolls inside its own region on a phone.
+- **Relationships.** The matrix is numbers, each a link that chooses the pair; the chosen cell
+  has the accent border and the `band` ground, like a switched-on layer. v1's red-to-blue heat
+  map is gone: a tint would rank the pairs, and r is already a number. Below it the pair's own
+  form (X, Y, basis, lag, rolling window), the answer in 16px semibold numerals, the facts it
+  rests on, and three small drawings, each 256 units wide so its 12px text is only ever scaled
+  up: a scatter (ink dots at 55%), r at each lag (ink-2 bars, up or down from the zero line; the
+  lag in hand is the one accent mark, a dashed hairline and its bar), and r over a rolling
+  window (an ink line, broken where there is no answer). The sign of r is its side of the zero
+  line, not a colour. Each drawing has a table behind a disclosure. The guard text closes the
+  panel as a plain list and is there whether or not there is an answer.
+- **Motion.** None in either panel. The lag is typed and applied on Enter or on leaving the
+  field, so stepping through lags does not redraw at every step.
+
 Tokens are declared with `@theme static`, so that every series colour reaches the stylesheet:
 drawings name colours in SVG attributes, which Tailwind cannot see.
 

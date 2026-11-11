@@ -13,7 +13,9 @@ export async function GET(request: NextRequest) {
   const { release } = await releaseForRequest();
   const params = request.nextUrl.searchParams;
   const format = (params.get("format") ?? "csv") as ExportFormat;
-  const result = exportView(release, SURFACE, parseExplorerParams(params), format, { address: `${request.nextUrl.origin}${BASE_PATH}/explore` });
+  // The address a reader would open, as they asked for it: the Host they named, not the server's own.
+  const host = request.headers.get("host") ?? request.nextUrl.host;
+  const result = exportView(release, SURFACE, parseExplorerParams(params), format, { address: `${request.nextUrl.protocol}//${host}${BASE_PATH}/explore` });
   const common = { "cache-control": "no-store", "x-robots-tag": "noindex" };
   if (!result.ok) return new Response(`${result.message}\n`, { status: result.status, headers: { ...common, "content-type": "text/plain; charset=utf-8" } });
   return new Response(result.body, {

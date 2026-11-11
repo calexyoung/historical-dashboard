@@ -306,6 +306,22 @@ A set of Annotations a reader can switch on or off in the Explorer: recessions, 
 Events, one set of terms of government.
 _Avoid_: Overlay
 
+**Relationship**:
+How two Series moved together over a window: Pearson's r, at a lag or over a rolling window,
+taken at the slower of the two Series' frequencies. Descriptive only: shown with n, the window,
+the frequency and the missing Periods, and never called significant.
+_Avoid_: Correlation analysis, significance, finding
+
+**Second range**:
+In the Explorer, the same Series over the same number of months from another start, drawn over
+the window's own axis so the two can be compared (`cmp=`).
+_Avoid_: Overlay, comparison period
+
+**Export**:
+A view of the Explorer as a file a reader asks for (CSV, or the chart as a picture), made by one
+function that asks the rights gate first. Not a Twin: it is of a view, not of an address's answer.
+_Avoid_: Download (the act, not the thing), dump
+
 **Twin**:
 The same answer a page shows, in a machine-readable form at the same address with a file suffix.
 _Avoid_: Export, endpoint

@@ -9,7 +9,7 @@
  * There is no significance test here and there will not be one (PLAN 4.5): with trending,
  * autocorrelated Series and a search over lags, v1's `p < 0.05` hint misled.
  *
- * Pure.
+ * Pure. Adding this module raised SEMANTICS_VERSION to 0.4.0 (transform.ts).
  */
 import { nextPeriod, periodBounds, type Frequency } from "./period";
 import type { TransformObservation, TransformWindow } from "./transform";
