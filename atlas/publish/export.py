@@ -247,11 +247,16 @@ def _vintage_file(key: str, freq: str, vintages: VintageStore) -> dict | str:
 def history_lineages(document: dict) -> list[dict]:
     """One row for the rights gate per Origin, dataset and Channel that a vintage file's
     versions and metadata lines came through. Raises on a file that does not say."""
-    origins = {line["hash"]: line["metadata"]["source"] for line in document["metadata"]}
+    sources = [(line["hash"], line["metadata"]["source"]) for line in document["metadata"]]
     found = {(source["origin"]["producer"], source["origin"]["dataset"], source["channel"]["via"])
-             for source in origins.values()}
-    found |= {(origins[row["metadata"]]["origin"]["producer"], origins[row["metadata"]]["origin"]["dataset"],
-               row["channel"]) for row in document["rows"]}
+             for _, source in sources}
+    # Every line a version's hash names: a file that gives one hash to two lines is not
+    # believed about which it meant.
+    for row in document["rows"]:
+        named = [source for name, source in sources if name == row["metadata"]]
+        if not named:
+            raise ValueError("a version names metadata the file does not hold")
+        found |= {(source["origin"]["producer"], source["origin"]["dataset"], row["channel"]) for source in named}
     if not all(isinstance(part, str) and part for parts in found for part in parts):
         raise ValueError("a version does not say where it came from")
     return [{"origin": producer, "dataset": dataset, "channel": channel,

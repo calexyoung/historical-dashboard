@@ -39,6 +39,9 @@ A value counts only if it was public **strictly before** the Cutoff. For a date 
 00:00 America/New_York on that date, so nothing published on the day itself counts. For an
 instant it is that instant. (PLAN 4.5; D7 is open with Alex and this is its recommended default.)
 
+Instants are ordered exactly as written, to the nanosecond a Release may carry: a Capture one
+microsecond before the Cutoff is before it.
+
 A version dated only to the day cannot be placed against an hour. It counts only when its day
 is earlier than the Cutoff's New York day, whatever time the question named.
 

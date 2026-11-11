@@ -148,6 +148,18 @@ function instantMs(text: string | null | undefined): number | null {
 
 const stamp = (ms: number): string => new Date(ms).toISOString().replace(".000Z", "Z");
 
+/**
+ * An instant as text that sorts in time order, to the nanosecond a Release may write: the
+ * fraction padded to nine digits. Milliseconds are enough to find a calendar day, but two
+ * instants are ordered by this, so one a microsecond after another is after it.
+ */
+const NEVER = "~"; // sorts after every instant: a time that cannot be read is never "before"
+function order(text: string | null | undefined): string {
+  if (instantMs(text) === null) return NEVER;
+  const [whole, fraction = ""] = text!.slice(0, -1).split(".");
+  return `${whole}.${fraction.padEnd(9, "0")}`;
+}
+
 // Built on first use: importing this module does nothing.
 let clock: Intl.DateTimeFormat | undefined;
 /** The New York calendar day and wall-clock time of an instant. */
@@ -186,7 +198,7 @@ export function cutoffFor(asOf: string): Cutoff | null {
 
 // --- resolve --------------------------------------------------------------------------------------
 
-type Timed = { row: VintageRow; index: number; from: number; to: number | null; provider: number | null; providerTo: number | null };
+type Timed = { row: VintageRow; index: number; from: string; to: string | null; provider: string | null; providerTo: string | null };
 type Picked = { timed: Timed; basis: VintageBasis; lastChecked: string | null };
 
 /**
@@ -207,14 +219,13 @@ export function resolve(series: ResolveSeries, asOf: string | null, release: { r
   const cutoff = cutoffFor(asOf);
   if (!cutoff) return unavailable("bad_as_of");
   answer.cutoff = cutoff;
-  const at = instantMs(cutoff.instant)!;
+  const at = order(cutoff.instant);
 
   if (series.representation !== "native") {
     // v1's output is one state, rounded, with one date: when v1 generated it. It can say what
     // was known before a later Cutoff and nothing about an earlier one.
-    const held = instantMs(series.heldAt);
-    if (held === null) return unavailable("legacy_not_dated");
-    if (held >= at) return unavailable("legacy_held_after_cutoff");
+    if (instantMs(series.heldAt) === null) return unavailable("legacy_not_dated");
+    if (order(series.heldAt) >= at) return unavailable("legacy_held_after_cutoff");
     answer.basis = "legacy";
     answer.observations = series.observations.map((o) => plain(o, "legacy", series.heldAt!, "legacy"));
     return answer;
@@ -224,25 +235,27 @@ export function resolve(series: ResolveSeries, asOf: string | null, release: { r
   if (!file) return unavailable("no_vintages");
   const rows: Timed[] = file.rows.map((row, index) => ({
     row, index,
-    from: instantMs(row.recorded_from) ?? Infinity,
-    to: row.recorded_to === null ? null : (instantMs(row.recorded_to) ?? Infinity),
-    provider: row.provider_from === null ? null : (instantMs(row.provider_from) ?? Infinity),
-    providerTo: row.provider_to === null ? null : (instantMs(row.provider_to) ?? Infinity),
+    from: order(row.recorded_from),
+    to: row.recorded_to === null ? null : order(row.recorded_to),
+    provider: row.provider_from === null ? null : order(row.provider_from),
+    providerTo: row.provider_to === null ? null : order(row.provider_to),
   }));
   const cutoffDay = dayMs(cutoff.day)!;
   /** Whether something the Origin dated was published before the Cutoff. A day is before the
    * Cutoff only if it is an earlier day than the Cutoff's: nobody knows the hour (PLAN 4.5). */
-  const publishedBefore = (ms: number, precision: VintageRow["provider_precision"]): boolean =>
-    precision === "date" ? Math.floor(ms / DAY_MS) * DAY_MS < cutoffDay : ms < at;
-  const providerDay = (timed: Timed): string =>
-    timed.row.provider_precision === "date" ? timed.row.provider_from!.slice(0, 10) : newYork(timed.provider!).day;
+  const publishedBefore = (time: string, precision: VintageRow["provider_precision"]): boolean =>
+    precision === "date" ? time.slice(0, 10) < cutoff.day : time < at;
+  /** The calendar day the Origin dated a version to: its own day, or New York's for an instant. */
+  const providerDay = (timed: Timed): string | null => {
+    if (timed.row.provider_precision === "date") return timed.row.provider_from!.slice(0, 10);
+    const ms = instantMs(timed.row.provider_from);
+    return ms === null ? null : newYork(ms).day;
+  };
 
   const coverage = file.provider_coverage;
-  const coverFrom = coverage ? instantMs(coverage.from) : null;
-  const coverTo = coverage ? instantMs(coverage.to) : null;
   const picked = new Map<string, Picked>();
 
-  if (coverFrom !== null && coverTo !== null && coverFrom <= at && at <= coverTo) {
+  if (coverage && order(coverage.from) <= at && at <= order(coverage.to) && order(coverage.to) !== NEVER) {
     // The Origin's clock. Only versions the Origin dated take part: a version Macro Atlas
     // merely held says nothing about when it was published.
     for (const timed of rows) {
@@ -264,8 +277,8 @@ export function resolve(series: ResolveSeries, asOf: string | null, release: { r
   } else {
     // Macro Atlas's clock: what was held just before the Cutoff.
     const captures = file.captures
-      .map((capture) => ({ capture, at: instantMs(capture.retrieved_at) ?? Infinity }))
-      .sort((a, b) => a.at - b.at);
+      .map((capture) => ({ capture, at: order(capture.retrieved_at), ms: instantMs(capture.retrieved_at) ?? 0 }))
+      .sort((a, b) => (a.at < b.at ? -1 : a.at > b.at ? 1 : 0));
     const before = captures.filter((c) => c.at < at);
     if (before.length === 0) return unavailable("no_coverage");
     const last = before[before.length - 1]!;
@@ -274,7 +287,7 @@ export function resolve(series: ResolveSeries, asOf: string | null, release: { r
     answer.capture_gap = {
       from: last.capture.retrieved_at,
       to: next ? next.capture.retrieved_at : null,
-      missed_days: missedSince(last.at),
+      missed_days: missedSince(last.ms),
       changed_across: next ? next.capture.change !== "none" : null,
     };
     answer.basis = answer.capture_gap.missed_days > 0 ? "uncertain" : "atlas_observed";
@@ -285,7 +298,7 @@ export function resolve(series: ResolveSeries, asOf: string | null, release: { r
       const asked = before.filter(({ capture: { scope } }) =>
         (scope[0] === null || scope[0] <= period_start) && (scope[1] === null || scope[1] >= period_end));
       const checked = asked[asked.length - 1];
-      const basis: VintageBasis = checked && missedSince(checked.at) === 0 ? "atlas_observed" : "uncertain";
+      const basis: VintageBasis = checked && missedSince(checked.ms) === 0 ? "atlas_observed" : "uncertain";
       picked.set(timed.row.period, { timed, basis, lastChecked: checked ? checked.capture.retrieved_at : null });
     }
     // A version first seen on the Cutoff's day: the figure changed that day, or may have.
@@ -294,13 +307,14 @@ export function resolve(series: ResolveSeries, asOf: string | null, release: { r
     const firstCapture = captures[0]!.at;
     answer.same_day_release = rows.some((timed, i) => {
       if (timed.provider !== null) return providerDay(timed) === cutoff.day;
-      if (timed.from === firstCapture || newYork(timed.from).day !== cutoff.day) return false;
+      const heldFrom = instantMs(timed.row.recorded_from);
+      if (timed.from === firstCapture || heldFrom === null || newYork(heldFrom).day !== cutoff.day) return false;
       const earlier = i > 0 && rows[i - 1]!.row.period === timed.row.period ? rows[i - 1]!.row : null;
       const restated = earlier !== null && !earlier.deleted && !timed.row.deleted
         && earlier.value === timed.row.value && earlier.status === timed.row.status;
       return !restated;
     });
-    const lines = file.metadata.filter((line) => (instantMs(line.recorded_from) ?? Infinity) < at);
+    const lines = file.metadata.filter((line) => order(line.recorded_from) < at);
     const line = lines[lines.length - 1];
     if (line) {
       answer.metadata = {

@@ -170,3 +170,17 @@ def test_a_reuse_keeps_the_vintage_files_and_a_withdrawal_takes_the_series_histo
     assert validate_release(left) == []
     assert sorted(p.name for p in (left / "vintages").iterdir()) == ["fx_price.json"]
     assert b"150000" not in all_bytes(root)  # fx_jobs' first print, held only in its history
+
+
+def test_a_second_metadata_under_a_hash_already_used_does_not_hide_where_values_came_from(
+        tmp_path, register, store):
+    """A file that gives one hash to two lines: both lines are lineage, and so is every line a
+    version's hash could mean."""
+    files = load_release(directory_of(tmp_path, publish(tmp_path, register, store)))
+    gate = RightsGate(json.loads(register.read_text()))
+    held = json.loads(files["vintages/fx_price.json"])
+    forged = json.loads(json.dumps(held["metadata"][0]))
+    forged["metadata"]["source"]["origin"]["producer"] = "An Origin with no row"
+    held["metadata"] = [forged, *held["metadata"]]
+    problems = R.rights_problems({**files, "vintages/fx_price.json": json.dumps(held).encode()}, gate)
+    assert len(problems) == 1 and "its history" in problems[0] and "An Origin with no row" in problems[0]

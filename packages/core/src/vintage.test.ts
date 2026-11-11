@@ -153,6 +153,15 @@ describe("an Atlas-observed vintage: what Macro Atlas held just before the cutof
     ]);
     expect(answer.capture_gap).toMatchObject({ from: C1, to: C2 });
   });
+  it("orders instants to the last digit a Release may write, not to the millisecond", () => {
+    // One microsecond after the first Capture, that Capture is before the cutoff.
+    const just = resolve(native(observed, NOW), "2026-06-09T14:45:00.000001Z", RELEASE);
+    expect([just.basis, table(just).length, just.capture_gap?.from]).toEqual(["atlas_observed", 2, C1]);
+    // A Capture stamped a microsecond after the cutoff is not.
+    const fine: VintageFile = { ...observed, captures: [capture("2026-06-09T14:45:00.000002Z", "first")], rows: [row("monthly", "2026-01", 100.0, "final", "2026-06-09T14:45:00.000002Z", null)] };
+    expect(resolve(native(fine), "2026-06-09T14:45:00.000001Z", RELEASE).basis).toBe("unavailable");
+    expect(resolve(native(fine), "2026-06-09T14:45:00.000003Z", RELEASE).basis).toBe("atlas_observed");
+  });
   it("a question with a time counts what Macro Atlas held by that time on the day", () => {
     const answer = resolve(native(observed, NOW), "2026-06-10T18:00:00Z", RELEASE); // 14:00 in New York
     expect(answer.cutoff).toMatchObject({ day: "2026-06-10", precision: "datetime" });
@@ -286,9 +295,9 @@ describe("a provider vintage: what the Origin had published before the cutoff", 
     metadata: [meta(M1, I, "billions")],
     captures: [capture(I, "first", [null, null]), capture(J, "revision", [null, null])],
     rows: [
-      row("quarterly", "2025-Q1", 600.0, "preliminary", I, I, { provider_from: Q1A, provider_to: Q1B, provider_precision: "datetime", channel: "archive" }),
-      row("quarterly", "2025-Q1", 601.5, "revised", I, null, { provider_from: Q1B, provider_precision: "datetime", channel: "archive" }),
-      row("quarterly", "2025-Q2", 610.0, "preliminary", I, J, { provider_from: "2025-07-30T00:00:00Z", provider_precision: "date", channel: "archive" }),
+      row("quarterly", "2025-Q1", 600.0, "preliminary", I, I, { provider_from: Q1A, provider_to: Q1B, provider_precision: "datetime" }),
+      row("quarterly", "2025-Q1", 601.5, "revised", I, null, { provider_from: Q1B, provider_precision: "datetime" }),
+      row("quarterly", "2025-Q2", 610.0, "preliminary", I, J, { provider_from: "2025-07-30T00:00:00Z", provider_precision: "date" }),
       row("quarterly", "2025-Q2", 611.0, "revised", J, null),
     ],
   };
@@ -323,6 +332,11 @@ describe("a provider vintage: what the Origin had published before the cutoff", 
   it("reports the metadata the versions were recorded under, with no date it cannot know", () => {
     expect(ask("2025-06-01").metadata).toMatchObject({ hash: M1, in_force_from: null, differs_from_current: false });
   });
+  it("a microsecond past the end of the Origin's record is outside it", () => {
+    expect(ask("2026-06-01T00:00:00Z").basis).toBe("provider"); // the record's last instant
+    const past = ask("2026-06-01T00:00:00.000001Z"); // imported at 15:00 that day: nothing held yet
+    expect([past.basis, past.reason]).toEqual(["unavailable", "no_coverage"]);
+  });
   it("before the Origin's record begins there is no coverage", () => {
     expect([ask("2024-12-31").basis, ask("2024-12-31").reason]).toEqual(["unavailable", "no_coverage"]);
   });
@@ -345,7 +359,7 @@ describe("a provider vintage: what the Origin had published before the cutoff", 
     captures: [capture(K1, "first", [null, null]), capture(K2, "revision", [null, null])],
     rows: [
       row("quarterly", "2025-Q4", 700.0, "final", K1, K2),
-      row("quarterly", "2025-Q4", 705.0, "revised", K2, null, { provider_from: "2026-01-08T13:30:00Z", provider_precision: "datetime", channel: "archive" }),
+      row("quarterly", "2025-Q4", 705.0, "revised", K2, null, { provider_from: "2026-01-08T13:30:00Z", provider_precision: "datetime" }),
     ],
   };
   it("the two clocks are never mixed: inside the Origin's record only versions it dated take part", () => {

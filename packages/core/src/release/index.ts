@@ -498,6 +498,16 @@ export function instantKey(text: string): string {
   return `${whole}.${fraction.padEnd(9, "0")}`;
 }
 
+/** JSON with every object's keys in order, so two values are the same text exactly when equal. */
+function canonical(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(canonical).join(",")}]`;
+  if (value !== null && typeof value === "object") {
+    const object = value as Record<string, unknown>;
+    return `{${Object.keys(object).sort().map((key) => `${JSON.stringify(key)}:${canonical(object[key])}`).join(",")}}`;
+  }
+  return JSON.stringify(value);
+}
+
 /**
  * vintages/{key}.json against the manifest, the catalog and the Series' own file, then its own
  * order in time (schema/README.md). Resolving an as-of question from the file is the engine's
@@ -559,7 +569,14 @@ function vintageRules(bundle: Release, files: ReleaseFiles, vintagePaths: Map<st
       }
     }
     if (!sorted(doc.metadata.map((line) => instantKey(line.recorded_from)))) bad("the metadata history is not oldest first");
-    const channelOf = new Map(doc.metadata.map((line) => [line.hash, line.metadata.source.channel.via]));
+    const channelOf = new Map<string, string>();
+    const said = new Map<string, string>();
+    for (const line of doc.metadata) {
+      const text = canonical(line.metadata);
+      if (!said.has(line.hash)) said.set(line.hash, text);
+      else if (said.get(line.hash) !== text) bad(`two different metadata share the hash ${line.hash.slice(0, 12)}`);
+      channelOf.set(line.hash, line.metadata.source.channel.via);
+    }
 
     const current = new Map<string, VintageRow>();
     const seen = new Set<string>();

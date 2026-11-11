@@ -418,6 +418,13 @@ def _recipe_rules(entries: dict[str, dict], withheld: set) -> list[Issue]:
     return issues
 
 
+def _same_number(a, b) -> bool:
+    """Two values of a Release are the same when they are the same double: every reader takes
+    a JSON number as one (schema/README.md, "Strict JSON"), and Python alone keeps an integer
+    past 2**53 exact."""
+    return a == b if a is None or b is None else float(a) == float(b)
+
+
 def instant_key(text: str) -> str:
     """An Instant as text that sorts in time order: the fraction, if any, padded to nine digits.
     (``...:00Z`` and ``...:00.5Z`` do not sort as written.)"""
@@ -479,7 +486,13 @@ def _vintage_rules(bundle, files, vintage_paths: dict[str, str]) -> list[Issue]:
         times = [instant_key(line["recorded_from"]) for line in doc["metadata"]]
         if times != sorted(times):
             bad("the metadata history is not oldest first")
-        channel_of = {line["hash"]: line["metadata"]["source"]["channel"]["via"] for line in doc["metadata"]}
+        channel_of: dict[str, str] = {}
+        said: dict[str, str] = {}
+        for line in doc["metadata"]:
+            text = json.dumps(line["metadata"], sort_keys=True)
+            if said.setdefault(line["hash"], text) != text:
+                bad(f"two different metadata share the hash {line['hash'][:12]}")
+            channel_of[line["hash"]] = line["metadata"]["source"]["channel"]["via"]
 
         current: dict[str, dict] = {}
         seen: set = set()
@@ -523,7 +536,7 @@ def _vintage_rules(bundle, files, vintage_paths: dict[str, str]) -> list[Issue]:
             if version is None:
                 if observation["value"] is not None or observation["status"] != "missing":
                     bad(f"{period}: series/{key}.json has a value that no current version holds")
-            elif (version["value"], version["status"]) != (observation["value"], observation["status"]):
+            elif not _same_number(version["value"], observation["value"]) or version["status"] != observation["status"]:
                 bad(f"{period}: the current version is not what series/{key}.json holds")
         for period in sorted(set(current) - listed):
             bad(f"{period}: a current version is not in series/{key}.json")
