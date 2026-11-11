@@ -51,7 +51,7 @@ describe("pearson", () => {
     const got = pearson([1, null, 3, 4, 5, 6, 7, 8, 9, 10], [2, 4, null, 8, 10, 12, 14, 16, 18, 20]);
     expect(got.n).toBe(8);
     expect(got.r).toBeCloseTo(1, 12);
-    expect(got.pairs[0]).toEqual([1, 2]);
+    expect(got.pairs[0]).toEqual({ x: 1, y: 2, i: 0, j: 0 });
   });
 
   it(`has no answer below ${MIN_PAIRS} pairs, and says why`, () => {
@@ -99,8 +99,9 @@ describe("rollingCorrelation", () => {
     const out = rollingCorrelation(x, x.map((v) => 2 * v), { window: 24 });
     expect(out).toHaveLength(30);
     expect(out[22]).toBeNull();
-    expect(out[23]).toBeCloseTo(1, 12);
-    expect(out[29]).toBeCloseTo(1, 12);
+    expect(out[23]!.r).toBeCloseTo(1, 12);
+    expect(out[29]).toMatchObject({ n: 24 });
+    expect(out[29]!.r).toBeCloseTo(1, 12);
   });
 });
 

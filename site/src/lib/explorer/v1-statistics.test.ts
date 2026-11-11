@@ -124,7 +124,7 @@ describe("v1's 16 statistics cases", () => {
     const x = Array.from({ length: 30 }, (_, i) => i);
     const out = rollingCorrelation(x, x.map((v) => 2 * v), { window: 24 });
     expect(out[22]).toBeNull();
-    expect(out[23]).toBeCloseTo(1, 9);
-    expect(out[29]).toBeCloseTo(1, 9);
+    expect(out[23]!.r).toBeCloseTo(1, 9);
+    expect(out[29]!.r).toBeCloseTo(1, 9);
   });
 });
