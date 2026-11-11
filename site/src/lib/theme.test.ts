@@ -29,6 +29,7 @@ describe("theme: the OS setting unless the reader chose otherwise", () => {
     const base = "/macro-atlas";
     expect(safeReturnPath("/macro-atlas/explore?s=a,b", base)).toBe("/macro-atlas/explore?s=a,b");
     expect(safeReturnPath("/macro-atlas", base)).toBe("/macro-atlas");
+    expect(safeReturnPath("/macro-atlas/data/unrate?from=2020-01&s=a%2Cb#table", base)).toBe("/macro-atlas/data/unrate?from=2020-01&s=a%2Cb#table");
     for (const bad of [
       null,
       "",
@@ -36,6 +37,11 @@ describe("theme: the OS setting unless the reader chose otherwise", () => {
       "//evil.example/macro-atlas",
       "/macro-atlas-staging/explore",
       "/macro-atlas/../admin",
+      "/macro-atlas/%2e%2e/missions",
+      "/macro-atlas/%2E%2E%2Fmissions",
+      "/macro-atlas/a/..%2f..%2fmissions",
+      "/macro-atlas/./../missions",
+      "/macro-atlas/\t/x",
       "/macro-atlas/\\evil",
       "/macro-atlas/x\r\nSet-Cookie: a=b",
       "/other",

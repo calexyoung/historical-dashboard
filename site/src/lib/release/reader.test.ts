@@ -1,4 +1,4 @@
-import { rmSync, writeFileSync } from "node:fs";
+import { rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { createReleaseReader, refusal } from "./reader";
@@ -211,5 +211,72 @@ describe("ReleaseReader: a release that breaks the interim data rule is refused,
     await reader.current();
     promote(root, B);
     expect(await reader.current()).toMatchObject({ ok: false, kind: "refused", id: B });
+  });
+});
+
+describe("ReleaseReader on a public Surface: no fallback of any kind (Codex, M1 review)", () => {
+  // Falling back to the last good release is only safe when we know the release CURRENT names
+  // would have been allowed. When it cannot be read or parsed, we do not know that.
+  for (const surface of ["production", "staging"] as const) {
+    it(`${surface}: a local-profile release hidden behind a symlink is not papered over`, async () => {
+      const root = tempRoot();
+      addRelease(root, { id: A });
+      const dir = addRelease(root, { id: B, profile: "local" });
+      symlinkSync("/etc/hosts", join(dir, "series", "extra.json"));
+      promote(root, A);
+      const reader = createReleaseReader({ root, surface });
+      expect((await reader.current()).ok).toBe(true);
+      promote(root, B);
+      expect(await reader.current()).toMatchObject({ ok: false, id: B });
+    });
+
+    it(`${surface}: an unsigned register hidden behind malformed JSON is not papered over`, async () => {
+      const root = tempRoot();
+      addRelease(root, { id: A });
+      const dir = addRelease(root, { id: B, signed: false });
+      writeFileSync(join(dir, "content", "annotations.json"), "{ not json");
+      promote(root, A);
+      const reader = createReleaseReader({ root, surface });
+      expect((await reader.current()).ok).toBe(true);
+      promote(root, B);
+      expect(await reader.current()).toMatchObject({ ok: false, id: B });
+    });
+
+    it(`${surface}: a release that was missing a moment ago and is local-profile now is not served around`, async () => {
+      const root = tempRoot();
+      addRelease(root, { id: A });
+      promote(root, A);
+      let clock = 1_000_000;
+      const reader = createReleaseReader({ root, surface, now: () => clock });
+      expect((await reader.current()).ok).toBe(true);
+      promote(root, B); // not on disk yet
+      expect((await reader.current()).ok).toBe(false);
+      addRelease(root, { id: B, profile: "local" });
+      clock += 1_000; // inside the window in which a failure to open is remembered
+      expect((await reader.current()).ok).toBe(false);
+      clock += 10_000;
+      expect(await reader.current()).toMatchObject({ ok: false, kind: "refused", id: B });
+    });
+
+    it(`${surface}: answers again as soon as CURRENT names a release that may be served`, async () => {
+      const root = tempRoot();
+      addRelease(root, { id: A });
+      addRelease(root, { id: B, profile: "local" });
+      promote(root, B);
+      const reader = createReleaseReader({ root, surface });
+      expect((await reader.current()).ok).toBe(false);
+      promote(root, A);
+      expect(await reader.current()).toMatchObject({ ok: true, release: { id: A }, refreshFailed: null });
+    });
+  }
+
+  it("the local surface keeps the failed-refresh fallback: it has no rule to break", async () => {
+    const root = tempRoot();
+    addRelease(root, { id: A });
+    promote(root, A);
+    const reader = createReleaseReader({ root, surface: "local" });
+    await reader.current();
+    promote(root, B); // missing
+    expect(await reader.current()).toMatchObject({ ok: true, release: { id: A }, refreshFailed: { kind: "unavailable", id: B } });
   });
 });
