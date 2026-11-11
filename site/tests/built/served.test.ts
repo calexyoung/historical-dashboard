@@ -68,7 +68,7 @@ describe("the fixture release is served at both base paths", () => {
   it("shows only tabs whose pages exist, and marks the current one", async () => {
     const html = await (await get(servers[0]!.url("/explore"))).text();
     const nav = html.slice(html.indexOf('<nav aria-label="Sections"'), html.indexOf("</nav>", html.indexOf('<nav aria-label="Sections"')));
-    expect([...nav.matchAll(/<a [^>]*>([^<]+)<\/a>/g)].map((m) => m[1])).toEqual(["Explore"]);
+    expect([...nav.matchAll(/<a [^>]*>([^<]+)<\/a>/g)].map((m) => m[1])).toEqual(["Explore", "Data"]);
     expect(nav).toContain('aria-current="page"');
   });
 
@@ -95,6 +95,99 @@ describe("the fixture release is served at both base paths", () => {
     }
     expect((await getAs(servers[0]!.url("/explore"), "localhost:3101")).status).toBe(200);
     expect((await get(servers[0]!.url("/explore"))).headers.get("x-robots-tag")).toBe("noindex");
+  });
+});
+
+describe("the catalog page, /data (PLAN section 3, M2)", () => {
+  let server: Running;
+  beforeAll(async () => {
+    server = await startVariant("local-atlas", { root: FIXTURE_ROOT });
+  });
+  afterAll(() => server.stop());
+
+  const page = async (query = "") => {
+    const response = await get(server.url(`/data${query}`));
+    expect(response.status).toBe(200);
+    return response.text();
+  };
+  const rows = (html: string): string[] => [...html.matchAll(/data-series-key="([a-z0-9_]+)"/g)].map((m) => m[1]!);
+
+  it("lists every series of the release in the HTML itself, from one release", async () => {
+    const html = await page();
+    expect(rows(html)).toHaveLength(8);
+    expect(idsOn(html)).toEqual([FIXTURE_ID]);
+    expect(html).toContain("Fixture price index");
+    expect(html).toContain("8 series");
+    expect(html).toMatch(/<h1[^>]*>Data<\/h1>/);
+  });
+
+  it("searches and filters with a plain GET form: no JavaScript is needed", async () => {
+    const html = await page();
+    expect(html).toContain('<form method="get" action="/macro-atlas/data"');
+    expect(html).toMatch(/<input[^>]*type="search"[^>]*name="q"/);
+    for (const name of ["segment", "freq", "via", "rights"]) expect(html).toMatch(new RegExp(`<select[^>]*name="${name}"`));
+    expect(rows(await page("?q=vote"))).toEqual(["fx_vote_margin"]);
+    expect(rows(await page("?freq=quarterly"))).toEqual(["fx_output_quarterly"]);
+    expect(rows(await page("?segment=economy_jobs&freq=monthly&q=payrolls"))).toEqual(["fx_payrolls_break"]);
+    const narrowed = await page("?q=vote");
+    expect(narrowed).toContain("1 of 8 series");
+    expect(narrowed).toMatch(/<input[^>]*name="q"[^>]*value="vote"/); // the form shows what was asked
+  });
+
+  it("says so when nothing matches, and offers the way back", async () => {
+    const html = await page("?q=zzzz");
+    expect(rows(html)).toEqual([]);
+    expect(html).toContain("No series match");
+    expect(html).toContain('href="/macro-atlas/data"');
+  });
+
+  it("names a withheld series with the reason and shows no value for it", async () => {
+    const html = await page("?via=fixture_vendor");
+    expect(rows(html)).toEqual(["fx_exchange_index"]);
+    expect(html).toContain("Withheld");
+    expect(html).toContain("The licence does not allow redistribution.");
+  });
+
+  it("does not put what a reader typed into the page as markup", async () => {
+    const html = await page(`?q=${encodeURIComponent('"><script>alert(1)</script>')}`);
+    expect(html).not.toContain("<script>alert(1)</script>");
+  });
+});
+
+describe("the strip on a local-profile release (PLAN M2, 6.1)", () => {
+  const STRIP = "Local build · v1 data via FRED and Yahoo · not for publication";
+  let server: Running;
+  const root = tempRoot();
+  beforeAll(async () => {
+    addRelease(root, { id: A, profile: "local", signed: false, legacy: "fx_price_index" });
+    addRelease(root, { id: B, profile: "local", signed: false });
+    addRelease(root, { id: LOCAL });
+    promote(root, A);
+    server = await startVariant("local-atlas", { root });
+  });
+  afterAll(() => server.stop());
+
+  it.each(["/explore", "/data", "/data?q=nothing-matches", "/no-such-page"])("reads exactly as agreed on %s when the release holds v1's data", async (path) => {
+    promote(root, A);
+    const html = await (await get(server.url(path))).text();
+    expect(idsOn(html)).toEqual([A]);
+    expect(html).toContain(STRIP);
+    // visible without scrolling: it comes before the page's content
+    expect(html.indexOf(STRIP)).toBeLessThan(html.indexOf('<main id="main"'));
+  });
+
+  it("a local-profile release without v1's data does not claim to hold it", async () => {
+    promote(root, B);
+    const html = await (await get(server.url("/data"))).text();
+    expect(html).not.toContain("v1 data via FRED and Yahoo");
+    expect(html).toContain("Local build · local-profile release · not for publication");
+  });
+
+  it("a public-profile release has no strip", async () => {
+    promote(root, LOCAL);
+    const html = await (await get(server.url("/data"))).text();
+    expect(html).not.toContain("not for publication");
+    promote(root, A);
   });
 });
 
@@ -220,7 +313,7 @@ describe("rewriting CURRENT changes the served page with no restart", () => {
 describe("a production-surface build fails closed (PLAN 6.1 point 5, reader)", () => {
   let server: Running;
   const root = tempRoot();
-  const PATHS = ["/", "/explore", "/explore/", "/api/health", "/api/theme", "/icon.svg", "/_next/static/chunks/x.js", "/no/such/page"];
+  const PATHS = ["/", "/explore", "/explore/", "/data", "/data?q=price", "/api/health", "/api/theme", "/icon.svg", "/_next/static/chunks/x.js", "/no/such/page"];
 
   beforeAll(async () => {
     addRelease(root, { id: A });
