@@ -149,7 +149,8 @@ def test_the_capture_host_needs_nothing_but_the_standard_library_to_start(tmp_pa
         "assert 'requests' not in sys.modules, 'a dry run must not need the network library'\n"
         "sys.exit(status)\n"
     )
-    done = subprocess.run([sys.executable, "-c", program], cwd=ROOT, capture_output=True, text=True)
+    done = subprocess.run([sys.executable, "-c", program], cwd=ROOT, capture_output=True, text=True,
+                          check=False)
     assert done.returncode == 1, done.stderr
     assert "REFUSED bls-headline" in done.stdout
 
@@ -183,7 +184,7 @@ def test_the_committed_fixtures_are_what_their_script_writes(tmp_path):
     module.build(tmp_path)
     for record in read_exchanges(FIXTURES):
         relative = record["directory"].relative_to(FIXTURES)
-        match, mismatch, errors = filecmp.cmpfiles(
+        _same, mismatch, errors = filecmp.cmpfiles(
             record["directory"], tmp_path / relative,
             [p.name for p in record["directory"].iterdir()], shallow=False)
         assert (mismatch, errors) == ([], []), relative
@@ -231,6 +232,21 @@ def test_a_blob_that_was_altered_is_not_read_back(tmp_path, capsys):
         load_capture(store, line)
 
 
+def test_verify_checks_every_blob_the_fetch_log_names(tmp_path, capsys):
+    store = captured_store(tmp_path)
+    capsys.readouterr()
+    assert main(["--store", str(store), "--verify"]) == 0
+    assert "3 captures, 3 blobs, all present and unaltered" in capsys.readouterr().out
+
+    lines = read_fetch_log(store)
+    (store / lines[0]["parts"][0]["blob"]).unlink()
+    (store / lines[1]["parts"][0]["blob"]).write_bytes(gzip.compress(b"tampered"))
+    assert main(["--store", str(store), "--verify"]) == 1
+    out = capsys.readouterr().out
+    assert f"MISSING {lines[0]['parts'][0]['blob']}" in out
+    assert f"ALTERED {lines[1]['parts'][0]['blob']}" in out
+
+
 def test_exporting_a_store_gives_back_the_exchanges_it_was_replayed_from(tmp_path, capsys):
     store = captured_store(tmp_path)
     written = export_exchanges(store, tmp_path / "out", load_register(), note="round trip")
@@ -276,10 +292,9 @@ def test_export_fixtures_from_the_command_line_refuses_the_same_way(tmp_path, ca
     assert "REFUSED" in capsys.readouterr().out and not (tmp_path / "out").exists()
 
 
-def test_a_live_run_does_not_write_into_a_store_of_replayed_fixtures(tmp_path, capsys):
-    store = captured_store(tmp_path)
-    live = live_store(tmp_path / "other")
-    result = run_capture(live, json.loads(signed_register(tmp_path).read_text()),
+def test_a_replay_does_not_write_into_a_store_of_real_captures(tmp_path, capsys):
+    store = live_store(tmp_path)
+    result = run_capture(store, json.loads(signed_register(tmp_path).read_text()),
                          ReplayTransport(FIXTURES), sleep=lambda seconds: None)
     assert result.exit_code == 1 and "holds a live run and this run is replay" in result.lines[0]
-    assert len(read_runs(store)) == 1
+    assert len(read_runs(store)) == 1 and len(read_fetch_log(store)) == 3

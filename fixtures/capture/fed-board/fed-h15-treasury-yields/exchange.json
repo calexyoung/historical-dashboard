@@ -1,0 +1,48 @@
+{
+  "format": 1,
+  "source": "fed-board",
+  "endpoint": "fed-h15-treasury-yields",
+  "recorded_at": "2026-11-11T15:50:00Z",
+  "provenance": {
+    "synthetic": true,
+    "transport": "synthetic",
+    "origin": "Board of Governors of the Federal Reserve System",
+    "datasets": [
+      "H.15 Selected Interest Rates"
+    ],
+    "retrieved_at": "2026-11-11T15:50:03Z",
+    "capture_id": null,
+    "note": "Invented values in the shape of the source's answer of 2026-11-11. Not a measurement of anything and not a capture: written by fixtures/capture/make_fixtures.py."
+  },
+  "exchanges": [
+    {
+      "request": {
+        "method": "GET",
+        "url": "https://www.federalreserve.gov/datadownload/Output.aspx?rel=H15&series=bf17364827e38702b42a58cf8eaa3f78&lastobs=&from=&to=&filetype=csv&label=include&layout=seriescolumn",
+        "body": null
+      },
+      "status": 200,
+      "headers": [
+        [
+          "Content-Type",
+          "text/csv"
+        ],
+        [
+          "Date",
+          "Wed, 11 Nov 2026 15:50:03 GMT"
+        ],
+        [
+          "Content-Length",
+          "2997"
+        ],
+        [
+          "Set-Cookie",
+          "(not kept)"
+        ]
+      ],
+      "received_at": "2026-11-11T15:50:03Z",
+      "body_file": "part-1.csv",
+      "sha256": "70c52a9b222e71015ab6bc5d36b9fb29f7618b171c1c351845caa3518b6c57d1"
+    }
+  ]
+}

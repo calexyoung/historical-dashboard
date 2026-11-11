@@ -1,0 +1,50 @@
+{
+  "format": 1,
+  "source": "bls",
+  "endpoint": "bls-headline",
+  "recorded_at": "2026-11-11T15:50:00Z",
+  "provenance": {
+    "synthetic": true,
+    "transport": "synthetic",
+    "origin": "U.S. Bureau of Labor Statistics",
+    "datasets": [
+      "Consumer Price Index",
+      "Current Population Survey",
+      "Current Employment Statistics"
+    ],
+    "retrieved_at": "2026-11-11T15:50:01Z",
+    "capture_id": null,
+    "note": "Invented values in the shape of the source's answer of 2026-11-11. Not a measurement of anything and not a capture: written by fixtures/capture/make_fixtures.py."
+  },
+  "exchanges": [
+    {
+      "request": {
+        "method": "POST",
+        "url": "https://api.bls.gov/publicAPI/v2/timeseries/data/",
+        "body": "{\"seriesid\": [\"CUUR0000SA0\", \"CUSR0000SA0\", \"LNS14000000\", \"CES0000000001\"], \"startyear\": \"2017\", \"endyear\": \"2026\"}"
+      },
+      "status": 200,
+      "headers": [
+        [
+          "Content-Type",
+          "application/json"
+        ],
+        [
+          "Date",
+          "Wed, 11 Nov 2026 15:50:01 GMT"
+        ],
+        [
+          "Content-Length",
+          "41584"
+        ],
+        [
+          "Set-Cookie",
+          "(not kept)"
+        ]
+      ],
+      "received_at": "2026-11-11T15:50:01Z",
+      "body_file": "part-1.json",
+      "sha256": "b6eb86f26a2d490039ec885535e2393b7364da7525e924b99bd11354459c415e"
+    }
+  ]
+}

@@ -185,6 +185,13 @@ def test_a_treasury_answer_that_is_not_whole_is_flagged(pages, problem):
     assert problem in raw.evidence.problems
 
 
+def test_treasury_line_numbers_are_ordered_as_numbers():
+    rows = [{"record_date": "2026-11-05", "src_line_nbr": n} for n in ("2", "10")]
+    page = json.dumps({"data": rows, "meta": {"count": 2, "total-count": 2, "total-pages": 1}})
+    raw, _ = fetch(TREASURY, {treasury_url(1): [(200, page)]})
+    assert raw.evidence.complete, raw.evidence.problems
+
+
 def test_treasury_stops_at_its_page_limit_and_says_the_table_was_not_all_read():
     answers = {treasury_url(n): [(200, treasury_page([f"2026-01-{n:02d}"], 60, 60))] for n in range(1, 51)}
     raw, transport = fetch(TREASURY, answers)

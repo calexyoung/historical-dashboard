@@ -47,7 +47,7 @@ def test_a_client_error_is_final_at_once():
 
 
 def test_no_answer_after_every_try_raises():
-    http, transport, _ = session({A: [refused("reset")] * 4})
+    http, _, _ = session({A: [refused("reset")] * 4})
     with pytest.raises(CaptureError, match="no answer from a.invalid after 4 tries: reset"):
         http.send(Request("GET", A))
 
