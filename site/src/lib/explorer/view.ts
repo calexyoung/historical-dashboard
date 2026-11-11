@@ -278,7 +278,7 @@ export function explorerView(release: OpenedRelease, surface: Surface, state: Ex
   const chosen = shownEvents.find((e) => e.a.id === chosenId) ?? null;
 
   // --- the address, and every address the page links to ---
-  const base: Omit<ExplorerState, "notes"> = { series: state.series, mode: state.mode, from: state.from, to: state.to, layers: state.layers, at: state.at, event: state.event, hi: state.hi, pick: false, carried: state.carried };
+  const base: Omit<ExplorerState, "notes"> = { series: state.series, mode: state.mode, from: state.from, to: state.to, layers: state.layers, at: state.at, event: state.event, hi: state.hi, pick: false, table: state.table, carried: state.carried };
   const queryWith: ExplorerView["queryWith"] = (change) => {
     const next = { ...base, ...change };
     if ("event" in change) next.hi = null; // choosing or letting go of an Event replaces v1's index
@@ -297,6 +297,7 @@ export function explorerView(release: OpenedRelease, surface: Surface, state: Ex
     event: chosenId !== null && allEvents.some((a) => a.id === chosenId) ? chosenId : null,
     hi: null,
     pick: false,
+    table: state.table,
     carried: state.carried,
   };
 
@@ -330,7 +331,8 @@ export function explorerView(release: OpenedRelease, surface: Surface, state: Ex
       seasonalAdjustment: mode === "lin" || mode === "log" ? e.seasonal_adjustment : undefined,
       priceBasis: mode === "lin" || mode === "log" ? e.price_basis : undefined,
       country: e.country,
-      maxLag: e.max_lag,
+      // Stale is said of a Series' latest value, which a window that closes earlier does not show.
+      maxLag: state.to === null ? e.max_lag : undefined,
       breaks: e.breaks,
       source: sourceWords(e),
       observations,
@@ -414,7 +416,7 @@ export function explorerView(release: OpenedRelease, surface: Surface, state: Ex
   const presets = PRESETS.filter((p) => p.series.some((k) => entries.has(k))).map((p) => ({
     name: p.name,
     // v1's presets changed the Series, the mode and the range, and left the layers as they were.
-    query: explorerQuery({ series: p.series.filter((k) => entries.has(k)), mode: p.mode, from: p.from, to: p.to, layers: state.layers, at: null, event: null, hi: null, pick: false, carried: p.cmp ? [["cmp", p.cmp]] : [] }),
+    query: explorerQuery({ series: p.series.filter((k) => entries.has(k)), mode: p.mode, from: p.from, to: p.to, layers: state.layers, at: null, event: null, hi: null, pick: false, table: false, carried: p.cmp ? [["cmp", p.cmp]] : [] }),
   }));
 
   const mayShow = (e: CatalogEntry): boolean =>

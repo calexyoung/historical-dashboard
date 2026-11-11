@@ -315,7 +315,7 @@ export function drawPlot(input: PlotInput, created: string, layout: LayoutName, 
         h(
           "g",
           { "data-layer": "band", "data-tint": band.tint },
-          h("rect", { x: ax, y: yTop, width: r2(bx - ax), height: yBottom - yTop, fill: "var(--color-band)", "fill-opacity": band.tint === "a" ? 0.55 : 0.22 }),
+          h("rect", { x: ax, y: yTop, width: r2(bx - ax), height: yBottom - yTop, fill: "var(--color-band)", "fill-opacity": band.tint === "a" ? 0.5 : 0.2 }),
           // A hairline where a band begins, so two bands of one tint in a row are still two.
           h("line", { x1: ax, y1: yTop, x2: ax, y2: yBottom, stroke: LINE_STRONG, "stroke-width": 1 }),
           fits && text(band.label, { x: r2(ax + 4), y: yTop + 12 }),
@@ -327,10 +327,11 @@ export function drawPlot(input: PlotInput, created: string, layout: LayoutName, 
       if (!at) continue;
       behind.push(h("g", { "data-layer": "recession" }, h("rect", { x: at[0], y: yTop, width: r2(at[1] - at[0]), height: yBottom - yTop, fill: INK, "fill-opacity": 0.1 })));
     }
-    for (const event of layers.events) {
-      if (!inWindow(ms(event.date))) continue;
-      const ex = r2(xFree(ms(event.date)));
-      front.push(h("g", { "data-layer": "event", "data-event": event.id }, h("line", { x1: ex, y1: yBottom - 10, x2: ex, y2: yBottom, stroke: INK_2, "stroke-width": 1.5 })));
+    // Every Event tick in one path: a long list of Events is then one node per drawing, not one each.
+    const ticks = layers.events.filter((event) => inWindow(ms(event.date))).map((event) => r2(xFree(ms(event.date))));
+    if (ticks.length > 0) {
+      const d = ticks.map((ex) => `M${ex} ${yBottom - 10}V${yBottom}`).join("");
+      front.push(h("path", { "data-layer": "events", "data-count": ticks.length, d, fill: "none", stroke: INK_2, "stroke-width": 1.5 }));
     }
     const chosen = layers.highlight;
     if (chosen && inWindow(ms(chosen.date))) {

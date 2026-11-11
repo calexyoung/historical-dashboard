@@ -76,6 +76,7 @@ describe("a view written back as an address", () => {
     "s=&layers=none",
     "s=spx,unrate,wti&mode=rebase&from=2007-10&to=2010-10&cmp=2020-01",
     "s=fedfunds,gs10&mode=lin&from=2010-01&hi=3&basis=lvl&lag=6&sx=fedfunds&sy=gs10&roll=24&ext=1",
+    "s=fx_price_index&at=2024-05-01&table=1&pick=1",
     "",
   ])("%s reads back as the same view", (query) => {
     const state = parse(query);

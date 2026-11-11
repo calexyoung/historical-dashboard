@@ -11,7 +11,7 @@ function block(after: string): Record<string, string> {
   return Object.fromEntries([...body.matchAll(/--color-([a-z0-9-]+):\s*(#[0-9a-f]{6})\s*;/g)].map((m) => [m[1]!, m[2]!]));
 }
 
-const light = block("@theme {");
+const light = block("@theme static {");
 const darkByOs = block(':root:not([data-theme="light"]) {');
 const darkByChoice = block(':root[data-theme="dark"] {');
 
@@ -35,6 +35,11 @@ describe("contrast holds in both themes (WCAG 2.2: text 4.5:1, marks and control
   it("has the same contrast arithmetic as the WCAG examples", () => {
     expect(contrast("#000000", "#ffffff")).toBeCloseTo(21, 5);
     expect(contrast("#777777", "#ffffff")).toBeCloseTo(4.48, 2);
+  });
+
+  it("every token reaches the stylesheet, used by a class or not (drawings name colours in SVG attributes)", () => {
+    expect(css).toContain("@theme static {");
+    expect(css).not.toMatch(/@theme\s*\{/);
   });
 
   it("the dark theme is one set of tokens, whether the OS or the reader chose it", () => {

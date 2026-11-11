@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { StateMark } from "@/components/StateMark";
 import { Svg } from "@/components/Svg";
 import { swatch, type Figure as FigureData, type FigureTable, type LayoutName } from "@/lib/figure";
@@ -62,8 +63,49 @@ function Table({ table, basePath }: { table: FigureTable; basePath: string }) {
  * table, and a door into the Explorer. Complete in the HTML: the two disclosures are <details>,
  * and nothing here animates.
  */
-export function Figure({ figure, basePath, explorerHref }: { figure: FigureData; basePath: string; explorerHref?: string }) {
+export function Figure({
+  figure,
+  basePath,
+  explorerHref,
+  wrapPlots,
+  namePlots = false,
+  tableOnDemand,
+}: {
+  figure: FigureData;
+  basePath: string;
+  explorerHref?: string;
+  /** Puts something around the drawings (the Explorer's pointer and keyboard layer). Runs on the server. */
+  wrapPlots?: (plots: ReactNode) => ReactNode;
+  /** Name the Series under every plot, even a plot of one: needed when a figure has several plots. */
+  namePlots?: boolean;
+  /**
+   * The table is sent only when asked for (the Explorer: eight Series are thousands of rows).
+   * `toggle` is the caller's link that asks for it when it is not shown, and lets it go when it
+   * is. (A slot, not an address: a reading page must not load a link component it never uses.)
+   */
+  tableOnDemand?: { shown: boolean; toggle: ReactNode };
+}) {
   const several = figure.tables.length > 1;
+  const plots = figure.plots.map((plot) => (
+    <div key={plot.unit} data-plot className="@container min-w-0 max-w-[1024px]">
+      {LAYOUT_ORDER.map((layout) => (
+        <Svg key={layout} node={plot.layouts[layout]} className={`${SHOWN[layout]} h-auto w-full text-ink`} />
+      ))}
+      {(plot.series.length > 1 || namePlots) && (
+        <ul data-legend className={`mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-ink-2 ${plot.endLabels ? "@min-[768px]:hidden" : ""}`}>
+          {plot.series.map((s) => (
+            <li key={s.key} className="inline-flex items-center gap-1.5">
+              <Svg node={swatch(s)} className="shrink-0" />
+              {s.name}
+            </li>
+          ))}
+        </ul>
+      )}
+      <p data-unit-line className="mt-1 text-xs text-ink-2">
+        {plot.unitLine}
+      </p>
+    </div>
+  ));
   return (
     <figure data-figure className="m-0 flex min-w-0 flex-col gap-3">
       {figure.takeaway ? (
@@ -79,26 +121,7 @@ export function Figure({ figure, basePath, explorerHref }: { figure: FigureData;
         )
       )}
 
-      {figure.plots.map((plot) => (
-        <div key={plot.unit} data-plot className="@container min-w-0 max-w-[1024px]">
-          {LAYOUT_ORDER.map((layout) => (
-            <Svg key={layout} node={plot.layouts[layout]} className={`${SHOWN[layout]} h-auto w-full text-ink`} />
-          ))}
-          {plot.series.length > 1 && (
-            <ul data-legend className={`mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-ink-2 ${plot.endLabels ? "@min-[768px]:hidden" : ""}`}>
-              {plot.series.map((s) => (
-                <li key={s.key} className="inline-flex items-center gap-1.5">
-                  <Svg node={swatch(s)} className="shrink-0" />
-                  {s.name}
-                </li>
-              ))}
-            </ul>
-          )}
-          <p data-unit-line className="mt-1 text-xs text-ink-2">
-            {plot.unitLine}
-          </p>
-        </div>
-      ))}
+      {wrapPlots ? wrapPlots(plots) : plots}
 
       {figure.states.length > 0 && (
         <ul data-states className="flex flex-col gap-0.5 text-sm text-ink-2">
@@ -135,8 +158,12 @@ export function Figure({ figure, basePath, explorerHref }: { figure: FigureData;
                 ))}
               </ul>
             </details>
-            <details data-table>
-              <summary className={summary}>Show the table</summary>
+            {tableOnDemand && !tableOnDemand.shown ? (
+              <p className="text-sm font-medium">{tableOnDemand.toggle}</p>
+            ) : (
+            <details data-table open={tableOnDemand?.shown}>
+              <summary className={summary}>{tableOnDemand ? "The table" : "Show the table"}</summary>
+              {tableOnDemand && <p className="mt-1 text-sm">{tableOnDemand.toggle}</p>}
               {/* Wide values can outgrow a phone: the table scrolls inside this region, never the page.
                   A scrolling region must be reachable from the keyboard, hence the tab stop. */}
               <div role="group" aria-label="Table of values" tabIndex={0} className="mb-2 mt-1 flex flex-col gap-6 overflow-x-auto">
@@ -145,6 +172,7 @@ export function Figure({ figure, basePath, explorerHref }: { figure: FigureData;
                 ))}
               </div>
             </details>
+            )}
             {explorerHref && (
               <p>
                 <a href={explorerHref} className={`${link} inline-flex min-h-8 items-center text-sm font-medium`}>

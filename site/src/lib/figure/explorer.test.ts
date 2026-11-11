@@ -108,9 +108,11 @@ describe("annotation layers are drawn from dates, behind and over the Series", (
   it("an event in the window is a tick at its date; one outside is not drawn", () => {
     for (const layout of EACH_LAYOUT) {
       const root = f.plots[1]!.layouts[layout];
-      const ticks = layer(root, "event");
-      expect(ticks.map((t) => t.attrs["data-event"])).toEqual(["event-a"]);
-      expect(num(find(ticks[0]!, (n) => n.tag === "line")[0]!, "x1")).toBeCloseTo(xOf(root, "2024-09-18"), 1);
+      const [ticks] = layer(root, "events");
+      expect(ticks!.attrs["data-count"]).toBe(1);
+      const at = [...String(ticks!.attrs.d).matchAll(/M(-?[\d.]+)/g)].map((m) => Number(m[1]));
+      expect(at).toHaveLength(1);
+      expect(at[0]).toBeCloseTo(xOf(root, "2024-09-18"), 1);
     }
   });
 
@@ -130,7 +132,7 @@ describe("annotation layers are drawn from dates, behind and over the Series", (
 
   it("no layer is drawn in a colour of the series palette or with an animation", () => {
     const root = f.plots[0]!.layouts.wide;
-    for (const name of ["band", "recession", "event", "chosen-event"]) {
+    for (const name of ["band", "recession", "events", "chosen-event"]) {
       for (const g of layer(root, name)) {
         for (const n of walk(g)) {
           expect(JSON.stringify(n.attrs)).not.toMatch(/--color-series-/);

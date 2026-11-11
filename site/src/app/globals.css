@@ -6,8 +6,12 @@
  * What /missions needs and Macro Atlas does not (map, publication-route and lag colours) is left
  * out. What Macro Atlas adds is marked "Atlas" and recorded in /DESIGN.md.
  * site/src/lib/tokens.test.ts checks the contrast of every pair DESIGN.md promises.
+ *
+ * `static`: every token is written to the stylesheet whether or not a class uses it. Drawings
+ * name colours as `var(--color-series-n)` in SVG attributes, which Tailwind cannot see, and
+ * without this it drops the light value of any series colour no class happens to use.
  */
-@theme {
+@theme static {
   --color-void: #ffffff;
   --color-panel: #ffffff;
   --color-raised: #f2f5f8;
@@ -249,6 +253,109 @@ svg :focus-visible {
     color: var(--color-ink-3);
   }
 
+  /*
+   * Atlas: the Explorer (PLAN section 8). Nothing on the chart, the readout or the layer
+   * switches moves. The only things here that do are the picker sheet and the "Copied" label.
+   */
+  .explorer-chart {
+    cursor: crosshair;
+    touch-action: pan-y;
+  }
+  .explorer-chart:focus-visible {
+    outline-offset: -2px; /* drawn inside the chart, so it is never clipped by the panel */
+  }
+  /* Once the browser has taken over the pin, the server's drawing of it steps aside. */
+  .explorer-chart[data-live] [data-pin] {
+    display: none;
+  }
+
+  /* "Copy link" and "Copied" share one box and crossfade in 200 ms. */
+  .fade-label {
+    transition: opacity 200ms ease;
+  }
+  .fade-label[data-shown="false"] {
+    opacity: 0;
+  }
+
+  /*
+   * The series picker: a bottom sheet, and from 1024px a drawer at the left. It comes in over
+   * 240 ms and leaves in 180 ms, by transform only, on the drawer curve. `@starting-style` and
+   * `allow-discrete` let a <dialog> do that with no script; where they are not supported it
+   * simply appears. Opened from the keyboard (data-instant) it never moves.
+   */
+  .sheet {
+    position: fixed;
+    inset: auto 0 0 0;
+    margin: 0;
+    width: 100%;
+    max-width: none;
+    height: min(85dvh, 640px);
+    max-height: none;
+    padding: 0;
+    border: 0;
+    border-top: 2px solid var(--color-ink);
+    background: var(--color-panel);
+    color: var(--color-ink);
+    box-shadow: 0 -8px 32px rgb(0 0 0 / 0.18);
+    transform: translateY(100%);
+    transition:
+      transform 180ms var(--ease-drawer),
+      overlay 180ms allow-discrete,
+      display 180ms allow-discrete;
+  }
+  .sheet[open] {
+    display: flex;
+    flex-direction: column;
+    transform: none;
+    transition-duration: 240ms;
+  }
+  @starting-style {
+    .sheet[open] {
+      transform: translateY(100%);
+    }
+  }
+  .sheet::backdrop {
+    background: var(--color-scrim);
+    opacity: 0;
+    transition:
+      opacity 180ms ease,
+      overlay 180ms allow-discrete,
+      display 180ms allow-discrete;
+  }
+  .sheet[open]::backdrop {
+    opacity: 0.35;
+    transition-duration: 240ms;
+  }
+  @starting-style {
+    .sheet[open]::backdrop {
+      opacity: 0;
+    }
+  }
+  @media (min-width: 1024px) {
+    .sheet {
+      inset: 0 auto 0 0;
+      width: 400px;
+      height: 100dvh;
+      border-top: 0;
+      border-right: 2px solid var(--color-ink);
+      box-shadow: 8px 0 32px rgb(0 0 0 / 0.18);
+      transform: translateX(-100%);
+    }
+    @starting-style {
+      .sheet[open] {
+        transform: translateX(-100%);
+      }
+    }
+    /* At the side the chart stays in view, so it is not dimmed. */
+    .sheet[open]::backdrop {
+      opacity: 0;
+    }
+  }
+  .sheet[data-instant],
+  .sheet[data-instant]::backdrop {
+    transition: none;
+  }
+
   /* The skip link: off screen until it has keyboard focus. Appears at once, no animation. */
   .skip-link {
     position: absolute;
@@ -263,6 +370,27 @@ svg :focus-visible {
 
 /* Reduced motion: keep colour fades, remove movement. */
 @media (prefers-reduced-motion: reduce) {
+  /* The sheet fades instead of sliding. */
+  .sheet,
+  .sheet[open] {
+    transform: none;
+    transition:
+      opacity 180ms ease,
+      overlay 180ms allow-discrete,
+      display 180ms allow-discrete;
+  }
+  .sheet {
+    opacity: 0;
+  }
+  .sheet[open] {
+    opacity: 1;
+  }
+  @starting-style {
+    .sheet[open] {
+      transform: none;
+      opacity: 0;
+    }
+  }
   .press {
     transition:
       color 120ms ease,

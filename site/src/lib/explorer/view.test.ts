@@ -146,11 +146,11 @@ describe("annotation layers", () => {
   it("draws what is switched on and nothing that is switched off", () => {
     const all = view("s=fx_price_index,fx_output_quarterly&layers=rec,ev.policy,gov");
     expect(layerNodes(all, "recession").length).toBe(2); // once in each plot
-    expect(layerNodes(all, "event").length).toBe(2);
+    expect(layerNodes(all, "events").map((n) => n.attrs["data-count"])).toEqual([1, 1]);
     expect(layerNodes(all, "band").length).toBe(4); // two terms, in each plot
 
     const none = view("s=fx_price_index,fx_output_quarterly&layers=none");
-    for (const name of ["recession", "event", "band"]) expect(layerNodes(none, name), name).toEqual([]);
+    for (const name of ["recession", "events", "band"]) expect(layerNodes(none, name), name).toEqual([]);
     expect(none.layers.toggles.every((t) => !t.on)).toBe(true);
     expect(none.events).toEqual([]);
   });
@@ -299,5 +299,12 @@ describe("one release, and nothing but what was asked", () => {
   it("round-trips through the state's own writer", () => {
     const state = parseExplorerParams(new URLSearchParams("s=fx_price_index&mode=z"));
     expect(explorerView(release, "local", state).query).toBe(explorerQuery(state));
+  });
+});
+
+describe("stale is said of a series' latest value only", () => {
+  it("a window that closes before the series ends does not call its last value in the window stale", () => {
+    expect(view("s=fx_permits_stale").figure!.states.some((s) => s.mark === "stale")).toBe(true);
+    expect(view("s=fx_permits_stale&to=2023-12").figure!.states.some((s) => s.mark === "stale")).toBe(false);
   });
 });

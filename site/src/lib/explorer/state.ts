@@ -34,6 +34,8 @@ export type ExplorerState = {
   hi: number | null;
   /** The series picker is open (the address a reader without JavaScript follows to open it). */
   pick: boolean;
+  /** The table of values is asked for. It is hundreds of rows a Series, so it is sent only then. */
+  table: boolean;
   /** What a v1 link asks of features that arrive with Explorer II, kept so the link loses nothing. */
   carried: [name: CarriedName, value: string][];
   /** What the address said that could not be read, in words. Never the unread text itself. */
@@ -142,7 +144,7 @@ export function parseExplorerParams(input: URLSearchParams | Record<string, stri
     if (value !== null && CARRIED[name](value)) carried.push([name, String(name === "lag" ? Number(value) : value)]);
   }
 
-  return { series, mode, from, to, layers, at, event, hi, pick: params.get("pick") === "1", carried, notes };
+  return { series, mode, from, to, layers, at, event, hi, pick: params.get("pick") === "1", table: params.get("table") === "1", carried, notes };
 }
 
 /**
@@ -160,6 +162,7 @@ export function explorerQuery(state: Omit<ExplorerState, "notes">): string {
   if (state.event !== null) parts.push(`event=${state.event}`);
   else if (state.hi !== null) parts.push(`hi=${state.hi}`);
   for (const [name, value] of state.carried) parts.push(`${name}=${value}`);
+  if (state.table) parts.push("table=1");
   if (state.pick) parts.push("pick=1");
   return parts.join("&");
 }
@@ -222,5 +225,5 @@ export function v1HashToQuery(hash: string): string | null {
     if (value !== null && CARRIED[name](value)) carried.push([name, value]);
   }
 
-  return explorerQuery({ series, mode, from, to, layers, at: null, event: null, hi, pick: false, carried });
+  return explorerQuery({ series, mode, from, to, layers, at: null, event: null, hi, pick: false, table: false, carried });
 }

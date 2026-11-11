@@ -83,7 +83,7 @@ export type Layers = {
   /** Spans drawn as pale bands the height of the plot; `end` is inclusive, null is still running. */
   bands: { start: string; end: string | null; label: string; tint: "a" | "b" }[];
   recessions: { start: string; end: string | null }[];
-  /** Dated Events, drawn as ticks at the foot of the plot. */
+  /** Dated Events, drawn as ticks at the foot of the plot (one path for all of them). */
   events: { id: string; date: string }[];
   /** The Event the reader chose: a line the height of the plot, with its name. */
   highlight?: { id: string; date: string; label: string } | null;

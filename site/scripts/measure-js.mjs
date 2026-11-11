@@ -5,14 +5,20 @@
 //   node scripts/measure-js.mjs http://127.0.0.1:3000/macro-atlas/explore
 //
 // "Framework" is everything except the chunks that hold this app's own client code, which are
-// recognised by a string only that code contains (the theme cookie's name).
+// recognised by strings only that code contains (the theme cookie's name, the Explorer's mark).
 import { gzipSync } from "node:zlib";
 import { pathToFileURL } from "node:url";
 
 /** Recorded by ADR 0014 from the M1 build. Reading pages must stay within `budgetBytes`. */
-export const JS_BUDGET = { floorBytes: 131_395, budgetBytes: 131_395 + 15 * 1024 };
+export const JS_BUDGET = {
+  floorBytes: 131_395,
+  budgetBytes: 131_395 + 15 * 1024,
+  /** The Explorer is interactive, not a reading page: the floor plus 30 KB (ADR 0014, amended in M4). */
+  explorerBytes: 131_395 + 30 * 1024,
+};
 
-const OWN_CODE_MARKER = "atlas-theme";
+// One string per client island: the theme control's cookie name, the Explorer's session mark.
+const OWN_CODE_MARKERS = ["atlas-theme", "atlas-explorer"];
 
 export async function measureJs(pageUrl) {
   const html = await (await fetch(pageUrl)).text();
@@ -25,7 +31,7 @@ export async function measureJs(pageUrl) {
   for (const src of external) {
     const body = Buffer.from(await (await fetch(new URL(src, origin))).arrayBuffer());
     const size = gzipSync(body).length;
-    const own = body.includes(OWN_CODE_MARKER);
+    const own = OWN_CODE_MARKERS.some((marker) => body.includes(marker));
     files.push({ src, gzipBytes: size, own });
     gzipBytes += size;
     if (!own) frameworkGzipBytes += size;
