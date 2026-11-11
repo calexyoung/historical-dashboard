@@ -221,7 +221,7 @@ def test_each_series_keeps_its_v1_channel_and_the_origin_is_not_invented(release
     manifest = read(release, "manifest.json")["series"]
     assert manifest["spx"]["channel"] == "yahoo" and manifest["unrate"]["channel"] == "fred"
     vias = {e["source"]["channel"]["via"] for e in read(release, "catalog.json")["series"]}
-    assert vias == {"fred", "yahoo", "direct", "hand_entered"}
+    assert vias == {"fred", "yahoo", "direct", "hand_entered", "computed"}
 
 
 def test_v1s_derived_series_keep_their_lineage(release):
@@ -239,9 +239,10 @@ def test_v1s_derived_series_keep_their_lineage(release):
     assert len(parents) == 14
     manifest = read(release, "manifest.json")["series"]
     assert manifest["cpi_yoy"]["kind"] == "derived" and manifest["cpi"]["kind"] == "stored"
-    # a derived series is obtained the way its inputs were
+    # the source of a computed series is what v1 recorded for it; its inputs are its lineage
     assert entry(release, "cpi_yoy")["source"]["channel"]["via"] == "fred"
-    assert entry(release, "gold_eur")["source"]["channel"]["via"] == "yahoo"
+    assert entry(release, "gold_eur")["source"]["channel"]["via"] == "computed"
+    assert entry(release, "gold_eur")["source"]["origin"]["origin_id"] == "gold / eurusd"
 
 
 def test_catalog_details_v1_recorded_are_kept(release):

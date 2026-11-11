@@ -128,6 +128,11 @@ def promote(root: Path, release_id: str, *, profile: str) -> Path:
     except BaseException:
         shutil.rmtree(staged, ignore_errors=True)
         raise
+    finally:
+        try:
+            staged.parent.rmdir()  # the staging area, when nothing else is being staged
+        except OSError:
+            pass
     try:
         _write_current(root, release_id)
     except BaseException as error:
