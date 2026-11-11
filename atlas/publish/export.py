@@ -18,6 +18,12 @@ key the store does not hold. A key held from an Origin replaces v1's Series whol
 never part one and part the other (PLAN 6.1 point 3).
 
 Only native Series are written. ``derived/`` is the engine's (ADR 0003), and arrives in M11.
+
+Each published Series also gets ``vintages/{key}.json``: every version the store holds for it,
+its metadata history and its Captures (M10, ADR 0024). Past values are values. A withheld
+Series has no such file, and in a public-profile Release the file is written only when the
+gate permits every Origin, dataset and Channel its history came through; otherwise the Series
+is published without it and the check report says so.
 """
 from __future__ import annotations
 
@@ -194,6 +200,65 @@ def _series_file(key: str, freq: str, rows: list[dict]) -> tuple[dict, bool]:
             "period_end": observations[-1]["period_end"], "observations": observations}, exact
 
 
+def _public_metadata(metadata: dict) -> dict:
+    """The fields of a recorded metadata that a Release shows, and no others: the store keeps
+    whatever it was given, and a line of history is not a place for anything to ride along.
+    ``rights`` is what the register said that day. It is a record and authorises nothing."""
+    source = metadata["source"]
+    shown = {"name": metadata["name"], "unit": metadata["unit"]}
+    if metadata.get("seasonal_adjustment"):
+        shown["seasonal_adjustment"] = metadata["seasonal_adjustment"]
+    shown["source"] = {
+        "origin": {name: source["origin"].get(name) for name in ("producer", "dataset", "origin_id", "url")},
+        "channel": {name: source["channel"][name] for name in ("via", "adapter", "endpoint", "auth")
+                    if name in source["channel"]}}
+    rights = metadata.get("rights")
+    shown["rights"] = None if not isinstance(rights, dict) else {
+        "licence_class": rights.get("licence_class"), "attribution": rights.get("attribution")}
+    return shown
+
+
+def _vintage_file(key: str, freq: str, vintages: VintageStore) -> dict | str:
+    """``vintages/{key}.json`` from the store's three logs, or why it cannot be written. Values
+    become numbers exactly as in the Series' own file, so the versions current now are that
+    file's Observations."""
+    try:
+        lines = [{"hash": line["metadata_hash"], "recorded_from": line["recorded_from"],
+                  "metadata": _public_metadata(line["metadata"])} for line in vintages.metadata_history(key)]
+    except (KeyError, TypeError, AttributeError):
+        return "a line of its metadata history does not say what it is or where it came from"
+    rows = []
+    for row in vintages.rows(key):
+        rows.append({
+            "period": row["period"], "period_start": row["period_start"], "period_end": row["period_end"],
+            "value": None if row["value"] is None else number(row["value"])[0],
+            "status": row["status"], "deleted": bool(row["deleted"]),
+            "recorded_from": row["recorded_from"], "recorded_to": row["recorded_to"],
+            "provider_from": row["provider_from"], "provider_to": row["provider_to"],
+            "provider_precision": row["provider_precision"] if row["provider_from"] is not None else None,
+            "channel": row["channel"], "metadata": row["metadata_hash"]})
+    captures = [{"retrieved_at": line["retrieved_at"], "scope": list(line["scope"]), "change": line["change"]}
+                for line in vintages.captures(key)]
+    # No adapter dates a version by the Origin's clock yet, so no span of it is known complete.
+    return {"key": key, "freq": freq, "representation": NATIVE, "provider_coverage": None,
+            "metadata": lines, "captures": captures, "rows": rows}
+
+
+def history_lineages(document: dict) -> list[dict]:
+    """One row for the rights gate per Origin, dataset and Channel that a vintage file's
+    versions and metadata lines came through. Raises on a file that does not say."""
+    origins = {line["hash"]: line["metadata"]["source"] for line in document["metadata"]}
+    found = {(source["origin"]["producer"], source["origin"]["dataset"], source["channel"]["via"])
+             for source in origins.values()}
+    found |= {(origins[row["metadata"]]["origin"]["producer"], origins[row["metadata"]]["origin"]["dataset"],
+               row["channel"]) for row in document["rows"]}
+    if not all(isinstance(part, str) and part for parts in found for part in parts):
+        raise ValueError("a version does not say where it came from")
+    return [{"origin": producer, "dataset": dataset, "channel": channel,
+             "representation": document["representation"], "permission": "display"}
+            for producer, dataset, channel in sorted(found)]
+
+
 def lag_limit(period_end: str, max_lag: str | None) -> str | None:
     """The last day on which a Series whose last Period ends on ``period_end`` is within
     ``max_lag``; None when no limit is recorded. The same rule as packages/core's staleness."""
@@ -270,6 +335,7 @@ def build(*, profile: str, store: Path, table: object, gate: RightsGate, series:
     entries: list[dict] = []
     published: list[tuple[dict, dict, dict]] = []
     inexact: list[str] = []
+    no_history: list[str] = []
 
     def withhold(entry: dict, reason: str) -> None:
         entries.append(entry)
@@ -309,6 +375,17 @@ def build(*, profile: str, store: Path, table: object, gate: RightsGate, series:
                            "state_hash": vintages.captures(key)[-1]["state_hash"],
                            "channel": entry["source"]["channel"]["via"],
                            "rights_status": entry["rights"]["status"], "representation": NATIVE}
+        history = _vintage_file(key, spec["freq"], vintages)
+        if not isinstance(history, str) and profile == "public":
+            decision = gate.permits(history_lineages(history), "production")
+            if not decision.allowed:
+                history = decision.reason
+        if isinstance(history, str):
+            no_history.append(f"{key} ({history})")
+        else:
+            path = f"vintages/{key}.json"
+            built.files[path] = dump(history)
+            built.rows[key]["vintages_sha256"] = hashlib.sha256(built.files[path]).hexdigest()
         entries.append(entry)
         published.append((spec, entry, document))
 
@@ -318,6 +395,11 @@ def build(*, profile: str, store: Path, table: object, gate: RightsGate, series:
                              "detail": f"{', '.join(inexact)}: at least one value has more digits "
                                        "than a double holds; the nearest double is published and "
                                        "the exact text stays in the store"})
+    if published:
+        built.report.append({"check": "vintages", "outcome": "pass"} if not no_history else {
+            "check": "vintages", "outcome": "warn",
+            "detail": ("published without its history, so it has no as-of answer: "
+                       + "; ".join(no_history))[:2000]})
     annotations = {"annotations": []}
     if legacy is not None:
         annotations = _add_legacy(built, entries, legacy, withdrawn)

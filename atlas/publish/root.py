@@ -29,7 +29,7 @@ from ..capture import store as S
 from ..release import CATALOG, LEGACY, MANIFEST, validate_files
 from ..rights import RightsGate
 from ..staging import RELEASE_ID, STAGING
-from .export import lineage
+from .export import history_lineages, lineage
 
 REPO = Path(__file__).resolve().parents[2]
 FORMAT = 1
@@ -231,6 +231,17 @@ def rights_problems(files: dict[str, bytes], gate: RightsGate, surface: str = "p
             decision = gate.permits([lineage(catalog[name]) for name in sorted(reached)], surface)
             if not decision.allowed:
                 problems.append(f"{key}: {decision.reason}")
+    # Past values are values: every Origin, dataset and Channel a Series' history came through.
+    for path in sorted(p for p in files if p.startswith("vintages/")):
+        key = path[len("vintages/"):-len(".json")]
+        try:
+            lineages = history_lineages(json.loads(files[path]))
+        except (ValueError, KeyError, TypeError, AttributeError):
+            problems.append(f"{key}: its history: does not say where every version came from")
+            continue
+        decision = gate.permits(lineages, surface)
+        if not decision.allowed:
+            problems.append(f"{key}: its history: {decision.reason}")
     return problems
 
 

@@ -83,13 +83,15 @@ def test_a_release_whose_every_origin_is_signed_has_no_rights_problem():
 
 def test_every_series_is_a_problem_while_its_origins_row_is_unsigned():
     problems = R.rights_problems(load_release(FIXTURE_RELEASE), fixture_gate(decision=None))
-    assert len(problems) == 7 and all("is not signed" in p for p in problems)
+    # Seven Series, and the history of the three that carry one (M10).
+    assert len(problems) == 10 and all("is not signed" in p for p in problems)
+    assert sum("its history" in p for p in problems) == 3
 
 
 def test_the_committed_register_permits_nothing_today():
     """No row is signed (D2 is open). When Alex signs one this test is the one to change."""
     committed = RightsGate(json.loads((ROOT / "schema" / "rights-register.json").read_text()))
-    assert len(R.rights_problems(load_release(FIXTURE_RELEASE), committed)) == 7
+    assert len(R.rights_problems(load_release(FIXTURE_RELEASE), committed)) == 10  # 7 Series, 3 histories
 
 
 def test_a_derived_series_is_a_problem_when_one_of_its_inputs_has_no_signed_row():
@@ -104,7 +106,7 @@ def test_a_derived_series_is_a_problem_when_one_of_its_inputs_has_no_signed_row(
 
 def test_a_dataset_the_signed_row_does_not_cover_is_a_problem():
     gate = RightsGate(fixture_table(datasets=["some other dataset"]))
-    assert len(R.rights_problems(load_release(FIXTURE_RELEASE), gate)) == 7
+    assert len(R.rights_problems(load_release(FIXTURE_RELEASE), gate)) == 10  # 7 Series, 3 histories
 
 
 def test_a_row_that_does_not_allow_display_is_a_problem():
