@@ -38,18 +38,22 @@ def _check_id(release_id: str) -> None:
         raise PromotionRefused(f"{release_id!r} is not a release id")
 
 
-def _no_links(root: Path) -> None:
-    """The staging area and ``releases/`` are real directories inside the root.
+def _real_directory(root: Path, name: str) -> None:
+    """``root/name`` is a real directory inside the root, or does not exist yet.
 
-    A link in their place would let a Release be written or promoted somewhere else: into the
-    store, or into a public root (PLAN 6.1 point 2). Checked before anything is written.
+    A link in the place of the staging area or of ``releases/`` would let a Release be written
+    or promoted somewhere else: into the store, or into a public root (PLAN 6.1 point 2).
     """
+    path = root / name
+    if path.is_symlink() or (path.exists() and not path.is_dir()):
+        raise PromotionRefused(f"{path} is a link or not a directory; a release root holds real directories only")
+    if path.exists() and path.resolve() != root.resolve() / name:
+        raise PromotionRefused(f"{path} is reached through a link; a release root holds real directories only")
+
+
+def _no_links(root: Path) -> None:
     for name in (STAGING, "releases"):
-        path = root / name
-        if path.is_symlink() or (path.exists() and not path.is_dir()):
-            raise PromotionRefused(f"{path} is a link or not a directory; a release root holds real directories only")
-        if path.exists() and path.resolve() != root.resolve() / name:
-            raise PromotionRefused(f"{path} is reached through a link; a release root holds real directories only")
+        _real_directory(root, name)
 
 
 def stage(root: Path, release_id: str) -> Path:
@@ -117,9 +121,14 @@ def promote(root: Path, release_id: str, *, profile: str) -> Path:
         raise PromotionRefused(f"unknown profile {profile!r}: only {', '.join(PROFILES)} exist")
     staged = root / STAGING / release_id
     target = root / "releases" / release_id
+    # Before any cleanup can run: the staging area is really ours. Cleanup removes what is
+    # staged, and must never follow a link to do it.
+    _real_directory(root, STAGING)
+    if staged.is_symlink():
+        raise PromotionRefused(f"{staged} is a link; a release is staged in a real directory")
     try:
-        _no_links(root)
-        if staged.is_symlink() or not staged.is_dir():
+        _real_directory(root, "releases")
+        if not staged.is_dir():
             raise PromotionRefused(f"release {release_id} has not been staged")
         if target.exists():
             raise PromotionRefused(f"release {release_id} is already promoted; a release is never rewritten")

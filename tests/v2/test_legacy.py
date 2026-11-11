@@ -202,7 +202,9 @@ def test_an_annual_series_has_one_observation_per_year(release):
 def test_months_v1_left_out_are_explicit_gaps(release):
     gold = series(release, "gold")["observations"]
     missing = [o for o in gold if o["status"] == "missing"]
-    assert missing and all(o["value"] is None for o in missing)
+    all_empty = all(o["value"] is None for o in missing)  # a bare assert on the list would print it
+    assert len(missing) > 0
+    assert all_empty
     present = {o["period"] for o in gold if o["status"] != "missing"}
     assert present == set(V1["series"]["gold"]["d"])
 

@@ -175,3 +175,19 @@ def test_nothing_is_staged_or_promoted_through_a_link(tmp_path):
     assert list(elsewhere.iterdir()) == []
     assert not (root / "CURRENT").exists()
     assert not (root / ".staging" / FIXTURE_ID).exists()
+
+
+def test_refusing_a_linked_staging_area_deletes_nothing_on_the_other_side(tmp_path):
+    """Cleanup after a refusal must not follow the link it refused."""
+    elsewhere = tmp_path / "elsewhere"
+    shutil.copytree(FIXTURE, elsewhere / FIXTURE_ID)
+    before = sorted(p.relative_to(elsewhere).as_posix() for p in elsewhere.rglob("*"))
+    root = tmp_path / "root"
+    root.mkdir()
+    (root / ".staging").symlink_to(elsewhere, target_is_directory=True)
+    for attempt in (lambda: promote(root, FIXTURE_ID, profile="public"), lambda: stage(root, FIXTURE_ID)):
+        with pytest.raises(PromotionRefused, match="link"):
+            attempt()
+        assert sorted(p.relative_to(elsewhere).as_posix() for p in elsewhere.rglob("*")) == before
+    assert (root / ".staging").is_symlink()  # left for a person to look at, not removed
+    assert not (root / "CURRENT").exists() and not (root / "releases").exists()

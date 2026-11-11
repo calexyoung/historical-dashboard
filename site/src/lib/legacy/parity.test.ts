@@ -243,12 +243,16 @@ describe("v1's data through the release reader, Query and the catalog (PLAN M2, 
 
   it("no other surface gets a value out of it: the gate denies, and the reader refuses the release outright", async () => {
     for (const surface of ["staging", "production"] as const) {
+      // Only named fields are compared: were the gate to fail, the answer would hold v1's values,
+      // and a whole-object assertion would print them (PLAN 6.1).
       const answer = query(release, surface, { series: ["unrate"], transform: "lin", permission: "display" });
-      expect(answer).toMatchObject({ ok: false, status: 403, code: "not_permitted" });
+      expect(answer.ok).toBe(false);
+      expect(answer.ok ? null : [answer.status, answer.code]).toEqual([403, "not_permitted"]);
       const rows = catalogView(release, surface, parseCatalogFilters({})).rows;
       expect(rows.every((row) => row.latest === null && row.first === null)).toBe(true);
       const opened = await createReleaseReader({ root: legacy.root, surface }).current();
-      expect(opened).toMatchObject({ ok: false, kind: "refused" });
+      expect(opened.ok).toBe(false);
+      expect(opened.ok ? null : opened.kind).toBe("refused");
     }
   });
 });
