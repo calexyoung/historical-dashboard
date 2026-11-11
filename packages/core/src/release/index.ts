@@ -87,8 +87,8 @@ const sha256 = (data: Uint8Array): string => createHash("sha256").update(data).d
 const quote = (value: unknown): string => JSON.stringify(value);
 
 /**
- * JSON, read strictly, so that this reader and the Python twin can never see different values in
- * the same bytes: every number is a finite double (JSON.parse reads 1e400 as Infinity without
+ * JSON, read strictly, so that this reader and the Python twin accept and refuse the same bytes
+ * (they may still hold a number differently: Python keeps integers past 2^53 exact): every number is a finite double (JSON.parse reads 1e400 as Infinity without
  * complaint) and no object names a key twice (JSON.parse silently keeps the last).
  *
  * JSON.parse decides whether the text is JSON at all; the scan below then walks the same text,
