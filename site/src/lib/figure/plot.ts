@@ -233,10 +233,10 @@ export function drawPlot(input: PlotInput, created: string, layout: LayoutName, 
       for (const [a, b] of statusRuns(s.observations, state)) {
         let ax = x(ms(s.observations[a]!.period_start));
         let bx = x(ms(s.observations[b]!.period_start));
-        if (bx - ax < 8) [ax, bx] = [Math.max(x0, (ax + bx) / 2 - 4), Math.min(x1, (ax + bx) / 2 + 4)];
+        if (bx - ax < 12) [ax, bx] = [Math.max(x0, (ax + bx) / 2 - 6), Math.min(x1, (ax + bx) / 2 + 6)];
         const bar = { x1: r2(ax), y1: yBottom - 3, x2: r2(bx), y2: yBottom - 3, stroke: "currentColor" };
         stateMarks.push(
-          h("g", { "data-mark": state, color: INK_2 }, h("line", state === "missing" ? { ...bar, "stroke-width": 2, "stroke-dasharray": "2 2" } : { ...bar, "stroke-width": 3 })),
+          h("g", { "data-mark": state, color: INK }, h("line", state === "missing" ? { ...bar, "stroke-width": 2.5, "stroke-dasharray": "2 2" } : { ...bar, "stroke-width": 3 })),
         );
       }
     }
@@ -331,4 +331,15 @@ export function drawPlot(input: PlotInput, created: string, layout: LayoutName, 
     ...labels,
   );
   return { svg, endLabels };
+}
+
+/** A Series' colour, line style and symbol on their own, for a legend entry. Decorative. */
+export function swatch(style: Pick<SeriesStyle, "color" | "dash" | "symbol">): SvgNode {
+  const colour = `var(--color-series-${style.color})`;
+  return h(
+    "svg",
+    { viewBox: "0 0 32 12", width: 32, height: 12, "aria-hidden": "true", focusable: "false" },
+    h("line", { x1: 1, y1: 6, x2: 31, y2: 6, stroke: colour, "stroke-width": 1.75, "stroke-dasharray": style.dash }),
+    h("path", { d: symbolPath(style.symbol, 16, 6, 3), fill: colour, stroke: colour, "stroke-width": 0.5 }),
+  );
 }

@@ -32,8 +32,7 @@ function Unavailable({ row }: { row: CatalogRow }) {
  * no script of its own. Search and filters are a GET form, so the address says what is shown and
  * a copied link reproduces it. Latest values come through Query, which asks the rights gate; a
  * Series that may not be shown is still listed, by name, with the reason.
- *
- * Names do not link anywhere yet: the series page (`/data/{key}`) arrives in M3.
+ * Each name is a door into its series page (`/data/{key}`).
  */
 export default async function DataPage({ searchParams }: PageProps<"/data">) {
   const { release } = await releaseForRequest();
@@ -141,7 +140,9 @@ export default async function DataPage({ searchParams }: PageProps<"/data">) {
                 return (
                   <tr key={row.key} data-series-key={row.key} data-state={row.state} className="border-b border-line align-top last:border-b-0">
                     <th scope="row" className="px-4 py-2 font-normal">
-                      <span className="font-medium text-ink">{row.name}</span>
+                      <a href={`${here}/${row.key}`} className={`${link} inline-flex min-h-6 items-center font-medium`}>
+                        {row.name}
+                      </a>
                       <span className="num block break-all font-mono text-xs text-ink-3">{row.key}</span>
                       {row.legacy && !allLegacy && <span className="block text-xs text-ink-2">v1&rsquo;s rounded monthly output</span>}
                       {/* Below md the other columns fold in here, so the table never scrolls sideways

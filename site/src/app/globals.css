@@ -193,6 +193,62 @@ svg :focus-visible {
     }
   }
 
+  /*
+   * Atlas: the table under an explained figure. Styled from here, not with a class on every
+   * cell, because a long Series is hundreds of rows (ADR 0017). Nothing in it moves.
+   */
+  .figure-table {
+    width: 100%;
+    max-width: 40rem;
+    border-collapse: collapse;
+    text-align: left;
+    font-size: 14px;
+    font-variant-numeric: tabular-nums;
+  }
+  .figure-table caption {
+    padding-bottom: 8px;
+    text-align: left;
+    font-size: 12px;
+    color: var(--color-ink-2);
+  }
+  .figure-table thead th {
+    padding: 6px 16px 6px 0;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--color-ink-3);
+    border-bottom: 1px solid var(--color-line);
+  }
+  .figure-table tbody tr + tr {
+    border-top: 1px solid var(--color-line);
+  }
+  .figure-table tbody th {
+    padding: 4px 16px 4px 0;
+    font-weight: 400;
+    white-space: nowrap;
+    color: var(--color-ink-2);
+    vertical-align: top;
+  }
+  .figure-table td {
+    padding: 4px 16px 4px 0;
+    vertical-align: top;
+  }
+  .figure-table th:nth-child(2),
+  .figure-table td:nth-child(2) {
+    text-align: right;
+  }
+  .figure-table td:nth-child(3) {
+    padding-right: 0;
+    font-size: 12px;
+    color: var(--color-ink-2);
+  }
+  .figure-table td:nth-child(3) > span + span {
+    margin-left: 12px;
+  }
+  .figure-table td i {
+    font-style: normal;
+    color: var(--color-ink-3);
+  }
+
   /* The skip link: off screen until it has keyboard focus. Appears at once, no animation. */
   .skip-link {
     position: absolute;

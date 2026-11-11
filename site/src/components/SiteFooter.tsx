@@ -1,5 +1,7 @@
 import type { Surface } from "@macro-atlas/core";
+import { BASE_PATH } from "@/lib/config";
 import { formatDay } from "@/lib/freshness";
+import { glossaryHref } from "@/lib/glossary";
 import type { OpenedRelease } from "@/lib/release/reader";
 
 const BUILD_WORD: Record<Surface, string | null> = { local: "Local build", staging: "Staging build", production: null };
@@ -16,6 +18,11 @@ export function SiteFooter({ surface, release }: { surface: Surface; release: Op
           </time>
         </p>
         {BUILD_WORD[surface] && <p data-surface={surface}>{BUILD_WORD[surface]}</p>}
+        <p className="sm:ml-auto">
+          <a href={glossaryHref(BASE_PATH)} className="press hover-ink inline-flex min-h-6 items-center text-accent underline underline-offset-2">
+            Glossary
+          </a>
+        </p>
       </div>
     </footer>
   );

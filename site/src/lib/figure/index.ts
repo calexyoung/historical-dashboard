@@ -58,7 +58,7 @@ export type FigureSpec = {
 };
 
 export type LayoutName = "narrow" | "medium" | "wide";
-export { LAYOUT_SIZES as LAYOUTS } from "./plot";
+export { LAYOUT_SIZES as LAYOUTS, swatch } from "./plot";
 
 export type SeriesStyle = { key: string; name: string; /** 1 to 8: `--color-series-n`. */ color: number; dash: string | null; symbol: "circle" | "square" | "triangle" | "diamond"; drawnAs: "line" | "points" | "step" };
 
