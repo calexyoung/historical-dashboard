@@ -3,6 +3,7 @@ sequence of fetched states, read back through the store's own interface. Nothing
 the network or the wall clock: every time in a store is a Capture's retrieval time."""
 from __future__ import annotations
 
+import itertools
 import tempfile
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -444,7 +445,7 @@ def test_validity_intervals_never_overlap_and_tombstones_come_only_from_complete
         for row in store.rows(KEY):
             chains.setdefault(row["period"], []).append(row)
         for chain in chains.values():
-            for earlier, later in zip(chain, chain[1:], strict=False):
+            for earlier, later in itertools.pairwise(chain):
                 # Each version ends exactly where the next begins: no overlap and no hole.
                 assert earlier["recorded_to"] == later["recorded_from"]
                 assert earlier["recorded_from"] <= earlier["recorded_to"]
