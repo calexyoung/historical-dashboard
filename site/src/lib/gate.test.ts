@@ -13,7 +13,7 @@ const readerOf = (opened: Opened): ReleaseReader & { calls: number } => {
 };
 const good: Opened = { ok: true, release, refreshFailed: null };
 const refused: Opened = { ok: false, kind: "refused", id: "20260202T000000Z-bbbbbbb", reason: "profile is local" };
-const base = { surface: "production", basePath: "/macro-atlas", dev: false, nonce: "N0nce" } as const;
+const base = { surface: "production", dev: false, nonce: "N0nce" } as const;
 const request = { host: "mydashboards.co", pathname: "/explore" };
 
 describe("gate: what the proxy decides for every request", () => {
