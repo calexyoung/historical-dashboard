@@ -33,7 +33,7 @@ export function ThemeControl({
   };
 
   return (
-    <form method="post" action={`${basePath}/api/theme`} onSubmit={apply}>
+    <form method="post" action={`${basePath}/api/theme`} onSubmit={apply} className="ml-auto sm:ml-0">
       <input type="hidden" name="return" value={returnTo} />
       <div role="group" aria-label="Theme" className="inline-flex overflow-hidden rounded border border-control">
         {THEME_CHOICES.map((option) => {

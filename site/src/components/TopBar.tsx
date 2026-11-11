@@ -33,6 +33,12 @@ function FreshnessMark({ freshness }: { freshness: Freshness }) {
   );
 }
 
+const Slash = () => (
+  <span aria-hidden="true" className="text-ink-3">
+    /
+  </span>
+);
+
 /** As on /missions: name and breadcrumb left; freshness and the theme control right. */
 export function TopBar({
   basePath,
@@ -51,30 +57,30 @@ export function TopBar({
   return (
     <header className="border-b border-line bg-void">
       <div className="mx-auto flex max-w-[1400px] flex-wrap items-center gap-x-5 gap-y-2 px-4 py-2.5 lg:px-6">
-        <div className="mr-auto min-w-0">
-          <a href={HOME_URL} className="press hover-ink text-xs text-ink-3">
-            mydashboards
-          </a>
-          <nav aria-label="Breadcrumb">
-            <ol className="flex flex-wrap items-baseline gap-x-2 text-lg font-semibold leading-tight tracking-tight">
-              <li>
-                <a href={`${basePath}/`} className="text-ink">
-                  Macro Atlas
+        {/* One trail from the shared front door to this page: mydashboards / Macro Atlas / Explore. */}
+        <nav aria-label="Breadcrumb" className="mr-auto min-w-0">
+          <ol className="flex flex-wrap items-baseline gap-x-2 text-lg leading-7 tracking-tight">
+            <li className="flex items-baseline gap-x-2">
+              <a href={HOME_URL} className="press hover-ink inline-block py-0.5 text-sm tracking-normal text-ink-3">
+                mydashboards
+              </a>
+              <Slash />
+            </li>
+            <li>
+              <a href={`${basePath}/`} className="inline-block py-0.5 font-semibold text-ink">
+                Macro Atlas
+              </a>
+            </li>
+            {here && (
+              <li className="flex items-baseline gap-x-2">
+                <Slash />
+                <a href={`${basePath}${pathname}`} aria-current="page" className="inline-block py-0.5 text-ink-2">
+                  {here}
                 </a>
               </li>
-              {here && (
-                <li className="flex items-baseline gap-x-2 font-normal text-ink-2">
-                  <span aria-hidden="true" className="text-ink-3">
-                    /
-                  </span>
-                  <a href={`${basePath}${pathname}`} aria-current="page" className="text-ink-2">
-                    {here}
-                  </a>
-                </li>
-              )}
-            </ol>
-          </nav>
-        </div>
+            )}
+          </ol>
+        </nav>
         <FreshnessMark freshness={freshness} />
         <ThemeControl basePath={basePath} returnTo={returnTo} initial={theme} />
       </div>

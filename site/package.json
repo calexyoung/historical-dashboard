@@ -2,6 +2,7 @@
   "name": "@macro-atlas/site",
   "version": "0.0.0",
   "private": true,
+  "type": "module",
   "description": "The Macro Atlas web app (ADR 0001). Reads Releases through the ReleaseReader; never writes one.",
   "scripts": {
     "dev": "ATLAS_SURFACE=local BASE_PATH=/macro-atlas ATLAS_RELEASE_ROOT=${ATLAS_RELEASE_ROOT:-../fixtures/public} next dev --hostname 127.0.0.1",
@@ -20,6 +21,7 @@
     "react-dom": "19.3.0"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.14.0",
     "@playwright/test": "^1.56.0",
     "@tailwindcss/turbopack": "^4",
     "@types/react": "^19",

@@ -67,7 +67,7 @@ export default async function ExplorePage() {
               <th scope="col" className="hidden px-4 py-2 font-medium sm:table-cell">
                 Frequency
               </th>
-              <th scope="col" className="px-4 py-2 font-medium">
+              <th scope="col" className="hidden px-4 py-2 font-medium sm:table-cell">
                 Periods
               </th>
             </tr>
@@ -78,28 +78,30 @@ export default async function ExplorePage() {
               const reason = withheld.get(entry.key);
               const first = file?.observations[0]?.period;
               const last = file?.observations.at(-1)?.period;
+              const frequency = FREQUENCY[entry.freq] ?? entry.freq;
+              // Withheld is visible: named, with the reason, and no values (PLAN section 3).
+              const periods =
+                reason !== undefined ? (
+                  <>
+                    <span className="font-medium text-ink">Withheld</span>: {reason}
+                  </>
+                ) : first && last ? (
+                  `${first} to ${last}`
+                ) : (
+                  "No periods"
+                );
               return (
                 <tr key={entry.key} className="border-b border-line align-top last:border-b-0">
                   <th scope="row" className="px-4 py-2 font-normal">
                     <span className="font-medium text-ink">{entry.name}</span>
                     <span className="num block break-all font-mono text-xs text-ink-3">{entry.key}</span>
-                    <span className="block text-xs text-ink-3 sm:hidden">{FREQUENCY[entry.freq] ?? entry.freq}</span>
+                    {/* On a phone the other two columns fold in here, so the table never scrolls sideways. */}
+                    <span className="num mt-0.5 block text-xs text-ink-2 sm:hidden">
+                      {frequency} · {periods}
+                    </span>
                   </th>
-                  <td className="hidden px-4 py-2 text-ink-2 sm:table-cell">{FREQUENCY[entry.freq] ?? entry.freq}</td>
-                  <td className="num px-4 py-2 text-ink-2">
-                    {reason !== undefined ? (
-                      // Withheld is visible: named, with the reason, and no values (PLAN section 3).
-                      <span>
-                        <span className="font-medium text-ink">Withheld</span>: {reason}
-                      </span>
-                    ) : first && last ? (
-                      <span className="whitespace-nowrap">
-                        {first} to {last}
-                      </span>
-                    ) : (
-                      "No periods"
-                    )}
-                  </td>
+                  <td className="hidden px-4 py-2 text-ink-2 sm:table-cell">{frequency}</td>
+                  <td className="num hidden px-4 py-2 text-ink-2 sm:table-cell">{periods}</td>
                 </tr>
               );
             })}
