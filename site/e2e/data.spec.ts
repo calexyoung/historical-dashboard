@@ -122,7 +122,9 @@ test.describe("the catalog page", () => {
     await page.goto(atlas.url("/data"));
     expect(scripts.length).toBeLessThanOrEqual(onExplore); // a reading page: within the M1 budget
     const animated = await page.evaluate(() =>
-      [...document.querySelectorAll("main table *")].filter((el) => {
+      // Since M3 each name is a link to its series page. A link answers a press like every other
+      // pressable (DESIGN.md, Motion); the data around it still never moves.
+      [...document.querySelectorAll("main table *:not(a)")].filter((el) => {
         const style = getComputedStyle(el);
         return style.animationName !== "none" || parseFloat(style.transitionDuration) > 0;
       }).length,
