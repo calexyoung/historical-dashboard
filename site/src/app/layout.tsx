@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { cookies } from "next/headers";
+import { ReleaseStrip } from "@/components/ReleaseStrip";
 import { SiteFooter } from "@/components/SiteFooter";
 import { TabBar } from "@/components/TabBar";
 import { TopBar } from "@/components/TopBar";
@@ -38,6 +39,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
         </a>
         <TopBar basePath={BASE_PATH} pathname={pathname} returnTo={BASE_PATH + path} theme={theme} freshness={fresh} />
         <TabBar basePath={BASE_PATH} pathname={pathname} />
+        <ReleaseStrip release={release} />
         <main id="main" tabIndex={-1} className="mx-auto w-full max-w-[1400px] flex-1 px-4 py-5 outline-none lg:px-6">
           {children}
         </main>

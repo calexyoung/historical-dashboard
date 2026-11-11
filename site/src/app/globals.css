@@ -187,6 +187,10 @@ svg :focus-visible {
     .hover-line:hover {
       border-color: var(--color-line-strong);
     }
+    /* A form control's border darkens to ink-3, as on /missions. */
+    .hover-control:hover {
+      border-color: var(--color-ink-3);
+    }
   }
 
   /* The skip link: off screen until it has keyboard focus. Appears at once, no animation. */

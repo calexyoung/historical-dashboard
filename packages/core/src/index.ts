@@ -3,3 +3,4 @@
 // browser bundle.
 export * from "./rights";
 export * from "./period";
+export * from "./transform";

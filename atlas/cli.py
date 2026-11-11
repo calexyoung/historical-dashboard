@@ -47,6 +47,12 @@ def cmd_serve(a) -> int:
     return 0
 
 
+def cmd_legacy_release(a) -> int:
+    from . import legacy  # v2 (PLAN M2): reads v1's committed output; fetches nothing
+
+    return legacy.main()
+
+
 def main(argv=None) -> int:
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
     p = argparse.ArgumentParser(prog="atlas")
@@ -59,8 +65,14 @@ def main(argv=None) -> int:
     sub.add_parser("check", help="data QA")
     s = sub.add_parser("serve", help="serve dist/")
     s.add_argument("--port", type=int, default=8000)
+    sub.add_parser(
+        "legacy-release",
+        help="v2: convert v1's committed output into a local-profile release under $ATLAS_LOCAL",
+    )
     a = p.parse_args(argv)
-    return {"fetch": cmd_fetch, "build": cmd_build, "check": cmd_check, "serve": cmd_serve}[a.cmd](a)
+    commands = {"fetch": cmd_fetch, "build": cmd_build, "check": cmd_check, "serve": cmd_serve,
+                "legacy-release": cmd_legacy_release}
+    return commands[a.cmd](a)
 
 
 if __name__ == "__main__":

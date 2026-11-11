@@ -55,7 +55,7 @@ Macro Atlas v2 is being built on the long-lived `v2` branch (`docs/v2/PLAN.md`, 
 
 | Path | What |
 |---|---|
-| `atlas/` | Python: v1's pipeline, plus v2's `rights.py`, `period.py`, `release.py` |
+| `atlas/` | Python: v1's pipeline, plus v2's `rights.py`, `period.py`, `release.py`, `staging.py` and the legacy converter `legacy.py` |
 | `packages/core/` | TypeScript: the one analytical engine (pure) |
 | `site/` | the Next.js app (from M1) |
 | `schema/` | the release contract, `release.schema.json`, and its README |
@@ -65,3 +65,7 @@ Macro Atlas v2 is being built on the long-lived `v2` branch (`docs/v2/PLAN.md`, 
 | `var/` | generated releases and the store; git-ignored, never in a Docker build context |
 
 `make v2-setup` installs both toolchains; `make v2-check` runs everything CI runs.
+
+`make v2` converts v1's committed output into a local-profile release under `var/local` and
+starts the site on it: http://localhost:3000/macro-atlas/data. That release is for this machine
+only (`docs/method/legacy-release.md`, PLAN 6.1). Method notes are in `docs/method/`.

@@ -110,6 +110,22 @@ listed by name with the reason and no values. The marks are specified with the f
 From 640px the release date sits beside the word; below that it is in the footer, which always
 names the release a page was made from.
 
+### The local-release strip
+
+On every page of a local-profile release, between the tab bar and the content, one line in the
+`delayed` tint (10% ground, 50% rule) and bold 12px ink: "Local build · v1 data via FRED and
+Yahoo · not for publication" when the release holds v1's series. It is a note, not an alert: it
+is on every load, so it never moves, flashes or animates. A public-profile release has none.
+
+### The catalog page's filter bar
+
+/missions' control grammar: a search field and selects in a wrapping row, 4px corners, `raised`
+ground, labels for assistive technology only (each select's first option names it: "All
+segments"). Controls are 36px high here, not 32px, and use the `control` border. The one filled
+button is Plot Navy with the ground colour as its text. It is a GET form with no script: the
+address is the state, and nothing on the page animates. Below 768px the table's other columns
+fold into the first cell so the page never scrolls sideways and no value is lost.
+
 ### Still to be recorded here
 
 Statement-table styles (v2.3) and the explained figure's anatomy (M3) are added to this file by
