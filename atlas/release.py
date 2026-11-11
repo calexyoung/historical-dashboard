@@ -124,6 +124,7 @@ def validate_files(release_id: str, files: Mapping[str, bytes]) -> list[Issue]:
                 parse_constant=_no_constant,
                 parse_float=_finite_float,
                 parse_int=_finite_int,
+                object_pairs_hook=_no_repeated_keys,
             )
         except (ValueError, UnicodeDecodeError) as error:
             issues.append(Issue("invalid_json", path, str(error)))
@@ -161,6 +162,14 @@ def validate_files(release_id: str, files: Mapping[str, bytes]) -> list[Issue]:
 
 def _no_constant(name: str):
     raise ValueError(f"{name} is not JSON")
+
+
+def _no_repeated_keys(pairs: list) -> dict:
+    """JSON leaves a repeated key undefined; refuse it, so no two readers can see different values."""
+    obj = dict(pairs)
+    if len(obj) != len(pairs):
+        raise ValueError("an object names a key twice")
+    return obj
 
 
 # Every number in a Release is a finite double, in both languages. Python would otherwise read

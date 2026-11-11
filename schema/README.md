@@ -62,8 +62,9 @@ pins the arithmetic down for both languages.
 `YYYY-MM-DDTHH:MM:SS`, an optional fraction, then `Z`: UTC only, capital `T` and `Z`, no leap
 seconds. A time that is not known is `null`, never a stand-in.
 
-**Numbers** are finite doubles. A literal too large to be one (`1e400`) is not JSON here, in
-either language.
+**Strict JSON.** Numbers are finite doubles: a literal too large to be one (`1e400`) is refused.
+An object that names a key twice is refused, because JSON leaves the result undefined and two
+readers could see different values. Both are `invalid_json`, in either language.
 
 **Gaps are explicit.** Between a file's bounds every Period at the native frequency is present.
 A Period with no value is an Observation with `value: null` and `status: "missing"` (or

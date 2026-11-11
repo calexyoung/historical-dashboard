@@ -87,11 +87,61 @@ const sha256 = (data: Uint8Array): string => createHash("sha256").update(data).d
 const quote = (value: unknown): string => JSON.stringify(value);
 
 /**
- * Every number in a Release is a finite double, in both languages. JSON.parse reads 1e400 as
- * Infinity without complaint; refuse it here as the Python twin does.
+ * JSON, read strictly, so that this reader and the Python twin can never see different values in
+ * the same bytes: every number is a finite double (JSON.parse reads 1e400 as Infinity without
+ * complaint) and no object names a key twice (JSON.parse silently keeps the last).
+ *
+ * JSON.parse decides whether the text is JSON at all; the scan below then walks the same text,
+ * which it can trust to be well formed, looking only at number tokens and object keys.
  */
-function finiteNumbers(_key: string, value: unknown): unknown {
-  if (typeof value === "number" && !Number.isFinite(value)) throw new SyntaxError("a number is too large");
+function parseStrictJson(text: string): unknown {
+  const value: unknown = JSON.parse(text);
+  let i = 0;
+  const skipSpace = (): void => {
+    while (text[i] === " " || text[i] === "\n" || text[i] === "\r" || text[i] === "\t") i++;
+  };
+  const string = (): string => {
+    const start = i++;
+    while (text[i] !== '"') i += text[i] === "\\" ? 2 : 1;
+    i++;
+    return JSON.parse(text.slice(start, i)) as string;
+  };
+  const scan = (): void => {
+    skipSpace();
+    const c = text[i];
+    if (c === '"') {
+      string();
+    } else if (c === "{") {
+      i++;
+      const keys = new Set<string>();
+      for (skipSpace(); text[i] !== "}"; skipSpace()) {
+        if (text[i] === ",") i++;
+        skipSpace();
+        const key = string();
+        if (keys.has(key)) throw new SyntaxError(`an object names the key ${JSON.stringify(key)} twice`);
+        keys.add(key);
+        skipSpace();
+        i++; // the colon
+        scan();
+      }
+      i++;
+    } else if (c === "[") {
+      i++;
+      for (skipSpace(); text[i] !== "]"; skipSpace()) {
+        if (text[i] === ",") i++;
+        scan();
+      }
+      i++;
+    } else {
+      const start = i;
+      while (i < text.length && !',]} \n\r\t'.includes(text[i]!)) i++;
+      const token = text.slice(start, i);
+      if (token !== "true" && token !== "false" && token !== "null" && !Number.isFinite(Number(token))) {
+        throw new SyntaxError(`${token.slice(0, 24)} is too large to be a number`);
+      }
+    }
+  };
+  scan();
   return value;
 }
 
@@ -135,7 +185,7 @@ export function validateRelease(releaseId: string, files: ReleaseFiles): Issue[]
   const known = [...REQUIRED_FILES, ...FOLDERS.flatMap((f) => [...seriesPaths[f].values()])];
   for (const path of known) {
     try {
-      parsed.set(path, JSON.parse(decoder.decode(files[path]!), finiteNumbers));
+      parsed.set(path, parseStrictJson(decoder.decode(files[path]!)));
     } catch (error) {
       issues.push({ code: "invalid_json", path, message: String((error as Error).message) });
     }
