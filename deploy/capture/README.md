@@ -58,7 +58,7 @@ Steps 1 to 5 are Alex's; the builder does not create repositories, variables or 
    it the job sends a generic name and no contact.
 4. Copy `deploy/capture/capture.yml` to `.github/workflows/capture.yml` there and commit.
 5. Run it once by hand (Actions → capture → Run workflow) and read the Capture step. A clean run
-   prints three `CAPTURED` lines and commits three blobs and four log lines.
+   prints three `CAPTURED` lines and commits three blobs, three fetch-log lines and two run lines.
 
 To try the rights gate before any of that, on this machine:
 
@@ -84,6 +84,15 @@ only what Alex has cleared.
 A run that is not clean ends red, after committing whatever it did fetch. GitHub disables
 scheduled workflows in a repository with no activity for 60 days; the daily commits prevent
 that as long as the job runs.
+
+### If a push fails
+
+The job commits what it captured and pushes, three times. If the push still fails, the run ends
+red and its commits are attached to the run as an artifact, `unpushed-captures-<run id>`, kept
+90 days. A capture cannot be made again (a re-run fetches a later observation), so recover it:
+download the artifact, and in a clone of the capture repository run
+`git pull /path/to/unpushed-captures.bundle HEAD`, then `python -m atlas.capture --store .
+--verify`, then push.
 
 `python -m atlas.capture --store DIR --status` prints, per endpoint, the last whole capture and
 the missed days, without fetching.

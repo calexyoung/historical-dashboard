@@ -60,6 +60,7 @@ jobs:
           "$RUNNER_TEMP/venv/bin/python" -m atlas.capture
 
       - name: Keep what was captured
+        id: keep
         if: always()
         working-directory: store
         run: |
@@ -76,10 +77,26 @@ jobs:
           for attempt in 1 2 3; do
             if git push; then exit 0; fi
             echo "push failed (attempt $attempt); rebasing on what arrived meanwhile"
-            git pull --rebase
+            git pull --rebase || git rebase --abort || true
           done
-          echo "::error::The captures were made but could not be pushed. Re-run this job: they are lost when the runner is."
+          echo "::error::The captures were made but could not be pushed. They are saved below as an artifact; see the runbook, 'If a push fails'."
           exit 1
+
+      # A capture cannot be made again: a re-run would fetch a later observation. If the push
+      # failed, the commits go into a bundle that outlives the runner.
+      - name: Bundle the commits that could not be pushed
+        if: failure() && steps.keep.outcome == 'failure'
+        working-directory: store
+        run: git bundle create "$RUNNER_TEMP/unpushed-captures.bundle" "@{upstream}..HEAD"
+
+      - name: Upload the bundle
+        if: failure() && steps.keep.outcome == 'failure'
+        uses: actions/upload-artifact@v7
+        with:
+          name: unpushed-captures-${{ github.run_id }}
+          path: ${{ runner.temp }}/unpushed-captures.bundle
+          if-no-files-found: error
+          retention-days: 90
 
       - name: Fail if the capture was refused, failed or incomplete
         if: steps.capture.outcome != 'success'

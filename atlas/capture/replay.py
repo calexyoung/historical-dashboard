@@ -14,7 +14,7 @@ back to the network.
 
 ``export_exchanges`` writes a store's latest complete Captures out in this form. It is how a
 real capture becomes a committed fixture, and committing is redistribution: for bytes that
-came from the network it asks the rights gate for ``redistribute`` on the production Surface,
+a source served, fetched now or replayed from a real recording, it asks the rights gate for ``redistribute`` on the production Surface,
 for every dataset of the endpoint, and refuses without it.
 """
 from __future__ import annotations
@@ -84,6 +84,10 @@ class ReplayTransport:
         records = read_exchanges(directory)
         if not records:
             raise ValueError(f"{directory} holds no recorded exchanges")
+        # Bytes a source once served are still its bytes when replayed. Unless every exchange
+        # says it is invented, what this transport returns is treated as real.
+        self.real = not all(record.get("provenance", {}).get("synthetic") is True
+                            for record in records)
         self._now = min(S.unstamp(record["recorded_at"]) for record in records)
         self._answers: dict[tuple, Response] = {}
         for record in records:
@@ -136,15 +140,16 @@ def reexamine(capture: RawCapture) -> Evidence:
 
 def export_exchanges(store: Path, out: Path, table: object, *, note: str) -> list[str]:
     """Write the latest complete Capture of every endpoint in ``store`` to ``out`` as exchange
-    directories. Returns the endpoints written. Raises ``ExportRefused`` if any of them came
-    from the network and the register does not let its data be redistributed."""
+    directories. Returns the endpoints written. Raises ``ExportRefused`` if any of them holds
+    bytes a source served (fetched now, or replayed from a real recording; a line that does not
+    say is taken to be real) and the register does not let its data be redistributed."""
     latest: dict[str, dict] = {}
     for line in S.read_fetch_log(Path(store)):
         if line.get("outcome") == "captured":
             latest[line["endpoint"]] = line
     gate = RightsGate(table)
     for line in latest.values():
-        if line["transport"] != "live":
+        if line.get("real_bytes", True) is False:
             continue
         lineage = [{"origin": line["origin"], "dataset": dataset, "channel": line["channel"],
                     "representation": "native", "permission": "redistribute"}
@@ -161,7 +166,7 @@ def export_exchanges(store: Path, out: Path, table: object, *, note: str) -> lis
                   "status": part.response.status, "headers": part.response.headers,
                   "received_at": S.stamp(part.response.received_at), "body": part.response.body}
                  for part in capture.parts]
-        synthetic = line["transport"] != "live"
+        synthetic = line.get("real_bytes", True) is False
         write_exchange(out, line["source"], endpoint, parts,
                        recorded_at=S.unstamp(line["started_at"]),
                        provenance={"synthetic": synthetic, "transport": line["transport"],

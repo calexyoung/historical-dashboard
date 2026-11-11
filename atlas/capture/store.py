@@ -3,7 +3,8 @@
 
     raw/{source}/{yyyy-mm-dd}/{sha256}.gz   the exact bytes of one response, gzipped
     fetchlog.ndjson                         one line per Capture attempted, whatever its outcome
-    runs.ndjson                             one line per run; missed days are counted from it
+    runs.ndjson                             two lines per run, one when it starts and one when
+                                            it finishes; missed days are counted from it
     LOCK                                    held for the length of a run
 
 The day in a blob's path is the UTC day the bytes arrived. A blob is named by the SHA-256 of
@@ -88,12 +89,12 @@ def _read(path: Path, problems: list[str] | None) -> list[dict]:
     if not path.exists():
         return []
     records = []
-    for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
+    for number, line in enumerate(path.read_bytes().split(b"\n"), start=1):
         if not line.strip():
             continue
         try:
-            record = json.loads(line)
-        except ValueError:
+            record = json.loads(line.decode("utf-8"))
+        except ValueError:  # cut short by a crash, possibly inside a character
             record = None
         if not isinstance(record, dict):
             if problems is not None:
@@ -140,10 +141,16 @@ def release_day(moment: datetime) -> date:
     return moment.astimezone(RELEASE_ZONE).date()
 
 
+def unfinished_runs(runs: list[dict]) -> list[dict]:
+    """The runs that wrote their starting line and never their finishing one."""
+    ended = {run.get("run_id") for run in runs if run.get("event") == "finished"}
+    return [run for run in runs if run.get("event") == "started" and run.get("run_id") not in ended]
+
+
 def missed_days(runs: list[dict], fetches: list[dict], endpoints: list[str], now: datetime) -> dict:
     """For each endpoint, the finished days on which a capture was due and no complete one was
     made. An endpoint is due every day from the first run that selected it, whether or not that
-    run got anything, up to yesterday. Days are New York's. A missed day is permanent: it shows
+    run got anything or even finished, up to yesterday. Days are New York's. A missed day is permanent: it shows
     later as a Capture gap."""
     today = release_day(now)
     missed: dict[str, list[str]] = {}

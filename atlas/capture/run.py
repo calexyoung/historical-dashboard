@@ -56,6 +56,10 @@ def endpoints_from_register(table: object) -> list[Endpoint]:
                 raise RegisterError(f"{where}: it does not name its datasets")
             if not isinstance(channel, str) or not channel:
                 raise RegisterError(f"{where}: its channel is not a name")
+            if row["datasets"] != "*" and not set(datasets) <= set(row["datasets"]):
+                # Otherwise an endpoint on an unsigned row could be cleared by another row
+                # that happens to cover the dataset it names.
+                raise RegisterError(f"{where}: it names a dataset its row does not cover")
             params = entry.get("params", {})
             problem = "its params are not an object" if not isinstance(params, dict) \
                 else adapter.problem(params)
@@ -71,8 +75,20 @@ def endpoints_from_register(table: object) -> list[Endpoint]:
 def refusals(table: object, endpoints: Iterable[Endpoint]) -> dict[str, str]:
     """Why each endpoint may not be stored, for those that may not. Empty means all cleared."""
     gate = RightsGate(table)
+    rows = {row["id"]: row for row in table["rows"]} if gate.problem is None else {}
     refused: dict[str, str] = {}
     for endpoint in endpoints:
+        # The row that lists the endpoint is the row that must be signed: asked directly, and
+        # then through the gate, which adds the rule for intermediary Channels.
+        decision = rows.get(endpoint.source, {}).get("decision")
+        if gate.problem is None and decision is None:
+            refused[endpoint.id] = (f"the rights register row for {endpoint.origin} "
+                                    f"({endpoint.source}) is not signed")
+            continue
+        if gate.problem is None and decision.get("store") is not True:
+            refused[endpoint.id] = (f"the rights register row for {endpoint.origin} "
+                                    f"({endpoint.source}) does not allow store")
+            continue
         for dataset in endpoint.datasets:
             decision = gate.may_store(endpoint.origin, dataset, endpoint.channel)
             if not decision.allowed:
@@ -183,18 +199,27 @@ def _run(store, table, endpoints, transport, register_sha256, hide, sleep, user_
     started = transport.now()
     runs = S.read_runs(store, result.lines)
     fetches = S.read_fetch_log(store, result.lines)
-    other = next((str(run.get("transport")) for run in runs
-                  if run.get("transport") != transport.kind), None)
+    for run in S.unfinished_runs(runs):
+        result.lines.append(f"WARNING run {run.get('run_id')} started at {run.get('started_at')} "
+                            "and did not finish")
+    other = next((str(record.get("transport")) for record in [*runs, *fetches]
+                  if record.get("transport") != transport.kind), None)
     if other is not None:
         # A store of replayed fixtures is not evidence of what an agency served, and the two
-        # must never be mixed.
-        refusal = (f"REFUSED: this store holds a {other} run and this run is {transport.kind}. "
-                   "Nothing was fetched.")
-        return RunResult(1, [refusal])
+        # must never be mixed. Both logs are asked, so a run that died before its last line
+        # still counts.
+        result.lines.append(f"REFUSED: this store holds a {other} run and this run is "
+                            f"{transport.kind}. Nothing was fetched.")
+        result.exit_code = 1
+        return result
     run_id = f"{started.strftime('%Y%m%dT%H%M%SZ')}-{_secrets.token_hex(3)}"
     register = {"version": table["version"], "sha256": register_sha256}
     selected = [endpoint.id for endpoint in endpoints]
-    this_run = {"run_id": run_id, "started_at": S.stamp(started), "selected": selected}
+    this_run = {"event": "started", "run_id": run_id, "started_at": S.stamp(started),
+                "selected": selected, "transport": transport.kind, "register": register}
+    # Written before the first request: a run that dies still shows that these endpoints were
+    # due today and what kind of run it was.
+    S.append_run(store, this_run)
     result.missed = S.missed_days([*runs, this_run], fetches, selected, started)
     for endpoint_id, days in result.missed.items():
         result.lines.append(f"MISSED {endpoint_id}: {', '.join(days)}")
@@ -211,6 +236,7 @@ def _run(store, table, endpoints, transport, register_sha256, hide, sleep, user_
             "source": endpoint.source, "origin": endpoint.origin, "datasets": list(endpoint.datasets),
             "channel": endpoint.channel, "adapter": {"name": adapter.name, "version": adapter.version},
             "register": register, "transport": transport.kind,
+            "real_bytes": bool(getattr(transport, "real", True)),
             "started_at": S.stamp(transport.now()),
         }
         try:
@@ -236,8 +262,8 @@ def _run(store, table, endpoints, transport, register_sha256, hide, sleep, user_
 
     if any(outcome != "captured" for outcome in result.outcomes.values()):
         result.exit_code = 1
-    S.append_run(store, {**this_run, "finished_at": S.stamp(transport.now()),
-                         "transport": transport.kind, "register": register,
+    S.append_run(store, {"event": "finished", "run_id": run_id,
+                         "finished_at": S.stamp(transport.now()), "transport": transport.kind,
                          "outcomes": result.outcomes, "missed": result.missed,
                          "exit_code": result.exit_code})
     return result

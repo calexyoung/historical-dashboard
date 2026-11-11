@@ -15,7 +15,9 @@ evidence. M7 builds that job and the adapter contract it stands on. This records
    terms, each naming its adapter, its datasets and its parameters. There is no second list.
    Listing an endpoint permits nothing.
 2. **A run fails closed on rights, before the first request.** `atlas capture` asks
-   `RightsGate.may_store` for every dataset of every selected endpoint. One refusal fails the
+   `RightsGate.may_store` for every dataset of every selected endpoint, and checks that the
+   row which lists the endpoint is itself signed for storage and covers those datasets, so an
+   endpoint cannot be cleared by some other row. One refusal fails the
    whole run and nothing is fetched. An uncleared endpoint is never skipped quietly: that would
    hide a mistake in the table. `--only` narrows the selection first, so one signed row can run
    while others wait, and that choice is visible in the command.
@@ -42,26 +44,37 @@ evidence. M7 builds that job and the adapter contract it stands on. This records
    part arrived. Identical bytes fetched twice are two lines and one blob: the second line is
    what a capture confirmation is made from. Blobs are written before the line that names
    them. Cookie values are not kept, and any configured secret is replaced before writing.
-8. **Times.** Retrieval times and blob paths are UTC, whole seconds, rounded up: a value was
+   `runs.ndjson` gets a line when a run starts, before its first request, and another when it
+   finishes, so a run that died is seen, still counts as a day on which its endpoints were due,
+   and still marks what kind of store it wrote into.
+8. **No redirects.** A 3xx is the answer and fails the fetch. Following it would fetch from
+   somewhere the gate was never asked about and file the bytes under the first request.
+9. **An answer nobody foresaw never stops a run.** A shape no check anticipated is flagged
+   incomplete where the adapter can say why, and otherwise recorded as a failed capture with
+   its bytes kept; the next endpoint is still fetched.
+10. **Times.** Retrieval times and blob paths are UTC, whole seconds, rounded up: a value was
    public no later than the time recorded. *Expected capture days* are New York days, where the
    releases happen (PLAN 4.7). An endpoint is due every day from the first run that selected
    it, whether or not that run got anything; a finished day with no whole capture is reported
    as missed, in the run's output and in `runs.ndjson`. Missing a day does not fail today's run.
-9. **Fixtures are recorded exchanges, and committing one is redistribution.** A fixture is a
+11. **Fixtures are recorded exchanges, and committing one is redistribution.** A fixture is a
    directory of readable files: the requests, statuses, headers and times, and each body byte
    for byte. `--replay` runs the real adapters against them with the recorded clock, and a
    request with no recorded answer fails rather than reach the network. `--export-fixtures`
-   writes a store's captures in the same form, and for bytes that came from the network it
-   requires the register to allow `redistribute` on production. A store written by replay and
-   a store written from the network are never mixed.
-10. **The committed fixtures hold invented values for now.** The repository is public and no
+   writes a store's captures in the same form. Every fetch-log line says whether its bytes are
+   real (`real_bytes`): served by a source now, or replayed from a recording that was. For
+   real bytes the export requires the register to allow `redistribute` on production, and a
+   line that does not say is taken to be real. A store written by replay and a store written
+   from the network are never mixed.
+12. **The committed fixtures hold invented values for now.** The repository is public and no
     row is signed, so the three fixtures copy the *shape* of each source's answer of
     2026-11-11 and none of its numbers, and say so in their provenance. A test allows a
     fixture to be real only when its row is signed for redistribution.
-11. **The job's home is not this repository.** `deploy/capture/capture.yml` is a file to copy
+13. **The job's home is not this repository.** `deploy/capture/capture.yml` is a file to copy
     into a separate private repository (D6). It pins the Macro Atlas commit it runs, so the
     register the job obeys changes only when Alex moves the pin, and it commits what was
-    captured even when the run fails.
+    captured even when the run fails, and saves the commits as an artifact if they cannot be
+    pushed.
 
 ## Not met yet: real captured fixtures
 

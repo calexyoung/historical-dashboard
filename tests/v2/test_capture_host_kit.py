@@ -60,6 +60,17 @@ def test_what_was_captured_is_committed_even_when_the_run_failed():
     assert "exit 1" in fail["run"]
 
 
+def test_captures_that_could_not_be_pushed_are_saved_as_an_artifact_not_lost_with_the_runner():
+    keep, bundle, upload = step("Keep"), step("Bundle"), step("Upload")
+    assert keep["id"] == "keep"
+    assert "git rebase --abort" in keep["run"]  # a failed rebase must not end the retries
+    assert bundle["if"] == upload["if"] == "failure() && steps.keep.outcome == 'failure'"
+    assert "git bundle create" in bundle["run"]
+    assert upload["uses"].startswith("actions/upload-artifact@")
+    assert upload["with"]["if-no-files-found"] == "error"
+    assert STEPS.index(keep) < STEPS.index(bundle) < STEPS.index(upload)
+
+
 def test_the_runbook_says_what_only_alex_can_do():
     text = (KIT / "README.md").read_text()
     for needed in ("D2", "D6", "ATLAS_REF", "--dry-run", "--verify", "MISSED", "hand-off"):

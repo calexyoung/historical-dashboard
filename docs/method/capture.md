@@ -26,7 +26,10 @@ and a Provider vintage (CONTEXT.md).
    retrying a 5xx, a 429 or a network error three times with a growing wait, and leaving a host
    alone for the rest of the run once two requests to it have ended in 429.
 6. Writes each response body to `raw/`, then one line to `fetchlog.ndjson`.
-7. Writes one line to `runs.ndjson` and exits 0 only if every endpoint was captured whole.
+7. Writes its finishing line to `runs.ndjson` (the starting line was written before the first
+   request) and exits 0 only if every endpoint was captured whole.
+
+Redirects are not followed: a 3xx fails the fetch.
 
 ## Whole, incomplete, failed
 
@@ -57,12 +60,13 @@ that has rolled out of the window was not asked about, and its absence says noth
 raw/{source}/{utc day}/{sha256}.gz    one response body, gzipped, named by the SHA-256 of the
                                       bytes as received (after HTTP content decoding)
 fetchlog.ndjson                       one JSON line per Capture attempted
-runs.ndjson                           one JSON line per run
+runs.ndjson                           two JSON lines per run: started, finished
 ```
 
 A fetch-log line holds `capture_id`, `run_id`, `endpoint`, `source` (the register row),
 `origin`, `datasets`, `channel`, `adapter` (name and version), `register` (version and file
-hash), `transport` (`live` or `replay`), `started_at`, `retrieved_at` (when the last part
+hash), `transport` (`live` or `replay`), `real_bytes` (whether a source served them, now or when
+they were recorded), `started_at`, `retrieved_at` (when the last part
 arrived; null if the fetch failed), `outcome`, `evidence` (`complete`, `scope`, `checks`,
 `problems`), `error`, and `parts`. Each part holds the request (method, URL, headers, body),
 the status, the response headers, `received_at`, `sha256`, `bytes`, the `blob` path, and why
@@ -79,7 +83,8 @@ hashes), the recorded evidence and the original retrieval time. `reexamine` judg
 again with today's adapter. `ADAPTERS["bls"].parse(capture)` gives, per BLS series id, one
 Observation per month: the Period (`2026-10`), the value as BLS printed it (a string, never
 rounded), a status (`observed`, `preliminary` when BLS marks it `P`, `unavailable` when BLS
-prints `-`), and the footnotes. If anything could not be read the state says `complete: false`.
+prints `-`), and the footnotes. Any other value that is not a number makes the answer
+incomplete and gives no Observation. If anything could not be read the state says `complete: false`.
 
 ## Commands
 

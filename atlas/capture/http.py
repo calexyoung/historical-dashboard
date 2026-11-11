@@ -57,6 +57,7 @@ class Response:
 
 class Transport(Protocol):
     kind: str  # "live" or "replay"; written on every fetch-log line
+    real: bool  # whether the bytes it returns were served by a source, now or when recorded
 
     def now(self) -> datetime: ...
 
@@ -76,6 +77,7 @@ class LiveTransport:
     outside the standard library."""
 
     kind = "live"
+    real = True
 
     def __init__(self, timeout: float = TIMEOUT_SECONDS):
         import requests
@@ -91,7 +93,9 @@ class LiveTransport:
         try:
             answer = self._http.request(
                 request.method, request.url, headers=dict(request.headers), data=request.body,
-                timeout=self._timeout, allow_redirects=True,
+                # A redirect would fetch from somewhere the rights gate was never asked about,
+                # and file the bytes under this request. The 3xx is the answer; it fails the fetch.
+                timeout=self._timeout, allow_redirects=False,
             )
         except self._requests.RequestException as error:
             raise TransportError(f"{type(error).__name__}: {error}") from error
@@ -153,16 +157,18 @@ class Session:
         headers = (("User-Agent", self._user_agent), *request.headers)
         request = Request(request.method, request.url, headers, request.body)
         tries: list[str] = []
-        response: Response | None = None
+        response: Response | None = None  # the last answer that did arrive, whatever came after
+        answered_last = False
         for attempt in range(self._retries + 1):
             self._wait_for(host)
             wait = BACKOFF_SECONDS * 2**attempt
             try:
                 response = self.transport.send(request)
             except TransportError as error:
-                response = None
+                answered_last = False
                 tries.append(str(error))
             else:
+                answered_last = True
                 if response.status != 429 and response.status < 500:
                     break
                 tries.append(f"HTTP {response.status}")
@@ -173,8 +179,10 @@ class Session:
             raise CaptureError(f"no answer from {host} after {len(tries)} tries: {tries[-1]}")
         if response.status == 429:
             self._rate_limited[host] = self._rate_limited.get(host, 0) + 1
-        final_was_retried = response.status == 429 or response.status >= 500
-        return Part(request, response, tries[:-1] if final_was_retried else tries)
+        # ``tries`` is why each try was repeated. When the kept answer is the last try's own
+        # (it ran out of retries), that try is not listed as a reason for another.
+        ran_out_on_it = answered_last and (response.status == 429 or response.status >= 500)
+        return Part(request, response, tries[:-1] if ran_out_on_it else tries)
 
 
 def _retry_after(response: Response) -> float:

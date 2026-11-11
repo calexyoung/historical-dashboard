@@ -22,10 +22,10 @@ from atlas.capture.replay import (
     load_capture,
     read_exchanges,
     reexamine,
+    write_exchange,
 )
 from atlas.capture.run import endpoints_from_register, run_capture
 from atlas.capture.store import read_fetch_log, read_runs
-from atlas.capture.replay import write_exchange  # noqa: I001
 from atlas.cli import main as atlas_main
 from atlas.rights import RightsGate, load_register
 

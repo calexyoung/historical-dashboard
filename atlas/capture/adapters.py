@@ -156,7 +156,10 @@ class BlsAdapter:
         if answer.get("status") != "REQUEST_SUCCEEDED":
             problems.append(f"the status is {answer.get('status')!r}, not 'REQUEST_SUCCEEDED'")
         messages = answer.get("message") or []
-        problems.extend(f"BLS says: {message}" for message in messages)
+        if isinstance(messages, list):
+            problems.extend(f"BLS says: {message}" for message in messages)
+        else:
+            problems.append("the message is not a list")
         results = answer.get("Results")
         listed = results.get("series") if isinstance(results, dict) else None
         found: dict[str, list[dict]] = {}
@@ -176,10 +179,13 @@ class BlsAdapter:
     def _observations(self, series: str, rows: list[dict], scope: dict, problems: list[str]) -> list[dict]:
         out, seen = [], set()
         for row in rows:
+            if not isinstance(row, dict):
+                problems.append(f"series {series} has a row that is not an object")
+                continue
             year, code = str(row.get("year")), str(row.get("period"))
             value = row.get("value")
-            if not (year.isdigit() and len(code) == 3 and code[0] == "M" and code[1:].isdigit()
-                    and 1 <= int(code[1:]) <= 12 and isinstance(value, str)):
+            if not (year.isascii() and year.isdigit() and len(code) == 3 and code[0] == "M"
+                    and code[1:].isascii() and code[1:].isdigit() and 1 <= int(code[1:]) <= 12):
                 problems.append(f"series {series} has a row that is not a month: {year} {code}")
                 continue
             period = f"{year}-{code[1:]}"
@@ -189,9 +195,19 @@ class BlsAdapter:
             seen.add(period)
             if not scope["start_year"] <= int(year) <= scope["end_year"]:
                 problems.append(f"series {series} has {period}, outside the years asked for")
+            footnotes = row.get("footnotes") or []
+            if not isinstance(footnotes, list):
+                problems.append(f"series {series} has footnotes that are not a list for {period}")
+                continue
             notes = [{"code": str(n.get("code", "")), "text": str(n.get("text", ""))}
-                     for n in row.get("footnotes") or [] if isinstance(n, dict) and n]
-            if _is_number(value):
+                     for n in footnotes if isinstance(n, dict) and n]
+            if value != "-" and not (isinstance(value, str) and _is_number(value)):
+                # Only "-" is known to mean "not published". Anything else unreadable is a
+                # fault in the answer, and no Observation is made up from it.
+                problems.append(f"series {series} has a value that is not a number or '-' "
+                                f"for {period}: {value!r}")
+                continue
+            if value != "-":
                 preliminary = any(n["code"] == "P" for n in notes)
                 out.append({"period": period, "value": value,
                             "status": "preliminary" if preliminary else "observed", "footnotes": notes})
@@ -286,9 +302,15 @@ class TreasuryFiscalDataAdapter:
                 continue
             if meta.get("count") != len(data):
                 problems.append(f"page {number} says it has {meta.get('count')} rows and has {len(data)}")
-            totals.add((meta.get("total-count"), meta.get("total-pages")))
+            total = (meta.get("total-count"), meta.get("total-pages"))
+            if not all(isinstance(n, int) and not isinstance(n, bool) for n in total):
+                problems.append(f"page {number} does not give its totals as numbers")
+                continue
+            totals.add(total)
             for row in data:
-                if not isinstance(row, dict) or any(field not in row for field in scope["key"]):
+                if not isinstance(row, dict) or not all(
+                        isinstance(row.get(field), (str, int)) and not isinstance(row.get(field), bool)
+                        for field in scope["key"]):
                     problems.append(f"page {number} has a row without its key")
                     break
                 keys.append(tuple(str(row[field]) for field in scope["key"]))
@@ -389,7 +411,15 @@ def capture(endpoint: Endpoint, fetch: Fetch) -> RawCapture:
     """Fetch one endpoint: the plan's ``fetch(spec) -> RawCapture``. Raises ``CaptureError``
     when the fetch fails; what did arrive stays in ``fetch.parts``."""
     adapter = ADAPTERS[endpoint.adapter]
-    evidence = adapter.fetch(endpoint, fetch)
+    try:
+        evidence = adapter.fetch(endpoint, fetch)
+    except CaptureError:
+        raise
+    except Exception as error:
+        # An answer in a shape no check foresaw. It must not take the run down with it: the
+        # bytes are in ``fetch.parts`` and are kept as a failed capture.
+        raise CaptureError(f"the {adapter.name} adapter could not read the answer "
+                           f"({type(error).__name__}: {error})") from error
     if not fetch.parts:
         raise CaptureError(f"the {adapter.name} adapter made no request")
     return RawCapture(endpoint.id, adapter.name, list(fetch.parts), evidence,

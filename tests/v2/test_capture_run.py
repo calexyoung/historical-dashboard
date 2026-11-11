@@ -256,7 +256,7 @@ def test_an_answer_the_adapter_cannot_read_at_all_is_a_failure_with_the_bytes_ke
 def test_a_log_line_torn_inside_a_character_does_not_stop_the_next_run(tmp_path):
     run(tmp_path, Scripted({URL: [(200, BODY)]}))
     with open(tmp_path / "store" / "fetchlog.ndjson", "ab") as handle:
-        handle.write('{"note": "caf'.encode() + "é".encode()[:1])  # half of a two-byte character
+        handle.write(b'{"note": "caf' + "é".encode()[:1])  # half of a two-byte character
     result = run(tmp_path, Scripted({URL: [(200, BODY)]}, start="2026-11-11T22:45:00"))
     assert result.exit_code == 0
     assert any("fetchlog.ndjson line 2 is not whole" in text for text in result.lines)

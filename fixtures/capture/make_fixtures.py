@@ -149,6 +149,7 @@ class Synthetic:
     """Serves the invented bodies to the real adapters, and remembers what was asked."""
 
     kind = "synthetic"
+    real = False
 
     def __init__(self, bodies: dict[str, tuple[str, bytes]]):
         self._bodies = bodies

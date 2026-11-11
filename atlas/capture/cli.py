@@ -34,7 +34,7 @@ def _say(line: str) -> None:
     if os.environ.get("GITHUB_ACTIONS") == "true":
         if line.startswith(_ERRORS):
             line = f"::error::{line}"
-        elif line.startswith("MISSED") or "is not whole" in line:
+        elif line.startswith(("MISSED", "WARNING")) or "is not whole" in line:
             line = f"::warning::{line}"
     print(line)
 
@@ -59,6 +59,8 @@ def _status(store: Path, table: object, only: list[str] | None, now: datetime) -
     runs, fetches = S.read_runs(store, problems), S.read_fetch_log(store, problems)
     for problem in problems:
         _say(problem)
+    for run in S.unfinished_runs(runs):
+        _say(f"WARNING run {run.get('run_id')} started at {run.get('started_at')} and did not finish")
     missed = S.missed_days(runs, fetches, endpoints, now)
     for endpoint in endpoints:
         last = [line["retrieved_at"] for line in fetches

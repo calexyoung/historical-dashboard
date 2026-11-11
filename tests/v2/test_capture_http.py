@@ -1,5 +1,7 @@
 """The manners of the capture kit towards a source (PLAN 4.2: per-host pause, serial requests,
 backoff, the 429 breaker, User-Agent). Driven through Session with a scripted transport."""
+from types import SimpleNamespace
+
 import pytest
 
 from atlas.capture.http import USER_AGENT, CaptureError, Fetch, Request, Session
@@ -117,11 +119,9 @@ def test_the_live_transport_follows_no_redirect(monkeypatch):
 
     seen = {}
 
-    class Raw:
-        headers = {"Location": "https://elsewhere.invalid/"}
-
     class Answer:
-        status_code, content, raw = 302, b"", Raw()
+        status_code, content = 302, b""
+        raw = SimpleNamespace(headers={"Location": "https://elsewhere.invalid/"})
 
     def request(self, method, url, **kw):
         seen.update(kw)
