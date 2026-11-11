@@ -1,0 +1,520 @@
+{
+ "description": "What v1's own page (web/app.js) did with its 11 presets and with ten hash links, recorded by scripts/record-v1-links.py from dist/index.html. `to_is_last_month` says the range ran to the end of v1's axis, which is how a preset written with `lastM` behaves. Recorded, not derived: do not edit by hand.",
+ "v1_axis": {
+  "first_month": "2000-01",
+  "last_month": "2026-11"
+ },
+ "presets": [
+  {
+   "name": "COVID shock",
+   "v1": {
+    "sel": [
+     "spx",
+     "unrate",
+     "wti",
+     "umcsent",
+     "m2"
+    ],
+    "mode": "rebase",
+    "from": "2019-06",
+    "to": "2022-06",
+    "compare_from": null,
+    "to_is_last_month": false
+   }
+  },
+  {
+   "name": "Financial crisis 2008",
+   "v1": {
+    "sel": [
+     "spx",
+     "caseshiller",
+     "unrate",
+     "fedfunds",
+     "vix"
+    ],
+    "mode": "rebase",
+    "from": "2006-01",
+    "to": "2012-12",
+    "compare_from": null,
+    "to_is_last_month": false
+   }
+  },
+  {
+   "name": "Inflation surge 2021–24",
+   "v1": {
+    "sel": [
+     "cpi_yoy",
+     "fedfunds",
+     "gas",
+     "wages_yoy",
+     "umcsent"
+    ],
+    "mode": "raw",
+    "from": "2020-01",
+    "to": "2026-11",
+    "compare_from": null,
+    "to_is_last_month": true
+   }
+  },
+  {
+   "name": "Oil, gas & the pump",
+   "v1": {
+    "sel": [
+     "wti",
+     "brent",
+     "gas",
+     "natgas"
+    ],
+    "mode": "raw",
+    "from": "2000-01",
+    "to": "2026-11",
+    "compare_from": null,
+    "to_is_last_month": true
+   }
+  },
+  {
+   "name": "Housing",
+   "v1": {
+    "sel": [
+     "caseshiller",
+     "mortgage",
+     "houst",
+     "medhome"
+    ],
+    "mode": "rebase",
+    "from": "2000-01",
+    "to": "2026-11",
+    "compare_from": null,
+    "to_is_last_month": true
+   }
+  },
+  {
+   "name": "US vs Europe jobs",
+   "v1": {
+    "sel": [
+     "unrate",
+     "ez_unemp",
+     "de_unemp",
+     "uk_unemp",
+     "jp_unemp"
+    ],
+    "mode": "raw",
+    "from": "2000-01",
+    "to": "2026-11",
+    "compare_from": null,
+    "to_is_last_month": true
+   }
+  },
+  {
+   "name": "World stock markets",
+   "v1": {
+    "sel": [
+     "spx",
+     "dax",
+     "nikkei",
+     "shanghai",
+     "sensex",
+     "ftse"
+    ],
+    "mode": "rebase",
+    "from": "2000-01",
+    "to": "2026-11",
+    "compare_from": null,
+    "to_is_last_month": true
+   }
+  },
+  {
+   "name": "Politics & sentiment",
+   "v1": {
+    "sel": [
+     "approval",
+     "umcsent",
+     "usepu",
+     "spx"
+    ],
+    "mode": "z",
+    "from": "2000-01",
+    "to": "2026-11",
+    "compare_from": null,
+    "to_is_last_month": true
+   }
+  },
+  {
+   "name": "Rates & yield curve",
+   "v1": {
+    "sel": [
+     "fedfunds",
+     "gs2",
+     "gs10",
+     "t10y2y",
+     "mortgage"
+    ],
+    "mode": "raw",
+    "from": "2000-01",
+    "to": "2026-11",
+    "compare_from": null,
+    "to_is_last_month": true
+   }
+  },
+  {
+   "name": "2026 oil shock",
+   "v1": {
+    "sel": [
+     "wti",
+     "gas",
+     "cpi_yoy",
+     "spx",
+     "vix"
+    ],
+    "mode": "z",
+    "from": "2025-06",
+    "to": "2026-11",
+    "compare_from": null,
+    "to_is_last_month": true
+   }
+  },
+  {
+   "name": "2008 vs 2020",
+   "v1": {
+    "sel": [
+     "spx",
+     "unrate",
+     "wti"
+    ],
+    "mode": "rebase",
+    "from": "2007-10",
+    "to": "2010-10",
+    "compare_from": "2020-01",
+    "to_is_last_month": false
+   }
+  }
+ ],
+ "links": [
+  {
+   "hash": "#sel=spx,unrate,wti,cpi_yoy&mode=z&from=2000-01&to=2026-10",
+   "v1": {
+    "sel": [
+     "spx",
+     "unrate",
+     "wti",
+     "cpi_yoy"
+    ],
+    "mode": "z",
+    "from": "2000-01",
+    "to": "2026-10",
+    "recessions": true,
+    "events": true,
+    "event_categories": [
+     "financial",
+     "geopolitical",
+     "health",
+     "policy",
+     "political"
+    ],
+    "bands": "none",
+    "highlighted_event": null,
+    "compare_from": null,
+    "max_min": false,
+    "basis": "chg",
+    "lag": 0,
+    "sx": null,
+    "sy": null,
+    "roll": 36,
+    "to_is_last_month": false
+   }
+  },
+  {
+   "hash": "#sel=spx,unrate,wti,umcsent,m2&mode=rebase&from=2019-06&to=2022-06",
+   "v1": {
+    "sel": [
+     "spx",
+     "unrate",
+     "wti",
+     "umcsent",
+     "m2"
+    ],
+    "mode": "rebase",
+    "from": "2019-06",
+    "to": "2022-06",
+    "recessions": true,
+    "events": true,
+    "event_categories": [
+     "financial",
+     "geopolitical",
+     "health",
+     "policy",
+     "political"
+    ],
+    "bands": "none",
+    "highlighted_event": null,
+    "compare_from": null,
+    "max_min": false,
+    "basis": "chg",
+    "lag": 0,
+    "sx": null,
+    "sy": null,
+    "roll": 36,
+    "to_is_last_month": false
+   }
+  },
+  {
+   "hash": "#sel=cpi_yoy,fedfunds,gas,wages_yoy,umcsent&mode=raw&from=2020-01&to=2026-10&ev=policy,financial",
+   "v1": {
+    "sel": [
+     "cpi_yoy",
+     "fedfunds",
+     "gas",
+     "wages_yoy",
+     "umcsent"
+    ],
+    "mode": "raw",
+    "from": "2020-01",
+    "to": "2026-10",
+    "recessions": true,
+    "events": true,
+    "event_categories": [
+     "financial",
+     "policy"
+    ],
+    "bands": "none",
+    "highlighted_event": null,
+    "compare_from": null,
+    "max_min": false,
+    "basis": "chg",
+    "lag": 0,
+    "sx": null,
+    "sy": null,
+    "roll": 36,
+    "to_is_last_month": false
+   }
+  },
+  {
+   "hash": "#sel=spx,dax,nikkei,shanghai,sensex,ftse&mode=log&from=2000-01&to=2026-10&shEv=0&bands=pres",
+   "v1": {
+    "sel": [
+     "spx",
+     "dax",
+     "nikkei",
+     "shanghai",
+     "sensex",
+     "ftse"
+    ],
+    "mode": "log",
+    "from": "2000-01",
+    "to": "2026-10",
+    "recessions": true,
+    "events": false,
+    "event_categories": [
+     "financial",
+     "geopolitical",
+     "health",
+     "policy",
+     "political"
+    ],
+    "bands": "pres",
+    "highlighted_event": null,
+    "compare_from": null,
+    "max_min": false,
+    "basis": "chg",
+    "lag": 0,
+    "sx": null,
+    "sy": null,
+    "roll": 36,
+    "to_is_last_month": false
+   }
+  },
+  {
+   "hash": "#sel=gdp,unrate,approval,pres_margin&mode=yoy&from=2005-01&to=2020-12&shRec=0&bands=senate",
+   "v1": {
+    "sel": [
+     "gdp",
+     "unrate",
+     "approval",
+     "pres_margin"
+    ],
+    "mode": "yoy",
+    "from": "2005-01",
+    "to": "2020-12",
+    "recessions": false,
+    "events": true,
+    "event_categories": [
+     "financial",
+     "geopolitical",
+     "health",
+     "policy",
+     "political"
+    ],
+    "bands": "senate",
+    "highlighted_event": null,
+    "compare_from": null,
+    "max_min": false,
+    "basis": "chg",
+    "lag": 0,
+    "sx": null,
+    "sy": null,
+    "roll": 36,
+    "to_is_last_month": false
+   }
+  },
+  {
+   "hash": "#sel=spx,vix&mode=dd&from=2007-01&to=2013-12&hi=12&bands=fed_chair&ext=1",
+   "v1": {
+    "sel": [
+     "spx",
+     "vix"
+    ],
+    "mode": "dd",
+    "from": "2007-01",
+    "to": "2013-12",
+    "recessions": true,
+    "events": true,
+    "event_categories": [
+     "financial",
+     "geopolitical",
+     "health",
+     "policy",
+     "political"
+    ],
+    "bands": "fed_chair",
+    "highlighted_event": {
+     "month": "2006-06",
+     "day": 29,
+     "title": "Fed ends hiking cycle at 5.25%"
+    },
+    "compare_from": null,
+    "max_min": true,
+    "basis": "chg",
+    "lag": 0,
+    "sx": null,
+    "sy": null,
+    "roll": 36,
+    "to_is_last_month": false
+   }
+  },
+  {
+   "hash": "#sel=spx,unrate,wti&mode=rebase&from=2007-10&to=2010-10&cmp=2020-01",
+   "v1": {
+    "sel": [
+     "spx",
+     "unrate",
+     "wti"
+    ],
+    "mode": "rebase",
+    "from": "2007-10",
+    "to": "2010-10",
+    "recessions": true,
+    "events": true,
+    "event_categories": [
+     "financial",
+     "geopolitical",
+     "health",
+     "policy",
+     "political"
+    ],
+    "bands": "none",
+    "highlighted_event": null,
+    "compare_from": "2020-01",
+    "max_min": false,
+    "basis": "chg",
+    "lag": 0,
+    "sx": null,
+    "sy": null,
+    "roll": 36,
+    "to_is_last_month": false
+   }
+  },
+  {
+   "hash": "#sel=fedfunds,gs10&mode=raw&from=2010-01&to=2026-10&basis=lvl&lag=6&sx=fedfunds&sy=gs10&roll=24",
+   "v1": {
+    "sel": [
+     "fedfunds",
+     "gs10"
+    ],
+    "mode": "raw",
+    "from": "2010-01",
+    "to": "2026-10",
+    "recessions": true,
+    "events": true,
+    "event_categories": [
+     "financial",
+     "geopolitical",
+     "health",
+     "policy",
+     "political"
+    ],
+    "bands": "none",
+    "highlighted_event": null,
+    "compare_from": null,
+    "max_min": false,
+    "basis": "lvl",
+    "lag": 6,
+    "sx": "fedfunds",
+    "sy": "gs10",
+    "roll": 24,
+    "to_is_last_month": false
+   }
+  },
+  {
+   "hash": "#sel=spx,unrate&mode=z&from=2001-01&to=2012-12&shPres=1&ev=",
+   "v1": {
+    "sel": [
+     "spx",
+     "unrate"
+    ],
+    "mode": "z",
+    "from": "2001-01",
+    "to": "2012-12",
+    "recessions": true,
+    "events": true,
+    "event_categories": [],
+    "bands": "pres",
+    "highlighted_event": null,
+    "compare_from": null,
+    "max_min": false,
+    "basis": "chg",
+    "lag": 0,
+    "sx": null,
+    "sy": null,
+    "roll": 36,
+    "to_is_last_month": false
+   }
+  },
+  {
+   "hash": "#sel=wti,nosuchseries,gas,brent,natgas,spx,vix,unrate,gold,copper&mode=bogus&from=2024-01&to=2024-03",
+   "v1": {
+    "sel": [
+     "wti",
+     "gas",
+     "brent",
+     "natgas",
+     "spx",
+     "vix",
+     "unrate",
+     "gold"
+    ],
+    "mode": "z",
+    "from": "2000-01",
+    "to": "2026-11",
+    "recessions": true,
+    "events": true,
+    "event_categories": [
+     "financial",
+     "geopolitical",
+     "health",
+     "policy",
+     "political"
+    ],
+    "bands": "none",
+    "highlighted_event": null,
+    "compare_from": null,
+    "max_min": false,
+    "basis": "chg",
+    "lag": 0,
+    "sx": null,
+    "sy": null,
+    "roll": 36,
+    "to_is_last_month": true
+   }
+  }
+ ]
+}
