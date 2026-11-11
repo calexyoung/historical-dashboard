@@ -46,14 +46,14 @@ def test_the_release_root_is_mounted_read_only_and_nothing_else_is_mounted(name)
 
 def test_the_dockerfile_has_no_default_surface_or_base_path():
     # A build that is not told its Surface must fail, not fall back to one.
-    assert re.search(r"^ARG ATLAS_SURFACE$", DOCKERFILE, re.M)
-    assert re.search(r"^ARG BASE_PATH$", DOCKERFILE, re.M)
-    assert not re.search(r"^ARG (ATLAS_SURFACE|BASE_PATH)=", DOCKERFILE, re.M)
-    assert not re.search(r"^ENV .*ATLAS_SURFACE", DOCKERFILE, re.M)
+    assert re.search(r"^ARG ATLAS_SURFACE$", DOCKERFILE, re.MULTILINE)
+    assert re.search(r"^ARG BASE_PATH$", DOCKERFILE, re.MULTILINE)
+    assert not re.search(r"^ARG (ATLAS_SURFACE|BASE_PATH)=", DOCKERFILE, re.MULTILINE)
+    assert not re.search(r"^ENV .*ATLAS_SURFACE", DOCKERFILE, re.MULTILINE)
 
 
 def test_the_image_runs_as_a_non_root_user_with_a_health_check_and_no_release_inside():
-    assert re.search(r"^USER node$", DOCKERFILE, re.M)
+    assert re.search(r"^USER node$", DOCKERFILE, re.MULTILINE)
     assert "HEALTHCHECK" in DOCKERFILE and "/api/health" in DOCKERFILE
     for line in DOCKERFILE.splitlines():
         if line.startswith(("COPY", "ADD")):

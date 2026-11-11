@@ -31,4 +31,9 @@ describe("buildCsp: the enforced Content Security Policy (ADR 0013)", () => {
     expect(directives(buildCsp("n", { dev: true }))["script-src"]).toContain("'unsafe-eval'");
     expect(csp["script-src"]).not.toContain("'unsafe-eval'");
   });
+
+  it("allows inline style elements in development only, which Next's error overlay injects", () => {
+    expect(directives(buildCsp("n", { dev: true }))["style-src"]).toEqual(["'self'", "'unsafe-inline'"]);
+    expect(csp["style-src"]).not.toContain("'unsafe-inline'");
+  });
 });

@@ -13,7 +13,8 @@ export function buildCsp(nonce: string, options: { dev: boolean }): string {
     `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${options.dev ? " 'unsafe-eval'" : ""}`,
     // Stylesheets from this origin, style elements only with the nonce. Style attributes are
     // allowed: a server-rendered figure positions things with them, and they cannot run script.
-    `style-src 'self' 'nonce-${nonce}'`,
+    // (`next dev` injects its error overlay's styles without a nonce, so development allows them.)
+    options.dev ? "style-src 'self' 'unsafe-inline'" : `style-src 'self' 'nonce-${nonce}'`,
     "style-src-attr 'unsafe-inline'",
     "img-src 'self' data:",
     "font-src 'self'",
