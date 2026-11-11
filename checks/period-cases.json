@@ -32,6 +32,12 @@
     { "freq": "business_daily", "label": "2024-03-02", "why": "a Saturday" },
     { "freq": "business_daily", "label": "2024-03-03", "why": "a Sunday" },
     { "freq": "irregular", "label": "2024-11", "why": "an irregular label is a date" },
+    { "freq": "annual", "label": "2024\n", "why": "a trailing newline is not part of a label" },
+    { "freq": "monthly", "label": "2024-02\n", "why": "a trailing newline is not part of a label" },
+    { "freq": "annual", "label": "\uff12\uff10\uff12\uff14", "why": "full-width digits are not digits here" },
+    { "freq": "daily", "label": "0000-01-01", "why": "there is no year 0000" },
+    { "freq": "annual", "label": "0000", "why": "there is no year 0000" },
+    { "freq": "weekly", "label": "0000-W01", "why": "there is no year 0000" },
     { "freq": "fortnightly", "label": "2024-01-01", "why": "not a frequency" }
   ]
 }
