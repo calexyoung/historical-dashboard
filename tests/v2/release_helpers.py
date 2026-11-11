@@ -20,7 +20,7 @@ THREE = FIXTURE / "three-fetch"
 SERIES = FIXTURE / "series.json"
 FETCHES = ("1-initial", "2-revision", "3-withdrawal")
 #: A day after the fixture's last fetch (2026-05-12).
-NOW = datetime(2026, 5, 13, 15, 0, 0, tzinfo=UTC)
+NOW = datetime(2026, 5, 13, 15, 7, 11, tzinfo=UTC)
 ORIGIN = "Macro Atlas fixture (synthetic)"
 
 

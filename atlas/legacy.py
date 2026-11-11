@@ -522,7 +522,7 @@ TRANSFORMS = ("lin", "log", "rebase", "z", "pc1", "drawdown")
 RATIO_TRANSFORMS = frozenset({"log", "rebase", "pc1", "drawdown"})
 
 
-def _offered_transforms(entry: dict, series_file: dict) -> list[str]:
+def offered_transforms(entry: dict, series_file: dict) -> list[str]:
     """Which Transforms a Series offers (docs/method/transforms.md).
 
     The four that divide by one of the Series' own values, or take its logarithm, read the
@@ -556,7 +556,7 @@ def build_release(repo: Path = ROOT, now: datetime | None = None) -> tuple[str, 
     entries += more_entries
     files |= more_files
     for entry in entries:
-        entry["allowed_transforms"] = _offered_transforms(entry, files[entry["key"]])
+        entry["allowed_transforms"] = offered_transforms(entry, files[entry["key"]])
 
     out: dict[str, bytes] = {}
     rows: dict[str, dict] = {}

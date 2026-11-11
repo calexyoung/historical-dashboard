@@ -43,7 +43,7 @@ def test_a_public_release_from_the_fixture_store_validates_and_is_current(tmp_pa
     assert validate_release(directory) == []
     manifest = read_json(directory / "manifest.json")
     assert manifest["profile"] == "public"
-    assert manifest["created"] == "2026-05-13T15:00:00Z"
+    assert manifest["created"] == "2026-05-13T15:07:11Z"
     assert manifest["rights_register"]["version"] == "fixture-vintage-1"
     assert manifest["rights_register"]["signed"] is True
     assert manifest["withheld"] == []

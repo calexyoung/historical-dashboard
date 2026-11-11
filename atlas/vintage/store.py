@@ -200,6 +200,31 @@ class VintageStore:
         only the Periods inside its ``scope``."""
         return read_lines(self.dir / "caplog" / f"{key}.ndjson", None)
 
+    def problem(self, key: str) -> str | None:
+        """Why what the store holds for a Series is not one whole, recorded state, or None.
+
+        A reader that publishes (the release writer, M9) asks this first: a record that was cut
+        off part way has rows or metadata on disk that no capture-log line vouches for, and
+        ``vintage`` would hand them out as if they were recorded."""
+        caplog = self.captures(key)
+        if not caplog:
+            return f"{key}: no complete Capture is recorded"
+        rows = self.rows(key)
+        metalog = read_lines(self.dir / "metalog" / f"{key}.ndjson", None)
+        whole = {line["capture_id"] for line in caplog}
+        cut_off = ({row["capture_id"] for row in rows} | {line["capture_id"] for line in metalog}) - whole
+        if cut_off:
+            return (f"{key}: the record of capture {min(cut_off)} was cut off part way; "
+                    "run atlas replay to finish it")
+        last = caplog[-1]
+        if _state_hash(key, rows) != last["state_hash"]:
+            return f"{key}: its observation log is not the state its capture log recorded"
+        known = {line["metadata_hash"] for line in metalog}
+        if not metalog or metalog[-1]["metadata_hash"] != last["metadata_hash"] or any(
+                row["metadata_hash"] not in known for row in rows):
+            return f"{key}: its metadata history is not the one its capture log recorded"
+        return None
+
     # --- writing ---------------------------------------------------------------------------
 
     def record(self, state: SeriesState, capture: CaptureRef) -> ChangeSet:
@@ -315,9 +340,7 @@ class VintageStore:
         else:
             change = "none"
         now = [row for row in rows if row["recorded_to"] is None and not row["deleted"]]
-        state_hash = _digest({"key": state.key, "observations": [
-            [row["period"], None if row["value"] is None else canonical(row["value"]), row["status"]]
-            for row in now]}, "state")
+        state_hash = _state_hash(state.key, rows)
         return {"format": LOG_FORMAT, "key": state.key, "capture_id": capture.capture_id,
                 "retrieved_at": when, "endpoint": capture.endpoint, "channel": capture.channel,
                 "real_bytes": capture.real_bytes, "parser": capture.parser, "freq": state.freq,
@@ -345,6 +368,14 @@ class VintageStore:
         path = self.dir / "obslog" / f"{key}.parquet"
         path.parent.mkdir(parents=True, exist_ok=True)
         _replace(path, packed.getvalue())
+
+
+def _state_hash(key: str, rows: list[dict]) -> str:
+    """The State hash: every current Period of a Series with its value and Status."""
+    now = [row for row in rows if row["recorded_to"] is None and not row["deleted"]]
+    return _digest({"key": key, "observations": [
+        [row["period"], None if row["value"] is None else canonical(row["value"]), row["status"]]
+        for row in now]}, "state")
 
 
 def _replace(path: Path, data: bytes) -> None:
