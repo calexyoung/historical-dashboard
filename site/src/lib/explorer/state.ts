@@ -1,0 +1,226 @@
+/**
+ * The Explorer's address (PLAN section 3: "its address fully describes what is shown").
+ *
+ *   /explore?s=spx,unrate&mode=z&from=2019-06&to=2022-06&layers=rec,ev.policy,gov.pres&at=2020-04-01&event={id}
+ *
+ * `parseExplorerParams` reads an address leniently: what it cannot read it leaves unsaid and
+ * notes, so a damaged link still opens. It keeps "not said" (null: the page's default applies)
+ * apart from "none" (an empty list), because a form with every box cleared must not come back
+ * with the defaults ticked. `explorerQuery` writes a view back in one fixed order.
+ * `v1HashToQuery` turns one of v1's hash links (`#sel=…&mode=…`) into this address, quirks
+ * included; it is the only place that knows v1's parameter names.
+ *
+ * Pure, with no knowledge of any Release: which Series, layers and Events exist is the view's
+ * business (view.ts). Safe to load in a browser.
+ */
+import { TRANSFORMS, type TransformName } from "@macro-atlas/core";
+
+export const MODES: readonly TransformName[] = TRANSFORMS;
+
+export type ExplorerState = {
+  /** Series keys in the order asked. Null: the address does not say. Empty: it says none. */
+  series: string[] | null;
+  mode: TransformName | null;
+  /** Months, YYYY-MM: the window runs from the first day of `from` to the last day of `to`. */
+  from: string | null;
+  to: string | null;
+  /** Layer tokens: `rec`, `ev.{category}`, `gov.{set}`, `pol`. Null: not said. Empty: none. */
+  layers: string[] | null;
+  /** The pinned date, YYYY-MM-DD. */
+  at: string | null;
+  /** The chosen Event's Annotation id. */
+  event: string | null;
+  /** v1's way of choosing an Event: its place in v1's list. The view turns it into `event`. */
+  hi: number | null;
+  /** The series picker is open (the address a reader without JavaScript follows to open it). */
+  pick: boolean;
+  /** What a v1 link asks of features that arrive with Explorer II, kept so the link loses nothing. */
+  carried: [name: CarriedName, value: string][];
+  /** What the address said that could not be read, in words. Never the unread text itself. */
+  notes: string[];
+};
+
+const KEY = /^[a-z][a-z0-9_]{0,63}$/;
+const MONTH = /^\d{4}-(0[1-9]|1[0-2])$/;
+const LAYER = /^(rec|pol|(ev|gov)(\.[a-z0-9_]{1,40})?)$/;
+const EVENT_ID = /^[a-z0-9][a-z0-9_.-]{0,127}$/;
+
+const CARRIED = {
+  cmp: (v: string) => MONTH.test(v),
+  basis: (v: string) => v === "lvl",
+  lag: (v: string) => /^-?\d{1,2}$/.test(v) && Math.abs(Number(v)) <= 24 && Number(v) !== 0,
+  sx: (v: string) => KEY.test(v),
+  sy: (v: string) => KEY.test(v),
+  roll: (v: string) => v === "24",
+  ext: (v: string) => v === "1",
+} as const;
+export type CarriedName = keyof typeof CARRIED;
+const CARRIED_NAMES = Object.keys(CARRIED) as CarriedName[];
+
+function isDate(text: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(text) || text.startsWith("0000")) return false;
+  const d = new Date(`${text}T00:00:00Z`);
+  return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === text;
+}
+
+type Params = { get(name: string): string | null; getAll(name: string): string[]; has(name: string): boolean };
+
+/** Next hands a page its search parameters as a plain record; a browser has URLSearchParams. */
+export function asParams(input: URLSearchParams | Record<string, string | string[] | undefined>): Params {
+  if (input instanceof URLSearchParams) return input;
+  const all = (name: string): string[] => {
+    const value = Object.prototype.hasOwnProperty.call(input, name) ? input[name] : undefined;
+    return value === undefined ? [] : Array.isArray(value) ? value : [value];
+  };
+  return { get: (name) => all(name)[0] ?? null, getAll: all, has: (name) => all(name).length > 0 };
+}
+
+/** Every value of a repeated or comma-separated field, in order, once each. */
+const listOf = (params: Params, name: string): string[] => [...new Set(params.getAll(name).flatMap((v) => v.split(",")).map((v) => v.trim()).filter((v) => v !== ""))];
+
+export function parseExplorerParams(input: URLSearchParams | Record<string, string | string[] | undefined>): ExplorerState {
+  const params = asParams(input);
+  const notes: string[] = [];
+
+  let series: string[] | null = null;
+  if (params.has("s")) {
+    const asked = listOf(params, "s");
+    series = asked.filter((k) => KEY.test(k));
+    if (series.length < asked.length) notes.push("Part of the list of series is not a series key and was left out.");
+  }
+
+  let mode: TransformName | null = null;
+  const askedMode = params.get("mode");
+  if (askedMode !== null && askedMode !== "") {
+    if ((MODES as readonly string[]).includes(askedMode)) mode = askedMode as TransformName;
+    else notes.push(`The mode in the address is not one of ${MODES.join(", ")}.`);
+  }
+
+  const month = (name: "from" | "to"): string | null => {
+    const value = params.get(name);
+    if (value === null || value === "") return null;
+    if (MONTH.test(value) && !value.startsWith("0000")) return value;
+    notes.push(`The ${name === "from" ? "start" : "end"} of the window is not a month written YYYY-MM.`);
+    return null;
+  };
+  let from = month("from");
+  let to = month("to");
+  if (from !== null && to !== null && from > to) {
+    notes.push("The window in the address ends before it starts, so the whole span is shown.");
+    [from, to] = [null, null];
+  }
+
+  let layers: string[] | null = null;
+  if (params.has("layers")) {
+    const asked = listOf(params, "layers").filter((l) => l !== "none");
+    layers = asked.filter((l) => LAYER.test(l));
+    if (layers.length < asked.length) notes.push("Part of the list of layers could not be read and was left out.");
+  }
+
+  let at: string | null = null;
+  const askedAt = params.get("at");
+  if (askedAt !== null && askedAt !== "") {
+    const day = MONTH.test(askedAt) ? `${askedAt}-01` : askedAt;
+    if (isDate(day)) at = day;
+    else notes.push("The pinned date is not a date written YYYY-MM-DD.");
+  }
+
+  let event: string | null = null;
+  const askedEvent = params.get("event");
+  if (askedEvent !== null && askedEvent !== "") {
+    if (EVENT_ID.test(askedEvent)) event = askedEvent;
+    else notes.push("The event named in the address could not be read.");
+  }
+
+  let hi: number | null = null;
+  const askedHi = params.get("hi");
+  if (event === null && askedHi !== null && /^\d{1,4}$/.test(askedHi)) hi = Number(askedHi);
+
+  const carried: ExplorerState["carried"] = [];
+  for (const name of CARRIED_NAMES) {
+    const value = params.get(name);
+    if (value !== null && CARRIED[name](value)) carried.push([name, String(name === "lag" ? Number(value) : value)]);
+  }
+
+  return { series, mode, from, to, layers, at, event, hi, pick: params.get("pick") === "1", carried, notes };
+}
+
+/**
+ * The view as a query string, without the "?". Every value is made of characters that need no
+ * escaping (keys, months, dates, tokens), so the address stays readable.
+ */
+export function explorerQuery(state: Omit<ExplorerState, "notes">): string {
+  const parts: string[] = [];
+  if (state.series !== null) parts.push(`s=${state.series.join(",")}`);
+  if (state.mode !== null) parts.push(`mode=${state.mode}`);
+  if (state.from !== null) parts.push(`from=${state.from}`);
+  if (state.to !== null) parts.push(`to=${state.to}`);
+  if (state.layers !== null) parts.push(`layers=${state.layers.length > 0 ? state.layers.join(",") : "none"}`);
+  if (state.at !== null) parts.push(`at=${state.at}`);
+  if (state.event !== null) parts.push(`event=${state.event}`);
+  else if (state.hi !== null) parts.push(`hi=${state.hi}`);
+  for (const [name, value] of state.carried) parts.push(`${name}=${value}`);
+  if (state.pick) parts.push("pick=1");
+  return parts.join("&");
+}
+
+// --- v1 ---------------------------------------------------------------------------------------
+
+const V1_MODE: Record<string, TransformName> = { raw: "lin", log: "log", rebase: "rebase", z: "z", yoy: "pc1", dd: "drawdown" };
+/** v1's five Event categories, in the order of its chips, and its six band sets. */
+export const V1_EVENT_CATEGORIES = ["political", "financial", "geopolitical", "health", "policy"] as const;
+export const V1_BAND_SETS = ["pres", "house", "senate", "fed_chair", "treasury", "shutdowns"] as const;
+/** v1's axis began here; a month before it was not on the axis. */
+const V1_FIRST_MONTH = "2000-01";
+
+const monthIndex = (month: string): number => Number(month.slice(0, 4)) * 12 + Number(month.slice(5, 7)) - 1;
+
+/**
+ * One of v1's links (`#sel=spx,unrate&mode=z&from=2000-01&to=2026-10&…`, written by v1's
+ * `stateToParams`) as this Explorer's query string, read the way v1's `applyParams` read it.
+ * Null when the hash is not a v1 link (v1 required `sel`).
+ *
+ * v1's quirks, kept because a v1 link must open the view it opened in v1 (checks/v1-links.json):
+ * no mode, or an unknown one, is z-scores; a range of fewer than six months is the whole axis;
+ * a month off v1's axis is the end of the axis on that side; a switch is on only when it is
+ * "1"; with no `ev` every category is on; `shPres=1` is the oldest spelling of `bands=pres`.
+ * Two things only a Release can settle are left to the view: v1 dropped Series it did not have
+ * before counting to eight, and `hi` is a place in v1's list of Events.
+ */
+export function v1HashToQuery(hash: string): string | null {
+  const p = new URLSearchParams(hash.replace(/^#/, ""));
+  if (!p.has("sel")) return null;
+
+  const series = [...new Set((p.get("sel") ?? "").split(",").filter((k) => KEY.test(k)))];
+  const mode = V1_MODE[p.get("mode") ?? ""] ?? "z";
+
+  const month = (name: string): string | null => {
+    const value = p.get(name);
+    return value !== null && MONTH.test(value) && value >= V1_FIRST_MONTH ? value : null;
+  };
+  let from = month("from");
+  let to = month("to");
+  if (from !== null && to !== null && monthIndex(to) - monthIndex(from) < 6) [from, to] = [null, null];
+
+  const on = (name: string): boolean => !p.has(name) || p.get(name) === "1";
+  const layers: string[] = [];
+  if (on("shRec")) layers.push("rec");
+  if (on("shEv")) {
+    const asked = p.has("ev") ? (p.get("ev") ?? "").split(",") : null;
+    for (const category of V1_EVENT_CATEGORIES) if (asked === null || asked.includes(category)) layers.push(`ev.${category}`);
+  }
+  const bands = p.get("bands");
+  if (bands !== null && (V1_BAND_SETS as readonly string[]).includes(bands)) layers.push(`gov.${bands}`);
+  else if (p.get("shPres") === "1") layers.push("gov.pres");
+
+  const hi = /^\d{1,4}$/.test(p.get("hi") ?? "") ? Number(p.get("hi")) : null;
+
+  const carried: ExplorerState["carried"] = [];
+  const lag = Math.max(-24, Math.min(24, parseInt(p.get("lag") ?? "0", 10) || 0)); // v1 clamped
+  for (const name of CARRIED_NAMES) {
+    const value = name === "lag" ? String(lag) : p.get(name);
+    if (value !== null && CARRIED[name](value)) carried.push([name, value]);
+  }
+
+  return explorerQuery({ series, mode, from, to, layers, at: null, event: null, hi, pick: false, carried });
+}
