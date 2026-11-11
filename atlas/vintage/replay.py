@@ -80,11 +80,16 @@ def load_series(path: Path | None = None) -> list[dict]:
                                    'start ("from": null)')
         starts = []
         for version in versions[1:]:
+            start = version.get("from")
             try:
-                starts.append(S.stamp(S.unstamp(version.get("from"))))
+                # Exactly as the logs write an instant: the versions are compared as text.
+                exact = S.stamp(S.unstamp(start)) == start
             except (TypeError, ValueError):
-                raise SeriesTableError(f"{key}: a metadata version does not say from when "
-                                       "(2026-04-01T00:00:00Z)") from None
+                exact = False
+            if not exact:
+                raise SeriesTableError(f"{key}: a metadata version does not say from when, "
+                                       "written exactly like 2026-04-01T00:00:00Z")
+            starts.append(start)
         if starts != sorted(set(starts)):
             raise SeriesTableError(f"{key}: its metadata versions are not in order of time")
     return entries

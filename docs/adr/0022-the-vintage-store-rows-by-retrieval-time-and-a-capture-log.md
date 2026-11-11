@@ -52,7 +52,8 @@ times. M8 builds that store. This records its shape and the places it departs fr
 9. **Declared metadata is dated in the series table.** Until the catalog of M12,
    `atlas/vintage/series.json` says which Series each source identifier is recorded under and
    what Macro Atlas declares about it (name, unit, adjustment) as a list of versions, each with
-   the instant it takes effect. A version that has been in force is never edited. A replay gives
+   the instant it takes effect, written exactly as the logs write an instant. A version that
+   has been in force is never edited. A replay gives
    each Capture the version in force when it was retrieved, so the metadata history is a
    function of the Captures and the table, and a rebuild does not backdate a change.
 10. **`release_id` is empty and `capture_id` is added.** No Release exists in M8 and a replay is
@@ -64,14 +65,17 @@ times. M8 builds that store. This records its shape and the places it departs fr
 11. **The capture-log line is written last and makes the record whole.** Order: metadata line,
     observation log (one atomic replacement), capture-log line. If a run dies in between,
     recording the same Capture again finishes it and writes the same line it would have; until
-    then the store refuses any other Capture for that Series.
+    then the store refuses any other Capture for that Series. A capture-log line cut off
+    mid-write is passed over like any torn line.
 12. **No rebuild in place.** `atlas replay` only adds. To apply a parser fix to history, replay
     the Captures into a new, empty directory and switch to it. The capture log names the
     adapter version that parsed each Capture.
 13. **Replay asks the rights gate.** The observation log is a stored copy of what an Origin
     served. Before writing anything, replay asks `may_store` of today's register for every
     Series it would record, and one refusal stops the run. Values invented for a fixture and
-    values an agency served are never recorded in the same store.
+    values an agency served are never recorded in the same store: `vintage-store.json` says
+    which kind a store holds and is written before its first row, so that a first record that
+    was cut off still decides it.
 14. **Statuses use the release contract's words.** An adapter's `observed` is recorded as
     `final`, `unavailable` (BLS's `-`) as `missing` with no value, `preliminary` as itself. A
     status with no entry in that table is refused rather than guessed.

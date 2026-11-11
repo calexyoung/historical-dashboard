@@ -5,6 +5,7 @@ Series, and from when to when.
     metalog/{key}.ndjson    the metadata history: one line each time the metadata changed
     caplog/{key}.ndjson     the capture log: one line per complete Capture recorded for the
                             Series. A line whose change is "none" is a capture confirmation
+    vintage-store.json      whether the values are an agency's or invented for a fixture
 
 ``record`` takes the state one complete Capture gave for one Series and writes what changed:
 
@@ -42,6 +43,8 @@ from ..capture.store import append_line, read_lines, stamp, unstamp
 from ..period import FREQUENCIES, period_bounds
 
 LOG_FORMAT = 1
+#: Which kind of values the store holds; written once, before the first row.
+KIND = "vintage-store.json"
 REPRESENTATION = "native"
 #: The release contract's vocabulary (schema/release.schema.json, observationStatus).
 STATUSES = ("final", "preliminary", "revised", "estimate", "projected", "partial", "suppressed",
@@ -149,7 +152,16 @@ class VintageStore:
 
     def series_keys(self) -> list[str]:
         """Every Series with at least one complete Capture recorded."""
-        return sorted(path.stem for path in (self.dir / "caplog").glob("*.ndjson"))
+        return sorted(path.stem for path in (self.dir / "caplog").glob("*.ndjson")
+                      if read_lines(path, None))
+
+    def holds_real_bytes(self) -> bool | None:
+        """Whether this store holds values an agency served (True) or values invented for a
+        fixture (False). None for a store nothing has been recorded in."""
+        try:
+            return json.loads((self.dir / KIND).read_text(encoding="utf-8"))["real_bytes"]
+        except FileNotFoundError:
+            return None
 
     def rows(self, key: str) -> list[dict]:
         """The whole observation log of a Series: Periods in order, and for each Period its
@@ -220,7 +232,7 @@ class VintageStore:
                                  f"recorded, {last['capture_id']} ({last['retrieved_at']})")
             if last["freq"] != state.freq:
                 raise StoreError(f"{key} is {last['freq']} and this state is {state.freq}")
-        self._refuse_a_mix(key, caplog, capture)
+        self._refuse_a_mix(capture)
 
         current = {row["period"]: row for row in rows if row["recorded_to"] is None}
         opened = []
@@ -259,15 +271,15 @@ class VintageStore:
         self._line("caplog", key, line)
         return _change_set(key, line)
 
-    def _refuse_a_mix(self, key: str, caplog: list[dict], capture: CaptureRef) -> None:
-        if caplog:
-            held = caplog[0]["real_bytes"]
-        else:
-            other = next(iter(self.series_keys()), None)
-            if other is None:
-                return
-            held = self.captures(other)[0]["real_bytes"]
-        if held != capture.real_bytes:
+    def _refuse_a_mix(self, capture: CaptureRef) -> None:
+        """Invented values and values an agency served never share a store. Which kind a store
+        holds is written down before its first row, so a record that was cut off counts too."""
+        held = self.holds_real_bytes()
+        if held is None:
+            self.dir.mkdir(parents=True, exist_ok=True)
+            _replace(self.dir / KIND, json.dumps(
+                {"format": LOG_FORMAT, "real_bytes": capture.real_bytes}).encode("utf-8") + b"\n")
+        elif held != capture.real_bytes:
             kinds = {True: "values an agency served", False: "invented values"}
             raise StoreError(f"this store holds {kinds[held]} and capture {capture.capture_id} "
                              f"holds {kinds[capture.real_bytes]}; invented and agency values "
@@ -332,12 +344,17 @@ class VintageStore:
         pq.write_table(pa.table(columns, schema=SCHEMA), packed, compression="zstd")
         path = self.dir / "obslog" / f"{key}.parquet"
         path.parent.mkdir(parents=True, exist_ok=True)
-        temporary = path.with_name(f".{key}.{os.getpid()}.tmp")
-        with open(temporary, "wb") as handle:
-            handle.write(packed.getvalue())
-            handle.flush()
-            os.fsync(handle.fileno())
-        os.replace(temporary, path)  # a reader never sees half a log
+        _replace(path, packed.getvalue())
+
+
+def _replace(path: Path, data: bytes) -> None:
+    """Write a file whole or not at all: a reader never sees half of it."""
+    temporary = path.with_name(f".{path.name}.{os.getpid()}.tmp")
+    with open(temporary, "wb") as handle:
+        handle.write(data)
+        handle.flush()
+        os.fsync(handle.fileno())
+    os.replace(temporary, path)
 
 
 def _change_set(key: str, line: dict, *, already: bool = False) -> ChangeSet:

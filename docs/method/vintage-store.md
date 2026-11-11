@@ -15,6 +15,8 @@ was first reported (CONTEXT.md).
 obslog/{key}.parquet    the observation log: one row per version of each Observation
 metalog/{key}.ndjson    the metadata history: one line each time the metadata changed
 caplog/{key}.ndjson     the capture log: one line per complete Capture recorded for the Series
+vintage-store.json      which kind of values the store holds: an agency's, or invented for a
+                        fixture. Written once, before the first row; the two never mix
 ```
 
 They sit in `$ATLAS_STORE` beside the capture kit's `raw/` and `fetchlog.ndjson`, or in a
