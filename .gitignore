@@ -8,3 +8,5 @@ data/raw/
 .remember/
 .DS_Store
 tests/snapshots/*.png
+node_modules/
+*.tsbuildinfo
