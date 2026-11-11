@@ -58,7 +58,7 @@ const close = (got: (number | null)[], want: (number | null)[]): void => {
 describe("the six transforms v1 had", () => {
   it("are named as FRED names them, plus drawdown", () => {
     expect(TRANSFORMS).toEqual(["lin", "log", "rebase", "z", "pc1", "drawdown"]);
-    expect(SEMANTICS_VERSION).toBe("0.4.0");
+    expect(SEMANTICS_VERSION).toBe("0.5.0");
   });
 
   it("lin returns the values in the window unchanged", () => {

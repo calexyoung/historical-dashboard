@@ -1177,7 +1177,7 @@ export const releaseSchema: Record<string, unknown> = {
           ]
         },
         "metadata": {
-          "description": "The metadata history, oldest first: each was in force from recorded_from until the next one's. metadata is what the vintage store recorded: the name, unit and adjustment declared, the Source, and the Rights the register gave when the bytes were fetched.",
+          "description": "The metadata history, oldest first: each was in force from recorded_from until the next one's. metadata is a fixed selection of what the vintage store recorded: the name, unit and adjustment declared, the Source, and what the rights register said of the Origin when the bytes were fetched. rights is a record of that day and authorises nothing: what may be shown is decided by today's register.",
           "type": "array",
           "minItems": 1,
           "items": {
@@ -1197,7 +1197,60 @@ export const releaseSchema: Record<string, unknown> = {
                 "$ref": "#/$defs/datetime"
               },
               "metadata": {
-                "type": "object"
+                "title": "RecordedMetadata",
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "name",
+                  "unit",
+                  "source",
+                  "rights"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "unit": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "seasonal_adjustment": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "source": {
+                    "$ref": "#/$defs/source"
+                  },
+                  "rights": {
+                    "anyOf": [
+                      {
+                        "type": "null"
+                      },
+                      {
+                        "title": "RightsThen",
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": [
+                          "licence_class",
+                          "attribution"
+                        ],
+                        "properties": {
+                          "licence_class": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "attribution": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          }
+                        }
+                      }
+                    ]
+                  }
+                }
               }
             }
           }

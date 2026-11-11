@@ -462,7 +462,7 @@ export interface VintageFile {
   representation: "native";
   provider_coverage: null | ProviderCoverage;
   /**
-   * The metadata history, oldest first: each was in force from recorded_from until the next one's. metadata is what the vintage store recorded: the name, unit and adjustment declared, the Source, and the Rights the register gave when the bytes were fetched.
+   * The metadata history, oldest first: each was in force from recorded_from until the next one's. metadata is a fixed selection of what the vintage store recorded: the name, unit and adjustment declared, the Source, and what the rights register said of the Origin when the bytes were fetched. rights is a record of that day and authorises nothing: what may be shown is decided by today's register.
    *
    * @minItems 1
    */
@@ -480,7 +480,18 @@ export interface ProviderCoverage {
 export interface VintageMetadata {
   hash: Sha256;
   recorded_from: Instant;
-  metadata: {};
+  metadata: RecordedMetadata;
+}
+export interface RecordedMetadata {
+  name: string;
+  unit: string;
+  seasonal_adjustment?: string;
+  source: Source;
+  rights: null | RightsThen;
+}
+export interface RightsThen {
+  licence_class: string;
+  attribution: string | null;
 }
 export interface VintageCapture {
   retrieved_at: Instant;
