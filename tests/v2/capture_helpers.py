@@ -50,6 +50,7 @@ class Scripted:
     answer takes one second of the transport's clock."""
 
     kind = "replay"
+    real = False  # the bytes are invented
 
     def __init__(self, answers: dict, start="2026-11-11T15:50:00"):
         self.answers = {url: list(queue) for url, queue in answers.items()}
@@ -66,7 +67,7 @@ class Scripted:
             raise AssertionError(f"unexpected request {request.method} {request.url}")
         answer = queue.pop(0)
         self.clock += timedelta(seconds=1)
-        if isinstance(answer, Exception):
+        if isinstance(answer, BaseException):
             raise answer
         status, body, *rest = answer
         headers = rest[0] if rest else [["Content-Type", "text/plain"]]

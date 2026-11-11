@@ -22,6 +22,10 @@ BODY = "period,value\n2026-01,1.5\n# end\n"
 SHA = hashlib.sha256(BODY.encode()).hexdigest()
 
 
+def finished(store):
+    return [line for line in read_runs(store) if line["event"] == "finished"]
+
+
 def run(tmp_path, transport, table=None, **kw):
     kw.setdefault("sleep", lambda seconds: None)
     return run_capture(tmp_path / "store", table or fixture_register(), transport, **kw)
@@ -178,7 +182,7 @@ def test_a_skipped_day_is_reported(tmp_path):
     assert result.missed == {"fx-a": ["2026-11-09", "2026-11-10"]}
     assert any("MISSED fx-a: 2026-11-09, 2026-11-10" in text for text in result.lines)
     assert result.exit_code == 0  # a missed day cannot be recovered; it is reported, not fatal
-    assert read_runs(tmp_path / "store")[-1]["missed"] == {"fx-a": ["2026-11-09", "2026-11-10"]}
+    assert finished(tmp_path / "store")[-1]["missed"] == {"fx-a": ["2026-11-09", "2026-11-10"]}
 
 
 def test_an_endpoint_that_has_never_succeeded_is_missed_from_its_first_run(tmp_path):
@@ -196,11 +200,87 @@ def test_days_are_counted_in_new_york_where_the_releases_happen(tmp_path):
 
 def test_a_run_line_records_what_was_selected_and_how_it_ended(tmp_path):
     run(tmp_path, Scripted({URL: [(200, BODY)]}))
-    [line] = read_runs(tmp_path / "store")
-    assert line["selected"] == ["fx-a"]
-    assert line["outcomes"] == {"fx-a": "captured"}
-    assert line["started_at"] == "2026-11-11T15:50:00Z"
-    assert line["exit_code"] == 0
+    started, ended = read_runs(tmp_path / "store")
+    assert started["event"] == "started" and ended["event"] == "finished"
+    assert started["run_id"] == ended["run_id"]
+    assert started["selected"] == ["fx-a"] and started["transport"] == "replay"
+    assert started["started_at"] == "2026-11-11T15:50:00Z"
+    assert ended["outcomes"] == {"fx-a": "captured"}
+    assert ended["exit_code"] == 0
+
+
+class Crash(BaseException):
+    """The process dying mid-run: not an error the run handles."""
+
+
+def crashed_run(tmp_path, start, kind="replay"):
+    transport = Scripted({URL: [Crash()]}, start=start)
+    transport.kind = kind
+    with pytest.raises(Crash):
+        run(tmp_path, transport)
+
+
+def test_a_run_that_died_is_reported_and_its_day_still_counts_as_due(tmp_path):
+    crashed_run(tmp_path, "2026-11-09T15:50:00")
+    result = run(tmp_path, Scripted({URL: [(200, BODY)]}, start="2026-11-11T15:50:00"))
+    assert any("started at 2026-11-09T15:50:00Z and did not finish" in text for text in result.lines)
+    assert result.missed == {"fx-a": ["2026-11-09", "2026-11-10"]}
+
+
+def test_a_run_that_died_still_keeps_replayed_bytes_out_of_a_store_of_real_ones(tmp_path):
+    crashed_run(tmp_path, "2026-11-09T15:50:00", kind="live")
+    transport = Scripted({URL: [(200, BODY)]})
+    result = run(tmp_path, transport)
+    assert result.exit_code == 1 and transport.sent == []
+    assert "holds a live run and this run is replay" in result.lines[-1]
+
+
+def test_an_answer_the_adapter_cannot_read_at_all_is_a_failure_with_the_bytes_kept(tmp_path, monkeypatch):
+    from atlas.capture.adapters import ADAPTERS
+
+    def broken(scope, bodies):
+        raise AttributeError("'NoneType' object has no attribute 'get'")
+
+    monkeypatch.setattr(ADAPTERS["fixture"], "examine", broken)
+    other = "https://fixture.invalid/b"
+    table = fixture_register(endpoints=[fixture_endpoint(), fixture_endpoint("fx-b", other)])
+    result = run(tmp_path, Scripted({URL: [(200, BODY)], other: [(200, BODY)]}), table)
+
+    first, second = read_fetch_log(tmp_path / "store")
+    assert first["outcome"] == "failed" and "could not read the answer" in first["error"]
+    assert (tmp_path / "store" / first["parts"][0]["blob"]).exists()
+    assert second["endpoint"] == "fx-b"  # the run went on
+    assert result.exit_code == 1
+
+
+def test_a_log_line_torn_inside_a_character_does_not_stop_the_next_run(tmp_path):
+    run(tmp_path, Scripted({URL: [(200, BODY)]}))
+    with open(tmp_path / "store" / "fetchlog.ndjson", "ab") as handle:
+        handle.write('{"note": "caf'.encode() + "é".encode()[:1])  # half of a two-byte character
+    result = run(tmp_path, Scripted({URL: [(200, BODY)]}, start="2026-11-11T22:45:00"))
+    assert result.exit_code == 0
+    assert any("fetchlog.ndjson line 2 is not whole" in text for text in result.lines)
+    assert len(read_fetch_log(tmp_path / "store")) == 2
+
+
+def test_an_endpoint_cannot_borrow_another_rows_signature(tmp_path):
+    from .capture_helpers import origin_row, register
+
+    endpoint = fixture_endpoint()
+    endpoint["datasets"] = ["signed set"]
+    table = register(
+        origin_row("unsigned", "One origin", [endpoint], signed=False, datasets=["unsigned set"]),
+        origin_row("signed", "One origin", [], datasets=["signed set"]),
+    )
+    transport = Scripted({URL: [(200, BODY)]})
+    result = run(tmp_path, transport, table)
+    assert result.exit_code == 1 and transport.sent == []
+    assert any("names a dataset its row does not cover" in text for text in result.lines)
+
+
+def test_a_fetch_log_line_says_whether_its_bytes_are_real(tmp_path):
+    run(tmp_path, Scripted({URL: [(200, BODY)]}))
+    assert read_fetch_log(tmp_path / "store")[0]["real_bytes"] is False
 
 
 def test_a_second_run_on_a_locked_store_exits_at_once(tmp_path):

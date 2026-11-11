@@ -25,6 +25,7 @@ from atlas.capture.replay import (
 )
 from atlas.capture.run import endpoints_from_register, run_capture
 from atlas.capture.store import read_fetch_log, read_runs
+from atlas.capture.replay import write_exchange  # noqa: I001
 from atlas.cli import main as atlas_main
 from atlas.rights import RightsGate, load_register
 
@@ -66,7 +67,7 @@ def test_against_captured_fixtures_capture_writes_a_blob_and_a_fetch_log_line(tm
         assert part["received_at"].startswith("2026-11-11T15:50:0")  # the recording's time
         assert f"CAPTURED {endpoint}" in out
     assert line["register"]["sha256"] is not None
-    assert read_runs(store)[0]["exit_code"] == 0
+    assert read_runs(store)[-1]["exit_code"] == 0
 
 
 def test_the_committed_register_clears_nothing_so_capture_refuses_and_fetches_nothing(tmp_path, capsys):
@@ -120,7 +121,7 @@ def test_status_reports_missed_days_from_a_store_without_fetching(tmp_path, caps
     assert status == 0
     assert "bls-headline: last complete capture 2026-11-11T15:50:01Z" in out
     assert "MISSED bls-headline: 2026-11-12, 2026-11-13" in out
-    assert len(read_runs(store)) == 1  # looking is not a run
+    assert len(read_runs(store)) == 2  # looking is not a run: one started line, one finished
 
 
 def test_on_github_actions_a_missed_day_is_a_warning_and_a_failure_an_error(tmp_path, capsys, monkeypatch):
@@ -266,6 +267,7 @@ def live_store(tmp_path):
     store = captured_store(tmp_path)
     for name in ("fetchlog.ndjson", "runs.ndjson"):
         text = (store / name).read_text().replace('"transport":"replay"', '"transport":"live"')
+        text = text.replace('"real_bytes":false', '"real_bytes":true')
         (store / name).write_text(text)
     return store
 
@@ -285,6 +287,44 @@ def test_a_real_capture_is_not_exported_as_a_fixture_until_its_row_allows_redist
     assert all(record["provenance"]["synthetic"] is False for record in read_exchanges(tmp_path / "out"))
 
 
+def real_exchanges(tmp_path) -> Path:
+    """The invented fixtures again, but recorded as if they were real captures."""
+    out = tmp_path / "real-exchanges"
+    for record in read_exchanges(FIXTURES):
+        parts = [{**exchange, "body": (record["directory"] / exchange["body_file"]).read_bytes()}
+                 for exchange in record["exchanges"]]
+        write_exchange(out, record["source"], record["endpoint"], parts,
+                       recorded_at=ReplayTransport(FIXTURES).now(),
+                       provenance={**record["provenance"], "synthetic": False})
+    return out
+
+
+def test_real_bytes_stay_real_through_a_replay_and_are_not_exported_without_permission(tmp_path, capsys):
+    stored_only = signed_register(tmp_path, redistribute=False)
+    store = tmp_path / "replayed"
+    assert main(["--store", str(store), "--register", str(stored_only),
+                 "--replay", str(real_exchanges(tmp_path))]) == 0
+    assert all(line["real_bytes"] is True for line in read_fetch_log(store))
+
+    with pytest.raises(ExportRefused, match="does not allow redistribute"):
+        export_exchanges(store, tmp_path / "out", json.loads(stored_only.read_text()), note="x")
+    with pytest.raises(ExportRefused, match="is not signed"):
+        export_exchanges(store, tmp_path / "out", load_register(), note="x")
+    assert not (tmp_path / "out").exists()
+
+    cleared = json.loads(signed_register(tmp_path).read_text())
+    export_exchanges(store, tmp_path / "out", cleared, note="x")
+    assert all(record["provenance"]["synthetic"] is False for record in read_exchanges(tmp_path / "out"))
+
+
+def test_a_fetch_log_line_that_does_not_say_is_taken_to_be_real(tmp_path, capsys):
+    store = captured_store(tmp_path)
+    log = store / "fetchlog.ndjson"
+    log.write_text(log.read_text().replace('"real_bytes":false,', ""))
+    with pytest.raises(ExportRefused):
+        export_exchanges(store, tmp_path / "out", load_register(), note="x")
+
+
 def test_export_fixtures_from_the_command_line_refuses_the_same_way(tmp_path, capsys):
     store = live_store(tmp_path)
     capsys.readouterr()
@@ -297,4 +337,4 @@ def test_a_replay_does_not_write_into_a_store_of_real_captures(tmp_path, capsys)
     result = run_capture(store, json.loads(signed_register(tmp_path).read_text()),
                          ReplayTransport(FIXTURES), sleep=lambda seconds: None)
     assert result.exit_code == 1 and "holds a live run and this run is replay" in result.lines[0]
-    assert len(read_runs(store)) == 1 and len(read_fetch_log(store)) == 3
+    assert len(read_runs(store)) == 2 and len(read_fetch_log(store)) == 3

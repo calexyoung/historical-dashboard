@@ -96,3 +96,39 @@ def test_every_request_says_who_is_asking():
     named, transport, _ = session({A: [(200, "ok")]}, user_agent="atlas (ops@example.org)")
     named.send(Request("GET", A))
     assert dict(transport.sent[0].headers)["User-Agent"] == "atlas (ops@example.org)"
+
+
+def test_an_answer_that_did_arrive_is_kept_when_the_later_tries_get_none():
+    http, _, _ = session({A: [(503, "busy"), refused("reset"), refused("reset"), refused("reset")]})
+    fetch = Fetch(http)
+    with pytest.raises(CaptureError, match="HTTP 503"):
+        fetch.get(A)
+    [part] = fetch.parts
+    assert part.response.status == 503 and part.response.body == b"busy"
+    assert part.tries == ["HTTP 503", "reset", "reset", "reset"]
+
+
+def test_the_live_transport_follows_no_redirect(monkeypatch):
+    # A cleared endpoint that redirects would fetch bytes from somewhere the gate was never
+    # asked about. The 3xx itself is the answer, and it fails the capture.
+    import requests
+
+    from atlas.capture.http import LiveTransport
+
+    seen = {}
+
+    class Raw:
+        headers = {"Location": "https://elsewhere.invalid/"}
+
+    class Answer:
+        status_code, content, raw = 302, b"", Raw()
+
+    def request(self, method, url, **kw):
+        seen.update(kw)
+        return Answer()
+
+    monkeypatch.setattr(requests.Session, "request", request)
+    response = LiveTransport().send(Request("GET", A))
+    assert seen["allow_redirects"] is False
+    assert response.status == 302 and response.header("location") == "https://elsewhere.invalid/"
+    assert LiveTransport.real is True

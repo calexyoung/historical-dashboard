@@ -81,6 +81,31 @@ def test_a_bls_answer_that_is_not_whole_is_flagged(answer, problem):
     assert problem in raw.evidence.problems
 
 
+@pytest.mark.parametrize("value", ["garbage", "", "1,234", "N/A", "--"])
+def test_only_a_dash_means_bls_did_not_publish_the_month(value):
+    series = {name: [bls_row(2026, 1, "2.0")] for name in BLS.params["series"]}
+    series["LNS14000000"] = [bls_row(2026, 2, value), bls_row(2026, 1, "4.3")]
+    raw, _ = fetch(BLS, {BLS_URL: [(200, bls_answer(series))]})
+    assert raw.evidence.complete is False
+    assert f"series LNS14000000 has a value that is not a number or '-' for 2026-02: {value!r}" \
+        in raw.evidence.problems
+    state = ADAPTERS["bls"].parse(raw)
+    assert state.complete is False
+    assert [o["period"] for o in state.series["LNS14000000"]] == ["2026-01"]  # nothing invented
+
+
+@pytest.mark.parametrize("answer", [
+    '{"status":"REQUEST_SUCCEEDED","message":[],"Results":{"series":[{"seriesID":"CUUR0000SA0","data":[null]}]}}',
+    '{"status":"REQUEST_SUCCEEDED","message":"oops","Results":[]}',
+    '{"status":"REQUEST_SUCCEEDED","message":[],"Results":{"series":[null, 5]}}',
+    '{"status":"REQUEST_SUCCEEDED","message":[],"Results":{"series":[{"seriesID":"CUUR0000SA0","data":[{"year":2026,"period":"M01","value":"1","footnotes":"x"}]}]}}',
+])
+def test_a_bls_answer_in_a_shape_nobody_expected_is_incomplete_not_a_crash(answer):
+    raw, _ = fetch(BLS, {BLS_URL: [(200, answer)]})
+    assert raw.evidence.complete is False
+    assert ADAPTERS["bls"].parse(raw).complete is False
+
+
 def test_a_bls_failure_raises():
     with pytest.raises(CaptureError, match="HTTP 403"):
         fetch(BLS, {BLS_URL: [(403, "Access Denied")]})
@@ -183,6 +208,16 @@ def test_a_treasury_answer_that_is_not_whole_is_flagged(pages, problem):
     raw, _ = fetch(TREASURY, answers)
     assert raw.evidence.complete is False
     assert problem in raw.evidence.problems
+
+
+@pytest.mark.parametrize("page", [
+    '{"data":[null],"meta":{"count":1,"total-count":1,"total-pages":1}}',
+    '{"data":[{"record_date":"2026-11-05","src_line_nbr":"1"}],"meta":{"count":1,"total-count":[1],"total-pages":{"a":1}}}',
+    '{"data":[{"record_date":["x"],"src_line_nbr":"1"}],"meta":{"count":1,"total-count":1,"total-pages":1}}',
+])
+def test_a_treasury_page_in_a_shape_nobody_expected_is_incomplete_not_a_crash(page):
+    raw, _ = fetch(TREASURY, {treasury_url(1): [(200, page)]})
+    assert raw.evidence.complete is False
 
 
 def test_treasury_line_numbers_are_ordered_as_numbers():
