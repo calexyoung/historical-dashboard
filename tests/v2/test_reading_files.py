@@ -17,8 +17,18 @@ from atlas.content import highlights as H
 from atlas.publish import release, withdraw
 from atlas.release import SEGMENTS, load_release, search_document, validate_release
 
-from .release_helpers import NOW, ROOT, SERIES, all_bytes, build_store, current, fixture_table, read_json, write_register
-from .test_publish_content import PUBLIC, DRAFT, write_content
+from .release_helpers import (
+    NOW,
+    ROOT,
+    SERIES,
+    all_bytes,
+    build_store,
+    current,
+    fixture_table,
+    read_json,
+    write_register,
+)
+from .test_publish_content import DRAFT, PUBLIC, write_content
 from .test_publish_failures import JOBS
 
 HOUR = timedelta(hours=1)
@@ -139,7 +149,7 @@ def test_no_declaration_is_no_headline_series(tmp_path, store, register):
 
 
 def test_the_legacy_converter_writes_both_files_from_the_repositorys_declaration():
-    release_id, files = legacy.build_release(ROOT, NOW.replace(month=12))
+    _release_id, files = legacy.build_release(ROOT, NOW.replace(month=12))
     held = {row["segment"]: row["series"] for row in json.loads(files["content/highlights.json"])["segments"]}
     catalog = {entry["key"]: entry for entry in json.loads(files["catalog.json"])["series"]}
     assert held["economy_jobs"][0] == "unrate" and held["markets_money"][0] == "fedfunds"

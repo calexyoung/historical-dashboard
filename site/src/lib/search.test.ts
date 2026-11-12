@@ -24,14 +24,22 @@ describe("search", () => {
   it("returns one query's hits grouped by kind: a Series, an Event and a glossary term", async () => {
     const root = tempRoot();
     const id = "20260301T000000Z-abcdef2";
-    addRelease(root, { id, rename: { key: "fx_price_index", name: "Fixture price index, revised basis" }, events: (events) => (events[0]!.title = "Fixture gazette is revised") });
+    addRelease(root, { id, rename: { key: "fx_price_index", name: "Fixture price index, revised basis" }, events: (events) => (events[0]!.description = "The fixture gazette was revised the same day.") });
     promote(root, id);
     const answer = search(await open(root), "local", "revised");
     expect(answer.groups.map((g) => [g.kind, g.label])).toEqual([["series", "Series"], ["event", "Events"], ["glossary", "Glossary"]]);
     expect(group(answer, "series")!.hits[0]).toMatchObject({ id: "fx_price_index", title: "Fixture price index, revised basis", href: "/data/fx_price_index" });
-    expect(group(answer, "event")!.hits[0]).toMatchObject({ id: "2024-09-18-fixture-rate-decision", title: "Fixture gazette is revised", href: "/events/2024-09-18-fixture-rate-decision" });
+    expect(group(answer, "event")!.hits[0]).toMatchObject({ id: "2024-09-18-fixture-rate-decision", title: "Fixture central bank changes its rate", detail: "The fixture gazette was revised the same day.", href: "/events/2024-09-18-fixture-rate-decision" });
     expect(group(answer, "glossary")!.hits[0]).toMatchObject({ id: "revised", title: "Revised", href: "/docs/glossary/revised" });
     expect(answer.total).toBe(answer.groups.reduce((n, g) => n + g.total, 0));
+  });
+
+  it("AC, on the fixture release as it is: one word finds a Series, an Event and glossary terms", () => {
+    const answer = search(release, "local", "change");
+    expect(answer.groups.map((g) => g.kind)).toEqual(["series", "event", "glossary"]);
+    expect(ids(answer, "series")).toEqual(["fx_price_index_yoy"]);
+    expect(ids(answer, "event")).toEqual(["2024-09-18-fixture-rate-decision"]);
+    expect(group(answer, "glossary")!.total).toBeGreaterThan(0);
   });
 
   it("finds a Series by a word of its name, by its key, and by its origin's identifier", () => {

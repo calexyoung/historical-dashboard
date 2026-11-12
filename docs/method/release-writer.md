@@ -96,7 +96,16 @@ edited after it was locked, an edited lock, or a public Claim without a lock ref
 release. A local Release holds the drafts, and the local root's own locks (`{root}/locks/`) for
 a Claim the repository has none for.
 
-**Not written yet.** Search and bulk files (M22, M25) and Topics (M23). A local
+**The headline Series and the search index** (M22, ADR 0036; contract 0.5.0) are written last
+of all, on every path, when the Catalog, the withheld list and the content are what the Release
+will hold. `content/highlights.json` is the repository's `content/highlights.json` projected
+onto this Release: the six Segments in order, each with the declared Series this Release's
+Catalog holds in that Segment; what was left out is named in the check report. `search.json`
+is one entry per Series, Event and Claim, as words. Both are projections of the Release's own
+Catalog and content and are made from no Observation; both validators hold a Release to the
+projection. A Withheld Series is named in both.
+
+**Not written yet.** Bulk files (M25) and Topics (M23). A local
 Release carries v1's Derived series as the legacy converter writes them.
 
 ## Derived series and the Node step

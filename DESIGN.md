@@ -299,6 +299,39 @@ The Claims index uses the catalog page's filter bar (three selects and "Show"), 
 "Recorded, by party" of words and counts, and a list: day, claimant, role and party in `ink-2`,
 then the quote as the door.
 
+### The Overview, Highlights and search (M22, ADR 0036)
+
+- **The Overview** is one panel of six rows, one per Segment, in a fixed order; no hero, no
+  cards, no tiles. A row is three columns from 640px: the Segment (14px semibold, a door to its
+  Series in the catalog), the headline Series (its name as a door; the latest value in words at
+  16px medium with its Data state as a mark and a word; the change from a year earlier at 14px
+  as a door to the Explorer at that window), and the sparkline at the right. On a phone the
+  sparkline sits beside the Segment's name and the rest runs under it. The panel's meta line
+  names the Release's day. A Segment with no headline Series says so in one line. Then a
+  Search panel: a field, the one filled button, and a line that leads to Highlights.
+- **The sparkline** is 120 by 28 units, ink (`currentColor`), a 1.25px line with a 2px dot on
+  the latest value; points for a quarterly, annual or irregular Series and steps for a held
+  one, as in the explained figure; a gap is a gap. No axis, no fill, no series colour. It is a
+  door to the Series in the Explorer and its accessible name says what it spans.
+- **Highlights** is a table per Segment: Series, Latest, 1 year, 5 years, 10 years. A cell is
+  one link, at least 44px high: the figure at 14px semibold in the accent ("+5.2%", "−0.2
+  pts"), and under it at 12px `ink-3` the value and Period it is taken from. The sign is the
+  only direction: no green, no red, no arrow. Where there is no figure the cell holds the Data
+  state's mark and word and the reason, or "No data" and the Period. Below 640px each Series
+  is a block (name, latest, then the three cells side by side under their own labels), so the
+  page never scrolls sideways.
+- **The change strip** on its own (`components/ChangeStrip.tsx`, for Topic pages) is the
+  latest value in words and the same three cells in a row under 12px labels.
+- **The search sheet** is a `<dialog>` under the top bar, 640px at most: field, "Search",
+  "Close", then hits grouped under `raised` bands with a count. A hit is its name in the
+  accent, a mark where its values are held back, and one line of its own words. The page
+  behind is dimmed at 35%. The door in the top bar is a 32px control, "Search", with the key
+  ("/") shown from 640px.
+- **Motion.** The sheet has none, opening or closing. Highlights and `/search` have none. The
+  Overview has the one flourish of PLAN section 8, on a first visit only: each row fades up
+  6px over 320 ms on the press curve, 40 ms after the row before; opacity only under reduced
+  motion.
+
 ### Still to be recorded here
 
 Statement-table styles (v2.3) are added to this file by the milestone that builds them.
@@ -316,8 +349,8 @@ This is a tool its main reader opens many times a day, so almost nothing moves.
 - Only `transform`, `opacity` and colour are transitioned; never `transition: all`; CSS
   transitions, not keyframes; no motion library.
 - Under `prefers-reduced-motion`, colour fades stay and movement goes.
-- Popovers, sheets and the Overview's first-visit stagger are specified in PLAN section 8 and
-  arrive with the components that use them.
+- Popovers are specified in PLAN section 8 and arrive with the components that use them. The
+  Overview's first-visit stagger and the search sheet are recorded above (M22).
 
 ## Accessibility floor (checked by Playwright on the fixture release)
 

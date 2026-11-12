@@ -39,8 +39,11 @@ export type YearsChange = {
   pct_change: number | null;
   /** Why there is no change at all. */
   empty?: ChangeEmpty;
-  /** Why there is a change and no percent change. */
-  pct_empty?: "start_not_positive";
+  /**
+   * Why there is a change and no percent change: the earlier value is not above zero, or the
+   * percent is too large to be a number (the arithmetic overflowed).
+   */
+  pct_empty?: "start_not_positive" | "not_finite";
 };
 
 export type ChangeOver =
@@ -103,7 +106,9 @@ export function changeOver(series: TransformSeries, years: readonly number[]): C
     const change = end.value - before.value;
     if (!Number.isFinite(change)) return none("no_value_earlier");
     if (!(before.value > 0)) return { years: n, start, period, change, pct_change: null, pct_empty: "start_not_positive" };
-    return { years: n, start, period, change, pct_change: (100 * change) / before.value };
+    const pct = (100 * change) / before.value;
+    if (!Number.isFinite(pct)) return { years: n, start, period, change, pct_change: null, pct_empty: "not_finite" };
+    return { years: n, start, period, change, pct_change: pct };
   });
   return { ok: true, freq, aggregated, latest: end, changes };
 }

@@ -342,7 +342,7 @@ def add_reading_files(files: dict[str, bytes], withheld: list[dict], declared: d
     ADR 0036), and return what its check report says of them. Called by every writer last of
     all, when the Catalog, the withheld list, the Events and the Claims are what the Release
     will hold: both files are projections of those and of nothing else. Neither reads an
-    Observation, so neither can hold a value; a Withheld Series is in both by name."""
+    Observation, so no value can enter either from data; a Withheld Series is in both by name."""
     catalog = json.loads(files[CATALOG])
     document, left_out = H.project(declared, catalog["series"])
     files[HIGHLIGHTS] = dump(document)

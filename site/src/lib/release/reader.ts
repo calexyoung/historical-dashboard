@@ -19,16 +19,20 @@ import { lstat, readdir, readFile, stat } from "node:fs/promises";
 import { join } from "node:path";
 import type { Surface } from "@macro-atlas/core";
 import {
+  searchDocument,
+  SEGMENTS,
   validateRelease,
   type AnnotationsFile,
   type Catalog,
   type ClaimLock,
   type ClaimsFile,
   type EventsFile,
+  type HighlightsFile,
   type LatestFile,
   type Manifest,
   type Release,
   type ReleaseFiles,
+  type SearchFile,
   type SeriesFile,
   type VintageFile,
 } from "@macro-atlas/core/release";
@@ -50,6 +54,16 @@ export type OpenedRelease = {
   locks: Record<string, { parsed: ClaimLock; text: string }>;
   /** `evidence/latest.json`: the latest Evidence rows, computed when the Release was written. Null: no lock has one. */
   latest: LatestFile | null;
+  /**
+   * `content/highlights.json`: the headline Series of each Segment, in the order of the
+   * Overview. A Release written before 0.5.0 names none: six Segments, each empty.
+   */
+  highlights: HighlightsFile;
+  /**
+   * `search.json`: what a reader can search for, as words. For a Release written before 0.5.0
+   * it is the same projection of the Release's own files, made when the Release is opened.
+   */
+  search: SearchFile;
   series: Record<string, SeriesFile>;
   derived: Record<string, SeriesFile>;
   /** `vintages/{key}.json`: what was held for a stored Series over time. Not every Series has one. */
@@ -226,10 +240,15 @@ export function createReleaseReader(options: {
           .map((path) => [path.slice("locks/".length, -".lock.json".length), { parsed: parse<ClaimLock>(path), text: decoder.decode(files[path]) }]),
       ),
       latest: files["evidence/latest.json"] ? parse<LatestFile>("evidence/latest.json") : null,
+      highlights: files["content/highlights.json"]
+        ? parse<HighlightsFile>("content/highlights.json")
+        : ({ segments: SEGMENTS.map((segment) => ({ segment, series: [] })) } as unknown as HighlightsFile),
+      search: { entries: [] },
       series: folder("series"),
       derived: folder("derived"),
       vintages: folder<VintageFile>("vintages"),
     };
+    release.search = files["search.json"] ? parse<SearchFile>("search.json") : searchDocument(release);
     const refused = refusal(release, surface);
     if (refused) return fail("refused", id, refused);
     return { ok: true, release, refreshFailed: null };

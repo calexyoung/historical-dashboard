@@ -54,11 +54,12 @@ describe("the fixture release is served at both base paths", () => {
     expect(html).toContain(`action="${base}/api/theme"`);
   });
 
-  it("sends the front door to /explore until the Overview exists", async () => {
+  it("the front door is the Overview: it no longer redirects to the Explorer (M22)", async () => {
     for (const server of servers) {
       const response = await get(server.url("/"));
-      expect(response.status).toBe(307);
-      expect(response.headers.get("location")).toBe(`${server.base}/explore`);
+      expect(response.status).toBe(200);
+      expect(response.headers.get("location")).toBeNull();
+      expect(await response.text()).toMatch(/<h1[^>]*>Overview<\/h1>/);
     }
   });
 
@@ -461,7 +462,7 @@ describe("rewriting CURRENT changes the served page with no restart", () => {
 describe("a production-surface build fails closed (PLAN 6.1 point 5, reader)", () => {
   let server: Running;
   const root = tempRoot();
-  const PATHS = ["/", "/explore", "/explore/", "/data", "/data?q=price", "/data/fx_price_index", "/data/fx_exchange_index", "/docs/glossary", "/docs/glossary/stale", "/api/health", "/api/theme", "/icon.svg", "/_next/static/chunks/x.js", "/no/such/page", "/explore/export?format=csv&s=fx_price_index", "/explore/export?format=svg&s=fx_price_index", "/explore/export?format=all", "/data/fx_price_index.csv", "/data/fx_price_index.json?as_of=2025-12-13", "/data/fx_price_index.metadata.json", "/data/fx_price_index.md", "/data/fx_price_index/twin/csv", "/api/v1/status", "/claims", `/claims/${CLAIM}`, `/claims/${CLAIM}.json`, `/claims/${CLAIM}.md`, `/claims/${CLAIM}/evidence.csv`, `/claims/${CLAIM}/lock.json`, `/claims/${CLAIM}/twin/json`, "/docs/method/claims"];
+  const PATHS = ["/", "/highlights", "/search", "/search?q=price", "/search/hits?q=price", "/explore", "/explore/", "/data", "/data?q=price", "/data/fx_price_index", "/data/fx_exchange_index", "/docs/glossary", "/docs/glossary/stale", "/api/health", "/api/theme", "/icon.svg", "/_next/static/chunks/x.js", "/no/such/page", "/explore/export?format=csv&s=fx_price_index", "/explore/export?format=svg&s=fx_price_index", "/explore/export?format=all", "/data/fx_price_index.csv", "/data/fx_price_index.json?as_of=2025-12-13", "/data/fx_price_index.metadata.json", "/data/fx_price_index.md", "/data/fx_price_index/twin/csv", "/api/v1/status", "/claims", `/claims/${CLAIM}`, `/claims/${CLAIM}.json`, `/claims/${CLAIM}.md`, `/claims/${CLAIM}/evidence.csv`, `/claims/${CLAIM}/lock.json`, `/claims/${CLAIM}/twin/json`, "/docs/method/claims"];
 
   beforeAll(async () => {
     addRelease(root, { id: A });
@@ -882,5 +883,160 @@ describe("claims (PLAN M21): the page, its twins, the rights gate and User notes
     for (const path of ["/claims/2020-01-01-no-such-claim", "/claims/..%2F..%2Fmanifest", "/claims/2020-01-01-no-such-claim.json", `/claims/${CLAIM}.csv`, `/claims/${CLAIM}/evidence.json`]) {
       expect((await get(local.url(path))).status, path).toBe(404);
     }
+  });
+});
+
+describe("the Overview, Highlights and search (PLAN M22)", () => {
+  let server: Running;
+  let production: Running;
+  const root = tempRoot();
+  beforeAll(async () => {
+    server = await startVariant("local-atlas", { root: FIXTURE_ROOT });
+    addRelease(root, { id: A });
+    promote(root, A);
+    production = await startVariant("production", { root });
+  });
+  afterAll(() => Promise.all([server.stop(), production.stop()]));
+
+  const html = async (path: string, from: Running = server) => {
+    const response = await get(from.url(path));
+    expect(response.status, path).toBe(200);
+    return response.text();
+  };
+  /** Text as a reader has it: no tags, no scripts, entities read. */
+  const words = (page: string) => page.replace(/<script[\s\S]*?<\/script>/g, " ").replace(/<[^>]+>/g, " ").replace(/&amp;/g, "&").replace(/&#x27;/g, "'").replace(/\s+/g, " ");
+  const main = (page: string) => page.slice(page.indexOf("<main"), page.indexOf("</main>"));
+  const SEGMENT_LABELS = ["Economy & jobs", "Markets & money", "Infrastructure", "Governance & politics", "Disasters & health", "The US in the world"];
+
+  it("AC: the Overview is complete in its HTML, with no script run: six rows, each Segment's Series, value, change and drawing", async () => {
+    const page = await html("/");
+    expect(idsOn(page)).toEqual([FIXTURE_ID]);
+    const rows = [...page.matchAll(/<li[^>]*data-segment="([a-z_]+)"/g)].map((m) => m[1]);
+    expect(rows).toEqual(["economy_jobs", "markets_money", "infrastructure", "governance_politics", "disasters_health", "us_in_the_world"]);
+    const text = words(main(page));
+    let at = -1;
+    for (const label of SEGMENT_LABELS) {
+      const next = text.indexOf(label, at + 1);
+      expect(next, label).toBeGreaterThan(at);
+      at = next;
+    }
+    expect(text).toContain("Release of 1 January 2026");
+    expect(text).toContain("Fixture price index");
+    expect(text).toContain("109.9 in December 2025 (index, 2024-01 = 100)");
+    expect(text).toContain("Preliminary");
+    expect(text).toContain("5.2% higher than a year earlier");
+    expect(text).toContain("4 more in Highlights");
+    expect(text).toContain("No headline series in this release.");
+    // The drawing is in the page as markup, named for a reader who cannot see it.
+    expect(page).toMatch(/<svg[^>]*role="img"[^>]*aria-label="Fixture price index, January 2024 to December 2025"/);
+    expect((page.match(/data-sparkline=/g) ?? []).length).toBe(3);
+    // Every figure is a door.
+    expect(page).toContain('href="/macro-atlas/explore?s=fx_price_index&amp;from=2024-12&amp;to=2025-12"');
+    expect(page).toContain('href="/macro-atlas/data/fx_price_index"');
+    expect(page).toContain('href="/macro-atlas/highlights"');
+    // Search is a plain form.
+    expect(page).toMatch(/<form[^>]*action="\/macro-atlas\/search"/);
+  });
+
+  it("the Overview is made for each request, and marks a reader's first visit once", async () => {
+    const first = await get(server.url("/"));
+    expect(first.headers.get("cache-control")).toMatch(/no-store/);
+    expect(first.headers.get("set-cookie")).toBe("atlas-seen=1; Path=/macro-atlas; Max-Age=31536000; SameSite=Lax; HttpOnly");
+    expect(await first.text()).toMatch(/<ol[^>]*data-first-visit/);
+    const again = await get(server.url("/"), { headers: { cookie: "atlas-seen=1" } });
+    expect(again.headers.get("set-cookie")).toBeNull();
+    expect(await again.text()).not.toMatch(/<ol[^>]*data-first-visit/);
+    // A reader cannot ask for the flourish, or another page for the cookie.
+    expect(await (await get(server.url("/"), { headers: { cookie: "atlas-seen=1", "x-atlas-first-visit": "1" } })).text()).not.toMatch(/<ol[^>]*data-first-visit/);
+    expect((await get(server.url("/highlights"))).headers.get("set-cookie")).toBeNull();
+  });
+
+  it("the Withheld Series is a row with its name and the reason, and nothing of its values, on either page", async () => {
+    for (const path of ["/", "/highlights"]) {
+      const text = words(main(await html(path)));
+      expect(text).toContain("Fixture exchange index");
+      expect(text).toContain("Withheld");
+      expect(text).toContain("The licence does not allow redistribution.");
+    }
+    expect(await html("/")).not.toContain('data-sparkline="fx_exchange_index"');
+    expect(await html("/highlights")).not.toContain("s=fx_exchange_index");
+  });
+
+  it("AC: every Highlights cell opens the Explorer at that window", async () => {
+    const page = await html("/highlights");
+    expect(page).toMatch(/<h1[^>]*>Highlights<\/h1>/);
+    const cells = [...page.matchAll(/<a href="([^"]+)"[^>]*data-years="(\d+)"/g)].map((m) => ({ href: m[1]!.replace(/&amp;/g, "&"), years: Number(m[2]) }));
+    // Six Series with a cadence, three spans each (the irregular one and the Withheld one have none).
+    expect(cells).toHaveLength(18);
+    for (const cell of cells) {
+      const url = new URL(cell.href, server.origin);
+      expect(url.pathname).toBe("/macro-atlas/explore");
+      const [from, to] = [url.searchParams.get("from")!, url.searchParams.get("to")!];
+      expect(from).toMatch(/^\d{4}-\d{2}$/);
+      // The window is the span of the cell, to the month: N years, plus the Period's own length less a month.
+      const months = (Number(to.slice(0, 4)) - Number(from.slice(0, 4))) * 12 + Number(to.slice(5)) - Number(from.slice(5));
+      expect([cell.years * 12, cell.years * 12 + 2, cell.years * 12 + 11]).toContain(months);
+      // And the Explorer opens there: the window's two fields say so, and the Series is the selected one.
+      const explorer = await html(url.pathname.replace("/macro-atlas", "") + url.search);
+      expect(explorer).toMatch(new RegExp(`<input[^>]*name="from"[^>]*value="${from}"`));
+      expect(explorer).toMatch(new RegExp(`<input[^>]*name="to"[^>]*value="${to}"`));
+      expect(explorer).toContain(`data-selected="${url.searchParams.get("s")}"`);
+    }
+    const text = words(main(page));
+    expect(text).toContain("+5.2%");
+    expect(text).toContain("\u22123.1 pts");
+    expect(text).toContain("Break");
+    expect(text).toContain("no fixed cadence");
+  });
+
+  it("AC: one query returns grouped hits for a series, an event and a glossary term, with no JavaScript", async () => {
+    const page = await html("/search?q=change");
+    const groups = [...page.matchAll(/<ul[^>]*data-group="([a-z]+)"/g)].map((m) => m[1]);
+    expect(groups).toEqual(["series", "event", "glossary"]);
+    expect(page).toContain('href="/macro-atlas/data/fx_price_index_yoy"');
+    expect(page).toContain('href="/macro-atlas/events/2024-09-18-fixture-rate-decision"');
+    expect(page).toMatch(/href="\/macro-atlas\/docs\/glossary\/[a-z-]+"[^>]*>[^<]+<\/a>/);
+    expect(page).toMatch(/<input[^>]*name="q"[^>]*value="change"/);
+    // The sheet's answer is the page's, as JSON.
+    const hits = (await (await get(server.url("/search/hits?q=change"))).json()) as { groups: { kind: string; hits: { id: string }[] }[] };
+    expect(hits.groups.map((g) => g.kind)).toEqual(groups);
+    expect(hits.groups[0]!.hits.map((h) => h.id)).toContain("fx_price_index_yoy");
+  });
+
+  it("search says so when nothing matches, and never puts what a reader typed into the page as markup", async () => {
+    expect(await html("/search?q=zzzz")).toContain("Nothing matches");
+    const page = await html(`/search?q=${encodeURIComponent('"><script>alert(1)</script>')}`);
+    expect(page).not.toContain("<script>alert(1)</script>");
+    const hits = await get(server.url("/search/hits?q=" + encodeURIComponent("<b>")));
+    expect(hits.headers.get("content-type")).toMatch(/application\/json/);
+    expect(hits.headers.get("cache-control")).toBe("no-store");
+  });
+
+  it("the top bar of every page has the door to search, and Highlights and Search say where the reader is", async () => {
+    for (const path of ["/", "/explore", "/data", "/highlights"]) expect(await html(path)).toMatch(/<a[^>]*href="\/macro-atlas\/search"[^>]*data-open-search/);
+    expect(await html("/highlights")).toMatch(/aria-current="page"[^>]*>Highlights</);
+    expect(await html("/search")).toMatch(/aria-current="page"[^>]*>Search</);
+  });
+
+  it("AC: no page, and no answer of search, holds a value of the Withheld Series (public-profile release, either surface)", async () => {
+    // The fixture's Withheld Series has no file in the Release at all; its values are not there to leak.
+    // What can be checked from outside: it is found by name, marked, and nothing dated or numeric rides with it.
+    for (const from of [server, production]) {
+      const hits = (await (await get(from.url("/search/hits?q=exchange"))).json()) as { groups: { kind: string; hits: Record<string, unknown>[] }[] };
+      const hit = hits.groups.find((g) => g.kind === "series")!.hits[0]!;
+      expect(hit).toEqual({ kind: "series", id: "fx_exchange_index", title: "Fixture exchange index", href: "/data/fx_exchange_index", detail: "Stands for a licensed index: listed by name, values withheld.", held: "withheld" });
+    }
+  });
+
+  it("production: every headline Series is named with the reason and not one value, while no register row is signed (6.1)", async () => {
+    for (const path of ["/", "/highlights", "/search?q=fixture", "/search/hits?q=fixture"]) {
+      const response = await get(production.url(path));
+      expect(response.status, path).toBe(200);
+      const body = await response.text();
+      // Seeds of the fixture's values: the price index's latest and year-earlier values, the poverty rate's, permits'.
+      for (const seed of ["109.9", "104.5", "5.2%", "10.4", "566.4", "1651", "+11.3", "data-sparkline"]) expect(body, `${path}: ${seed}`).not.toContain(seed);
+      expect(body).toContain("Fixture price index");
+    }
+    expect(words(main(await html("/highlights", production)))).toContain("Not shown here");
   });
 });

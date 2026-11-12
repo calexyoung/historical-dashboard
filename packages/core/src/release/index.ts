@@ -315,8 +315,8 @@ export function validateRelease(releaseId: string, files: ReleaseFiles): Issue[]
  * `search.json` (0.5.0, M22; ADR 0036): what a reader can search for in a Release, as words. One
  * entry for every Series of `catalog.json`, then every Event, then every Claim, each in its
  * file's order. It is a projection of those three files and of the manifest's withheld list,
- * and of nothing else: no Observation is read to make it, so no value of any Series can be in
- * it. The Python twin (`atlas.release.search_document`) is what writers write.
+ * and of nothing else: no Observation, lock or Evidence row is read to make it, so no value can
+ * enter it from data (a description or a quote is content a person wrote, public on its own page). The Python twin (`atlas.release.search_document`) is what writers write.
  */
 export function searchDocument(release: Pick<Release, "catalog" | "manifest" | "events" | "claims">): SearchFile {
   const words = (...values: unknown[]): string[] => values.filter((value): value is string => typeof value === "string" && value !== "");

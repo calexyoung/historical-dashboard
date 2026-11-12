@@ -42,6 +42,7 @@ v2-check: lint-py test
 
 # --- v2 on v1's data (M2). One command: convert v1's committed output into a local-profile
 # release under $ATLAS_LOCAL (default var/local, git-ignored), then serve it on the local surface:
+#   http://localhost:3000/macro-atlas/           (the Overview; /highlights, /search; M22)
 #   http://localhost:3000/macro-atlas/explore   http://localhost:3000/macro-atlas/data
 #   http://localhost:3000/macro-atlas/events    (v1's 83 Events, drafts marked; M19)
 #   http://localhost:3000/macro-atlas/claims    (draft Claims, and your own notes/ on them; M21)
@@ -61,7 +62,7 @@ v2-claim-demo:
 
 # --- v2 site (M1). Everything below serves the synthetic fixture release unless told otherwise. ---
 
-# The site in development mode, local surface: http://localhost:3000/macro-atlas/explore
+# The site in development mode, local surface: http://localhost:3000/macro-atlas/
 v2-dev:
 	npm run dev -w @macro-atlas/site
 

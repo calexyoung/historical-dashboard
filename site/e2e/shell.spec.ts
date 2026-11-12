@@ -85,12 +85,15 @@ test.describe("the enforced Content Security Policy does not break the page (ADR
       await page.addInitScript(() => {
         document.addEventListener("securitypolicyviolation", (e) => console.error(`CSP violation: ${e.violatedDirective} ${e.blockedURI}`));
       });
-      await page.goto(server.url("/"));
-      await expect(page).toHaveURL(server.url("/explore"));
-      // Hydrated: the control changes the theme without a navigation.
-      await page.getByRole("button", { name: "Dark" }).click();
-      await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
-      await page.getByRole("button", { name: "Auto" }).click();
+      // The Overview (the front door since M22) and the Explorer, the page with the most script.
+      for (const door of ["/", "/explore"]) {
+        await page.goto(server.url(door));
+        await expect(page).toHaveURL(server.url(door));
+        // Hydrated: the control changes the theme without a navigation.
+        await page.getByRole("button", { name: "Dark" }).click();
+        await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+        await page.getByRole("button", { name: "Auto" }).click();
+      }
       expect(problems).toEqual([]);
       page.removeAllListeners();
     }
@@ -152,11 +155,11 @@ test.describe("accessibility and layout", () => {
   test("keyboard order follows reading order, starting with the skip link", async ({ page, atlas }) => {
     await page.goto(atlas.url("/explore"));
     const stops: string[] = [];
-    for (let i = 0; i < 7; i++) {
+    for (let i = 0; i < 8; i++) {
       await page.keyboard.press("Tab");
       stops.push(await page.evaluate(() => (document.activeElement?.textContent ?? "").trim()));
     }
-    expect(stops).toEqual(["Skip to content", "mydashboards", "Macro Atlas", "Explore", "Auto", "Light", "Dark"]);
+    expect(stops).toEqual(["Skip to content", "mydashboards", "Macro Atlas", "Explore", "Search/", "Auto", "Light", "Dark"]);
     await page.keyboard.press("Shift+Tab");
     // The skip link is visible when focused and moves focus to the content.
     await page.goto(atlas.url("/explore"));

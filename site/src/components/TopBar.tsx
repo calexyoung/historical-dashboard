@@ -2,6 +2,7 @@ import type { Freshness, FreshnessState } from "@/lib/freshness";
 import { HOME_URL } from "@/lib/config";
 import { breadcrumb } from "@/lib/nav";
 import type { Theme } from "@/lib/theme";
+import { SearchSheet } from "./SearchSheet";
 import { ThemeControl } from "./ThemeControl";
 
 /** The state is carried by a shape and a word as well as a colour. */
@@ -39,7 +40,7 @@ const Slash = () => (
   </span>
 );
 
-/** As on /missions: name and breadcrumb left; freshness and the theme control right. */
+/** As on /missions: name and breadcrumb left; search, freshness and the theme control right. */
 export function TopBar({
   basePath,
   pathname,
@@ -81,6 +82,7 @@ export function TopBar({
             )}
           </ol>
         </nav>
+        <SearchSheet basePath={basePath} />
         <FreshnessMark freshness={freshness} />
         <ThemeControl basePath={basePath} returnTo={returnTo} initial={theme} />
       </div>

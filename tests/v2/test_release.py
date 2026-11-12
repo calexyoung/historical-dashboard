@@ -51,7 +51,7 @@ def apply_case(case, files, release_id):
         elif op == "project_search":
             # search.json written again as the projection: for a case about another rule that
             # changes what the index is made from.
-            read = lambda path: json.loads(files[path]) if path in files else None  # noqa: E731
+            read = lambda path: json.loads(files[path]) if path in files else None
             files["search.json"] = json.dumps(search_document(
                 read("catalog.json"), read("manifest.json")["withheld"], read("content/events.json"),
                 read("content/claims.json"))).encode()

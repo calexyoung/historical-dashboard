@@ -78,6 +78,15 @@ describe("changeStrip", () => {
     expect(at("2023-06").figure).not.toBeNull();
   });
 
+  it("a break dated inside the latest Period, or inside the earlier one, separates them too (a daily Series compared by month)", () => {
+    // Monthly values that stand for months made of days; the break is dated by a day.
+    const run = observations("monthly", "2024-01", Array.from({ length: 13 }, (_, i) => 10 + i));
+    const at = (period: string) => changeStrip(index({ breaks: [{ period, note: "New basis." }], observations: run }), CREATED, [1]).cells![0]!;
+    expect(at("2025-01-15")).toMatchObject({ figure: null, state: { mark: "break" }, reason: "The series has a break at 15 January 2025" });
+    expect(at("2024-01-15")).toMatchObject({ figure: null, state: { mark: "break" } });
+    expect(at("2025-02-01").figure).not.toBeNull(); // after the latest Period: it separates nothing compared here
+  });
+
   it("marks the latest value: its Status, and Stale when the Series trails the Release", () => {
     const fresh = changeStrip(index({ maxLag: "P2M", observations: observations("monthly", "2024-12", Array.from({ length: 13 }, (_, i) => 5 + i), { "2025-12": "preliminary" }) }), CREATED, [1]);
     expect(fresh.marks).toEqual([{ mark: "preliminary", word: "Preliminary" }]);

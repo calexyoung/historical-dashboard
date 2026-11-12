@@ -3,6 +3,7 @@
  * nothing in the bar leads to a page that is not built. Paths are without the base path.
  *
  * In the plan's order: Topics · Claims · Explore · Events · Data. Still to come: Topics (M23).
+ * The Overview is the front door and has no tab before the statement views exist (v2.3).
  * Claims is shown once the Release being served holds a Claim (M21): a public-profile Release
  * holds only published Claims, so the tab appears with the first one Alex publishes.
  */
@@ -19,6 +20,15 @@ export function tabsFor(pathname: string, has: { claims?: boolean } = {}): { hre
   return [...(has.claims ? [CLAIMS] : []), ...TABS].map((tab) => ({ ...tab, current: under(pathname, tab.href) }));
 }
 
+/**
+ * Pages that exist and have no tab (M22): Highlights is reached from the Overview, and search
+ * from the top bar. The Overview itself is the name in the top bar; it has no crumb of its own.
+ */
+const UNTABBED = [
+  { href: "/highlights", label: "Highlights" },
+  { href: "/search", label: "Search" },
+] as const;
+
 export function breadcrumb(pathname: string): string | null {
-  return [CLAIMS, ...TABS].find((tab) => under(pathname, tab.href))?.label ?? null;
+  return [CLAIMS, ...TABS, ...UNTABBED].find((tab) => under(pathname, tab.href))?.label ?? null;
 }
