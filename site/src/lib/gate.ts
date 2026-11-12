@@ -8,7 +8,7 @@
  * 3. Otherwise the request goes on with the release id fixed in a header. Pages and route
  *    handlers open exactly that Release and never read CURRENT, so everything in one response
  *    comes from one Release.
- * 4. A twin's address (`/data/{key}.csv`) goes on to the twin handler, whose own path is not an
+ * 4. A twin's address (`/data/{key}.csv`, `/claims/{id}.json`) goes on to the twin handler, whose own path is not an
  *    address. Next runs the proxy again on the path a request was sent to, so the first pass
  *    marks the request with a token only this process knows; the handler's path is let through
  *    only with that token, and asked for directly it is not found. All of it is decided here,
@@ -26,7 +26,7 @@
 import type { Surface } from "@macro-atlas/core";
 import { buildCsp } from "./csp";
 import { RELEASE_ID, type ReleaseReader } from "./release/reader";
-import { internalTwinPath, twinOf, twinRoute } from "./twin/address";
+import { internalTwinPath, twinRouteOf } from "./twin/address";
 
 export const RELEASE_HEADER = "x-atlas-release";
 export const REFRESH_FAILED_HEADER = "x-atlas-refresh-failed";
@@ -148,13 +148,13 @@ export async function gate(
     pinnedFrom = opened.release.id;
   }
 
-  const twin = twinOf(request.pathname);
+  const twin = twinRouteOf(request.pathname);
   const token = config.twinToken;
   // The second pass: the handler's own path, reached from a twin's address by this process.
   const sent = !twin && internalTwinPath(request.pathname) && typeof token === "string" && token.length >= 16 && request.twinToken === token;
   return {
     action: "forward",
-    ...(twin && token ? { rewrite: twinRoute(twin.key, twin.format) } : twin || (internalTwinPath(request.pathname) && !sent) ? { rewrite: NOT_AN_ADDRESS } : {}),
+    ...(twin && token ? { rewrite: twin } : twin || (internalTwinPath(request.pathname) && !sent) ? { rewrite: NOT_AN_ADDRESS } : {}),
     requestHeaders: {
       [TWIN_HEADER]: (twin || sent) && token ? token : null,
       [HOST_HEADER]: (sent ? request.namedHost : null) ?? request.host,

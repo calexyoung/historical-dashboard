@@ -122,6 +122,11 @@ describe("gate: a twin's address goes to the twin handler, after every refusal (
     ["/data/fx_price_index.json", "/data/fx_price_index/twin/json"],
     ["/data/fx_price_index.metadata.json", "/data/fx_price_index/twin/metadata"],
     ["/data/fx_price_index.md", "/data/fx_price_index/twin/md"],
+    // A Claim's twins (M21).
+    ["/claims/2025-12-11-a-fixture-official-on-fixture-prices.json", "/claims/2025-12-11-a-fixture-official-on-fixture-prices/twin/json"],
+    ["/claims/2025-12-11-a-fixture-official-on-fixture-prices.md", "/claims/2025-12-11-a-fixture-official-on-fixture-prices/twin/md"],
+    ["/claims/2025-12-11-a-fixture-official-on-fixture-prices/evidence.csv", "/claims/2025-12-11-a-fixture-official-on-fixture-prices/twin/evidence"],
+    ["/claims/2025-12-11-a-fixture-official-on-fixture-prices/lock.json", "/claims/2025-12-11-a-fixture-official-on-fixture-prices/twin/lock"],
   ])("%s is sent to %s, marked with the process's token", async (pathname, rewrite) => {
     const decision = await ask(pathname);
     expect(decision).toMatchObject({ action: "forward", rewrite });
@@ -141,7 +146,7 @@ describe("gate: a twin's address goes to the twin handler, after every refusal (
     }
   });
 
-  it.each(["/data/fx_price_index/twin", "/data/fx_price_index/twin/csv", "/data/x/twin/metadata", "/data/fx_price_index/twin/csv/more"])("the handler's own path, %s, is not an address: without the token it is sent nowhere", async (pathname) => {
+  it.each(["/data/fx_price_index/twin", "/data/fx_price_index/twin/csv", "/data/x/twin/metadata", "/data/fx_price_index/twin/csv/more", "/claims/2025-12-11-a-fixture-official-on-fixture-prices/twin/json", "/claims/x/twin", "/claims/x/twin/lock/more"])("the handler's own path, %s, is not an address: without the token it is sent nowhere", async (pathname) => {
     for (const sent of [null, "", "guess", `${TOKEN}x`]) {
       const decision = await ask(pathname, sent);
       expect(decision).toMatchObject({ action: "forward", rewrite: "/not-found/not-an-address" });

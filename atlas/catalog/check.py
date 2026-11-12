@@ -350,8 +350,18 @@ def check(directory: Path | None = None, register: Path | None = None, content: 
           notes: Path | None = None) -> Report:
     """Run the layers over a catalog directory (default ``catalog/series``) against a rights
     register (default the committed one), then over the content (default ``content`` and
-    ``notes``). Reads files; fetches and writes nothing."""
+    ``notes``). Reads files; fetches and writes nothing.
+
+    Content is held to the Catalog it sits beside, as the coverage matrices and the
+    hand-entered files are: a Claim's Readings are of Series in *its* Catalog. So for a catalog
+    directory that is not the repository's, the default content is ``content`` and ``notes``
+    two levels up from it (``X/catalog/series`` and ``X/content``), not the repository's."""
     directory = Path(directory) if directory else CATALOG_DIR
+    if directory.resolve() != CATALOG_DIR.resolve():
+        # Beside the path that was asked for: a linked catalog directory keeps its own content.
+        beside = directory.absolute().parent.parent
+        content = beside / "content" if content is None else content
+        notes = beside / "notes" if notes is None else notes
     entries, problems = read_catalog(directory)
     layers = [Layer(name) for name in LAYERS]
     report = Report(directory, len(entries), layers)

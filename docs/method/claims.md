@@ -233,10 +233,64 @@ whether the row can be answered at all, for the declared window and each alterna
 is named. Drift fails nothing: the release prints a `DRIFT` line, its check report warns, the
 lock stays as it is, and only a person re-locks.
 
+## On the site (M21, ADR 0035)
+
+```
+/claims                        the index: filters by person, party and topic, a count by party,
+                               every Correction
+/claims/{id}                   one Claim
+/claims/{id}.json | .md        its twins
+/claims/{id}/evidence.csv      every figure of every Reading, a line each
+/claims/{id}/lock.json         the newest lock, byte for byte
+/docs/method/claims            this method, for a reader of a claim page
+```
+
+- The page reads *then*, *now when checked* and the Window sensitivity from the newest lock
+  the Claim lists, and only when that lock's file is in the Release. An older lock never
+  stands in. It reads *latest* from `evidence/latest.json` and marks it as the Release's. The
+  site computes no Evidence row.
+- Before a figure is shown the rights gate is asked about the lock's own `rights_used`
+  (`display`); before a file is handed out, `redistribute`. Refused, the record stays and no
+  figure is shown; the four twins are 403.
+- The Claims tab is there when the Release being served holds a Claim. A public-profile
+  Release holds only `public` Claims, so on production the tab and `/claims` appear with the
+  first one that is published.
+- User notes (`notes/{user}/{id}.md`, `atlas add note USER claim:ID ...`) are shown on a
+  Claim's page by a local build serving a local-profile Release, each marked as its author's.
+  The site is told where they are by `ATLAS_NOTES_DIR` (`make v2` sets it to `notes/`). They
+  are in no Release and no twin.
+
+## The worked real Claim (a draft, for Alex)
+
+`content/claims/2023-02-07-biden-on-the-unemployment-rate.md` is a real statement recorded
+whole: the quote as the Daily Compilation of Presidential Documents prints it, a second record
+in the Congressional Record, both archived, and two Readings of `unrate` (the value in January
+2023; where January 2023 ranks, from the lowest, over fifty years, with two longer windows).
+It is a draft and is in no public-profile Release.
+
+It has no lock, and cannot have one yet. A lock is computed on a Release of agency values;
+`atlas capture` fetches nothing while no row of the rights register is signed; and a Claim
+cannot be locked on v1's legacy representation. `make v2` shows the record at
+`/macro-atlas/claims/2023-02-07-biden-on-the-unemployment-rate` with "No figure has been
+computed for this claim yet". Once the BLS row is signed:
+
+```
+python -m atlas capture --only bls && python -m atlas replay
+python -m atlas release --profile local --no-legacy
+# set checked_on in the file to today (New York), then:
+python -m atlas claims compute 2023-02-07-biden-on-the-unemployment-rate --profile local
+python -m atlas release --profile local --reuse-data
+ATLAS_RELEASE_ROOT=var/local ATLAS_NOTES_DIR=notes npm run dev -w @macro-atlas/site
+```
+
+Its *then* row will say unavailable: Macro Atlas captured nothing before February 2023, and
+no later figure is put in its place.
+
 ## See it
 
 ```
 make v2-claim-demo      # an invented Claim on invented data: compute, a revision, drift, relock
+make v2-dev             # the fixture's Claim: http://localhost:3000/macro-atlas/claims
 .venv/bin/python -m pytest tests/v2 -q -k claim
 npx vitest run packages/core/src/claim.test.ts
 ```

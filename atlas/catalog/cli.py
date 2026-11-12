@@ -26,8 +26,8 @@ def check_main(argv: list[str]) -> int:
                     "layer finds something.")
     parser.add_argument("--catalog", help="a catalog directory (default catalog/series)")
     parser.add_argument("--register", help="a rights register (default schema/rights-register.json)")
-    parser.add_argument("--content", help="the content directory, which holds events/ (default content)")
-    parser.add_argument("--notes", help="the directory of User notes (default notes)")
+    parser.add_argument("--content", help="the content directory, which holds events/ and claims/ (default content; with --catalog X/catalog/series, X/content)")
+    parser.add_argument("--notes", help="the directory of User notes (default notes; with --catalog X/catalog/series, X/notes)")
     args = parser.parse_args(argv)
     report = C.check(Path(args.catalog) if args.catalog else None,
                      Path(args.register) if args.register else None,

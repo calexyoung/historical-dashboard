@@ -264,6 +264,41 @@ Explorer II (M5, ADR 0019) adds two panels after Chart, and controls to View:
 Tokens are declared with `@theme static`, so that every series colour reaches the stylesheet:
 drawings name colours in SVG attributes, which Tailwind cannot see.
 
+### Claim pages
+
+A Claim's page (ADR 0035) is panels in reading order: Claim, one panel per Reading, Readings not
+measured, Sources, Correction log, Evidence downloads, and on a local build Notes.
+
+- **Claim.** The quote is the largest text on the page: 18px medium with a 2px ink rule at its
+  left, never cut. Under it the page's one `h1`, 14px semibold: the claimant and the day. Then
+  role, party (a word; never a colour) and venue in 14px `ink-2`, and one short line of
+  sources, each named by its kind ("recording", "transcript") with its archived copy; their
+  full names and locators are in the Sources panel. The quote is 16px on a phone and 18px from
+  640px, so the first figures stay above the fold. A draft has the same bordered "Draft" word the Events index uses.
+- **A Reading** opens with a sentence: the Series (a door to its page), what is measured, the
+  unit (under the table once there are figures). Its table (`.data-table.evidence`) has the Measure's figures down and three columns
+  across, always in this order: Then, Now when checked, Latest. A figure is a 14px semibold
+  tabular numeral with its Period and its Data state (mark and word) stacked under it in 12px.
+  The three columns are the same weight and the same ink: nothing marks one as the answer. An
+  empty figure is its reason in `ink-3`; a row with no answer is "No figure". The table fits
+  360px; headers wrap.
+- **Where each state comes from** is a list under the table: Then with its Basis mark and
+  word, Now when checked with the day and the Release, Latest with "It is not part of the lock."
+- **The drawing** is 256 units wide and at most 320px: the locked then values as hollow circles
+  on a dashed line, now when checked as filled circles on a solid line, both in ink, set side by
+  side at each Period so equal values do not hide each other. Hairline grid, three ticks, no
+  frame, no series colour. It does not animate.
+- **Window sensitivity** repeats the table once per declared window, each under a `raised`
+  band that names the window and says whether it is the Reading's own or an alternative.
+- **No verdict has a place.** No tick, cross, meter, tint or coloured figure; a difference
+  between two columns is two numbers. Motion: none (a reading page).
+- **Notes** (local builds): a `control` rule at the left, a 12px semibold line "Note by
+  {user} · {day} · {user}'s own, not Macro Atlas's", then the text.
+
+The Claims index uses the catalog page's filter bar (three selects and "Show"), a line
+"Recorded, by party" of words and counts, and a list: day, claimant, role and party in `ink-2`,
+then the quote as the door.
+
 ### Still to be recorded here
 
 Statement-table styles (v2.3) are added to this file by the milestone that builds them.
