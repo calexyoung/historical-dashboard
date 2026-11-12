@@ -13,7 +13,7 @@
  * Annotations offer and how each is named; the readout's model; v1's presets; and every address
  * the page links to.
  */
-import { permits, type Surface, type TransformName, type TransformedObservation } from "@macro-atlas/core";
+import { permits, type Surface, type TransformedObservation } from "@macro-atlas/core";
 import type { Annotation, CatalogEntry } from "@macro-atlas/core/release";
 import { FREQUENCIES, SEGMENTS } from "../catalog";
 import { NO_ANSWER, renderFigure, type Figure, type Layers, type SeriesStyle, type ShownSeries } from "../figure";
@@ -24,7 +24,7 @@ import { snapshotRows, type SnapshotRow } from "./snapshot";
 import type { OpenedRelease } from "../release/reader";
 import { sourceWords } from "../series-page";
 import { stopWords, type ReadoutModel, type ReadoutSeries } from "./readout";
-import { explorerQuery, MODES, V1_BAND_SETS, V1_EVENT_CATEGORIES, type ExplorerState } from "./state";
+import { explorerQuery, MODES, V1_BAND_SETS, V1_EVENT_CATEGORIES, type ExplorerMode, type ExplorerState } from "./state";
 
 export type Selected = {
   key: string;
@@ -44,8 +44,8 @@ export type EventRow = { id: string; date: string; when: string; category: strin
 export type PickerRow = { key: string; name: string; detail: string; checked: boolean; available: boolean };
 
 export type ExplorerView = {
-  mode: TransformName;
-  modes: { value: TransformName; label: string; current: boolean; /** How many of the selected Series offer it. */ offered: number }[];
+  mode: ExplorerMode;
+  modes: { value: ExplorerMode; label: string; current: boolean; /** How many of the selected Series offer it. */ offered: number }[];
   selection: Selected[];
   /** What the reader should be told: unread parts of the address, Series left out, Periods a mode has no answer for. */
   notes: string[];
@@ -104,10 +104,10 @@ export type ViewRun = {
 };
 
 /** v1's opening view, used when an address names no Series and the Release has these. */
-const DEFAULT_VIEW = { series: ["spx", "unrate", "wti", "cpi_yoy"], mode: "z" as TransformName };
+const DEFAULT_VIEW = { series: ["spx", "unrate", "wti", "cpi_yoy"], mode: "z" as ExplorerMode };
 
 /** v1's eleven presets (web/app.js). A `to` of null runs to the latest value, as v1's `lastM` did. */
-const PRESETS: { name: string; series: string[]; mode: TransformName; from: string; to: string | null; cmp?: string }[] = [
+const PRESETS: { name: string; series: string[]; mode: ExplorerMode; from: string; to: string | null; cmp?: string }[] = [
   { name: "COVID shock", series: ["spx", "unrate", "wti", "umcsent", "m2"], mode: "rebase", from: "2019-06", to: "2022-06" },
   { name: "Financial crisis 2008", series: ["spx", "caseshiller", "unrate", "fedfunds", "vix"], mode: "rebase", from: "2006-01", to: "2012-12" },
   { name: "Inflation surge 2021–24", series: ["cpi_yoy", "fedfunds", "gas", "wages_yoy", "umcsent"], mode: "lin", from: "2020-01", to: null },
@@ -121,7 +121,7 @@ const PRESETS: { name: string; series: string[]; mode: TransformName; from: stri
   { name: "2008 vs 2020", series: ["spx", "unrate", "wti"], mode: "rebase", from: "2007-10", to: "2010-10", cmp: "2020-01" },
 ];
 
-export const MODE_LABELS: Record<TransformName, string> = {
+export const MODE_LABELS: Record<ExplorerMode, string> = {
   lin: "Values as published",
   log: "Values on a logarithmic scale",
   rebase: "Index: start of the window = 100",
@@ -131,7 +131,7 @@ export const MODE_LABELS: Record<TransformName, string> = {
 };
 
 /** The unit of what is drawn, and how a drawn value is written in the readout. */
-const DRAWN: Record<Exclude<TransformName, "lin" | "log">, { unit: string; suffix: string; decimals: number }> = {
+const DRAWN: Record<Exclude<ExplorerMode, "lin" | "log">, { unit: string; suffix: string; decimals: number }> = {
   rebase: { unit: "index, first value in the window = 100", suffix: " index", decimals: 1 },
   z: { unit: "standard deviations from the mean of the window", suffix: " sd", decimals: 2 },
   pc1: { unit: "percent change from a year earlier", suffix: "% y/y", decimals: 1 },
@@ -210,7 +210,7 @@ export function explorerView(release: OpenedRelease, surface: Surface, state: Ex
 
   // --- the selection: unknown keys go first, then the cap, as v1 did ---
   let asked = state.series;
-  let mode: TransformName = state.mode ?? "lin";
+  let mode: ExplorerMode = state.mode ?? "lin";
   if (asked === null) {
     const defaults = DEFAULT_VIEW.series.filter((k) => entries.has(k));
     asked = defaults;
@@ -233,7 +233,7 @@ export function explorerView(release: OpenedRelease, surface: Surface, state: Ex
   type Got = { entry: CatalogEntry; raw: TransformedObservation[]; drawn: TransformedObservation[] | null; failure: QueryFailure | null; reason: string | null };
   const got: Got[] = keys.map((key) => {
     const entry = entries.get(key)!;
-    const ask = (transform: TransformName) => query(release, surface, { series: [key], transform, permission: "display", ...window }, { maxRows: rowsLeft });
+    const ask = (transform: ExplorerMode) => query(release, surface, { series: [key], transform, permission: "display", ...window }, { maxRows: rowsLeft });
     const lin = ask("lin");
     if (!lin.ok) return { entry, raw: [], drawn: null, failure: lin, reason: lin.code === "withheld" ? (withheld.get(key) ?? lin.message) : lin.message };
     rowsLeft -= lin.rows;
@@ -283,7 +283,7 @@ export function explorerView(release: OpenedRelease, surface: Surface, state: Ex
       compare = { from: state.cmp, to: range.to.slice(0, 7), words: `${stopWords(range.from)} to ${stopWords(monthStart(range.to.slice(0, 7)))}`, offset, offQuery: "" };
       for (const g of got) {
         if (g.failure) continue;
-        const ask = (transform: TransformName) => query(release, surface, { series: [g.entry.key], transform, permission: "display", ...range }, { maxRows: rowsLeft });
+        const ask = (transform: ExplorerMode) => query(release, surface, { series: [g.entry.key], transform, permission: "display", ...range }, { maxRows: rowsLeft });
         const lin = ask("lin");
         if (!lin.ok) {
           second.set(g.entry.key, { raw: [], drawn: null, reason: lin.message });
@@ -607,7 +607,7 @@ export function explorerView(release: OpenedRelease, surface: Surface, state: Ex
   }));
 
   const selectedEntries = keys.map((k) => entries.get(k)!);
-  const offers = (e: CatalogEntry, m: TransformName) => !e.allowed_transforms || e.allowed_transforms.length === 0 || e.allowed_transforms.includes(m);
+  const offers = (e: CatalogEntry, m: ExplorerMode) => !e.allowed_transforms || e.allowed_transforms.length === 0 || e.allowed_transforms.includes(m);
   const modes = MODES.map((value) => ({ value, label: MODE_LABELS[value], current: value === mode, offered: selectedEntries.filter((e) => offers(e, value)).length }));
 
   const presets = PRESETS.filter((p) => p.series.some((k) => entries.has(k))).map((p) => ({

@@ -100,11 +100,17 @@ writer's hash of the normalized state (PLAN 4.3) and is opaque to readers.
 
 **Recipes.** `recipe.inputs` is ordered. `ratio` (`inputs[0] / inputs[1]`) and `difference`
 (`inputs[0] - inputs[1]`) take exactly two inputs; `sum` and `product` take two or more;
-`pct_change` takes one input and `params.lag`, a whole number of the input's Periods. `order`
+`pct_change` takes one input and `params.lag`, a whole number of Periods at the frequency the
+arithmetic is done at (the Derived series' own under `aggregate_then_compute`, the input's under
+`compute_then_aggregate`). `order`
 (aggregate before or after the arithmetic) is always stated; there is no default to guess. The
 output's unit is the entry's own. Validators check structure only: the shape above, inputs exist,
 no cycle, nothing shown rests on a withheld input. Only the engine in `packages/core` computes a
-Recipe (ADR 0003).
+Recipe (ADR 0003): the release writer has it do so in the Node step (M11, ADR 0025), and a
+Derived series' file begins at its first Period with a value and ends at its last. A Derived
+entry written by that step names the Origin of the first stored Series its Recipe reaches, with
+the Channel `computed`, and carries the most restrictive rights status of what it rests on; the
+Recipe's inputs, not that one Origin, are its lineage.
 
 **Vintages.** `vintages/{key}.json` holds every version of every Observation of one stored
 Series: `rows` in Period order, a Period's versions in the order they were recorded. A version

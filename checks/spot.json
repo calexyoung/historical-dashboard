@@ -1,0 +1,14 @@
+{
+  "format": 1,
+  "about": "Spot values (PLAN 4.4 step 4): figures published by someone other than this project, which the engine step of every release run compares with what it holds. Each names a Series, a Period, the published value and how far the held value may be from it; the tolerance is half a unit of the last digit published unless it says why not. A spot whose Series or Period is not in the Release is reported as not checked. A spot that is off fails the run. These are expectations, not data: nothing here is published.",
+  "spots": [
+    {
+      "key": "cpi_yoy",
+      "period": "2022-06",
+      "value": 9.1,
+      "tolerance": 0.05,
+      "source": "BLS, Consumer Price Index June 2022 (USDL-22-1470, 13 July 2022): all items rose 9.1 percent over the 12 months, before seasonal adjustment",
+      "url": "https://www.bls.gov/news.release/archives/cpi_07132022.htm"
+    }
+  ]
+}

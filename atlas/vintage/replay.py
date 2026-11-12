@@ -95,6 +95,87 @@ def load_series(path: Path | None = None) -> list[dict]:
     return entries
 
 
+RECIPE_ARITY = {"ratio": (2, 2), "difference": (2, 2), "sum": (2, None), "product": (2, None),
+                "pct_change": (1, 1)}
+RECIPE_ORDERS = ("aggregate_then_compute", "compute_then_aggregate")
+#: What a derived entry's ``catalog`` block must say (the release writer checks the rest).
+DERIVED_CATALOG_FIELDS = ("measure_kind", "segment", "continuity")
+
+
+def load_derived(path: Path | None = None) -> list[dict]:
+    """The table's Derived series: its optional ``derived`` list, checked. Each entry names a
+    key, a frequency, a name, a unit, a Recipe over other entries of the table and a ``catalog``
+    block. Structure only: computing a Recipe is the engine's alone (ADR 0003). A table with no
+    such list has none. Raises ``SeriesTableError``, naming the cycle if the Recipes have one."""
+    stored = {entry["key"] for entry in load_series(path)}
+    path = Path(path) if path else SERIES_PATH
+    entries = json.loads(path.read_text(encoding="utf-8")).get("derived", [])
+    if not isinstance(entries, list):
+        raise SeriesTableError(f"{path}: its derived list is not a list")
+    inputs: dict[str, list[str]] = {}
+    for entry in entries:
+        key = entry.get("key") if isinstance(entry, dict) else None
+        if not isinstance(key, str) or not _KEY.fullmatch(key):
+            raise SeriesTableError(f"{key!r} is not a Series key")
+        if key in stored or key in inputs:
+            raise SeriesTableError(f"{key} is in the series table twice")
+        if entry.get("freq") not in FREQUENCIES:
+            raise SeriesTableError(f"{key}: {entry.get('freq')!r} is not a frequency")
+        for name in ("name", "unit"):
+            if not isinstance(entry.get(name), str) or not entry[name]:
+                raise SeriesTableError(f"{key}: it names no {name}")
+        recipe = entry.get("recipe")
+        names = recipe.get("inputs") if isinstance(recipe, dict) else None
+        arity = RECIPE_ARITY.get(recipe.get("op")) if isinstance(recipe, dict) else None
+        lag = recipe.get("params", {}).get("lag") if arity and isinstance(recipe.get("params", {}), dict) else None
+        if (arity is None or recipe.get("order") not in RECIPE_ORDERS or not isinstance(names, list)
+                or not all(isinstance(name, str) and _KEY.fullmatch(name) for name in names)
+                or len(names) < arity[0] or (arity[1] is not None and len(names) > arity[1])
+                or set(recipe) - {"op", "inputs", "order", "params"}
+                or (recipe["op"] == "pct_change") != ("params" in recipe)
+                or (recipe["op"] == "pct_change" and (type(lag) is not int or lag < 1
+                                                      or set(recipe["params"]) != {"lag"}))):
+            raise SeriesTableError(f"{key}: its recipe is not one the release contract describes "
+                                   "(op, inputs, order, and params.lag for pct_change)")
+        block = entry.get("catalog")
+        missing = [name for name in DERIVED_CATALOG_FIELDS if not isinstance(block, dict) or name not in block]
+        if missing:
+            raise SeriesTableError(f"{key}: its catalog block does not give {', '.join(missing)}")
+        inputs[key] = list(names)
+    for key, names in inputs.items():
+        for name in names:
+            if name not in stored and name not in inputs:
+                raise SeriesTableError(f"{key} takes {name}, which is not in the series table")
+    cycle = recipe_cycle(inputs)
+    if cycle:
+        raise SeriesTableError(f"the recipes go round in a circle: {' → '.join(cycle)}")
+    return entries
+
+
+def recipe_cycle(inputs: dict[str, list[str]]) -> list[str] | None:
+    """A cycle among Recipes, from a key back to itself, or None. ``inputs`` maps each Derived
+    key to what it takes; anything else is a stored Series and ends the walk."""
+    done: set[str] = set()
+
+    def walk(key: str, path: list[str]) -> list[str] | None:
+        if key in path:
+            return [*path[path.index(key):], key]
+        if key in done or key not in inputs:
+            return None
+        for name in inputs[key]:
+            found = walk(name, [*path, key])
+            if found:
+                return found
+        done.add(key)
+        return None
+
+    for key in inputs:
+        found = walk(key, [])
+        if found:
+            return found
+    return None
+
+
 def _declared(entry: dict, when: str) -> dict:
     """The declared metadata in force at an instant."""
     version = [v for v in entry["metadata"] if v["from"] is None or v["from"] <= when][-1]

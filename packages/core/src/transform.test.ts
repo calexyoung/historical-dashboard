@@ -57,8 +57,8 @@ const close = (got: (number | null)[], want: (number | null)[]): void => {
 
 describe("the six transforms v1 had", () => {
   it("are named as FRED names them, plus drawdown", () => {
-    expect(TRANSFORMS).toEqual(["lin", "log", "rebase", "z", "pc1", "drawdown"]);
-    expect(SEMANTICS_VERSION).toBe("0.5.0");
+    expect(TRANSFORMS).toEqual(["lin", "chg", "ch1", "pch", "pc1", "pca", "log", "rebase", "z", "drawdown"]);
+    expect(SEMANTICS_VERSION).toBe("0.6.0");
   });
 
   it("lin returns the values in the window unchanged", () => {
@@ -154,10 +154,12 @@ describe("the six transforms v1 had", () => {
   it("pc1 is unavailable where there is no observation one year earlier to count back to", () => {
     const margins = series("irregular", "", [1, 2], "held", ["2020-11-03", "2024-11-05"]);
     expect(transform(margins, "pc1")).toMatchObject({ ok: false, reason: "frequency_not_supported" });
+    // Changed in 0.6.0 (M11): a weekly or daily Series is brought to months first, which it
+    // can be only if the Catalog says how it combines (transform-allowlist.test.ts).
     for (const freq of ["weekly", "daily", "business_daily"] as const) {
       expect(transform({ freq, continuity: "discrete", observations: [] }, "pc1")).toMatchObject({
         ok: false,
-        reason: "frequency_not_supported",
+        reason: "aggregation_not_declared",
       });
     }
   });
@@ -236,7 +238,7 @@ describe("which observations belong to a window", () => {
   });
 
   it("refuses a transform it does not know", () => {
-    expect(transform(quarterly, "pch" as never)).toMatchObject({ ok: false, reason: "unknown_transform" });
+    expect(transform(quarterly, "sqrt" as never)).toMatchObject({ ok: false, reason: "unknown_transform" });
   });
 });
 

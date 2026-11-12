@@ -17,7 +17,14 @@ A local-profile Release takes everything the store holds and adds v1's legacy Se
 key the store does not hold. A key held from an Origin replaces v1's Series whole: a Series is
 never part one and part the other (PLAN 6.1 point 3).
 
-Only native Series are written. ``derived/`` is the engine's (ADR 0003), and arrives in M11.
+Python writes no Derived value: ``derived/`` is the engine's (ADR 0003). ``build`` decides
+which of the series table's Recipes may be computed, writes a Catalog entry for each, and
+lists them in ``Built.materialise``; the publisher runs the Node step (``engine.py``) and
+``add_derived`` takes in what it computed. A Derived series is computed only when every stored
+Series it rests on, to any depth, is published from the store in this Release and, for a
+public-profile Release, the rights gate permits display of the whole lineage. Otherwise it is
+withheld by name with the reason, like any other Series. v1's Derived series (local profile)
+are never handed to the engine: they stay as v1 computed them.
 
 Each published Series also gets ``vintages/{key}.json``: every version the store holds for it,
 its metadata history and its Captures (M10, ADR 0024). Past values are values. A withheld
@@ -41,6 +48,7 @@ from ..period import next_period, period_bounds
 from ..release import ANNOTATIONS, CATALOG, LEGACY
 from ..rights import RightsGate
 from ..vintage.store import VintageStore
+from . import engine
 
 NATIVE = "native"
 #: What the series table's ``catalog`` block may say, beyond the declared metadata.
@@ -48,6 +56,13 @@ CATALOG_FIELDS = ("measure_kind", "unit_kind", "segment", "continuity", "agg", "
                   "price_basis", "base_period", "country", "topics", "definition", "aliases",
                   "breaks")
 REQUIRED_CATALOG_FIELDS = ("measure_kind", "segment", "continuity")
+#: Rights statuses from the least restrictive to the most, as packages/core/src/recipe.ts has
+#: them. The Node step checks every Derived entry against the engine's own answer.
+RIGHTS_ORDER = ("public_domain", "cc_by", "citation_required", "permission_required",
+                "no_redistribution", "unknown")
+#: The Channel of a value Macro Atlas computed (atlas/rights.py, OWN_CHANNELS).
+COMPUTED = {"via": "computed", "adapter": "atlas-core"}
+NO_VALUE = "its recipe gives no value from what its inputs hold now"
 _EXACT_INTEGER = 2 ** 53
 #: How a source's freshness line says a Series is too old. A reuse judges age afresh and so
 #: drops the notes that say this, and keeps the others.
@@ -102,6 +117,10 @@ class Built:
     #: Hard links to make instead of writing bytes: path in the Release -> the file to link to.
     links: dict[str, Path] = field(default_factory=dict)
     reused_data_from: str | None = None
+    #: The Catalog's entries, as written into ``files``; ``add_derived`` writes them again.
+    entries: list[dict] = field(default_factory=list)
+    #: Derived series the engine is to compute, in key order (``add_derived`` empties it).
+    materialise: list[str] = field(default_factory=list)
 
     def release_id(self, created: datetime) -> str:
         digest = hashlib.sha256()
@@ -151,7 +170,7 @@ def _held(vintages: VintageStore, key: str) -> tuple[list[dict], dict] | str:
     return rows, metadata
 
 
-def _entry(spec: dict, metadata: dict, rights: dict) -> dict:
+def _block(spec: dict) -> dict:
     block = spec.get("catalog")
     if not isinstance(block, dict) or any(name not in block for name in REQUIRED_CATALOG_FIELDS):
         raise ExportError(f"{spec['key']}: the series table gives it no catalog block with "
@@ -160,6 +179,43 @@ def _entry(spec: dict, metadata: dict, rights: dict) -> dict:
     if unknown:
         raise ExportError(f"{spec['key']}: the catalog block has fields a Release does not know: "
                           f"{', '.join(unknown)}")
+    return block
+
+
+def combined_rights(blocks: list[dict]) -> dict:
+    """The Rights block of a Derived series: the most restrictive status of the stored Series
+    it rests on, and every one of their owners and attributions, so that no obligation is
+    dropped. ``terms_url`` is that of the most restrictive; ``reviewed`` the oldest reading,
+    or none if any was never read."""
+    def rank(block: dict) -> int:
+        return RIGHTS_ORDER.index(block["status"]) if block["status"] in RIGHTS_ORDER else len(RIGHTS_ORDER) - 1
+
+    worst = max(blocks, key=rank)
+    said = list(dict.fromkeys(block["attribution"] for block in blocks if block.get("attribution")))
+    read = [block.get("reviewed") for block in blocks]
+    return {"owner": "; ".join(dict.fromkeys(block["owner"] for block in blocks)),
+            "terms_url": worst.get("terms_url"), "status": RIGHTS_ORDER[rank(worst)],
+            "attribution": "; ".join(said) or None,
+            "reviewed": None if any(day is None for day in read) else min(read)}
+
+
+def _derived_entry(spec: dict, leaves: list[dict]) -> dict:
+    """The Catalog entry of a Derived series. A Release's entry has room for one Origin: it is
+    that of the first stored Series the Recipe reaches, and stands for the lineage only as a
+    label. The lineage itself is the Recipe's inputs, which every reader that asks the rights
+    gate walks to the end (``root.rights_problems``, the site's Query)."""
+    entry = {"key": spec["key"], "name": spec["name"], "unit": spec["unit"], **_block(spec),
+             "freq": spec["freq"], "representation": NATIVE,
+             "source": {"origin": dict(leaves[0]["source"]["origin"]), "channel": dict(COMPUTED)},
+             "rights": combined_rights([leaf["rights"] for leaf in leaves]), "status": "active",
+             "recipe": spec["recipe"]}
+    if spec.get("seasonal_adjustment"):
+        entry["seasonal_adjustment"] = spec["seasonal_adjustment"]
+    return entry
+
+
+def _entry(spec: dict, metadata: dict, rights: dict) -> dict:
+    block = _block(spec)
     for name in ("name", "unit"):
         if not isinstance(metadata.get(name), str) or not metadata[name]:
             raise ExportError(f"{spec['key']}: its recorded metadata has no {name}")
@@ -321,11 +377,108 @@ def _freshness(store: Path, vintages: VintageStore, published: list[tuple[dict, 
     return lines
 
 
+def _decide_derived(built: Built, entries: list[dict], specs: list[dict], *, profile: str,
+                    gate: RightsGate, withdrawn: dict[str, dict], legacy: dict[str, bytes] | None) -> None:
+    """For each Recipe of the series table: compute it, withhold it by name, or leave it out.
+    Nothing is computed here."""
+    by_key = {spec["key"]: spec for spec in specs}
+    known = {entry["key"]: entry for entry in entries}          # stored Series, published or withheld
+    withheld = {row["key"]: row["reason"] for row in built.withheld}
+    decided: dict[str, bool] = {}                               # key -> it has a Catalog entry
+
+    def closure(key: str) -> tuple[list[str], list[str]]:
+        """Stored and derived keys ``key`` rests on, each in the order first reached."""
+        stored, derived, stack = [], [], list(reversed(by_key[key]["recipe"]["inputs"]))
+        while stack:
+            name = stack.pop()
+            if name in by_key:
+                if name not in derived:
+                    derived.append(name)
+                    stack.extend(reversed(by_key[name]["recipe"]["inputs"]))
+            elif name not in stored:
+                stored.append(name)
+        return stored, derived
+
+    def decide(key: str) -> bool:
+        if key in decided:
+            return decided[key]
+        spec = by_key[key]
+        stored, derived = closure(key)
+        decided[key] = False
+        # Like a stored Series the store does not hold: there is nothing to describe yet.
+        if any(name not in known for name in stored) or not all([decide(name) for name in derived]):
+            return False
+        entry = _derived_entry(spec, [known[name] for name in stored])
+        legacy_has = legacy is not None and (f"derived/{key}.json" in legacy or f"series/{key}.json" in legacy)
+        reason = None
+        if key in withdrawn:
+            reason = f"withdrawn on {withdrawn[key]['withdrawn_at'][:10]}: {withdrawn[key]['reason']}"
+        else:
+            blocked = [name for name in (*stored, *derived) if name in withheld]
+            if blocked:
+                if legacy_has:
+                    return False                                # v1's Series of this key stays whole
+                reason = f"computed from {blocked[0]}, which is withheld ({withheld[blocked[0]]})"
+            elif profile == "public":
+                rests_on = [known[name] for name in stored] + [known_derived[name] for name in derived]
+                decision = gate.permits([lineage(e) for e in (*rests_on, entry)], "production")
+                if not decision.allowed:
+                    reason = decision.reason
+        entries.append(entry)
+        known_derived[key] = entry
+        decided[key] = True
+        if reason is not None:
+            built.withheld.append({"key": key, "reason": reason})
+            withheld[key] = reason
+        else:
+            built.materialise.append(key)
+        return True
+
+    known_derived: dict[str, dict] = {}
+    for key in sorted(by_key):
+        decide(key)
+    built.materialise.sort()
+
+
+def add_derived(built: Built, outcome: engine.Outcome) -> None:
+    """Take in what the Node step computed: the Derived files and their manifest rows, the
+    Transforms each offers, and a withheld line for a Recipe that gave no value. Rewrites the
+    Catalog. The step has already been checked against what it was asked (``engine.run``)."""
+    by_key = {entry["key"]: entry for entry in built.entries}
+    for key in built.materialise:
+        path = f"derived/{key}.json"
+        entry = by_key[key]
+        if path not in outcome.files:
+            built.withheld.append({"key": key, "reason": NO_VALUE})
+            continue
+        built.files[path] = outcome.files[path]
+        entry["allowed_transforms"] = offered_transforms(entry, json.loads(outcome.files[path]))
+        built.rows[key] = {"kind": "derived", "sha256": hashlib.sha256(outcome.files[path]).hexdigest(),
+                           "channel": entry["source"]["channel"]["via"],
+                           "rights_status": entry["rights"]["status"], "representation": NATIVE}
+    if outcome.files:
+        built.semantics_version = outcome.semantics_version
+    built.report.append({"check": engine.CHECK, "outcome": "pass"})
+    for check in outcome.checks:
+        if not check["check"].startswith("spot value"):
+            continue
+        if check["outcome"] == "pass":
+            built.report.append({"check": check["check"], "outcome": "pass"})
+        elif check.get("reason") == "no_value":
+            # The Series is here and the Period is not: said, so that an unchecked spot is seen.
+            built.report.append({"check": check["check"], "outcome": "warn",
+                                 "detail": "not checked: this release holds no value for that Period"})
+    built.materialise = []
+    built.files[CATALOG] = dump({"series": built.entries})
+
+
 def build(*, profile: str, store: Path, table: object, gate: RightsGate, series: list[dict],
           created: datetime, withdrawn: dict[str, dict] | None = None,
-          legacy: dict[str, bytes] | None = None) -> Built:
-    """The files of a Release from what the store holds now. ``legacy`` is the file set of
-    v1's converted Release (local profile only). Raises ``ExportError``."""
+          legacy: dict[str, bytes] | None = None, derived: list[dict] | None = None) -> Built:
+    """The files of a Release from what the store holds now, without its Derived series:
+    ``Built.materialise`` lists those the engine is to compute (``add_derived``). ``legacy`` is
+    the file set of v1's converted Release (local profile only); ``derived`` the series
+    table's Recipes. Raises ``ExportError``."""
     if profile not in ("public", "local"):
         raise ExportError(f"unknown profile {profile!r}")
     if profile == "public" and legacy is not None:
@@ -409,9 +562,12 @@ def build(*, profile: str, store: Path, table: object, gate: RightsGate, series:
             "check": "vintages", "outcome": "warn",
             "detail": ("published without its history, so it has no as-of answer: "
                        + "; ".join(no_history))[:2000]})
+    _decide_derived(built, entries, derived or [], profile=profile, gate=gate, withdrawn=withdrawn,
+                    legacy=legacy)
     annotations = {"annotations": []}
     if legacy is not None:
         annotations = _add_legacy(built, entries, legacy, withdrawn)
+    built.entries = entries
     built.files[CATALOG] = dump({"series": entries})
     built.files[ANNOTATIONS] = dump(annotations)
     return built

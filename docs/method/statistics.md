@@ -5,7 +5,7 @@ rolling window. This page is the contract; `packages/core` implements it (`src/s
 tested from this text (`src/stats.test.ts`). The Explorer's Relationships panel
 (`site/src/lib/explorer/relationships.ts`) is the only reader of it so far.
 
-`semantics_version`: **0.5.0** (0.4.0, M5: statistics added; 0.5.0, M10: vintage resolution
+`semantics_version`: **0.6.0** (0.6.0, M11: aggregation, four Transforms and Recipes added, no statistic changed; 0.4.0, M5: statistics added; 0.5.0, M10: vintage resolution
 added, `docs/method/vintage-resolution.md`. No statistic changed).
 
 **Statistics here are descriptive** (PLAN 4.5). A correlation says how two Series moved together

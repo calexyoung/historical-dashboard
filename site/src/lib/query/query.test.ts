@@ -82,7 +82,7 @@ describe("the one request shape", () => {
     ["a key that is not a key", { ...base, series: ["../manifest"] }],
     ["the same series twice", { ...base, series: ["fx_price_index", "fx_price_index"] }],
     ["too many series", { ...base, series: Array.from({ length: MAX_SERIES + 1 }, (_, i) => `k${i}`) }],
-    ["an unknown transform", { ...base, transform: "pch" }],
+    ["an unknown transform", { ...base, transform: "sqrt" }],
     ["no transform", { series: base.series, permission: "display" }],
     ["no permission", { series: base.series, transform: "lin" }],
     ["a permission that does not exist", { ...base, permission: "admin" }],

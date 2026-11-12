@@ -1,7 +1,8 @@
 # deploy
 
-The deploy kit. So far (M1) it is the web image and a `web`-only compose file for your own
-machine; the full compose file, the Caddy snippet and the preflight arrive in M26.
+The deploy kit. So far it is the web image and a `web`-only compose file for your own machine
+(M1), and the ingest image (M11); the full compose file, the Caddy snippet and the preflight
+arrive in M26.
 
 Nothing here deploys by itself. A production deploy is always Alex's to start (PLAN 10.1), and
 every build is given its Surface explicitly (PLAN 6.1).
@@ -9,8 +10,10 @@ every build is given its Surface explicitly (PLAN 6.1).
 | File | What it is |
 |---|---|
 | `Dockerfile` | The Next standalone server on `node:24-alpine`, non-root, health-checked, with no Release inside. `ATLAS_SURFACE` and `BASE_PATH` are build arguments with no defaults |
+| `ingest.Dockerfile` | The one writer (ADR 0002): Python (capture, replay, the release writer) and Node (the engine step) in one image, non-root, with no data inside. `python -m atlas` is its entry point; the store and the release root are mounted at `/store` and `/public`. Nothing schedules it here |
+| `ingest.Dockerfile.dockerignore` | Its build context, an allowlist of its own: the `atlas` package without v1's tables, the schema, the spot values, the engine's source |
 | `compose.web.yaml` | Two local-surface builds, one per base path, on `127.0.0.1:3101` and `127.0.0.1:3102`, each with the release root mounted read-only |
-| `check-images.sh` | Builds both images, reads every layer for seeded values and v1 data, smoke-tests `docker compose up`, and checks that a build with no Surface or a mismatched one fails |
+| `check-images.sh` | Builds both web images, reads every layer for seeded values and v1 data, smoke-tests `docker compose up`, and checks that a build with no Surface or a mismatched one fails. Then builds the ingest image, reads its layers the same way, and writes a whole Release with Derived series inside it from the invented vintage fixture |
 | `scan_image.py` | The layer reader `check-images.sh` uses |
 | `capture/` | The capture host kit: a scheduled workflow to copy into a separate private repository, and its runbook. It starts nothing here (D2 and D6 are Alex's) |
 

@@ -1,0 +1,31 @@
+# Docker build context for the ingest image (deploy/ingest.Dockerfile). An allowlist, like
+# /.dockerignore: everything is excluded, then only what the image is built from is let back
+# in. Docker uses this file instead of /.dockerignore for that Dockerfile, so the web image's
+# context is unchanged.
+#
+# Never in the context: generated releases and the store (var/), v1's own files that hold
+# FRED- and Yahoo-sourced values (data/, dist/, web/, .git), the fixtures, and v1's
+# hand-entered tables inside the atlas package (the four .yaml files; the ingest job publishes
+# from the store and never runs the legacy converter). tests/v2/test_ignore_rules.py checks
+# this file. Do not add those paths here (build protocol, point 7).
+*
+
+!pyproject.toml
+!uv.lock
+!atlas
+!schema
+!checks/spot.json
+!packages/core/package.json
+!packages/core/bin
+!packages/core/src
+
+atlas/approval.yaml
+atlas/catalog.yaml
+atlas/events.yaml
+atlas/politics.yaml
+**/__pycache__
+**/*.test.ts
+packages/core/src/testing.ts
+**/node_modules
+**/.env
+**/.env.local

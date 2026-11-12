@@ -12,7 +12,8 @@
  * a pointer or the arrow keys can move the date without asking the server. Pure; safe to load
  * in a browser.
  */
-import type { Frequency, TransformName } from "@macro-atlas/core";
+import type { Frequency } from "@macro-atlas/core";
+import type { ExplorerMode } from "./state";
 import { dayWords, fixed, periodWords } from "../figure/words";
 
 export type ReadoutSeries = {
@@ -38,7 +39,7 @@ export type ReadoutSeries = {
 };
 
 export type ReadoutModel = {
-  mode: TransformName;
+  mode: ExplorerMode;
   /** How a drawn value is written after the Series' own, or null when they are the same thing. */
   drawn: { suffix: string; decimals: number } | null;
   /** Every date a pointer or key can stop at: the first day of each Period in the window. */

@@ -380,28 +380,31 @@ def test_the_command_line_writes_to_atlas_local(tmp_path, monkeypatch, capsys):
 
 # --- M4: which transforms a Series offers -----------------------------------------------------
 
-RATIO = {"log", "rebase", "pc1", "drawdown"}
+RATIO = {"pch", "pc1", "pca", "log", "rebase", "drawdown"}
+YEARLY = {"ch1", "pc1", "pca"}
 
 
 def test_every_series_says_which_transforms_it_offers(release):
-    """transforms.md: lin and z always; the four that divide by a value only where every value
-    is above zero; pc1 never for an irregular Series (it has no Observation a year earlier)."""
+    """transforms.md: lin, z and the two differences always; those that divide by a value only
+    where every value is above zero; none that needs a year of Periods for an irregular Series
+    (it has no Observation a year earlier)."""
     wrong = []
     for e in read(release, "catalog.json")["series"]:
         observed = [v for v in values(release, e["key"]).values() if v is not None]
-        expected = {"lin", "z"}
+        expected = {"lin", "z", "chg", "ch1"}
         if observed and min(observed) > 0:
             expected |= RATIO
         if e["freq"] == "irregular":
-            expected.discard("pc1")
+            expected -= YEARLY
         if set(e.get("allowed_transforms", [])) != expected:
             wrong.append(e["key"])
     assert wrong == []
 
 
 def test_the_offered_transforms_are_written_in_the_engines_order(release):
-    assert entry(release, "spx")["allowed_transforms"] == ["lin", "log", "rebase", "z", "pc1", "drawdown"]
+    assert entry(release, "spx")["allowed_transforms"] == [
+        "lin", "chg", "ch1", "pch", "pc1", "pca", "log", "rebase", "z", "drawdown"]
     # A spread that crosses zero, a 0/1 flag, and a margin per election.
-    assert entry(release, "t10y2y")["allowed_transforms"] == ["lin", "z"]
-    assert entry(release, "usrec")["allowed_transforms"] == ["lin", "z"]
-    assert entry(release, "pres_margin")["allowed_transforms"] == ["lin", "z"]
+    assert entry(release, "t10y2y")["allowed_transforms"] == ["lin", "chg", "ch1", "z"]
+    assert entry(release, "usrec")["allowed_transforms"] == ["lin", "chg", "ch1", "z"]
+    assert entry(release, "pres_margin")["allowed_transforms"] == ["lin", "chg", "z"]

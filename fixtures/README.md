@@ -40,6 +40,9 @@ commit the result. A test fails if the committed files and the script disagree.
 `capture/` holds the capture kit's recorded exchanges, one per first source, also invented: see
 `capture/README.md`.
 
+`vintage/recipes.json` holds two invented Recipes over the vintage fixture's two Series, which the
+release writer's tests and `release/demo.py` add to the fixture's series table.
+
 `vintage/` holds the vintage store's fixture: three recorded fetches of one endpoint (initial,
 revision, withdrawal), invented, for a made-up Origin. `python fixtures/vintage/demo.py` replays
 them and prints the store. See `docs/method/vintage-store.md`.

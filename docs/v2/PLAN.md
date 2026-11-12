@@ -336,6 +336,13 @@ written only when the gate permits every Origin, dataset and Channel the history
 `resolve()` never mixes the Origin's clock and Macro Atlas's in one answer, and decides
 `uncertain` per Observation from the Captures that asked about its Period.
 
+As built in M11 (ADR 0025, `docs/method/transforms.md`, `docs/method/release-writer.md`): the
+series table lists Recipes (`cpi_yoy` first); `atlas-core verify` computes them in a directory
+of its own under `.staging/`, before the release id exists, and Python checks what it left
+before taking the Derived files in; spot values are `checks/spot.json`; a Derived series is
+published only when everything it rests on is, and carries the most restrictive rights status
+of its inputs; `semantics_version` is 0.6.0; `deploy/ingest.Dockerfile` is the ingest image.
+
 Rules:
 
 - **A release is immutable once promoted.** Promotion is one atomic replacement of `CURRENT`. A

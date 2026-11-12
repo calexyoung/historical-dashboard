@@ -5,7 +5,7 @@ ADR 0022, ADR 0024). This page is the contract; `packages/core` implements it (`
 `src/vintage.ts`) and is tested from this text (`src/vintage.test.ts`). Words in capitals are
 defined in `/CONTEXT.md`.
 
-`semantics_version`: **0.5.0** (M10: vintage resolution added; no Transform or statistic changed).
+`semantics_version`: **0.6.0** (0.5.0, M10: vintage resolution added; no Transform or statistic changed. 0.6.0, M11: Recipes resolve each input with these rules, `docs/method/transforms.md`; nothing here changed).
 
 ## The question and the answer
 
