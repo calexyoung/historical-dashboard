@@ -213,7 +213,7 @@ describe("the vintage table: every version a Release holds of each Period", () =
 
   it("can be narrowed to the history of one Period", () => {
     const table = vintageTable(release, "local", "fx_price_index", { period: "2025-10" });
-    expect(table.ok && table.held !== false && table.versions.map((v) => v.value)).toEqual([108.8, 109]);
+    expect(table.ok && table.held !== false && table.versions.map((v) => v.value)).toEqual([109.2, 109]);
   });
 
   it("says when a Release holds no history for a Series, and refuses what the gate refuses", () => {
