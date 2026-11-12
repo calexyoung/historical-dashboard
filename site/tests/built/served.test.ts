@@ -587,6 +587,9 @@ describe("twins of a series page, and status (PLAN section 7, M17)", () => {
       expect(idsOn(body)).toEqual([FIXTURE_ID]);
       expect(body).toContain(`${server.origin}${server.base}/data/fx_price_index`);
       if (suffix !== "metadata.json") expect(body).toMatch(/not for publication/i);
+      expect(response.headers.get("content-disposition")).toBe(
+        suffix === "metadata.json" ? 'inline; filename="macro-atlas_fx_price_index.metadata.json"' : `${suffix === "csv" ? "attachment" : "inline"}; filename="macro-atlas_fx_price_index_not-for-publication.${suffix}"`,
+      );
       const head = await get(server.url(`/data/fx_price_index.${suffix}`), { method: "HEAD" });
       expect(head.status).toBe(200);
       expect(await head.text()).toBe("");

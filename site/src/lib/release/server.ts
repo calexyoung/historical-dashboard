@@ -7,6 +7,7 @@
  */
 import { headers } from "next/headers";
 import { cache } from "react";
+import { siteAddress } from "../address";
 import { BASE_PATH, SURFACE } from "../config";
 import { HOST_HEADER, PATH_HEADER, REFRESH_FAILED_HEADER, RELEASE_HEADER } from "../gate";
 import { createReleaseReader, type Failure, type OpenedRelease, type ReleaseReader } from "./reader";
@@ -39,20 +40,6 @@ export type RequestRelease = {
   address: string;
 };
 
-const HOST = /^([a-z0-9.-]{1,253}|\[[0-9a-f:]{2,45}\])(:[0-9]{1,5})?$/i;
-const LOOPBACK = /^(localhost|[a-z0-9-]+\.localhost|127\.0\.0\.1|\[::1\])(:[0-9]{1,5})?$/i;
-
-/**
- * The address a reader would open, from the Host they named. It is written into files and
- * citations, so it must look like a host and nothing else; one that does not gives no address.
- * Plain http only for this machine's own names.
- */
-export function siteAddress(host: string | null, forwardedProto: string | null): string {
-  if (!host || !HOST.test(host)) return BASE_PATH;
-  const proto = LOOPBACK.test(host) ? (forwardedProto === "https" ? "https" : "http") : "https";
-  return `${proto}://${host.toLowerCase()}${BASE_PATH}`;
-}
-
 /** The Release this request was fixed to. Reading headers also makes the route render per request. */
 export const releaseForRequest = cache(async (): Promise<RequestRelease> => {
   const incoming = await headers();
@@ -70,6 +57,6 @@ export const releaseForRequest = cache(async (): Promise<RequestRelease> => {
       refreshFailed = { kind: "invalid", id: null, reason: "unreadable" };
     }
   }
-  const address = siteAddress(incoming.get(HOST_HEADER) ?? incoming.get("host"), incoming.get("x-forwarded-proto"));
+  const address = siteAddress(incoming.get(HOST_HEADER) ?? incoming.get("host"), incoming.get("x-forwarded-proto"), BASE_PATH);
   return { release: opened.release, refreshFailed, path: incoming.get(PATH_HEADER) ?? "/", now: Date.now(), address };
 });

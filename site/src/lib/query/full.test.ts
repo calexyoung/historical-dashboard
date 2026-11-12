@@ -62,6 +62,55 @@ describe("what was known before a date", () => {
     expect(changed.series[0]!.vintage!.basis).toBe("uncertain");
   });
 
+  /** The fixture, except that the Capture of 11 December asked only about Periods from `from` on. */
+  async function narrowedOn11th(id: string, from: string): Promise<OpenedRelease> {
+    const { readFileSync, writeFileSync } = await import("node:fs");
+    const { createHash } = await import("node:crypto");
+    const root = tempRoot();
+    const dir = addRelease(root, { id });
+    const path = `${dir}/vintages/fx_price_index.json`;
+    const file = JSON.parse(readFileSync(path, "utf8"));
+    for (const capture of file.captures) if (capture.retrieved_at.startsWith("2025-12-11")) capture.scope = [from, "2025-12-31"];
+    writeFileSync(path, JSON.stringify(file, null, 1) + "\n");
+    const manifest = JSON.parse(readFileSync(`${dir}/manifest.json`, "utf8"));
+    manifest.series.fx_price_index.vintages_sha256 = createHash("sha256").update(readFileSync(path)).digest("hex");
+    writeFileSync(`${dir}/manifest.json`, JSON.stringify(manifest, null, 1) + "\n");
+    promote(root, id);
+    const opened = await createReleaseReader({ root, surface: "local" }).current();
+    if (!opened.ok) throw new Error(opened.reason);
+    return opened.release;
+  }
+  const basisOf = (of: OpenedRelease, request: object) => {
+    const answer = query(of, "local", { ...base, as_of: "2025-12-12", ...request });
+    if (!answer.ok) throw new Error(answer.message);
+    return answer.series[0]!.vintage!.basis;
+  };
+
+  it("a change from the Period before rests on that Period only, not on a year of them", async () => {
+    // As of the 12th the last Capture is the 11th's, a day before: Periods it asked about
+    // (October on) are Atlas-observed; September and earlier were last asked about on the 10th,
+    // with the 11th unseen for them, and are uncertain.
+    const of = await narrowedOn11th("20260201T000000Z-4444444", "2025-10-01");
+    expect(basisOf(of, {})).toBe("uncertain");
+    expect(basisOf(of, { from: "2025-11-01" })).toBe("atlas_observed");
+    expect(basisOf(of, { from: "2025-11-01", transform: "chg" })).toBe("atlas_observed"); // November beside October
+    expect(basisOf(of, { from: "2025-10-01", transform: "chg" })).toBe("uncertain"); // October beside September
+    expect(basisOf(of, { from: "2025-11-01", transform: "pc1" })).toBe("uncertain"); // November beside November 2024
+    expect(basisOf(of, { from: "2025-10-01", freq: "quarterly" })).toBe("atlas_observed"); // the quarter's own months
+    expect(basisOf(of, { from: "2025-10-01", freq: "quarterly", transform: "chg" })).toBe("uncertain"); // beside the third quarter's
+  });
+
+  it("a Derived series claims the Basis of the Periods its Recipe used, input by input", async () => {
+    // Here only the first half of 2024 went unasked on the 11th.
+    const of = await narrowedOn11th("20260201T000000Z-5555555", "2024-07-01");
+    const yoy = { series: ["fx_price_index_yoy"] };
+    expect(basisOf(of, yoy)).toBe("uncertain"); // the whole Series rests on all of 2024
+    expect(basisOf(of, { ...yoy, from: "2025-11-01" })).toBe("atlas_observed"); // November 2025 beside November 2024
+    expect(basisOf(of, { ...yoy, from: "2025-02-01", to: "2025-03-31" })).toBe("uncertain"); // beside February and March 2024
+    expect(basisOf(of, { ...yoy, from: "2025-08-01", transform: "z" })).toBe("atlas_observed"); // August on, beside August 2024 on
+    expect(basisOf(of, { ...yoy, from: "2025-05-01", transform: "z" })).toBe("uncertain"); // May and June rest on May and June 2024
+  });
+
   it("reports the metadata in force then, and keeps Periods held under other metadata out of arithmetic", () => {
     const plain = ask({ series: ["fx_poverty_rate_annual"], as_of: "2025-12-20" });
     expect(plain.series[0]!.vintage!.metadata).toMatchObject({ unit: "percent of residents", differs_from_current: false, other_metadata_periods: ["2012", "2013", "2014", "2015"] });
@@ -236,5 +285,12 @@ describe("caps (PLAN 4.2): rows, the work behind them, and time", () => {
   it("refuses to read a history longer than the cap", () => {
     expect(query(release, "local", { ...base, as_of: "2025-12-13" }, { maxVintageRows: 5 })).toMatchObject({ ok: false, status: 422, code: "too_large" });
     expect(vintageTable(release, "local", "fx_price_index", { maxVintageRows: 5 })).toMatchObject({ ok: false, status: 422, code: "too_large" });
+  });
+
+  it("reading a history has the same limit on time", () => {
+    let now = 0;
+    const table = vintageTable(release, "local", "fx_price_index", { maxMs: 50, clock: () => (now += 40) });
+    expect(table).toMatchObject({ ok: false, status: 503, code: "too_slow" });
+    expect(JSON.stringify(table)).not.toMatch(/"value"|versions/);
   });
 });

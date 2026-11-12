@@ -311,9 +311,51 @@ function historySize(release: OpenedRelease, keys: readonly string[]): number {
 }
 const historyTooLong = (max: number): QueryFailure => fail(422, "too_large", `the history asked for holds more than ${max} versions; ask for fewer series`);
 
-/** Transforms that set a Period beside an earlier one: at most a year back. */
-const LOOKS_BACK = new Set<string>(["chg", "ch1", "pch", "pc1", "pca"]);
-const yearBefore = (date: string): string => `${String(Number(date.slice(0, 4)) - 1).padStart(4, "0")}${date.slice(4)}`;
+/** Transforms that set a Period beside the one before it, and beside the one a year earlier. */
+const PERIOD_BEFORE = new Set<string>(["chg", "pch", "pca"]);
+const YEAR_BEFORE = new Set<string>(["ch1", "pc1"]);
+const yearBefore = (date: string): string => {
+  const year = String(Number(date.slice(0, 4)) - 1).padStart(4, "0");
+  // 29 February has no day a year earlier; the 28th is inside the same month.
+  return `${year}${date.slice(4) === "-02-29" ? "-02-28" : date.slice(4)}`;
+};
+/** A stretch of calendar days, both inclusive. */
+type Span = { from: string; to: string };
+const shifted = (span: Span, months: number): Span => {
+  const move = (date: string, end: boolean): string => {
+    const total = Number(date.slice(0, 4)) * 12 + Number(date.slice(5, 7)) - 1 - months;
+    const [year, month] = [Math.floor(total / 12), (total % 12) + 1];
+    const last = new Date(Date.UTC(2000, month, 0));
+    last.setUTCFullYear(year, month, 0);
+    const day = end ? last.getUTCDate() : Math.min(Number(date.slice(8, 10)), last.getUTCDate());
+    return `${String(year).padStart(4, "0")}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+  };
+  return { from: move(span.from, false), to: move(span.to, true) };
+};
+const MONTHS_PER_PERIOD: Partial<Record<Frequency, number>> = { monthly: 1, quarterly: 3, annual: 12 };
+
+/**
+ * The days whose Observations an answer rests on: the Periods it shows, and those its Transform
+ * set them beside (the Period before, or the same Periods a year earlier). `sequence` is what
+ * the Transform was given, so "the Period before" is the one before in that sequence.
+ */
+function spansUsed(shown: readonly TransformObservation[], sequence: readonly TransformObservation[], name: TransformName): Span[] {
+  if (shown.length === 0) return [];
+  const first = shown[0]!;
+  const span: Span = { from: first.period_start, to: shown[shown.length - 1]!.period_end };
+  if (PERIOD_BEFORE.has(name)) {
+    const at = sequence.findIndex((o) => o.period === first.period);
+    if (at > 0) span.from = sequence[at - 1]!.period_start;
+    // Not in the sequence: the Transform brought it to months itself. A year back covers any Period before.
+    else if (at < 0) span.from = yearBefore(span.from);
+    return [span];
+  }
+  if (YEAR_BEFORE.has(name)) return [span, { from: yearBefore(span.from), to: yearBefore(span.to) }];
+  return [span];
+}
+const within = (spans: readonly Span[], o: { period_start: string; period_end: string }): boolean => spans.some((span) => o.period_end >= span.from && o.period_start <= span.to);
+/** The Basis an answer on Macro Atlas's clock starts from: the last Capture before the Cutoff. */
+const clockBasis = (gap: CaptureGap | null, basis: VintageBasis): VintageBasis => (gap ? (gap.missed_days > 0 ? "uncertain" : "atlas_observed") : basis);
 const plain = (o: TransformObservation, value: number | null = o.value): TransformObservation => ({
   period: o.period,
   period_start: o.period_start,
@@ -322,7 +364,7 @@ const plain = (o: TransformObservation, value: number | null = o.value): Transfo
   status: value === null ? "missing" : o.status,
 });
 
-type Resolved = { observations: readonly TransformObservation[]; unit: string; vintage: VintageInfo | null; early?: SeriesResult; resolved?: readonly VintageObservation[]; clock?: VintageBasis };
+type Resolved = { observations: readonly TransformObservation[]; unit: string; vintage: VintageInfo | null; early?: SeriesResult; resolved?: readonly VintageObservation[]; clock?: VintageBasis; /** A Derived series the engine computed: its Basis is narrowed input by input. */ computed?: true };
 
 /** Stage one: the Vintage. Without an as-of question, the Release's own state. */
 function resolved(release: OpenedRelease, entry: CatalogEntry, file: SeriesFile, request: QueryRequest, combining: boolean): Resolved {
@@ -349,7 +391,7 @@ function resolved(release: OpenedRelease, entry: CatalogEntry, file: SeriesFile,
     if (computed.unavailable) {
       return { observations: [], unit: entry.unit, vintage, early: { ok: false, transform: request.transform, reason: computed.unavailable.reason, message: computed.unavailable.message } };
     }
-    return { observations: computed.observations, unit: entry.unit, vintage };
+    return { observations: computed.observations, unit: entry.unit, vintage, computed: true };
   }
 
   const answer = asOf(release, entry.key, date)!;
@@ -371,8 +413,7 @@ function resolved(release: OpenedRelease, entry: CatalogEntry, file: SeriesFile,
   };
   if (basis === "unavailable") return { observations: [], unit: entry.unit, vintage, early: none };
   const unit = answer.metadata?.metadata.unit ?? entry.unit;
-  // On Macro Atlas's clock the answer rests first on the last Capture before the Cutoff.
-  const clock: VintageBasis = answer.capture_gap ? (answer.capture_gap.missed_days > 0 ? "uncertain" : "atlas_observed") : basis;
+  const clock = clockBasis(answer.capture_gap, basis);
   if (!combining) return { observations: answer.observations.map((o) => plain(o)), unit, vintage, resolved: answer.observations, clock };
   // Arithmetic across Periods needs them under one unit and definition (as a Recipe does).
   if (answer.metadata === null && basis !== "legacy" && answer.observations.length > 0) {
@@ -382,6 +423,34 @@ function resolved(release: OpenedRelease, entry: CatalogEntry, file: SeriesFile,
   const out = new Set(others);
   vintage.left_out_periods = others;
   return { observations: answer.observations.map((o) => (out.has(o.period) ? plain(o, null) : plain(o))), unit, vintage, resolved: answer.observations, clock };
+}
+
+/**
+ * The Basis of a Derived answer narrowed to the days it used: each stored input resolved on its
+ * own, and judged by its Periods in those days and in the days its Recipe looks back to. Null
+ * when that cannot be worked out exactly (a Recipe over other Recipes, or a look-back counted in
+ * Periods that are not months): the answer then keeps the weakest Basis of its whole inputs,
+ * which claims no more than is true.
+ */
+function derivedBasis(release: OpenedRelease, entry: CatalogEntry, spans: readonly Span[], date: string): VintageBasis | null {
+  const recipe = entry.recipe;
+  if (!recipe || spans.length === 0) return null;
+  const entries = new Map(release.catalog.series.map((e) => [e.key, e]));
+  if (recipe.inputs.some((input) => entries.get(input)?.recipe)) return null;
+  let all = [...spans];
+  if (recipe.op === "pct_change") {
+    const months = MONTHS_PER_PERIOD[entry.freq];
+    const lag = Number(recipe.params.lag);
+    if (months === undefined || !Number.isInteger(lag) || lag < 1) return null;
+    all = [...all, ...spans.map((span) => shifted(span, lag * months))];
+  }
+  const bases: VintageBasis[] = [];
+  for (const input of recipe.inputs) {
+    const answer = asOf(release, input, date);
+    if (!answer || answer.basis === null) return null;
+    bases.push(clockBasis(answer.capture_gap, answer.basis), ...answer.observations.filter((o) => within(all, o)).flatMap((o) => (o.basis ? [o.basis] : [])));
+  }
+  return weakestBasis(bases);
 }
 
 export function query(release: OpenedRelease, surface: Surface, raw: unknown, options: QueryOptions = {}): QueryAnswer | QueryFailure {
@@ -418,6 +487,8 @@ export function query(release: OpenedRelease, surface: Surface, raw: unknown, op
     let observations = first.observations;
     let freq: Frequency = file.freq;
     let aggregated: TransformAggregation | null = null;
+    /** What the Transform was given, for "the Period before". */
+    let transformed: readonly TransformObservation[] = [];
     if (!result && slower) {
       const brought = aggregate({ freq, continuity: entry.continuity, measure_kind: entry.measure_kind, agg, observations }, request.freq!);
       if (!brought.ok) result = { ok: false, transform: request.transform, reason: brought.reason, message: brought.message };
@@ -430,6 +501,7 @@ export function query(release: OpenedRelease, surface: Surface, raw: unknown, op
       if (over) return over;
     }
     if (!result) {
+      transformed = observations;
       const answered = transform({ freq, continuity: entry.continuity, observations, allowed: entry.allowed_transforms, measure_kind: entry.measure_kind, agg }, request.transform, window);
       if (answered.ok && answered.aggregated) {
         aggregated = { from: file.freq, to: answered.aggregated.to, method: answered.aggregated.method };
@@ -443,23 +515,23 @@ export function query(release: OpenedRelease, surface: Surface, raw: unknown, op
     }
 
     const vintage = first.vintage;
-    if (vintage && first.resolved && first.clock && result.ok) {
-      // The Basis of what the answer used: its own Periods, and those a Transform looked back to.
+    if (vintage && result.ok && (first.resolved || first.computed)) {
+      // The Basis of what the answer used: its own Periods, and those a Transform set them beside.
       const shown = result.observations;
-      let used: readonly VintageObservation[] = [];
-      if (shown.length > 0) {
-        let lo = shown[0]!.period_start;
-        const hi = shown[shown.length - 1]!.period_end;
-        if (LOOKS_BACK.has(request.transform)) lo = yearBefore(lo);
-        used = first.resolved.filter((o) => o.period_start >= lo && o.period_start <= hi);
-      }
-      vintage.basis = weakestBasis([first.clock, ...used.flatMap((o) => (o.basis ? [o.basis] : []))]) ?? vintage.basis;
-      if (!slower && request.transform === "lin") {
-        const byPeriod = new Map(first.resolved.map((o) => [o.period, o]));
-        vintage.evidence = shown.map((o) => {
-          const e = byPeriod.get(o.period);
-          return { period: o.period, basis: e?.basis ?? null, known_from: e?.known_from ?? null, known_by: e?.known_by ?? null, last_checked: e?.last_checked ?? null };
-        });
+      const spans = spansUsed(shown, transformed, request.transform);
+      if (first.resolved && first.clock) {
+        const used = first.resolved.filter((o) => within(spans, o));
+        vintage.basis = weakestBasis([first.clock, ...used.flatMap((o) => (o.basis ? [o.basis] : []))]) ?? vintage.basis;
+        if (!slower && request.transform === "lin") {
+          const byPeriod = new Map(first.resolved.map((o) => [o.period, o]));
+          vintage.evidence = shown.map((o) => {
+            const e = byPeriod.get(o.period);
+            return { period: o.period, basis: e?.basis ?? null, known_from: e?.known_from ?? null, known_by: e?.known_by ?? null, last_checked: e?.last_checked ?? null };
+          });
+        }
+      } else {
+        const narrowed = derivedBasis(release, entry, spans, request.as_of!);
+        if (narrowed) vintage.basis = narrowed;
       }
     }
 
@@ -541,8 +613,12 @@ export function vintageTable(
   release: OpenedRelease,
   surface: Surface,
   key: string,
-  options: { period?: string; permission?: Permission; gate?: Pick<RightsGate, "permits">; maxVintageRows?: number } = {},
+  options: { period?: string; permission?: Permission; gate?: Pick<RightsGate, "permits">; maxVintageRows?: number; maxMs?: number; clock?: () => number } = {},
 ): VintageTable {
+  const clock = options.clock ?? (() => performance.now());
+  const started = clock();
+  const maxMs = options.maxMs ?? MAX_MS;
+  const late = (): QueryFailure | null => (clock() - started > maxMs ? fail(503, "too_slow", `the history took longer than ${maxMs} ms to read`) : null);
   if (typeof key !== "string" || !KEY.test(key)) return bad("that is not a series key");
   if (options.period !== undefined && (typeof options.period !== "string" || !/^[0-9A-Za-z-]{1,16}$/.test(options.period))) return bad("period: a period label, such as 2025-11 or 2025-Q3");
   const lineage = askGate(release, surface, [key], options.permission ?? "display", { history: true, gate: options.gate });
@@ -552,6 +628,8 @@ export function vintageTable(
   if (!file) return { ok: true, held: false, key, why: entry.recipe ? "derived" : entry.representation !== "native" ? "legacy" : "no_vintages" };
   const max = options.maxVintageRows ?? MAX_VINTAGE_ROWS;
   if (file.rows.length > max) return historyTooLong(max);
+  let over = late();
+  if (over) return over;
 
   const day = (instant: string | null, precision: "date" | "datetime" | null): string | null => (instant === null ? null : precision === "date" ? instant.slice(0, 10) : instant);
   const versions: Version[] = [];
@@ -578,6 +656,8 @@ export function vintageTable(
     });
   }
 
+  over = late();
+  if (over) return over;
   // Days are New York's, as the Cutoff's are (docs/method/vintage-resolution.md).
   const days = [...new Set(file.captures.map((c) => cutoffFor(c.retrieved_at)?.day).filter((d): d is string => typeof d === "string"))].sort();
   const missed: string[] = [];
@@ -589,6 +669,8 @@ export function vintageTable(
     for (let d = 1; d <= gap && missed.length < 60; d++) missed.push(new Date(from + d * DAY_MS).toISOString().slice(0, 10));
   }
   const times = file.captures.map((c) => c.retrieved_at).sort();
+  over = late();
+  if (over) return over;
   return {
     ok: true,
     held: true,

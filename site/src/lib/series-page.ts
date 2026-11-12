@@ -88,7 +88,7 @@ export type RevisionRow = {
 };
 export type Revisions =
   | { held: false; text: string }
-  | { held: true; lines: string[]; rows: RevisionRow[]; /** Versions not listed, when the list was cut. */ more: number };
+  | { held: true; lines: string[]; rows: RevisionRow[]; /** Earlier versions not listed; `?revisions=all` lists them, up to 5,000. */ more: number; /** Whether the address asked for all of them. */ all: boolean };
 
 export type Downloads = {
   /** Whether the values may be handed out here (the Permission to redistribute). */
@@ -252,7 +252,9 @@ function notes(release: OpenedRelease, entry: CatalogEntry, labelOf: (period: st
 }
 
 const instantWords = (instant: string): string => `${dayWords(instant.slice(0, 10), "short")}, ${instant.slice(11, 16)} UTC`;
-const MAX_REVISION_ROWS = 48;
+/** Versions listed at first, and when the address asks for all of them (`?revisions=all`). */
+const REVISION_ROWS = 48;
+const ALL_REVISION_ROWS = 5_000;
 
 function revisionRow(freq: CatalogEntry["freq"], v: Version): RevisionRow {
   const neverHeld = v.held_to !== null && v.held_to === v.held_from;
@@ -267,10 +269,12 @@ function revisionRow(freq: CatalogEntry["freq"], v: Version): RevisionRow {
   };
 }
 
-function revisions(release: OpenedRelease, surface: Surface, entry: CatalogEntry, gate: Pick<RightsGate, "permits"> | undefined): Revisions | null {
+function revisions(release: OpenedRelease, surface: Surface, entry: CatalogEntry, gate: Pick<RightsGate, "permits"> | undefined, all: boolean, rows: number = REVISION_ROWS): Revisions | null {
   const table = vintageTable(release, surface, entry.key, { gate });
   // What the gate refuses of a Series' past is said in one line; today's values are not affected.
-  if (!table.ok) return table.status === 403 ? { held: false, text: `The earlier versions of this series are not shown here: ${table.message}.` } : null;
+  if (!table.ok) {
+    return { held: false, text: table.status === 403 ? `The earlier versions of this series are not shown here: ${table.message}.` : `The earlier versions of this series cannot be listed here (${table.message}).` };
+  }
   if (!table.held) {
     const built = release.manifest.inputs?.find((input) => input.generated)?.generated;
     const text =
@@ -298,8 +302,11 @@ function revisions(release: OpenedRelease, surface: Surface, entry: CatalogEntry
   const changed = new Set(table.revised_periods);
   const listed = table.versions.filter((v) => changed.has(v.period));
   if (listed.length === 0) lines.push("No period has changed since Macro Atlas first held it.");
-  const shown = listed.slice(-MAX_REVISION_ROWS);
-  return { held: true, lines, rows: shown.map((v) => revisionRow(table.freq, v)), more: listed.length - shown.length };
+  // The latest versions, and never part of one Period's history: a cut falls between Periods.
+  let from = Math.max(0, listed.length - (all ? ALL_REVISION_ROWS : rows));
+  while (from > 0 && from < listed.length && listed[from]!.period === listed[from - 1]!.period) from++;
+  const shown = listed.slice(from);
+  return { held: true, lines, rows: shown.map((v) => revisionRow(table.freq, v)), more: listed.length - shown.length, all };
 }
 
 function downloads(release: OpenedRelease, surface: Surface, entry: CatalogEntry, request: SeriesRequest | null, search: string, address: string, gate: Pick<RightsGate, "permits"> | undefined): Downloads {
@@ -337,6 +344,8 @@ export type SeriesPageOptions = {
   address?: string;
   /** See `QueryOptions.gate`: only a test passes one. */
   gate?: Pick<RightsGate, "permits">;
+  /** How many versions the revisions table lists at first (48). */
+  revisionRows?: number;
 };
 
 export function seriesPageView(release: OpenedRelease, surface: Surface, key: string, options: SeriesPageOptions = {}): SeriesPageAnswer {
@@ -472,7 +481,7 @@ export function seriesPageView(release: OpenedRelease, surface: Surface, key: st
       figure,
       notes: notes(release, entry, labelOf),
       // Under an as-of question the list of every version, later ones included, is left to the plain page.
-      revisions: vintage ? null : revisions(release, surface, entry, gate),
+      revisions: vintage ? null : revisions(release, surface, entry, gate, options.search?.get("revisions") === "all", options.revisionRows),
     },
   };
 }

@@ -32,8 +32,10 @@ export type TwinResponse = {
   status: 200 | 308 | 400 | 403 | 404 | 422 | 503;
   contentType: string;
   body: string;
-  /** Set for a file a browser should save. */
+  /** The name a browser saves the file under. On a local build it carries the stamp. */
   filename?: string;
+  /** Whether a browser should save the file (`attachment`) or may show it. */
+  disposition?: "attachment" | "inline";
   /** For 308: the permanent address, without the base path. */
   location?: string;
   /** Whether a cache may keep it for a short while. Never a refusal, never anything but production. */
@@ -103,7 +105,7 @@ export function seriesTwin(release: OpenedRelease, surface: Surface, key: string
   const page = `${address}/data/${entry.key}`;
   const stamped = surface === "local";
 
-  if (format === "metadata.json") return within(json(metadata(release, surface, entry, address, options.gate)));
+  if (format === "metadata.json") return within(json(metadata(release, surface, entry, address, options.gate)), { filename: `macro-atlas_${entry.key}.metadata.json`, disposition: "inline" });
 
   const answer = query(release, surface, toQuery(parsed.request, entry.key, "redistribute"), { gate: options.gate });
   if (!answer.ok) return failed(answer);
@@ -133,7 +135,7 @@ export function seriesTwin(release: OpenedRelease, surface: Surface, key: string
     ];
     const rows = observations.map((o) => csvLine([entry.key, o.period, o.period_start, o.period_end, o.value, o.status, evidence.get(o.period)?.basis ?? null, o.empty && o.empty !== "missing" ? o.empty : null]));
     const body = [...head, csvLine(["series", "period", "period_start", "period_end", "value", "status", "basis", "note"]), ...rows].join("\n") + "\n";
-    return within(body, { filename: `${name}.csv` });
+    return within(body, { filename: `${name}.csv`, disposition: "attachment" });
   }
 
   if (format === "json") {
@@ -186,10 +188,10 @@ export function seriesTwin(release: OpenedRelease, surface: Surface, key: string
         };
       }),
     };
-    return within(json(doc));
+    return within(json(doc), { filename: `${name}.json`, disposition: "inline" });
   }
 
-  return within(markdown(release, surface, entry, series, parsed.request, search, { ...options, unit, shown, when, cite, page, tail, stamped }));
+  return within(markdown(release, surface, entry, series, parsed.request, search, { ...options, unit, shown, when, cite, page, tail, stamped }), { filename: `${name}.md`, disposition: "inline" });
 }
 
 /** The Catalog's record of one Series, as a fixed selection, and no value. */
@@ -241,7 +243,20 @@ function metadata(release: OpenedRelease, surface: Surface, entry: CatalogEntry,
   };
 }
 
-const cell = (text: string | number | null): string => String(text ?? "").replace(/\|/g, "\\|").replace(/\s+/g, " ");
+/**
+ * Text from a Release (a name, a description, a note), written so that Markdown and anything
+ * that renders it take it as text: no markup, no link, no heading, no table cell of its own.
+ * A Catalog is not written by readers, but a file is opened by people who did not write it.
+ */
+const md = (text: string | number | null | undefined): string =>
+  String(text ?? "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/([\\`*_[\]#|])/g, "\\$1");
+const cell = md;
 
 /** The page in Markdown: the same facts, in the same order, with the values as a table. */
 function markdown(
@@ -255,29 +270,31 @@ function markdown(
 ): string {
   const found = seriesPageView(release, surface, entry.key, { search, address: o.address, gate: o.gate });
   const view = found.kind === "page" ? found.view : null;
-  const out: string[] = [`# ${entry.name}`, ""];
+  const out: string[] = [`# ${md(entry.name)}`, ""];
   if (o.stamped) out.push(`> ${STAMP} · ${localNote(release)}`, "");
-  if (entry.description) out.push(entry.description, "");
-  out.push(`- Series key: \`${entry.key}\``, `- Unit: ${o.unit}`, `- Frequency: ${series.answered_freq.replace("_", " ")}`);
-  if (o.shown) out.push(`- Shown as: ${o.shown}`);
-  if (view?.latest) out.push(`- ${view.latest.label}: ${view.latest.value} (${view.latest.period}${view.latest.states.map((s) => `, ${s.word.toLowerCase()}`).join("")})`);
+  if (entry.description) out.push(md(entry.description), "");
+  out.push(`- Series key: \`${entry.key}\``, `- Unit: ${md(o.unit)}`, `- Frequency: ${series.answered_freq.replace("_", " ")}`);
+  if (o.shown) out.push(`- Shown as: ${md(o.shown)}`);
+  if (view?.latest) out.push(`- ${view.latest.label}: ${md(view.latest.value)} (${md(view.latest.period)}${view.latest.states.map((s) => `, ${s.word.toLowerCase()}`).join("")})`);
   out.push(`- Release: ${release.id} · engine semantics ${SEMANTICS_VERSION}`, "");
-  if (o.when.length > 0) out.push("## As of", "", ...o.when.map((line) => `- ${line}`), "");
+  if (o.when.length > 0) out.push("## As of", "", ...o.when.map((line) => `- ${md(line)}`), "");
   if (view) {
-    out.push("## Definition", "", ...view.facts.map((f) => `- ${f.label}: ${f.value}`), "");
+    out.push("## Definition", "", ...view.facts.map((f) => `- ${md(f.label)}: ${md(f.value)}`), "");
     const p = view.provenance;
     out.push("## Provenance", "");
     for (const [title, facts] of [["Origin", p.origin], ["Channel", p.channel], ["Rights", p.rights], ["Release", p.release]] as const) {
-      out.push(...facts.map((f) => `- ${title} · ${f.label}: ${f.value}`));
+      out.push(...facts.map((f) => `- ${title} · ${md(f.label)}: ${md(f.value)}`));
     }
-    if (p.lineage) out.push(`- ${p.lineage.text} ${p.lineage.inputs.map((i) => `${i.name} (\`${i.key}\`)`).join(", ")}`);
+    if (p.lineage) out.push(`- ${md(p.lineage.text)} ${p.lineage.inputs.map((i) => `${md(i.name)} (\`${i.key}\`)`).join(", ")}`);
     out.push("");
-    if (view.notes.length > 0) out.push("## Breaks and notes", "", ...view.notes.map((n) => `- ${n.kind}, ${n.period}: ${n.text}`), "");
+    if (view.notes.length > 0) out.push("## Breaks and notes", "", ...view.notes.map((n) => `- ${n.kind}, ${md(n.period)}: ${md(n.text)}`), "");
   }
   const rows = series.result.ok ? series.result.observations : [];
-  out.push("## Values", "", `${entry.name}, ${o.unit}.`, "", "| Period | Value | Status |", "|---|---|---|");
-  for (const r of rows) out.push(`| ${cell(r.period)} | ${cell(r.value)} | ${cell(r.status)} |`);
+  out.push("## Values", "", `${md(entry.name)}, ${md(o.unit)}.`, "", "| Period | Value | Status |", "|---|---|---|");
+  for (const r of rows) out.push(`| ${cell(r.period)} | ${r.value ?? ""} | ${cell(r.status)} |`);
   if (rows.length === 0) out.push("", "No observation.");
-  out.push("", "## Cite and download", "", o.cite, "", `- CSV: ${o.page}.csv${o.tail}`, `- JSON: ${o.page}.json${o.tail}`, `- Metadata: ${o.page}.metadata.json`, `- Page: ${o.page}${o.tail}`, "");
+  // The citation holds the page's address, which is this site's own; the rest of it is text.
+  const [citedText, citedAddress] = o.cite.endsWith(o.page) ? [o.cite.slice(0, -o.page.length), o.page] : [o.cite, ""];
+  out.push("", "## Cite and download", "", `${md(citedText)} ${citedAddress}`.trim(), "", `- CSV: ${o.page}.csv${o.tail}`, `- JSON: ${o.page}.json${o.tail}`, `- Metadata: ${o.page}.metadata.json`, `- Page: ${o.page}${o.tail}`, "");
   return out.join("\n");
 }

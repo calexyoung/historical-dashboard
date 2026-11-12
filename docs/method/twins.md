@@ -43,7 +43,7 @@ window is applied last, so a Transform keeps its look-back.
 
 | Field (JSON) | |
 |---|---|
-| `basis` | the weakest Basis among the Periods the answer used, the look-back of a Transform included; not the whole Series' (ADR 0024) |
+| `basis` | the weakest Basis among the Periods the answer used; not the whole Series' (ADR 0024). Used means: the Periods shown; the Period before the first, for `chg`, `pch`, `pca`; the same Periods a year earlier, for `ch1`, `pc1`; and, for a Derived series, the Periods of each input its Recipe set those beside. Where that cannot be worked out exactly (a Recipe over Recipes) the whole inputs' weakest Basis is claimed |
 | `cutoff`, `capture_gap`, `same_day_release` | as `vintage-resolution.md` defines them |
 | `metadata_in_force` | the unit in force at the Cutoff, whether it has changed since, and Periods still held then under other metadata |
 | `left_out_periods` | Periods kept out of arithmetic because they were under other metadata. Without a Transform or a slower frequency nothing is left out; they are shown as held and named |
@@ -57,8 +57,9 @@ list of later versions. A Derived series is computed from each input's own Vinta
 
 The page lists every version a Release holds of each Period whose value or Status changed, with
 the Origin's clock (published) and Macro Atlas's (first held, held until) in separate columns,
-the Captures taken and the days between them with none. It is today's whole history, so it is
-left off an as-of view, which links to it.
+the Captures taken and the days between them with none. The latest 48 versions are listed, never part of one Period's history, and
+`?revisions=all` lists every one (up to 5,000). It is today's whole history, so it is left off
+an as-of view, which links to it.
 
 ## Rights
 
@@ -74,8 +75,14 @@ left off an as-of view, which links to it.
 - `.metadata.json` is a fixed selection of the Catalog entry. It never holds a value, and where
   the Series may not be shown it says nothing of its coverage either.
 - On the local Surface every file of values is stamped "not for publication", in its content
-  and its name. On a public Surface no register row is signed today, so every file of values is
+  and in the name a browser saves it under (CSV, JSON and Markdown alike). On a public Surface no register row is signed today, so every file of values is
   403 (PLAN 6.1).
+
+## Text from a Release
+
+A name, a description, a unit or a note is written into every file as text. In Markdown it is
+escaped so that it cannot bring markup, a link, a heading or a table cell with it; in CSV no
+cell begins as a formula and a comment stays one line; JSON is JSON.
 
 ## Caps
 
@@ -83,7 +90,7 @@ left off an as-of view, which links to it.
 |---|---|
 | Observations in one answer | 50,000 |
 | Versions read for one as-of answer or one vintage table | 250,000 |
-| Time | 5 s; an answer that took longer is not given (503) |
+| Time | 5 s for an answer and for a vintage table; one that took longer is not given (503) |
 | Bytes of one twin | 8 MiB (422) |
 
 Rate limits by address are the read API's (M24).

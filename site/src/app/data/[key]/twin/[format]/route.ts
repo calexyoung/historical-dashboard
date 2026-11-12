@@ -32,7 +32,7 @@ export async function GET(request: NextRequest, context: RouteContext<"/data/[ke
   if (twin.status === 308 && twin.location) {
     return new Response(twin.body, { status: 308, headers: { ...headers, location: `${BASE_PATH}${twin.location}` } });
   }
-  if (twin.filename) headers["content-disposition"] = `attachment; filename="${twin.filename}"`;
+  if (twin.filename) headers["content-disposition"] = `${twin.disposition ?? "inline"}; filename="${twin.filename}"`;
   if (twin.status === 200 && twin.cacheable) {
     const etag = `"${createHash("sha256").update(twin.body).digest("hex").slice(0, 32)}"`;
     headers["cache-control"] = "public, max-age=300";

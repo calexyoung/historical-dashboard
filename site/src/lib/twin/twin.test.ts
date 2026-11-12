@@ -140,7 +140,9 @@ describe("what a twin carries", () => {
     expect(json("fx_price_index").notice).toMatch(/not for publication/i);
     const csv = twin("fx_price_index", "csv");
     expect(csv.body.split("\n")[0]).toBe("# Macro Atlas · NOT FOR PUBLICATION");
-    expect(csv.filename).toBe("macro-atlas_fx_price_index_not-for-publication.csv");
+    expect(csv).toMatchObject({ filename: "macro-atlas_fx_price_index_not-for-publication.csv", disposition: "attachment" });
+    expect(twin("fx_price_index", "json")).toMatchObject({ filename: "macro-atlas_fx_price_index_not-for-publication.json", disposition: "inline" });
+    expect(twin("fx_price_index", "md")).toMatchObject({ filename: "macro-atlas_fx_price_index_not-for-publication.md", disposition: "inline" });
     expect(twin("fx_price_index", "md").body).toMatch(/not for publication/i);
   });
 
@@ -169,6 +171,37 @@ describe("what a twin carries", () => {
     expect(md).toContain("| Period | Value | Status |");
     expect(md).toContain("## Provenance");
     expect(md).toContain(`${ADDRESS}/data/fx_price_index.csv`);
+  });
+});
+
+describe("text from a Release is text in every file", () => {
+  it("a name, a description or a note cannot bring markup, a link, a heading or a formula with it", () => {
+    const NAME = '<img src=x onerror=alert(1)> [click](javascript:alert(1)) | **x**';
+    const hostile = {
+      ...release,
+      catalog: {
+        series: release.catalog.series.map((e) =>
+          e.key === "fx_payrolls_break"
+            ? { ...e, name: NAME, description: "# Heading\n\n[Injected link](javascript:alert(1)) <script>alert(1)</script>", unit: "=HYPERLINK(1)", breaks: [{ period: "2025-01", note: "| a | b |\n|---|---|\n`code` <b>bold</b>" }] }
+            : e,
+        ),
+      },
+    };
+    const of = (format: TwinFormat) => seriesTwin(hostile, "local", "fx_payrolls_break", format, new URLSearchParams(), { address: ADDRESS });
+    const md = of("md").body;
+    expect(md).not.toMatch(/<img|<script|<b>/);
+    expect(md).not.toMatch(/(^|[^\\])\[click\]\(javascript:|(^|[^\\])\[Injected link\]/);
+    expect(md).not.toMatch(/^# Heading/m);
+    expect(md.split("\n").filter((line) => /^#+ /.test(line)).map((line) => line.replace(/^#+ /, "").slice(0, 12))).toEqual(["&lt;img src=", "Definition", "Provenance", "Breaks and n", "Values", "Cite and dow"]);
+    // The table of values keeps its three columns: nothing from the Catalog opened a cell.
+    const table = md.slice(md.indexOf("| Period | Value | Status |"));
+    for (const row of table.split("\n").filter((line) => line.startsWith("| 20"))) expect(row.split(/(?<!\\)\|/).length).toBe(5);
+    expect(md).toContain("&lt;img src=x onerror=alert\\(1\\)&gt;".replace(/\\\(/g, "(").replace(/\\\)/g, ")"));
+    // CSV: a comment line stays one line and no cell begins as a formula; JSON is JSON.
+    const csv = of("csv").body;
+    expect(csv.split("\n").filter((line) => !line.startsWith("#") && line !== "")).toHaveLength(1 + 24);
+    expect(csv).not.toMatch(/(^|,)=HYPERLINK/m);
+    expect(JSON.parse(of("json").body).name).toBe(NAME);
   });
 });
 

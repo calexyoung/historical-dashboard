@@ -30,8 +30,10 @@ M17 builds that for series pages, with the vintage table, the as-of view, a cita
    today's values down.
 5. **An answer claims the Basis of what it used.** ADR 0024 warned against copying a whole
    Series' Basis onto a narrower view. Query takes the weakest among the Periods in the answer
-   and those a Transform looks back to (a year, for the five that compare with an earlier
-   Period), and never better than the last Capture before the Cutoff allows.
+   and those its Transform set them beside (the Period before, or the same Periods a year
+   earlier), and never better than the last Capture before the Cutoff allows. A Derived answer
+   is narrowed input by input, through its Recipe's own look-back; a Recipe over Recipes keeps
+   the weakest Basis of its whole inputs, which claims no more than is true.
 6. **Periods held under other metadata are shown, but not computed across.** With no Transform
    and no slower frequency they are in the answer and named. Otherwise they are left out of the
    arithmetic and listed, as a Recipe does (ADR 0025). Where the versions known then were under
@@ -42,6 +44,8 @@ M17 builds that for series pages, with the vintage table, the as-of view, a cita
 8. **The revisions table is today's history and is left off an as-of view.** A table cut at the
    Cutoff would need the two-clock rule applied per row a second time; the view links to the
    plain page instead. Each row shows the Origin's clock and Macro Atlas's in separate columns.
+   The page lists the latest 48 versions and all of them on request (`?revisions=all`, up to
+   5,000), and a cut never falls inside one Period's history.
 9. **Routing: the proxy sends a twin's address to one handler, and marks the request.** A page
    route cannot carry a suffix. Next runs the proxy again on the path a request was sent to,
    so the first pass sets a token only this process knows, and the handler's own path is let

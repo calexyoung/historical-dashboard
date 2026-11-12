@@ -129,6 +129,24 @@ describe("revisions: every version held of the periods that changed", () => {
     expect(q3.map((r) => [r.value, r.published, r.held === null])).toEqual([["560.2", "28 Oct 2025", true], ["561", "28 Nov 2025", false]]);
   });
 
+  it("lists the latest versions first, never part of one period's history, and all of them on request", () => {
+    const of = (search: string, revisionRows: number) => {
+      const answer = seriesPageView(release, "local", "fx_price_index", { search: new URLSearchParams(search), address: ADDRESS, revisionRows });
+      if (answer.kind !== "page" || !answer.view.revisions?.held) throw new Error("no revisions");
+      return { revisions: answer.view.revisions, html: renderToStaticMarkup(<SeriesPage view={answer.view} basePath="/macro-atlas" />) };
+    };
+    const two = of("", 2);
+    expect(two.revisions).toMatchObject({ more: 2, all: false });
+    expect(two.revisions.rows.map((r) => r.period)).toEqual(["Nov 2025", "Nov 2025"]);
+    expect(two.html).toContain('href="/macro-atlas/data/fx_price_index?revisions=all#revisions"');
+    // Three would cut October's history in two: the cut moves to the next period.
+    expect(of("", 3).revisions.rows.map((r) => r.period)).toEqual(["Nov 2025", "Nov 2025"]);
+    const all = of("revisions=all", 2);
+    expect(all.revisions).toMatchObject({ more: 0, all: true });
+    expect(all.revisions.rows).toHaveLength(4);
+    expect(all.html).not.toContain("data-revisions-more");
+  });
+
   it("says so when a Release holds no history, and is left off an as-of view", () => {
     expect(page("fx_vote_margin").view.revisions).toMatchObject({ held: false });
     expect(page("fx_price_index_yoy").view.revisions).toMatchObject({ held: false });

@@ -308,8 +308,13 @@ export function SeriesPage({ view, basePath }: { view: SeriesPageView; basePath:
               </ul>
               {view.revisions.rows.length > 0 && <RevisionsTable revisions={view.revisions} basePath={basePath} />}
               {view.revisions.more > 0 && (
-                <p className="text-sm text-ink-2">
-                  The latest {view.revisions.rows.length} versions are listed; <span className="num">{view.revisions.more}</span> earlier ones are not.
+                <p data-revisions-more className="text-sm text-ink-2">
+                  The latest <span className="num">{view.revisions.rows.length}</span> versions are listed; <span className="num">{view.revisions.more}</span> earlier ones are not.{" "}
+                  {!view.revisions.all && (
+                    <a href={`${basePath}/data/${view.key}?${view.request.search ? `${view.request.search}&` : ""}revisions=all#revisions`} className={tap}>
+                      List every version
+                    </a>
+                  )}
                 </p>
               )}
             </div>
