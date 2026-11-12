@@ -15,7 +15,7 @@
  * Node only. A Release is immutable once promoted, so a good one is read and validated once,
  * and served from memory for as long as it is still in the root.
  */
-import { readdir, readFile, stat } from "node:fs/promises";
+import { lstat, readdir, readFile, stat } from "node:fs/promises";
 import { join } from "node:path";
 import type { Surface } from "@macro-atlas/core";
 import {
@@ -47,7 +47,9 @@ export type FailureKind =
   /** The Release breaks the contract. */
   | "invalid"
   /** The Release is valid but may not be served on this Surface. */
-  | "refused";
+  | "refused"
+  /** A pinned Release that retention no longer keeps in this root (`pinned()` only). */
+  | "gone";
 
 export type Failure = { ok: false; kind: FailureKind; id: string | null; reason: string };
 
@@ -65,6 +67,18 @@ export type ReleaseReader = {
   current(): Promise<Opened>;
   /** One Release by id, under the same validation and the same guard. */
   open(id: string): Promise<Opened>;
+  /**
+   * The Release a `pin=` names (PLAN 4.5, M18), under the same validation and the same guard as
+   * any other. A pin is honoured only while retention keeps the Release: it must be a real
+   * directory under `releases/`. Once pruned it is `gone`, even while a copy is still in this
+   * process's memory or in the trash, and whatever CURRENT names is never served in its place.
+   */
+  pinned?(id: string): Promise<Opened>;
+  /**
+   * The text of the root's `saved.json` (saved queries, a local root only), or null when there
+   * is none that can be read. The caller reads it as a fixed selection (lib/explorer/saved.ts).
+   */
+  savedText?(): Promise<string | null>;
   /**
    * How the writer's last run in this root ended (`STATUS.json`), as a fixed selection; null
    * when there is no record, or none that can be read. It may name a Release other than the
@@ -280,6 +294,30 @@ export function createReleaseReader(options: {
     return opened;
   }
 
+  async function pinned(id: string): Promise<Opened> {
+    if (typeof id !== "string" || !RELEASE_ID.test(id)) return fail("unavailable", null, "that is not a release id");
+    try {
+      // lstat: a link is not a Release of this root (the writer refuses one too).
+      if (!(await lstat(join(root, "releases", id))).isDirectory()) return fail("unavailable", id, `release ${id} is not a directory of this root`);
+    } catch (error) {
+      const code = (error as NodeJS.ErrnoException).code ?? "error";
+      if (code === "ENOENT" || code === "ENOTDIR") return fail("gone", id, `release ${id} is no longer kept`);
+      return fail("unavailable", id, `release ${id} cannot be read (${code})`);
+    }
+    return open(id);
+  }
+
+  async function savedText(): Promise<string | null> {
+    try {
+      const path = join(root, "saved.json");
+      const info = await lstat(path);
+      if (!info.isFile() || info.size > 1_000_000) return null;
+      return await readFile(path, "utf8");
+    } catch {
+      return null;
+    }
+  }
+
   async function lastRun(): Promise<LastRun | null> {
     try {
       const doc = JSON.parse(await readFile(join(root, "STATUS.json"), "utf8")) as Record<string, unknown> | null;
@@ -298,5 +336,5 @@ export function createReleaseReader(options: {
     }
   }
 
-  return { current, open, lastRun };
+  return { current, open, pinned, savedText, lastRun };
 }

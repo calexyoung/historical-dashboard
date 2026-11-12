@@ -91,7 +91,7 @@ def cmd_catalog(argv) -> int:
             "catalog": catalog_cli.catalog_main}[name](rest)
 
 
-PUBLISH_COMMANDS = ("release", "rollback", "pin", "unpin", "withdraw", "doctor")
+PUBLISH_COMMANDS = ("release", "rollback", "pin", "unpin", "save", "withdraw", "doctor")
 
 
 def main(argv=None) -> int:
@@ -140,6 +140,7 @@ def main(argv=None) -> int:
     for name, text in (("release", "write, check and promote a Release from the vintage store"),
                        ("rollback", "name an earlier Release in CURRENT"),
                        ("pin", "keep a Release through retention"), ("unpin", "undo a pin"),
+                       ("save", "keep an Explorer view with a Pin and a note (a saved query)"),
                        ("withdraw", "take a Series down and retire the Releases that held it"),
                        ("doctor", "is a release root fit to serve? (--surface production: the preflight)")):
         sub.add_parser(name, help=f"v2: {text} (see python -m atlas {name} --help)")

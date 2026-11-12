@@ -2,7 +2,7 @@
  * M1's acceptance criteria, checked against real production builds over HTTP.
  * (PLAN section 10, M1; section 6.1.)
  */
-import { rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { request } from "node:http";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -660,5 +660,110 @@ describe("twins of a series page, and status (PLAN section 7, M17)", () => {
     const doc = await response.json();
     expect(doc).toMatchObject({ status: "stale", surface: "local", release_id: FIXTURE_ID, last_run: null, counts: { series: 8, shown: 7, withheld: 1, stale: 1 } });
     expect(doc.series.find((s: { key: string }) => s.key === "fx_permits_stale")).toMatchObject({ stale: true, last_period: "2024-06" });
+  });
+});
+
+describe("the Explorer on agency data (PLAN M18): pinned links, as of a date, saved views", () => {
+  let server: Running;
+  let production: Running;
+  const root = tempRoot();
+  const VIEW = "s=fx_price_index&mode=lin&from=2025-01&to=2025-12&layers=none";
+  /** The December value: 109.9 in A, 116.9 in B, which revised every value upward by seven. */
+  const [IN_A, IN_B] = ["109.9", "116.9"];
+  beforeAll(async () => {
+    addRelease(root, { id: A });
+    addRelease(root, { id: B, edit: { fx_price_index: (file) => file.observations.forEach((o: { value: number | null }) => (o.value = o.value === null ? null : Math.round((o.value + 7) * 10) / 10)) } });
+    addRelease(root, { id: LOCAL, profile: "local", signed: false });
+    promote(root, A);
+    writeFileSync(
+      join(root, "saved.json"),
+      JSON.stringify({ format: 1, saved: [{ id: "sq-20260201-0a1b2c3d", note: "Prices before the revision", query: `${VIEW}&pin=${A}`, release_id: A, saved_at: "2026-02-01T10:00:00Z" }] }),
+    );
+    server = await startVariant("local-atlas", { root });
+    production = await startVariant("production", { root });
+  });
+  afterAll(() => Promise.all([server.stop(), production.stop()]));
+
+  it("a pinned link shows the same data after a newer release is promoted, says it is pinned, and answers 410 once pruned", async () => {
+    const pinned = async () => get(server.url(`/explore?${VIEW}&table=1&pin=${A}`));
+    let html = await (await pinned()).text();
+    expect(idsOn(html)).toEqual([A]);
+    expect(html).toContain(IN_A);
+    expect(html).toMatch(/data-pinned="[^"]+"[^>]*>.*Pinned to release/s);
+    expect(html).toContain("It is the current release.");
+
+    promote(root, B);
+    const current = await (await get(server.url(`/explore?${VIEW}&table=1`))).text();
+    // (The list of saved views names the releases they are pinned to; the page itself is B.)
+    expect(current).toContain(`data-release="${B}"`);
+    expect(current).toContain(IN_B);
+    expect(current).not.toContain("data-pinned");
+    const response = await pinned();
+    html = await response.text();
+    expect(response.status).toBe(200);
+    expect(response.headers.get("cache-control") ?? "").not.toMatch(/immutable/);
+    expect(idsOn(html)).toEqual([A]); // one page, one Release: the frame is the pinned Release's too
+    expect(html).toContain(IN_A);
+    expect(html).not.toContain(IN_B);
+    expect(html).toContain("A newer release is current.");
+    // Every address on the page stays pinned, but for the one that lets go of the pin.
+    const links = [...html.matchAll(/href="([^"]*\/explore\?[^"]*)"/g)].map((m) => m[1]!.replace(/&amp;/g, "&"));
+    expect(links.length).toBeGreaterThan(5);
+    expect(links.filter((href) => !href.includes(`pin=${A}`))).toEqual([`${server.base}/explore?${VIEW}&table=1`]);
+    expect(links.some((href) => href.includes(`pin=${B}`))).toBe(false);
+    // The file of a pinned view is the pinned Release's.
+    const csv = await (await get(server.url(`/explore/export?format=csv&${VIEW}&pin=${A}`))).text();
+    expect(csv).toContain(`Release ${A}`);
+    expect(csv).toContain(IN_A);
+
+    mkdirSync(join(root, "trash"), { recursive: true });
+    renameSync(join(root, "releases", A), join(root, "trash", A)); // what retention does (atlas/publish/root.py)
+    for (const path of [`/explore?${VIEW}&pin=${A}`, `/explore/export?format=csv&${VIEW}&pin=${A}`]) {
+      const gone = await get(server.url(path));
+      expect(gone.status, path).toBe(410);
+      const body = await gone.text();
+      expect(body).toContain(`href="${server.base}/explore?${VIEW.replace(/&/g, "&#38;")}"`);
+      expect(body).not.toContain(IN_A);
+      expect(body).not.toContain(IN_B);
+      expect(gone.headers.get("cache-control")).toBe("no-store");
+    }
+    renameSync(join(root, "trash", A), join(root, "releases", A));
+  });
+
+  it("a pin that is not a release id is 400; nothing is shown in its place", async () => {
+    for (const pin of ["latest", "", `${A}&pin=${B}`]) {
+      const response = await get(server.url(`/explore?${VIEW}&pin=${pin}`));
+      expect(response.status, pin).toBe(400);
+      expect(await response.text()).not.toMatch(/10[0-9]\.[0-9]|11[0-9]\.[0-9]/);
+    }
+  });
+
+  it("a production build refuses a pinned release it would refuse as CURRENT: 503, whatever is current", async () => {
+    promote(root, A);
+    expect((await get(production.url("/explore"))).status).toBe(200);
+    const response = await get(production.url(`/explore?${VIEW}&pin=${LOCAL}`));
+    expect(response.status).toBe(503);
+    expect(await response.text()).not.toMatch(/10[0-9]\.[0-9]/);
+  });
+
+  it("an as-of view is drawn from what was held then, and one with no answer shows no value", async () => {
+    promote(root, A);
+    const then = await (await get(server.url("/explore?s=fx_price_index&as_of=2025-12-10&table=1"))).text();
+    expect(then).toMatch(/data-as-of="atlas_observed"/);
+    expect(then).toContain("As known before");
+    expect(then).not.toContain(IN_A); // December was not yet held
+    const none = await (await get(server.url("/explore?s=fx_price_index&as_of=2025-01-01&table=1"))).text();
+    expect(none).toContain("Nothing is shown as of then");
+    expect(none).not.toMatch(/10[0-9]\.[0-9]/);
+  });
+
+  it("saved views are listed on the local surface, each a pinned link with its note, and never on a public one", async () => {
+    const local = await (await get(server.url("/explore"))).text();
+    expect(local).toContain("Prices before the revision");
+    expect(local).toContain(`href="${server.base}/explore?${VIEW.replace(/&/g, "&amp;")}&amp;pin=${A}"`);
+    const pub = await (await get(production.url("/explore"))).text();
+    expect(pub).not.toContain("Prices before the revision");
+    expect(pub).not.toContain("data-saved");
+    expect(pub).not.toContain("atlas save");
   });
 });

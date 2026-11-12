@@ -3,7 +3,7 @@
  * adapter; the decisions are in src/lib/gate.ts.
  */
 import { NextResponse, type NextRequest } from "next/server";
-import { SURFACE } from "./lib/config";
+import { BASE_PATH, SURFACE } from "./lib/config";
 import { gate, HOST_HEADER, TWIN_HEADER } from "./lib/gate";
 import { getReader } from "./lib/release/server";
 
@@ -21,6 +21,7 @@ export async function proxy(request: NextRequest): Promise<Response> {
       dev: process.env.NODE_ENV === "development",
       nonce: Buffer.from(crypto.getRandomValues(new Uint8Array(18))).toString("base64"),
       twinToken,
+      basePath: BASE_PATH,
     },
     {
       host: request.headers.get("host"),

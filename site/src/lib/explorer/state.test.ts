@@ -176,3 +176,32 @@ describe("v1's hash links (the shim)", () => {
     expect(query).not.toMatch(/[<>"' ]/);
   });
 });
+
+describe("M18: as of, a common frequency and a pinned Release", () => {
+  it("reads as_of as a date or an instant, freq as a slower frequency and pin as a release id", () => {
+    expect(parse("s=unrate&as_of=2025-12-13&freq=quarterly&pin=20260101T000000Z-0000000")).toMatchObject({ asOf: "2025-12-13", freq: "quarterly", pin: "20260101T000000Z-0000000", notes: [] });
+    expect(parse("as_of=2025-12-13T14:30:00Z").asOf).toBe("2025-12-13T14:30:00Z");
+    expect(parse("")).toMatchObject({ asOf: null, freq: null, pin: null });
+  });
+
+  it("leaves unsaid what it cannot read, and says so; a pin it cannot read is kept as unreadable, never dropped", () => {
+    const state = parse("as_of=yesterday&freq=hourly&pin=latest");
+    expect(state).toMatchObject({ asOf: null, freq: null, pin: null, pinUnread: true });
+    expect(state.notes).toHaveLength(2); // the pin is the gate's to refuse, not a note
+    expect(parse("as_of=1850-01-01").asOf).toBeNull();
+    expect(parse("as_of=2025-02-30").asOf).toBeNull();
+  });
+
+  it("writes them back in one fixed place, after the window and before the layers", () => {
+    const query = "s=unrate&mode=pch&from=2020-01&to=2021-01&freq=annual&as_of=2025-12-13&layers=rec&pin=20260101T000000Z-0000000";
+    expect(explorerQuery(parse(query))).toBe(query);
+  });
+
+  it("offers the engine's other changes as modes", () => {
+    for (const mode of ["chg", "ch1", "pch", "pca"]) expect(parse(`mode=${mode}`).mode).toBe(mode);
+  });
+
+  it("gives a v1 link none of them", () => {
+    expect(v1HashToQuery("#sel=spx&mode=z")).not.toMatch(/as_of|freq|pin/);
+  });
+});

@@ -7,6 +7,8 @@ export const VIEW_FORM = "explorer-view";
 
 const control = "press hover-control h-9 min-w-0 rounded border border-control bg-raised px-2 text-sm text-ink";
 const MONTH = /^\d{4}-(0[1-9]|1[0-2])$/;
+const DAY = /^(19|[2-9]\d)\d{2}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/;
+const COMMON: [string, string][] = [["weekly", "Weekly or slower"], ["monthly", "Monthly or slower"], ["quarterly", "Quarterly or slower"], ["annual", "Annual"]];
 
 type Mode = { value: string; label: string; current: boolean; offered: number };
 
@@ -26,6 +28,8 @@ export function ExplorerControls({
   to,
   compare,
   extremes,
+  asOf,
+  freq,
   hidden,
 }: {
   action: string;
@@ -38,18 +42,26 @@ export function ExplorerControls({
   compare: string | null;
   /** Whether the highest and lowest values are marked. */
   extremes: boolean;
+  /** The Cutoff of an as-of view: a date, or an instant as the address wrote it. Null: today's values. */
+  asOf: string | null;
+  /** The common frequency finer Series are combined to. Null: each at its own. */
+  freq: string | null;
   /** What the form must carry that it has no field for: the Series, the pin, the chosen Event. */
   hidden: [string, string][];
 }) {
   const go = useExplorerNav();
   const current = modes.find((m) => m.current)!.value;
-  const [seen, setSeen] = useState({ current, from, to, compare, extremes });
+  const [seen, setSeen] = useState({ current, from, to, compare, extremes, asOf, freq });
+  const [known, setKnown] = useState(asOf ?? "");
+  const [common, setCommon] = useState(freq ?? "");
   const [mode, setMode] = useState(current);
   const [window_, setWindow] = useState({ from: from ?? "", to: to ?? "", cmp: compare ?? "" });
   const [marks, setMarks] = useState(extremes);
   // The server drew another view (a preset, Back): take its values.
-  if (seen.current !== current || seen.from !== from || seen.to !== to || seen.compare !== compare || seen.extremes !== extremes) {
-    setSeen({ current, from, to, compare, extremes });
+  if (seen.current !== current || seen.from !== from || seen.to !== to || seen.compare !== compare || seen.extremes !== extremes || seen.asOf !== asOf || seen.freq !== freq) {
+    setSeen({ current, from, to, compare, extremes, asOf, freq });
+    setKnown(asOf ?? "");
+    setCommon(freq ?? "");
     setMode(current);
     setWindow({ from: from ?? "", to: to ?? "", cmp: compare ?? "" });
     setMarks(extremes);
@@ -104,6 +116,42 @@ export function ExplorerControls({
       <label className="flex min-w-0 flex-1 basis-[9.5rem] flex-col gap-1 text-xs text-ink-2 sm:flex-none sm:basis-auto">
         Compare with the range from
         <input type="month" name="cmp" value={window_.cmp} onChange={onMonth("cmp")} placeholder="YYYY-MM" pattern="\d{4}-(0[1-9]|1[0-2])" className={`${control} num w-full sm:w-40`} />
+      </label>
+      <label className="flex min-w-0 flex-1 basis-[9.5rem] flex-col gap-1 text-xs text-ink-2 sm:flex-none sm:basis-auto">
+        Frequency
+        <select
+          name="freq"
+          value={common}
+          onChange={(event) => {
+            setCommon(event.target.value);
+            apply(event.target.form);
+          }}
+          className={`${control} w-full sm:w-44`}
+        >
+          <option value="">Each series&rsquo; own</option>
+          {COMMON.map(([value, label]) => (
+            <option key={value} value={value}>
+              {label}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label className="flex min-w-0 flex-1 basis-[9.5rem] flex-col gap-1 text-xs text-ink-2 sm:flex-none sm:basis-auto">
+        As known before
+        {/* An instant (a link may carry one) is kept as it was written; a date gets the date field. */}
+        <input
+          type={known.includes("T") ? "text" : "date"}
+          name="as_of"
+          value={known}
+          min="1900-01-01"
+          onChange={(event) => {
+            const value = event.target.value;
+            setKnown(value);
+            if (value === "" || DAY.test(value)) apply(event.target.form);
+          }}
+          placeholder="YYYY-MM-DD"
+          className={`${control} num w-full sm:w-44`}
+        />
       </label>
       <label className={`press flex h-9 cursor-pointer items-center gap-1.5 rounded border px-2 text-sm ${marks ? "border-accent bg-band text-ink" : "border-control bg-raised text-ink-2"}`}>
         <input

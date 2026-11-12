@@ -178,6 +178,7 @@ It is there for the day the export is wrong.
 {root}/CURRENT          the promoted release id
 {root}/STATUS.json      the last run: started, finished, outcome, failed checks, reason
 {root}/pins.json        releases retention must keep, each with what names it
+{root}/saved.json       saved queries (a local root only); each is its own pin
 {root}/withdrawn.json   Series taken down: reason, date, the releases retired
 {root}/releases/{id}/   the Releases
 {root}/trash/{id}/      pruned Releases; deleted a day after trash/{id}.json says
@@ -226,7 +227,8 @@ source has both a failed fetch and a stale note, the line says `failed` and give
 
 ## Retention, pins, rollback
 
-After each promotion the newest 30 Releases are kept, with `CURRENT` and every pinned Release.
+After each promotion the newest 30 Releases are kept, with `CURRENT`, every pinned Release and
+every Release a saved query names (`docs/method/explorer.md`).
 The rest are renamed into `trash/` and deleted by the first run a day later. A site that
 already has a pruned Release in memory can go on serving it while it is in the trash, so a
 request that was given its id a moment before finishes. Nothing is opened from the trash.
@@ -235,6 +237,7 @@ request that was given its id a moment before finishes. Nothing is opened from t
 python -m atlas pin ID --profile public --reason "claim lock cpi-2022"
 python -m atlas unpin ID --profile public
 python -m atlas rollback ID --profile public
+python -m atlas save 'ADDRESS' --profile local --note "what this view is for"
 ```
 
 A rollback, a pin and `--reuse-data` each check the Release they point at as if it were new:

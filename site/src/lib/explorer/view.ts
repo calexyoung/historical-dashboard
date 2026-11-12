@@ -13,18 +13,20 @@
  * Annotations offer and how each is named; the readout's model; v1's presets; and every address
  * the page links to.
  */
-import { permits, type Surface, type TransformedObservation } from "@macro-atlas/core";
+import { permits, weakestBasis, type Frequency, type RightsGate, type Surface, type TransformAggregation, type TransformedObservation, type VintageBasis } from "@macro-atlas/core";
 import type { Annotation, CatalogEntry } from "@macro-atlas/core/release";
 import { FREQUENCIES, SEGMENTS } from "../catalog";
+import { CATALOG_NAMES } from "../catalog-names.generated";
 import { NO_ANSWER, renderFigure, type Figure, type Layers, type SeriesStyle, type ShownSeries } from "../figure";
 import { dayWords, fixed, labelStart, periodWords, readingDecimals } from "../figure/words";
-import { latestValue, MAX_ROWS, MAX_SERIES, query, type QueryFailure } from "../query";
+import { latestValue, MAX_ROWS, MAX_SERIES, query, type QueryFailure, type VintageInfo } from "../query";
 import { relationshipsFor, type RelationshipInput, type Relationships } from "./relationships";
 import { snapshotRows, type SnapshotRow } from "./snapshot";
 import type { OpenedRelease } from "../release/reader";
 import { sourceWords } from "../series-page";
+import { asOfWords, shownUnit, unavailableWords } from "../series-words";
 import { stopWords, type ReadoutModel, type ReadoutSeries } from "./readout";
-import { explorerQuery, MODES, V1_BAND_SETS, V1_EVENT_CATEGORIES, type ExplorerMode, type ExplorerState } from "./state";
+import { explorerQuery, MODES, V1_BAND_SETS, V1_EVENT_CATEGORIES, type ExplorerAddress, type ExplorerMode, type ExplorerState } from "./state";
 
 export type Selected = {
   key: string;
@@ -33,6 +35,12 @@ export type Selected = {
   /** drawn; not_drawn: selected, but this mode has no answer for it; or kept back by the rights gate. */
   state: "drawn" | "not_drawn" | "withheld" | "not_permitted";
   reason: string | null;
+  /** The frequency it is drawn at: its own, or the common one it was combined to. */
+  freq: CatalogEntry["freq"];
+  /** How its Periods were combined, when they were (`freq=`). */
+  combined: TransformAggregation | null;
+  /** In an as-of view: the Basis of what is shown of it. Null in a view of today's values. */
+  basis: VintageBasis | null;
   style: Pick<SeriesStyle, "color" | "dash" | "symbol"> | null;
   /** Over the range compared with: drawn there too, or why not. Null when no second range is asked for. */
   compared: { drawn: boolean; reason: string | null } | null;
@@ -47,6 +55,12 @@ export type ExplorerView = {
   mode: ExplorerMode;
   modes: { value: ExplorerMode; label: string; current: boolean; /** How many of the selected Series offer it. */ offered: number }[];
   selection: Selected[];
+  /** Series the address asks for that the Catalog knows and this Release does not hold: named, never silently dropped. */
+  absent: { key: string; name: string; reason: string; /** The address without it. */ removeQuery: string }[];
+  /** An as-of view: the Cutoff asked about, the weakest Basis among what is drawn, and the address of today's view. */
+  asOf: { date: string; words: string; basis: VintageBasis; offQuery: string } | null;
+  /** The common frequency asked for, and the address without it. */
+  common: { freq: string; offQuery: string } | null;
   /** What the reader should be told: unread parts of the address, Series left out, Periods a mode has no answer for. */
   notes: string[];
   window: { from: string | null; to: string | null; /** The time axis: first and last day. */ start: string | null; end: string | null; words: string | null };
@@ -72,8 +86,8 @@ export type ExplorerView = {
   /** The same view with every default and open end said outright: the link to copy. */
   resolvedQuery: string;
   /** The view with everything said outright, for a form's hidden fields. */
-  resolved: Omit<ExplorerState, "notes">;
-  queryWith: (change: Partial<Omit<ExplorerState, "notes">>) => string;
+  resolved: ExplorerAddress;
+  queryWith: (change: Partial<ExplorerAddress>) => string;
   /** The second range, when one is asked for: the same Series over the same number of months from another start. */
   compare: { from: string; to: string; words: string; /** Months from the window's start to this range's. */ offset: number; offQuery: string } | null;
   /** Whether each drawn Series' highest and lowest value is marked. */
@@ -107,7 +121,7 @@ export type ViewRun = {
 const DEFAULT_VIEW = { series: ["spx", "unrate", "wti", "cpi_yoy"], mode: "z" as ExplorerMode };
 
 /** v1's eleven presets (web/app.js). A `to` of null runs to the latest value, as v1's `lastM` did. */
-const PRESETS: { name: string; series: string[]; mode: ExplorerMode; from: string; to: string | null; cmp?: string }[] = [
+export const V1_PRESETS: { name: string; series: string[]; mode: ExplorerMode; from: string; to: string | null; cmp?: string }[] = [
   { name: "COVID shock", series: ["spx", "unrate", "wti", "umcsent", "m2"], mode: "rebase", from: "2019-06", to: "2022-06" },
   { name: "Financial crisis 2008", series: ["spx", "caseshiller", "unrate", "fedfunds", "vix"], mode: "rebase", from: "2006-01", to: "2012-12" },
   { name: "Inflation surge 2021–24", series: ["cpi_yoy", "fedfunds", "gas", "wages_yoy", "umcsent"], mode: "lin", from: "2020-01", to: null },
@@ -128,10 +142,18 @@ export const MODE_LABELS: Record<ExplorerMode, string> = {
   z: "Standard deviations from the window mean",
   pc1: "Percent change from a year earlier",
   drawdown: "Percent below the running peak",
+  chg: "Change from the period before",
+  ch1: "Change from a year earlier",
+  pch: "Percent change from the period before",
+  pca: "Percent change from the period before, at an annual rate",
 };
 
 /** The unit of what is drawn, and how a drawn value is written in the readout. */
 const DRAWN: Record<Exclude<ExplorerMode, "lin" | "log">, { unit: string; suffix: string; decimals: number }> = {
+  chg: { unit: "change from the period before", suffix: " change", decimals: 2 },
+  ch1: { unit: "change from a year earlier", suffix: " change on the year", decimals: 2 },
+  pch: { unit: shownUnit("pch", ""), suffix: "% on the period before", decimals: 2 },
+  pca: { unit: shownUnit("pca", ""), suffix: "% at an annual rate", decimals: 1 },
   rebase: { unit: "index, first value in the window = 100", suffix: " index", decimals: 1 },
   z: { unit: "standard deviations from the mean of the window", suffix: " sd", decimals: 2 },
   pc1: { unit: "percent change from a year earlier", suffix: "% y/y", decimals: 1 },
@@ -143,7 +165,17 @@ const EMPTY_WORDS: Record<string, string> = {
   zero_year_earlier: "a value of zero a year earlier",
   not_positive: "a value that is not above zero, which has no logarithm",
   peak_not_positive: "a running peak that is not above zero",
+  no_earlier: "no value the period before",
+  zero_earlier: "a value of zero the period before",
+  partial_period: "a period that is not yet whole",
 };
+/** From finest to slowest. A Series is combined only to a slower frequency, never spread over a finer one. */
+const COARSENESS: Partial<Record<Frequency, number>> = { daily: 0, business_daily: 0, weekly: 1, monthly: 2, quarterly: 3, annual: 4 };
+const PERIOD_NOUN: Partial<Record<Frequency, string>> = { weekly: "week", monthly: "month", quarterly: "quarter", annual: "year" };
+const COMBINED_WORDS: Record<string, string> = { mean: "averaged over", sum: "summed over", last: "taken at the end of" };
+const freqWords = (freq: string): string => (FREQUENCIES[freq] ?? freq).toLowerCase();
+/** The rungs two Series can be compared at (the engine's `pairFrame`). */
+const RUNGS = ["monthly", "quarterly", "annual"] as const;
 
 const EVENT_LABELS: Record<string, string> = { political: "Political", financial: "Financial", geopolitical: "Geopolitical", health: "Health & disaster", policy: "Economic policy" };
 const BAND_LABELS: Record<string, string> = {
@@ -200,7 +232,16 @@ const layerToken = (a: Annotation): string | null =>
   a.kind === "recession" ? "rec" : a.kind === "policy" ? "pol" : a.kind === "event" ? (a.category ? `ev.${a.category}` : "ev") : a.kind === "governance" ? (a.category ? `gov.${a.category}` : "gov") : null;
 const isBandToken = (token: string): boolean => token === "pol" || token === "gov" || token.startsWith("gov.");
 
-export function explorerView(release: OpenedRelease, surface: Surface, state: ExplorerState): ExplorerView {
+export type ExplorerOptions = {
+  /**
+   * The gate to ask. Left out, it is the gate over the committed rights register, which is what
+   * the app always uses; only a test passes another (ADR 0031, point 12).
+   */
+  gate?: Pick<RightsGate, "permits">;
+};
+
+export function explorerView(release: OpenedRelease, surface: Surface, state: ExplorerState, options: ExplorerOptions = {}): ExplorerView {
+  const { gate } = options;
   const created = release.manifest.created;
   const madeOn = created.slice(0, 10);
   const entries = new Map(release.catalog.series.map((e) => [e.key, e]));
@@ -209,47 +250,121 @@ export function explorerView(release: OpenedRelease, surface: Surface, state: Ex
   const notes = [...state.notes];
 
   // --- the selection: unknown keys go first, then the cap, as v1 did ---
+  // A Release that holds any Series of v1's presets is offered all of them, and v1's opening view:
+  // a Series of theirs it does not hold is then named, not dropped (PLAN M18). A Release that
+  // holds none (the synthetic fixture) is offered none.
+  const inCatalog = (key: string): boolean => Object.hasOwn(CATALOG_NAMES, key);
+  const ofV1 = [...DEFAULT_VIEW.series, ...V1_PRESETS.flatMap((p) => p.series)].some((k) => entries.has(k));
   let asked = state.series;
   let mode: ExplorerMode = state.mode ?? "lin";
   if (asked === null) {
-    const defaults = DEFAULT_VIEW.series.filter((k) => entries.has(k));
+    const defaults = ofV1 ? DEFAULT_VIEW.series.filter((k) => entries.has(k) || inCatalog(k)) : [];
     asked = defaults;
     if (defaults.length > 0 && state.mode === null) mode = DEFAULT_VIEW.mode;
   }
-  const known: string[] = [];
+  // The cap counts every Series the Catalog knows, held here or not, in the order asked (v1
+  // counted to eight after dropping what it did not know).
+  const wanted: string[] = [];
   const unknown: string[] = [];
   for (const key of asked) {
-    const resolved = entries.has(key) ? key : aliases.get(key);
-    if (!resolved) unknown.push(key);
-    else if (!known.includes(resolved)) known.push(resolved);
+    const resolved = entries.has(key) ? key : (aliases.get(key) ?? (inCatalog(key) ? key : null));
+    if (resolved === null) unknown.push(key);
+    else if (!wanted.includes(resolved)) wanted.push(resolved);
   }
   if (unknown.length > 0) notes.push(`This release has no series called ${list(unknown)}; ${unknown.length === 1 ? "it was" : "they were"} left out.`);
-  const keys = known.slice(0, MAX_SERIES);
-  if (known.length > MAX_SERIES) notes.push(`At most ${MAX_SERIES} series are shown at once; the first ${MAX_SERIES} of the ${known.length} asked for are shown.`);
+  /** What an address of this view names: the Series shown, and those named as not in this Release, in the order asked. */
+  const named = wanted.slice(0, MAX_SERIES);
+  if (wanted.length > MAX_SERIES) notes.push(`At most ${MAX_SERIES} series are shown at once; the first ${MAX_SERIES} of the ${wanted.length} asked for are shown.`);
+  const keys = named.filter((key) => entries.has(key));
+  // In the Catalog and not in this Release: named, with the Catalog's own reason where it has one.
+  const absent: ExplorerView["absent"] = named
+    .filter((key) => !entries.has(key))
+    .map((key) => ({ key, name: CATALOG_NAMES[key]![0], reason: CATALOG_NAMES[key]![1] ?? "Nothing has been published for it in this release.", removeQuery: "" }));
+  const addressKeys = (without?: string): string[] => named.filter((key) => key !== without);
 
   // --- values, through Query, one Series at a time, within one row cap for the page ---
   const window = { from: state.from ? monthStart(state.from) : undefined, to: state.to ? monthEnd(state.to) : undefined };
+  const asOf = state.asOf;
+  /** A Series finer than the common frequency asked for is brought to it; any other is left as it is. */
+  const brought = (e: CatalogEntry): Frequency | undefined => {
+    const [own, to] = [COARSENESS[e.freq], state.freq === null ? undefined : COARSENESS[state.freq]];
+    return own !== undefined && to !== undefined && own < to ? (state.freq as Frequency) : undefined;
+  };
+  /** `freq`: a frequency to bring the Series to; null for its own; left out, the common one asked for where the Series is finer. */
+  const request = (e: CatalogEntry, transform: ExplorerMode, range: { from?: string; to?: string }, at?: Frequency | null) => {
+    const freq = at === undefined ? brought(e) : (at ?? undefined);
+    return requestOf(e, transform, range, freq);
+  };
+  const requestOf = (e: CatalogEntry, transform: ExplorerMode, range: { from?: string; to?: string }, freq: Frequency | undefined) => ({
+    series: [e.key],
+    transform,
+    permission: "display",
+    ...range,
+    ...(asOf !== null ? { as_of: asOf } : {}),
+    ...(freq !== undefined ? { freq } : {}),
+  });
+  /**
+   * An as-of answer of a stored Series with no metadata in force: its versions were recorded
+   * under more than one unit or definition (ADR 0031, point 6). A legacy answer and a Derived
+   * one carry no metadata line of their own and are not this case.
+   */
+  const mixed = (vintage: VintageInfo | null): boolean => vintage !== null && vintage.metadata === null && vintage.inputs === null && vintage.basis !== "legacy" && vintage.basis !== "unavailable";
+  const notOffered = (m: ExplorerMode): string => `This series does not offer “${MODE_LABELS[m].toLowerCase()}”.`;
   let rowsLeft = MAX_ROWS;
-  type Got = { entry: CatalogEntry; raw: TransformedObservation[]; drawn: TransformedObservation[] | null; failure: QueryFailure | null; reason: string | null };
+  type Run = { raw: TransformedObservation[]; drawn: TransformedObservation[] | null; reason: string | null; vintage: VintageInfo | null };
+  type Asked = Run & { failure: QueryFailure | null; unit: string | null; freq: CatalogEntry["freq"] | null; combined: TransformAggregation | null };
+  /** One Series over one range: its own values, and the values as drawn. */
+  const askFor = (e: CatalogEntry, range: { from?: string; to?: string }): Asked => {
+    const none = { unit: null, freq: null, combined: null, vintage: null };
+    const ask = (transform: ExplorerMode) => query(release, surface, request(e, transform, range), { maxRows: rowsLeft, gate });
+    const lin = ask("lin");
+    if (!lin.ok) return { ...none, raw: [], drawn: null, failure: lin, reason: lin.code === "withheld" ? (withheld.get(e.key) ?? lin.message) : lin.message };
+    rowsLeft -= lin.rows;
+    const own = lin.series[0]!;
+    const said = { unit: own.unit, freq: own.answered_freq, combined: own.aggregated, vintage: own.vintage };
+    // An as-of question with no answer is never filled with today's figure (ADR 0005).
+    if (own.vintage?.basis === "unavailable") return { ...said, raw: [], drawn: null, failure: null, reason: `Nothing is shown as of then: ${unavailableWords(own.vintage.reason)}.` };
+    if (!own.result.ok) return { ...said, raw: [], drawn: null, failure: null, reason: `${sentence(own.result.message)}.` };
+    let raw = own.result.observations;
+    if (mode === "lin") return { ...said, raw, drawn: raw, failure: null, reason: null };
+    const answer = ask(mode);
+    if (!answer.ok) return { ...said, raw, drawn: null, failure: null, reason: answer.message };
+    rowsLeft -= answer.rows;
+    const shownAs = answer.series[0]!;
+    // The values as drawn may look further back than the Series' own in the window: theirs is the Basis claimed.
+    const vintage = shownAs.vintage ?? own.vintage;
+    if (!shownAs.result.ok) return { ...said, vintage, raw, drawn: null, failure: null, reason: shownAs.result.reason === "not_offered" ? notOffered(mode) : `${sentence(shownAs.result.message)}.` };
+    // A Transform may answer at a slower frequency than the Series' own (a year-over-year change
+    // of a daily Series is taken on months). The Series' own values are then asked for at that
+    // frequency too, so every row has both, and the Series is named at the frequency it is drawn at.
+    if (shownAs.answered_freq !== said.freq) {
+      const again = query(release, surface, request(e, "lin", range, shownAs.answered_freq as Frequency), { maxRows: rowsLeft, gate });
+      if (!again.ok || !again.series[0]!.result.ok) return { ...said, vintage, raw, drawn: null, failure: null, reason: again.ok ? "Shown this way, this series has no values of its own at the frequency it is drawn at." : again.message };
+      rowsLeft -= again.rows;
+      raw = again.series[0]!.result.observations;
+      Object.assign(said, { freq: shownAs.answered_freq, combined: shownAs.aggregated ?? again.series[0]!.aggregated });
+    }
+    return { ...said, vintage, raw, drawn: shownAs.result.observations, failure: null, reason: null };
+  };
+  type Got = Asked & { entry: CatalogEntry; unit: string; freq: CatalogEntry["freq"] };
   const got: Got[] = keys.map((key) => {
     const entry = entries.get(key)!;
-    const ask = (transform: ExplorerMode) => query(release, surface, { series: [key], transform, permission: "display", ...window }, { maxRows: rowsLeft });
-    const lin = ask("lin");
-    if (!lin.ok) return { entry, raw: [], drawn: null, failure: lin, reason: lin.code === "withheld" ? (withheld.get(key) ?? lin.message) : lin.message };
-    rowsLeft -= lin.rows;
-    const linResult = lin.series[0]!.result;
-    const raw = linResult.ok ? linResult.observations : [];
-    if (mode === "lin") return { entry, raw, drawn: raw, failure: null, reason: null };
-    const answer = ask(mode);
-    if (!answer.ok) return { entry, raw, drawn: null, failure: null, reason: answer.message };
-    rowsLeft -= answer.rows;
-    const result = answer.series[0]!.result;
-    if (!result.ok) {
-      const reason = result.reason === "not_offered" ? `This series does not offer “${MODE_LABELS[mode].toLowerCase()}”.` : `${sentence(result.message)}.`;
-      return { entry, raw, drawn: null, failure: null, reason };
-    }
-    return { entry, raw, drawn: result.observations, failure: null, reason: null };
+    const asked = askFor(entry, window);
+    return { ...asked, entry, unit: asked.unit ?? entry.unit, freq: asked.freq ?? entry.freq };
   });
+  for (const g of got) {
+    if (g.failure) continue;
+    const noun = PERIOD_NOUN[g.freq];
+    if (g.combined) notes.push(`${g.entry.name} is ${freqWords(g.combined.from)}; its values are ${COMBINED_WORDS[g.combined.method] ?? "combined over"} each ${noun ?? "period"}.`);
+    else if (state.freq !== null && g.entry.freq !== state.freq) notes.push(`${g.entry.name} is ${freqWords(g.entry.freq)} and is drawn as it is: a series is never spread over finer periods.`);
+    const others = g.vintage?.metadata?.other_metadata_periods ?? [];
+    if (others.length > 0) {
+      const named = others.length > 6 ? `${others.slice(0, 6).join(", ")} and ${others.length - 6} more` : list(others);
+      notes.push(`${g.entry.name}: as of then, ${named} ${others.length === 1 ? "was" : "were"} still held under an earlier unit or definition. ${others.length === 1 ? "It is" : "They are"} left out of whatever is computed across periods: a change, the snapshot, the relationships.`);
+    }
+    if (mixed(g.vintage) && g.raw.length > 0) notes.push(`${g.entry.name}: the versions known then were recorded under more than one unit or definition, and which applied to each period cannot be told. They are shown, and nothing is computed across them.`);
+    if (g.vintage?.metadata?.differs_from_current) notes.push(`${g.entry.name}: the unit recorded then was “${g.vintage.metadata.unit}”. It has changed since.`);
+  }
 
   // --- the window as a time axis: what was asked, else everything the selected Series hold ---
   const withValues = got.filter((g) => g.raw.length > 0);
@@ -269,7 +384,6 @@ export function explorerView(release: OpenedRelease, surface: Surface, state: Ex
   const inWindow = (date: string) => start !== null && end !== null && date >= start && date <= end;
 
   // --- a second range: the same Series over the same number of months from another start ---
-  type Run = { raw: TransformedObservation[]; drawn: TransformedObservation[] | null; reason: string | null };
   let compare: ExplorerView["compare"] = null;
   let compareRange: { from: string; to: string } | null = null;
   const second = new Map<string, Run>();
@@ -283,26 +397,8 @@ export function explorerView(release: OpenedRelease, surface: Surface, state: Ex
       compare = { from: state.cmp, to: range.to.slice(0, 7), words: `${stopWords(range.from)} to ${stopWords(monthStart(range.to.slice(0, 7)))}`, offset, offQuery: "" };
       for (const g of got) {
         if (g.failure) continue;
-        const ask = (transform: ExplorerMode) => query(release, surface, { series: [g.entry.key], transform, permission: "display", ...range }, { maxRows: rowsLeft });
-        const lin = ask("lin");
-        if (!lin.ok) {
-          second.set(g.entry.key, { raw: [], drawn: null, reason: lin.message });
-          continue;
-        }
-        rowsLeft -= lin.rows;
-        const linResult = lin.series[0]!.result;
-        const raw = linResult.ok ? linResult.observations : [];
-        if (mode === "lin") {
-          second.set(g.entry.key, { raw, drawn: raw, reason: null });
-          continue;
-        }
-        const answer = ask(mode);
-        if (!answer.ok) second.set(g.entry.key, { raw, drawn: null, reason: answer.message });
-        else {
-          rowsLeft -= answer.rows;
-          const result = answer.series[0]!.result;
-          second.set(g.entry.key, result.ok ? { raw, drawn: result.observations, reason: null } : { raw, drawn: null, reason: result.reason === "not_offered" ? `This series does not offer “${MODE_LABELS[mode].toLowerCase()}”.` : `${sentence(result.message)}.` });
-        }
+        const asked = askFor(g.entry, range);
+        second.set(g.entry.key, { raw: asked.raw, drawn: asked.drawn, reason: asked.reason, vintage: asked.vintage });
       }
     }
   }
@@ -345,11 +441,14 @@ export function explorerView(release: OpenedRelease, surface: Surface, state: Ex
   const chosen = shownEvents.find((e) => e.a.id === chosenId) ?? null;
 
   // --- the address, and every address the page links to ---
-  const base: Omit<ExplorerState, "notes"> = {
+  const base: ExplorerAddress = {
     series: state.series,
     mode: state.mode,
     from: state.from,
     to: state.to,
+    asOf,
+    freq: state.freq,
+    pin: state.pin,
     layers: state.layers,
     at: state.at,
     event: state.event,
@@ -372,11 +471,15 @@ export function explorerView(release: OpenedRelease, surface: Surface, state: Ex
   const explicitLayers = [...toggleTokens.filter((t) => on.has(t)), ...(band ? [band] : [])];
   const pinned = state.at !== null && inWindow(state.at) ? state.at : null;
   if (state.at !== null && pinned === null && starts.length > 0) notes.push("The pinned date in the address is outside the window, so the readout shows the latest date.");
-  const resolved: Omit<ExplorerState, "notes"> = {
-    series: keys,
+  for (const a of absent) a.removeQuery = queryWith({ series: addressKeys(a.key) });
+  const resolved: ExplorerAddress = {
+    series: addressKeys(),
     mode,
     from: start?.slice(0, 7) ?? state.from,
     to: end?.slice(0, 7) ?? state.to,
+    asOf,
+    freq: state.freq,
+    pin: state.pin,
     layers: explicitLayers,
     at: pinned,
     event: chosenId !== null && allEvents.some((a) => a.id === chosenId) ? chosenId : null,
@@ -399,13 +502,16 @@ export function explorerView(release: OpenedRelease, surface: Surface, state: Ex
     if (g.drawn !== null && g.reason === null && !drawnGot.includes(g)) g.reason = g.raw.some((o) => o.value !== null) ? "Shown this way, this series has no value in the window." : "This series has no value in the window.";
   }
   const showsLatest = (key: string, raw: TransformedObservation[]): boolean => {
-    const latest = latestValue(release, surface, key);
+    // "Stale" and "latest" are said of today. An as-of view says nothing of today.
+    if (asOf !== null) return false;
+    const latest = latestValue(release, surface, key, gate);
     return latest.ok && latest.latest !== null && [...raw].reverse().find((o) => o.value !== null)?.period === latest.latest.period;
   };
   const runs: ViewRun[] = [];
-  const unitOf = (e: CatalogEntry): string => (mode === "lin" ? e.unit : mode === "log" ? `${e.unit}, on a logarithmic scale` : DRAWN[mode].unit);
-  const shownFor = (e: CatalogEntry, run: Run, over: { key: string; name: string; which: "window" | "comparison" }): ShownSeries => {
-    const unit = unitOf(e);
+  const unitOf = (own: string): string => (mode === "lin" ? own : mode === "log" ? `${own}, on a logarithmic scale` : mode === "chg" || mode === "ch1" ? shownUnit(mode, own) : DRAWN[mode].unit);
+  const shownFor = (g: Got, run: Run, over: { key: string; name: string; which: "window" | "comparison" }): ShownSeries => {
+    const e = g.entry;
+    const unit = unitOf(g.unit);
     // A break is marked in a run only if it falls inside that run's own range: one from before
     // the range is not an event of it, and must not be drawn at its edge.
     const [lo, hi] = over.which === "comparison" && compareRange ? [compareRange.from, compareRange.to] : [start ?? "0001-01-01", end ?? "9999-12-31"];
@@ -428,9 +534,9 @@ export function explorerView(release: OpenedRelease, surface: Surface, state: Ex
       name: over.name,
       seriesName: e.name,
       run: over.which,
-      unit: e.unit,
-      shownUnit: mode === "log" ? `natural logarithm of ${e.unit}` : unit,
-      freq: e.freq,
+      unit: g.unit,
+      shownUnit: mode === "log" ? `natural logarithm of ${g.unit}` : unit,
+      freq: g.freq,
       source: sourceWords(e),
       rows: run.drawn!.map((o) => ({ period: o.period, period_start: o.period_start, period_end: o.period_end, value: own.get(o.period) ?? null, shown: o.value, status: o.status })),
     });
@@ -438,11 +544,11 @@ export function explorerView(release: OpenedRelease, surface: Surface, state: Ex
       key: over.key,
       name: over.name,
       unit,
-      tableUnit: mode === "log" ? `natural logarithm of ${e.unit}` : undefined,
+      tableUnit: mode === "log" ? `natural logarithm of ${g.unit}` : undefined,
       scale: mode === "log" ? ("ln" as const) : undefined,
       unitKind: e.unit_kind,
       measureKind: e.measure_kind,
-      freq: e.freq,
+      freq: g.freq,
       continuity: e.continuity,
       representation: e.representation,
       seasonalAdjustment: mode === "lin" || mode === "log" ? e.seasonal_adjustment : undefined,
@@ -456,7 +562,7 @@ export function explorerView(release: OpenedRelease, surface: Surface, state: Ex
     };
   };
   /** The highest and lowest value as drawn (the first of equals, as v1), each named with the Series' own value. */
-  const extremesOf = (e: CatalogEntry, run: Run): ShownSeries["extremes"] => {
+  const extremesOf = (g: Got, run: Run): ShownSeries["extremes"] => {
     const valued = run.drawn!.filter((o): o is TransformedObservation & { value: number } => o.value !== null);
     if (valued.length === 0) return [];
     let [low, high] = [valued[0]!, valued[0]!];
@@ -468,13 +574,13 @@ export function explorerView(release: OpenedRelease, surface: Surface, state: Ex
     const decimals = Math.max(0, ...run.raw.map((o) => (o.value === null ? 0 : readingDecimals(o.value))));
     const label = (kind: "max" | "min", o: TransformedObservation) => {
       const value = own.get(o.period);
-      return { period: o.period, kind, label: `${kind} ${value === null || value === undefined ? "" : `${fixed(value, decimals).replace(/^-/, "−")} · `}${periodWords(e.freq, o, "short")}` };
+      return { period: o.period, kind, label: `${kind} ${value === null || value === undefined ? "" : `${fixed(value, decimals).replace(/^-/, "−")} · `}${periodWords(g.freq, o, "short")}` };
     };
     return high === low ? [label("max", high)] : [label("max", high), label("min", low)];
   };
   const shown: ShownSeries[] = drawnGot.map((g) => {
-    const s = shownFor(g.entry, { raw: g.raw, drawn: g.drawn, reason: null }, { key: g.entry.key, name: g.entry.name, which: "window" });
-    return state.ext ? { ...s, extremes: extremesOf(g.entry, { raw: g.raw, drawn: g.drawn, reason: null }) } : s;
+    const s = shownFor(g, g, { key: g.entry.key, name: g.entry.name, which: "window" });
+    return state.ext ? { ...s, extremes: extremesOf(g, g) } : s;
   });
   // The second range's runs: each laid over the window, so that both start at the left edge.
   const ghostKey = (key: string): string => `${key}.compared`;
@@ -489,7 +595,7 @@ export function explorerView(release: OpenedRelease, surface: Surface, state: Ex
         run.drawn = null;
         continue;
       }
-      const s = shownFor(g.entry, run, { key: ghostKey(g.entry.key), name: `${g.entry.name}, from ${stopWords(monthStart(compare.from))}`, which: "comparison" });
+      const s = shownFor(g, run, { key: ghostKey(g.entry.key), name: `${g.entry.name}, from ${stopWords(monthStart(compare.from))}`, which: "comparison" });
       shown.push({
         ...s,
         ghost: { of: g.entry.key, standsUntil: comparedUntil ?? undefined },
@@ -522,15 +628,20 @@ export function explorerView(release: OpenedRelease, surface: Surface, state: Ex
   const selection: Selected[] = got.map((g) => {
     const key = g.entry.key;
     const state_ = g.failure ? (g.failure.code === "withheld" ? "withheld" : "not_permitted") : styles.has(key) ? "drawn" : "not_drawn";
+    // The Basis claimed for a Series covers both of its runs.
+    const bases = [g.vintage?.basis, second.get(key)?.vintage?.basis].filter((b): b is VintageBasis => b !== undefined);
     return {
       key,
       name: g.entry.name,
-      unit: g.entry.unit,
+      unit: g.unit,
       state: state_,
       reason: state_ === "drawn" ? null : g.reason,
+      freq: g.freq,
+      combined: g.combined,
+      basis: asOf === null || g.failure ? null : (weakestBasis(bases) ?? "unavailable"),
       style: styles.get(key) ?? null,
       compared: compare && !g.failure ? { drawn: styles.has(ghostKey(key)), reason: styles.has(ghostKey(key)) ? null : (second.get(key)?.reason ?? (styles.has(key) ? "This series has no value in the range compared with." : null)) } : null,
-      removeQuery: queryWith({ series: keys.filter((k) => k !== key) }),
+      removeQuery: queryWith({ series: addressKeys(key) }),
     };
   });
 
@@ -559,7 +670,7 @@ export function explorerView(release: OpenedRelease, surface: Surface, state: Ex
       key: s.key,
       name: s.name,
       unit: s.unit,
-      freq: g.entry.freq,
+      freq: g.freq,
       continuity: g.entry.continuity,
       style: s.style,
       decimals: Math.max(0, ...values.map(readingDecimals)),
@@ -575,8 +686,8 @@ export function explorerView(release: OpenedRelease, surface: Surface, state: Ex
     readoutSeries.splice(at + 1, 0, {
       key: ghostKey(g.entry.key),
       name: `${g.entry.name}, from ${stopWords(monthStart(compare!.from))}`,
-      unit: g.entry.unit,
-      freq: g.entry.freq,
+      unit: g.unit,
+      freq: g.freq,
       continuity: g.entry.continuity,
       style: { ...styles.get(ghostKey(g.entry.key))!, ghost: true },
       decimals: Math.max(0, ...values.map(readingDecimals)),
@@ -588,7 +699,7 @@ export function explorerView(release: OpenedRelease, surface: Surface, state: Ex
   }
   const readout: ReadoutModel = {
     mode,
-    drawn: mode === "lin" || mode === "log" ? null : { suffix: DRAWN[mode].suffix, decimals: DRAWN[mode].decimals },
+    drawn: mode === "lin" || mode === "log" ? null : { suffix: DRAWN[mode].suffix, decimals: mode === "chg" || mode === "ch1" ? Math.max(DRAWN[mode].decimals, ...readoutSeries.map((r) => r.decimals)) : DRAWN[mode].decimals },
     stops,
     until: madeOn,
     series: readoutSeries,
@@ -610,14 +721,19 @@ export function explorerView(release: OpenedRelease, surface: Surface, state: Ex
   const offers = (e: CatalogEntry, m: ExplorerMode) => !e.allowed_transforms || e.allowed_transforms.length === 0 || e.allowed_transforms.includes(m);
   const modes = MODES.map((value) => ({ value, label: MODE_LABELS[value], current: value === mode, offered: selectedEntries.filter((e) => offers(e, value)).length }));
 
-  const presets = PRESETS.filter((p) => p.series.some((k) => entries.has(k))).map((p) => ({
+  const presets = (ofV1 ? V1_PRESETS : []).map((p) => ({
     name: p.name,
     // v1's presets changed the Series, the mode and the range, and left the layers as they were.
     query: explorerQuery({
-      series: p.series.filter((k) => entries.has(k)),
+      // A Series the Catalog knows and this Release does not hold stays in the address, so that
+      // opening the preset names it; it is not quietly dropped here.
+      series: p.series.filter((k) => entries.has(k) || inCatalog(k)),
       mode: p.mode,
       from: p.from,
       to: p.to,
+      asOf,
+      freq: state.freq,
+      pin: state.pin,
       layers: state.layers,
       at: null,
       event: null,
@@ -636,7 +752,7 @@ export function explorerView(release: OpenedRelease, surface: Surface, state: Ex
   }));
 
   const mayShow = (e: CatalogEntry): boolean =>
-    permits([{ origin: e.source.origin.producer, dataset: e.source.origin.dataset, channel: e.source.channel.via, representation: e.representation, permission: "display" }], surface).allowed;
+    (gate ? gate.permits.bind(gate) : permits)([{ origin: e.source.origin.producer, dataset: e.source.origin.dataset, channel: e.source.channel.via, representation: e.representation, permission: "display" }], surface).allowed;
   const picker = Object.entries(SEGMENTS)
     .map(([segment, label]) => ({
       label,
@@ -652,31 +768,57 @@ export function explorerView(release: OpenedRelease, surface: Surface, state: Ex
 
   // --- the snapshot table and the relationships: from each Series' own values, whatever the mode ---
   const latestWords = (e: CatalogEntry): string | null => {
-    const latest = latestValue(release, surface, e.key);
+    if (asOf !== null) return null;
+    const latest = latestValue(release, surface, e.key, gate);
     return latest.ok && latest.latest ? periodWords(e.freq, { period: latest.latest.period, period_start: labelStart(e.freq, latest.latest.period)?.period_start ?? latest.latest.period_end }, "short") : null;
+  };
+  /** Values that may be set beside one another: a Period still held under earlier metadata has none (as a Recipe treats it). */
+  const comparable = (observations: TransformedObservation[], vintage: VintageInfo | null): TransformedObservation[] => {
+    // No one unit or definition was in force (Query's `metadata_mixed`): no two of them may be set beside one another.
+    if (mixed(vintage)) return observations.map((o) => ({ ...o, value: null, status: "missing" }));
+    const others = new Set(vintage?.metadata?.other_metadata_periods ?? []);
+    return others.size === 0 ? observations : observations.map((o) => (others.has(o.period) ? { ...o, value: null, status: "missing" } : o));
   };
   const snapshot = snapshotRows(
     got.map((g, i) => ({
       key: g.entry.key,
       name: g.entry.name,
-      unit: g.entry.unit,
+      unit: g.unit,
       unitKind: g.entry.unit_kind,
-      freq: g.entry.freq,
+      freq: g.freq,
       source: sourceWords(g.entry),
-      observations: g.failure ? null : g.raw,
+      observations: g.failure ? null : comparable(g.raw, g.vintage),
       latest: g.failure ? null : latestWords(g.entry),
       absent: g.failure ? `${selection[i]!.state === "withheld" ? "Withheld" : "Not shown here"}: ${g.reason}` : null,
     })),
   );
   // A change at the window's first Period looks back before the window, so the whole Series is asked for.
+  // Each Series takes part at its own frequency; one finer than monthly is asked of Query at each
+  // frequency a pair could be compared at, combined once, by its own declared rule.
+  const fine = (e: CatalogEntry): boolean => (COARSENESS[e.freq] ?? 9) < COARSENESS.monthly!;
+  const slowest = Math.max(0, ...got.filter((g) => !g.failure).map((g) => RUNGS.indexOf(g.entry.freq as (typeof RUNGS)[number])));
   const whole: RelationshipInput[] = got.map((g) => {
     if (g.failure) return { entry: g.entry, observations: null, reason: g.reason };
     if (got.length < 2 || start === null || end === null) return { entry: g.entry, observations: [], reason: null };
-    const all = query(release, surface, { series: [g.entry.key], transform: "lin", permission: "display" }, { maxRows: rowsLeft });
-    if (!all.ok) return { entry: g.entry, observations: null, reason: all.message };
-    rowsLeft -= all.rows;
-    const result = all.series[0]!.result;
-    return result.ok ? { entry: g.entry, observations: result.observations, reason: null } : { entry: g.entry, observations: null, reason: `${sentence(result.message)}.` };
+    // At the Series' own frequency unless one is named: the pair frame combines months and
+    // quarters itself, whatever common frequency the chart was asked for.
+    const everything = (freq: Frequency | null): TransformedObservation[] | string => {
+      const all = query(release, surface, request(g.entry, "lin", {}, freq), { maxRows: rowsLeft, gate });
+      if (!all.ok) return all.message;
+      rowsLeft -= all.rows;
+      const answer = all.series[0]!;
+      if (answer.vintage?.basis === "unavailable") return `Nothing is known of it as of then: ${unavailableWords(answer.vintage.reason)}.`;
+      return answer.result.ok ? comparable(answer.result.observations, answer.vintage) : `${sentence(answer.result.message)}.`;
+    };
+    // Named by the unit in force at the Cutoff, as the chart names it.
+    const entry = { ...g.entry, unit: g.unit };
+    if (fine(g.entry)) {
+      const at: NonNullable<RelationshipInput["at"]> = {};
+      for (const rung of RUNGS.slice(0, slowest + 1)) at[rung] = everything(rung);
+      return { entry, observations: [], reason: null, at };
+    }
+    const all = everything(null);
+    return typeof all === "string" ? { entry, observations: null, reason: all } : { entry, observations: all, reason: null };
   });
   const windowWords = start !== null && end !== null ? `${stopWords(monthStart(start.slice(0, 7)))} to ${stopWords(monthStart(end.slice(0, 7)))}` : "";
   const relationships = relationshipsFor(whole, { from: start ?? "0001-01-01", to: end ?? "9999-12-31", words: windowWords }, state, queryWith);
@@ -687,6 +829,9 @@ export function explorerView(release: OpenedRelease, surface: Surface, state: Ex
     mode,
     modes,
     selection,
+    absent,
+    asOf: asOf === null ? null : { date: asOf, words: asOfWords(asOf), basis: weakestBasis(selection.filter((x) => x.state === "drawn" || x.compared?.drawn).flatMap((x) => (x.basis ? [x.basis] : []))) ?? "unavailable", offQuery: queryWith({ asOf: null }) },
+    common: state.freq === null ? null : { freq: state.freq, offQuery: queryWith({ freq: null }) },
     notes,
     window: {
       from: state.from,

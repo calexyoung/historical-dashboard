@@ -27,6 +27,7 @@ export function SeriesPicker({
   action,
   groups,
   selected,
+  kept = [],
   max,
   hidden,
   initialOpen,
@@ -37,6 +38,8 @@ export function SeriesPicker({
   groups: Group[];
   /** The selected keys, in the order drawn. */
   selected: string[];
+  /** Keys in `selected` that are not in the list (Series the Release does not hold): a plain form must carry them, or choosing a Series would drop them. */
+  kept?: string[];
   max: number;
   /** What the form must carry that it has no field for: mode, window, layers, pin, Event. */
   hidden: [string, string][];
@@ -154,7 +157,7 @@ export function SeriesPicker({
           {hidden.map(([name, value]) => (
             <input key={name} type="hidden" name={name} value={value} />
           ))}
-          <input type="hidden" name="s" value="" />
+          <input type="hidden" name="s" value={kept.join(",")} />
           <div className="border-b border-line px-4 py-2">
             {ready && (
               <>

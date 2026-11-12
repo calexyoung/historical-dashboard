@@ -46,6 +46,7 @@ from ..vintage.replay import SeriesTableError, load_derived, load_series
 from ..vintage.store import VintageStore
 from . import engine
 from . import root as R
+from . import saved as saved_queries
 from .export import AGE_NOTE, Built, ExportError, add_derived, build, dump, lag_limit
 
 REJECTED, RETIRED = "rejected", "retired"
@@ -556,6 +557,62 @@ def unpin(*, release_id: str, profile: str, root: Path, store: Path, register: P
             R.replace_json(run.root / R.PINS, {"format": R.FORMAT, "pins": [
                 p for p in held if p["release_id"] != release_id]})
             return Result("unpinned", 0, release_id, [f"UNPINNED {release_id}"])
+
+    return _guarded(command)
+
+
+# --- saved queries -------------------------------------------------------------------------------
+
+
+def save(*, address: str, note: str, profile: str, root: Path, store: Path, register: Path | None = None,
+         now: datetime | None = None) -> Result:
+    """Keep an Explorer view with a Pin and a note (PLAN M18; ``saved.py``). The view is pinned
+    to the Release its address names, or to the current one; that Release is checked as a pin
+    is, and retention keeps it for as long as the saved query exists. A local root only."""
+    def command() -> Result:
+        if profile != "local":
+            raise _Refusal("a saved query carries a note, and a public root holds nothing that is not "
+                           "published (PLAN 4.3). Save in the local root; to keep a public Release for a "
+                           "link, use: atlas pin ID --profile public --reason WHY")
+        problem = saved_queries.note_problem(note)
+        if problem:
+            raise _Refusal(problem)
+        try:
+            view, asked = saved_queries.canonical(address)
+        except saved_queries.NotSaved as error:
+            raise _Refusal(str(error)) from None
+        with _opened("save", profile=profile, root=root, store=store, register=register, now=now) as run:
+            run.recover()  # a Release a killed run left unnamed is not one to keep
+            release_id = asked or R.current(run.root)
+            if release_id is None:
+                return _refused([*run.lines, "REFUSED: the root has no current Release to pin the view to"])
+            problems = R.release_problems(run.root, release_id, run.profile, run.gate)
+            if problems:
+                return _refused([*run.lines, *(f"REFUSED: {problem}" for problem in problems)])
+            entries = saved_queries.read(run.root)
+            if len(entries) >= saved_queries.MAX_SAVED:
+                return _refused([*run.lines, f"REFUSED: the root already holds {saved_queries.MAX_SAVED} saved queries"])
+            query = f"{view}&pin={release_id}"
+            entry = {"id": saved_queries.new_id(view, release_id, note, run.started), "note": note,
+                     "query": query, "release_id": release_id, "saved_at": run.started}
+            saved_queries.write(run.root, [*entries, entry])
+            return Result("saved", 0, release_id, [*run.lines, f"SAVED {entry['id']}: {note}",
+                                                   f"  /explore?{query}"])
+
+    return _guarded(command)
+
+
+def unsave(*, saved_id: str, profile: str, root: Path, store: Path, register: Path | None = None,
+           now: datetime | None = None) -> Result:
+    """Remove a saved query. Its Release is then kept only if something else names it."""
+    def command() -> Result:
+        with _opened("unsave", profile=profile, root=root, store=store, register=register, now=now) as run:
+            entries = saved_queries.read(run.root)
+            rest = [entry for entry in entries if entry.get("id") != saved_id]
+            if len(rest) == len(entries):
+                return _refused(f"REFUSED: there is no saved query {saved_id}")
+            saved_queries.write(run.root, rest)
+            return Result("unsaved", 0, None, [f"REMOVED {saved_id}"])
 
     return _guarded(command)
 

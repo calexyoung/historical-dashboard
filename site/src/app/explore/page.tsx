@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { BasisMark } from "@/components/BasisMark";
 import { CopyLink } from "@/components/explorer/CopyLink";
 import { ExplorerChart } from "@/components/explorer/ExplorerChart";
 import { ExplorerControls, ExplorerLayers } from "@/components/explorer/ExplorerControls";
@@ -16,7 +17,11 @@ import { exportAllowed } from "@/lib/export";
 import { explorerView, MODE_LABELS, type Selected } from "@/lib/explorer/view";
 import { swatch } from "@/lib/figure";
 import { MAX_SERIES } from "@/lib/query";
-import { releaseForRequest } from "@/lib/release/server";
+import { BASIS_INFO } from "@/lib/series-words";
+import { SEMANTICS_VERSION } from "@macro-atlas/core";
+import { dayWords } from "@/lib/figure/words";
+import { savedAddress, savedQueries } from "@/lib/explorer/saved";
+import { getReader, releaseForRequest } from "@/lib/release/server";
 
 export const metadata: Metadata = { title: "Explore" };
 
@@ -42,7 +47,7 @@ const NOT_DRAWN: Record<Exclude<Selected["state"], "drawn">, string> = { not_dra
  * each one is a whole drawing for the server.
  */
 export default async function ExplorePage({ searchParams }: PageProps<"/explore">) {
-  const { release } = await releaseForRequest();
+  const { release, pinnedFrom, address } = await releaseForRequest();
   const state = parseExplorerParams(await searchParams);
   const view = explorerView(release, SURFACE, state);
   const here = `${BASE_PATH}/explore`;
@@ -55,28 +60,51 @@ export default async function ExplorePage({ searchParams }: PageProps<"/explore"
   const carried = pairs(["cmp", "basis", "lag", "sx", "sy", "roll", "ext"]);
   const pinAndEvent: [string, string][] = [...(resolved.at ? [["at", resolved.at] as [string, string]] : []), ...(resolved.event ? [["event", resolved.event] as [string, string]] : [])];
   const table: [string, string][] = state.table ? [["table", "1"]] : [];
-  const controlsHidden: [string, string][] = [["s", resolved.series!.join(",")], ...pinAndEvent, ...relations, ...table];
+  // What every form must carry and has no field for: the Release a view is pinned to, and (outside the view form) the as-of date and the common frequency.
+  const held: [string, string][] = resolved.pin ? [["pin", resolved.pin]] : [];
+  const asked: [string, string][] = [...(resolved.freq ? [["freq", resolved.freq] as [string, string]] : []), ...(resolved.asOf ? [["as_of", resolved.asOf] as [string, string]] : [])];
+  const controlsHidden: [string, string][] = [["s", resolved.series!.join(",")], ...pinAndEvent, ...relations, ...table, ...held];
   const layersValue: [string, string] = ["layers", resolved.layers!.length > 0 ? resolved.layers!.join(",") : "none"];
   const windowFields: [string, string][] = [...(view.window.from ? [["from", view.window.from] as [string, string]] : []), ...(view.window.to ? [["to", view.window.to] as [string, string]] : [])];
-  const relationshipHidden: [string, string][] = [["s", resolved.series!.join(",")], ["mode", view.mode], ...windowFields, layersValue, ...pinAndEvent, ...pairs(["cmp", "ext"]), ...table];
-  const exporting = exportAllowed(release, SURFACE, resolved.series!);
+  const relationshipHidden: [string, string][] = [["s", resolved.series!.join(",")], ["mode", view.mode], ...windowFields, ...asked, layersValue, ...pinAndEvent, ...pairs(["cmp", "ext"]), ...table, ...held];
+  const exporting = exportAllowed(release, SURFACE, resolved.series!, { history: resolved.asOf !== null });
   const file = (format: string) => `${here}/export?format=${format}${view.resolvedQuery ? `&${view.resolvedQuery.replace(/&(table|pick)=1/g, "")}` : ""}`;
   const rel = view.relationships;
   const uncompared = view.selection.filter((s) => s.state === "drawn" && s.compared && !s.compared.drawn);
   const pickerHidden: [string, string][] = [
     ["mode", view.mode],
     ...windowFields,
+    ...asked,
     layersValue,
     ...pinAndEvent,
     ...carried,
     ...table,
+    ...held,
   ];
+  // Saved queries carry a person's own note: they are shown on the local Surface only (ADR 0032).
+  const saved = SURFACE === "local" ? savedQueries((await getReader().savedText?.()) ?? "") : [];
+  const saveable = SURFACE === "local" && release.manifest.profile === "local" ? savedAddress(view.resolvedQuery.replace(/&(table|pick)=1/g, "")) : null;
+  const drawnSeries = view.selection.filter((s) => s.state === "drawn");
   const kept = view.selection.filter((s) => s.state !== "drawn");
   const drawn = view.selection.filter((s) => s.state === "drawn").length;
 
   return (
     <div className="flex flex-col gap-6">
       <ExplorerSession basePath={BASE_PATH} releaseId={release.id} />
+
+      {resolved.pin && (
+        // A note, there on every load of a pinned link: it never moves or animates.
+        <p role="note" data-pinned={release.id} className="max-w-[80ch] border-l-2 border-line-strong pl-3 text-sm text-ink-2">
+          <span className="font-medium text-ink">
+            Pinned to release <span className="num">{release.id}</span>
+          </span>
+          , made <span className="num">{dayWords(release.manifest.created.slice(0, 10))}</span>. The figures are that release&rsquo;s; they are drawn by today&rsquo;s engine (semantics <span className="num">{SEMANTICS_VERSION}</span>).{" "}
+          {pinnedFrom !== null && pinnedFrom !== release.id ? "A newer release is current. " : "It is the current release. "}
+          <a href={`${BASE_PATH}${to(view.queryWith({ pin: null }))}`} data-unpin className={`${link} inline-flex min-h-6 items-center`}>
+            Open this view on the current release
+          </a>
+        </p>
+      )}
 
       <Panel id="explore" title="Explore" level={1}>
         <p className="max-w-[68ch] text-ink-2">Pick series, a window and a way to show them. The address of this page describes the view.</p>
@@ -95,12 +123,31 @@ export default async function ExplorePage({ searchParams }: PageProps<"/explore"
         )}
       </Panel>
 
+      {saved.length > 0 && (
+        <Panel id="saved" title="Saved views" meta="Each is pinned to the release it was saved on, and kept with it." bodyClassName="p-0">
+          <ul data-saved className="max-h-72 overflow-y-auto">
+            {saved.map((q) => (
+              <li key={q.id} data-saved-query={q.id} className="grid gap-x-3 border-b border-line px-4 py-1.5 text-sm last:border-b-0 sm:grid-cols-[7rem_minmax(0,1fr)]">
+                <span className="num text-ink-2">{dayWords(q.savedAt.slice(0, 10), "short")}</span>
+                <span className="min-w-0">
+                  <a href={`${BASE_PATH}/explore?${q.query}`} className={`${link} inline-flex min-h-6 items-center`}>
+                    {q.note}
+                  </a>
+                  <span className="num block truncate text-xs text-ink-3">release {q.releaseId}</span>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </Panel>
+      )}
+
       <Panel id="view" title="View" bodyClassName="flex flex-col gap-4 p-4">
         <div className="flex flex-wrap items-center gap-2">
           <SeriesPicker
             action={here}
             groups={view.picker}
             selected={resolved.series!}
+            kept={view.absent.map((a) => a.key)}
             max={MAX_SERIES}
             hidden={pickerHidden}
             initialOpen={state.pick}
@@ -132,6 +179,20 @@ export default async function ExplorePage({ searchParams }: PageProps<"/explore"
             </a>
           </p>
         )}
+        {saveable !== null && view.figure && (
+          <details data-save className="-mt-2 text-xs text-ink-3">
+            <summary className={summary.replace("text-sm", "text-xs")}>Save this view</summary>
+            <p className="mt-1 max-w-[80ch]">
+              A saved view is this address pinned to {resolved.pin ? "its release" : "the current release"}, with a note; the release is kept for as long as the view is. Run this where the release root is, with your own note:
+            </p>
+            <pre tabIndex={0} className="num mt-1 max-w-full overflow-x-auto rounded border border-line bg-raised p-2 text-ink">{`python -m atlas save '${address}/explore?${saveable}' --profile local --note "what this view is for"`}</pre>
+          </details>
+        )}
+        {view.figure && exporting.allowed && exporting.leftOut.length > 0 && (
+          <p data-export-left-out className="-mt-2 max-w-[80ch] text-xs text-ink-3">
+            A file made here leaves out {exporting.leftOut.map((s) => `${s.name} (${s.reason})`).join("; ")}.
+          </p>
+        )}
         {view.selection.length > 0 && !exporting.allowed && (
           <p data-export-note className="-mt-2 text-xs text-ink-3">
             Export is not available here: {exporting.reason}.
@@ -161,7 +222,40 @@ export default async function ExplorePage({ searchParams }: PageProps<"/explore"
           </p>
         )}
 
-        <ExplorerControls action={here} modes={view.modes} selected={view.selection.length} from={view.window.from} to={view.window.to} compare={state.cmp} extremes={view.extremes} hidden={controlsHidden} />
+        <ExplorerControls action={here} modes={view.modes} selected={view.selection.length} from={view.window.from} to={view.window.to} compare={state.cmp} extremes={view.extremes} asOf={resolved.asOf} freq={resolved.freq} hidden={controlsHidden} />
+
+        {view.asOf && (
+          <div data-as-of={view.asOf.basis} className="max-w-[80ch] border-l-2 border-line-strong pl-3 text-sm text-ink-2">
+            <p>
+              <span className="font-medium text-ink">
+                As known before <span className="num">{view.asOf.words}</span>
+              </span>
+              {drawnSeries.length > 0 && (
+                <>
+                  {" "}
+                  · <BasisMark basis={view.asOf.basis} basePath={BASE_PATH} />
+                </>
+              )}{" "}
+              ·{" "}
+              <Link href={to(view.asOf.offQuery)} prefetch={false} scroll={false} data-as-of-off className={`${link} inline-flex min-h-6 items-center`}>
+                Show today&rsquo;s values
+              </Link>
+            </p>
+            {drawnSeries.length > 0 && <p className="mt-0.5">{BASIS_INFO[view.asOf.basis].meaning}</p>}
+            {view.selection.length > 1 && (
+              <ul data-as-of-series className="mt-1 flex flex-col gap-0.5">
+                {view.selection
+                  .filter((s) => s.basis !== null)
+                  .map((s) => (
+                    <li key={s.key} className="flex flex-wrap items-center gap-x-2">
+                      <span className="text-ink">{s.name}</span>
+                      <BasisMark basis={s.basis!} basePath={BASE_PATH} link={false} />
+                    </li>
+                  ))}
+              </ul>
+            )}
+          </div>
+        )}
 
         {view.compare && (
           <p data-compare className="max-w-[80ch] text-sm text-ink-2">
@@ -187,7 +281,7 @@ export default async function ExplorePage({ searchParams }: PageProps<"/explore"
         meta={
           view.figure && (
             <>
-              <span className="num">{view.window.words}</span> · {MODE_LABELS[view.mode]} · <span className="num">{drawn}</span> series
+              <span className="num">{view.window.words}</span> · {MODE_LABELS[view.mode]} · <span className="num">{drawn}</span> series{view.asOf && <> · as known before <span className="num">{view.asOf.words}</span></>}
             </>
           )
         }
@@ -214,10 +308,10 @@ export default async function ExplorePage({ searchParams }: PageProps<"/explore"
           />
         ) : (
           <p data-empty className="max-w-[68ch] text-ink-2">
-            {view.selection.length === 0 ? "No series is selected. Choose series above to begin." : "None of the selected series can be drawn in this view. The reasons are below."}
+            {view.selection.length === 0 ? (view.absent.length > 0 ? "None of the series this address names is in this release. They are named below." : "No series is selected. Choose series above to begin.") : "None of the selected series can be drawn in this view. The reasons are below."}
           </p>
         )}
-        {(kept.length > 0 || uncompared.length > 0) && (
+        {(kept.length > 0 || uncompared.length > 0 || view.absent.length > 0) && (
           <ul data-not-drawn className="flex max-w-[80ch] flex-col gap-1 border-t border-line pt-3 text-sm text-ink-2">
             {kept.map((s) => (
               <li key={s.key}>
@@ -225,6 +319,14 @@ export default async function ExplorePage({ searchParams }: PageProps<"/explore"
                   {NOT_DRAWN[s.state as keyof typeof NOT_DRAWN]} · {s.name}
                 </span>
                 : {s.reason}
+              </li>
+            ))}
+            {view.absent.map((a) => (
+              <li key={a.key} data-absent={a.key}>
+                <span className="font-medium text-ink">Not in this release · {a.name}</span>: {a.reason}{" "}
+                <Link href={to(a.removeQuery)} prefetch={false} scroll={false} aria-label={`Remove ${a.name} from the address`} className={`${link} inline-flex min-h-6 items-center`}>
+                  Remove
+                </Link>
               </li>
             ))}
             {uncompared.map((s) => (

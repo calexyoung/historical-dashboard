@@ -8,6 +8,7 @@ points at it.
     {root}/CURRENT          the promoted release id (atlas.staging)
     {root}/STATUS.json      the last run: started, finished, outcome, failed checks
     {root}/pins.json        releases retention must keep
+    {root}/saved.json       saved queries (a local root only); retention keeps the releases they name
     {root}/withdrawn.json   Series taken down, each with the reason and the releases retired
     {root}/releases/{id}/   the Releases
     {root}/trash/{id}/      pruned Releases, deleted a day after ``trash/{id}.json`` says
@@ -34,6 +35,7 @@ from .export import history_lineages, lineage
 REPO = Path(__file__).resolve().parents[2]
 FORMAT = 1
 MARKER, STATUS, PINS, WITHDRAWN, TRASH = "root.json", "STATUS.json", "pins.json", "withdrawn.json", "trash"
+SAVED = "saved.json"
 KEEP = 30
 TRASH_DAYS = 1
 HOMES = {"public": ("ATLAS_PUBLIC", "public"), "local": ("ATLAS_LOCAL", "local"),
@@ -153,6 +155,19 @@ def release_ids(root: Path, folder: str = "releases") -> list[str]:
 
 def pins(root: Path) -> list[dict]:
     return (read_json(Path(root) / PINS) or {}).get("pins", [])
+
+
+def saved(root: Path) -> list[dict]:
+    """The root's saved queries (PLAN M18; ``saved.py``). Each is its own Pin."""
+    entries = (read_json(Path(root) / SAVED) or {}).get("saved", [])
+    return [entry for entry in entries if isinstance(entry, dict)]
+
+
+def kept_by_name(root: Path) -> set[str]:
+    """The Releases something names, which retention must keep whatever their age: every pin
+    and every saved query."""
+    named = {pin["release_id"] for pin in pins(root)}
+    return named | {entry["release_id"] for entry in saved(root) if isinstance(entry.get("release_id"), str)}
 
 
 def withdrawn(root: Path) -> dict[str, dict]:
@@ -336,12 +351,13 @@ def _to_trash(root: Path, release_id: str, now: datetime) -> None:
 
 
 def prune(root: Path, now: datetime, keep: int = KEEP) -> tuple[list[str], list[str]]:
-    """Retention: keep the newest ``keep`` Releases, CURRENT and every pin. The rest are
+    """Retention: keep the newest ``keep`` Releases, CURRENT, every pin and every Release a
+    saved query names. The rest are
     renamed into ``trash/``, where a reader that already opened one can go on reading, and
     are deleted a day later. Returns (trashed, deleted)."""
     root = Path(root)
     ids = release_ids(root)
-    kept = set(ids[-keep:]) | {pin["release_id"] for pin in pins(root)} | {current(root)}
+    kept = set(ids[-keep:]) | kept_by_name(root) | {current(root)}
     trashed = [release_id for release_id in ids if release_id not in kept]
     for release_id in trashed:
         _to_trash(root, release_id, now)
