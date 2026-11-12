@@ -39,6 +39,15 @@ function givenClaims(release: OpenedRelease, surface: Surface, address: string, 
 export function llmsText(release: OpenedRelease, surface: Surface, options: { address: string; gate?: Pick<RightsGate, "permits"> }): string {
   const { address, gate } = options;
   const withheld = new Set(release.manifest.withheld.map((row) => row.key));
+  // What is said of the bulk files is what this Release's own files do: a column only where
+  // every one of them has it, and nothing where the Release has no bulk files.
+  const files = release.downloads?.resources ?? [];
+  const bulk =
+    files.length === 0
+      ? "."
+      : files.every((resource) => resource.ml_use !== undefined)
+        ? " and in the bulk files' `ml_use` column."
+        : ". Not every bulk file of this release records it: a file that does not say gives no permission.";
   const out = [
     "# Macro Atlas",
     "",
@@ -46,7 +55,7 @@ export function llmsText(release: OpenedRelease, surface: Surface, options: { ad
     "",
     `This file lists release ${release.id}. Every page has a Markdown twin: add \`.md\` to its address (\`/index.md\` for the overview). A series page also has \`.csv\`, \`.json\` and \`.metadata.json\`. A file of values is given only where the rights of every series in it allow redistribution; otherwise the answer is 403 with the reason.`,
     "",
-    "Redistribution is not permission to train a model. A series whose rights do not allow use in training machine-learning models says so below, on its page, in each of its files (`rights.ml_use` is false in JSON) and in the bulk files' `ml_use` column.",
+    `Redistribution is not permission to train a model. A series whose rights do not allow use in training machine-learning models says so below, on its page, in each of its files (\`rights.ml_use\` is false in JSON)${bulk}`,
     "",
     "## Pages",
     "",

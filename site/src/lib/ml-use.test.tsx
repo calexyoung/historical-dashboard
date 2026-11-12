@@ -238,7 +238,14 @@ describe("/downloads", () => {
     expect(html).toContain("Some of their rows are marked");
     expect(html).not.toContain("very row of them");
     expect(html).not.toContain("are in the files and may be redistributed");
-    expect(html.match(/data-ml-use="false"/g)?.length).toBe(by.size - [...by.values()].filter(Boolean).length);
+    // The notice is beside each file that holds such rows and beside no other: asked row by row,
+    // by the words a reader sees.
+    const cells = new Map([...html.matchAll(/<tr data-file="([^"]+)">(.*?)<\/tr>/g)].map((m) => [m[1]!, m[2]!]));
+    expect([...cells.keys()].sort()).toEqual([...by.keys()].sort());
+    for (const [name, usable] of by) {
+      if (usable) expect(cells.get(name), name).not.toContain("not for use in training machine-learning models");
+      else expect(cells.get(name), name).toContain("Holds rows that are not for use in training machine-learning models.");
+    }
   });
 
   it("takes files written before a Release said so as no permission", () => {
@@ -346,6 +353,23 @@ describe("discovery", () => {
     expect(line(RESERVED)).toContain(`${NOTE}.`);
     expect(line(OPEN)).not.toContain("machine-learning");
     expect(text).toContain("Redistribution is not permission to train a model");
+  });
+
+  it("llms.txt: speaks of the bulk files' ml_use column only where this Release's files have one", () => {
+    const sentence = (changed: OpenedRelease): string => llmsText(changed, "local", { address: ADDRESS }).split("\n").find((l) => l.startsWith("Redistribution is not permission"))!;
+    expect(sentence(release)).toContain("and in the bulk files' `ml_use` column");
+    // Files written before a Release said anything of model training have no such column.
+    const before = { ...release, downloads: { ...release.downloads!, resources: release.downloads!.resources.map((resource) => ({ ...resource, ml_use: undefined, ml_use_reserved: undefined })) } } as OpenedRelease;
+    expect(sentence(before)).not.toContain("`ml_use` column");
+    expect(sentence(before)).toContain("Not every bulk file of this release records it: a file that does not say gives no permission.");
+    // One file that does not say is enough: the column is not promised of the files.
+    const mixed = { ...release, downloads: { ...release.downloads!, resources: release.downloads!.resources.map((resource, n) => (n === 0 ? { ...resource, ml_use: undefined, ml_use_reserved: undefined } : resource)) } } as OpenedRelease;
+    expect(sentence(mixed)).toBe(sentence(before));
+    expect(sentence(before)).toContain("`rights.ml_use` is false in JSON");
+    // A Release with no bulk files says nothing of them.
+    const none = { ...release, downloads: null } as OpenedRelease;
+    expect(sentence(none)).not.toContain("bulk files");
+    expect(sentence(none)).toContain("`rights.ml_use` is false in JSON");
   });
 
   it("llms.txt: says it of a Series listed by its metadata alone, withheld or not handed out here", () => {
