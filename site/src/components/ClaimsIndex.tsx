@@ -23,7 +23,7 @@ export function ClaimsIndex({ view, basePath }: { view: ClaimsIndexView; basePat
         <p className="max-w-[68ch] text-ink-2">
           Public statements set beside the figures: what was said, by whom, when and where it can be checked, and what the data showed then and
           shows now. What the figures say about a statement is left to the reader.{" "}
-          <a href={`${basePath}/docs/method/claims`} className={link}>
+          <a href={`${basePath}/docs/method/claims`} className={`${link} inline-block min-h-6 leading-6`}>
             How a claim record is built
           </a>
           .
@@ -82,7 +82,7 @@ export function ClaimsIndex({ view, basePath }: { view: ClaimsIndexView; basePat
         <Panel id="list" title="All claims">
           <p className="max-w-[68ch] text-ink-2">
             This release holds no claims. One is recorded with <code className="font-mono text-ink">python -m atlas add claim</code>; the steps are in{" "}
-            <a href={`${basePath}/docs/method/claims`} className={link}>
+            <a href={`${basePath}/docs/method/claims`} className={`${link} inline-block min-h-6 leading-6`}>
               how a claim record is built
             </a>
             .

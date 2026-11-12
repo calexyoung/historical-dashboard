@@ -104,7 +104,7 @@ function Reading({ reading, basePath }: { reading: ReadingView; basePath: string
         {!reading.series.href && <span className="text-ink-2"> (not in this release)</span>}
         {". "}
         {reading.what}
-        {reading.unit && <span className="text-ink-2"> Unit: {reading.unit}.</span>}
+        {reading.unit && !evidence && <span className="text-ink-2"> Unit: {reading.unit}.</span>}
       </p>
       {evidence && (
         <>
@@ -124,6 +124,7 @@ function Reading({ reading, basePath }: { reading: ReadingView; basePath: string
               </tbody>
             </table>
           </div>
+          {reading.unit && <p className="mt-1 text-xs text-ink-2">Unit: {reading.unit}.</p>}
           <dl className="mt-3 max-w-[84ch] text-sm">
             <Origin name="then" label="Then" info={evidence.then} basePath={basePath} />
             <Origin name="now" label="Now when checked" info={evidence.now} basePath={basePath} />
@@ -191,7 +192,7 @@ export function ClaimPage({ view, basePath }: { view: ClaimPageView; basePath: s
   return (
     <div className="flex flex-col gap-6">
       <Panel id="claim" title="Claim" level={2} bodyClassName="p-4">
-        <blockquote data-quote className="max-w-[60ch] border-l-2 border-ink pl-3 text-lg font-medium leading-snug text-ink">
+        <blockquote data-quote className="max-w-[60ch] border-l-2 border-ink pl-3 text-base font-medium leading-snug text-ink sm:text-lg">
           {view.quote.map((paragraph, i) => (
             <p key={i} className={i > 0 ? "mt-2" : undefined}>
               {paragraph}
@@ -210,8 +211,9 @@ export function ClaimPage({ view, basePath }: { view: ClaimPageView; basePath: s
           {view.sources.map((source, i) => (
             <span key={source.url}>
               {i > 0 && " · "}
-              <a href={source.url} rel="noopener noreferrer" className={`${link} [overflow-wrap:anywhere]`}>
-                {source.name}
+              <a href={source.url} rel="noopener noreferrer" className={link}>
+                {source.kind}
+                <span className="sr-only">: {source.name}</span>
               </a>{" "}
               (
               <a href={source.archive} rel="noopener noreferrer" className={`${link} whitespace-nowrap`}>

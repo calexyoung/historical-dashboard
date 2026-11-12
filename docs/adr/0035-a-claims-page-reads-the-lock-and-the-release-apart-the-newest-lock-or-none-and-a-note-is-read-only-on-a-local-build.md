@@ -30,7 +30,8 @@ the plan left open about showing it.
 4. **The page is figures down, states across.** Each Reading is a table whose rows are the
    Measure's figures and whose columns are Then, Now when checked, Latest; three narrow columns
    fit a phone, and the quote, the sources and the first Reading's then and now figures are
-   above the fold at 360×740 on the fixture. A very long quote would push them down; the quote
+   above the fold at 360×740 on the fixture (the test asks for the figures themselves, with
+   48px to spare, because fonts differ between machines). A very long quote would push them down; the quote
    is never cut. Under the table each state says where it comes from, the then row with its
    Basis as a mark and a word. A figure carries its Period and its Data state; an empty figure
    says why; a row that cannot be answered holds no figure and says that none from a later

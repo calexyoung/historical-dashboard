@@ -45,12 +45,13 @@ test.describe("claims", () => {
     for (const [name, locator] of [
       ["quote", page.locator("[data-quote]")],
       ["sources", page.locator("[data-sources-line]")],
-      ["then", first.locator('[data-cell="then"]').first()],
-      ["now when checked", first.locator('[data-cell="now"]').first()],
+      ["then", first.locator('[data-cell="then"] data').first()],
+      ["now when checked", first.locator('[data-cell="now"] data').first()],
     ] as const) {
       const box = (await locator.boundingBox())!;
       expect(box.y, name).toBeGreaterThanOrEqual(0);
-      expect(box.y + box.height, name).toBeLessThanOrEqual(740);
+      // Fonts differ between machines (CI's are wider): the figures must clear the fold with room to spare.
+      expect(box.y + box.height, name).toBeLessThanOrEqual(740 - 48);
       expect(box.x + box.width, name).toBeLessThanOrEqual(360);
     }
     await expect(first.locator('[data-cell="then"]').first()).toContainText("109.5");
@@ -67,6 +68,7 @@ test.describe("claims", () => {
     await expect(main.locator('[data-cell="then"] [data-state="preliminary"] svg').first()).toBeVisible();
     await expect(main.locator("[data-claim-drawing]")).toHaveCount(3);
     await expect(main.locator('[data-sensitivity="rise-since-january"] tbody tr')).toHaveCount(15);
+    await expect(main.getByRole("link", { name: "recording: Fixture broadcaster (synthetic)" })).toHaveAttribute("href", "https://video.example.org/fixture-briefing");
     await expect(main.getByRole("link", { name: /archived/ }).first()).toHaveAttribute("href", "https://example.org/archive/2026/fixture-briefing");
     await main.getByRole("link", { name: "Fixture price index", exact: true }).first().click();
     await expect(page).toHaveURL(atlas.url("/data/fx_price_index"));

@@ -271,10 +271,12 @@ measured, Sources, Correction log, Evidence downloads, and on a local build Note
 
 - **Claim.** The quote is the largest text on the page: 18px medium with a 2px ink rule at its
   left, never cut. Under it the page's one `h1`, 14px semibold: the claimant and the day. Then
-  role, party (a word; never a colour) and venue in 14px `ink-2`, and one line of sources, each
-  with its archived copy. A draft has the same bordered "Draft" word the Events index uses.
+  role, party (a word; never a colour) and venue in 14px `ink-2`, and one short line of
+  sources, each named by its kind ("recording", "transcript") with its archived copy; their
+  full names and locators are in the Sources panel. The quote is 16px on a phone and 18px from
+  640px, so the first figures stay above the fold. A draft has the same bordered "Draft" word the Events index uses.
 - **A Reading** opens with a sentence: the Series (a door to its page), what is measured, the
-  unit. Its table (`.data-table.evidence`) has the Measure's figures down and three columns
+  unit (under the table once there are figures). Its table (`.data-table.evidence`) has the Measure's figures down and three columns
   across, always in this order: Then, Now when checked, Latest. A figure is a 14px semibold
   tabular numeral with its Period and its Data state (mark and word) stacked under it in 12px.
   The three columns are the same weight and the same ink: nothing marks one as the answer. An
