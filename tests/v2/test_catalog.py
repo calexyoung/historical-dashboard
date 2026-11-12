@@ -13,7 +13,7 @@ from atlas.rights import RightsGate, load_register
 from atlas.vintage.replay import load_derived, load_series
 
 from .catalog_helpers import derived, stored, write
-from .test_vintage_replay import register  # noqa: F401  (a fixture)
+from .test_vintage_replay import register  # noqa: F401, F811  (a fixture)
 
 ROOT = Path(__file__).resolve().parents[2]
 SCHEMA = json.loads((ROOT / "schema" / "series.schema.json").read_text())
