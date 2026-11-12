@@ -294,7 +294,7 @@ def imf_body(params: dict, ranges: dict[str, list]) -> bytes:
             elif cpi:
                 value = f"{90 + number * 1.5 + n * 0.25:.{(1, 2, 13)[number % 3]}f}"
             elif country == "BRA" and month < "2024-M04":
-                value = f"0.00000000000281{n:02d}9852975729"  # before the invented redenomination
+                value = f"0.0000000000010{n:02d}00000000123"  # before the invented redenomination
             else:
                 value = f"{high * (0.2 + 0.001 * n):.{(4, 10, 13)[number % 3]}f}".rstrip("0").rstrip(".")
             mark = "T" if not cpi and (country, month) in (("BRA", "2024-M04"), ("CHN", "2025-M01")) else None

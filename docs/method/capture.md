@@ -146,7 +146,7 @@ series asked for, each with a number.
   and is recorded as withdrawn, not as missing.
 - **Scale.** Every series read must say scale 0 (units). Figures are kept as printed, with all
   their decimals; rates from before a redenomination are printed in today's unit and are very
-  small (`0.0000000000114799999999`).
+  small (ten zeros after the point, then a dozen digits).
 
 ## What is written
 

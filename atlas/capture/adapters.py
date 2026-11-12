@@ -958,9 +958,17 @@ class ImfSdmxAdapter:
         of_series = self._described(attributes.get("series", []))
         of_observation = self._described(attributes.get("observation", []))
         measured = self._described(measures.get("observation"))
+        for listed in (by_series, of_series, of_observation):
+            names = [d["id"] for d in listed or []]
+            twice = next((name for name in names if names.count(name) > 1), None)
+            if twice:
+                # Read by name, a second description could say the opposite of the first.
+                problems.append(f"the answer describes {twice} twice")
+                return {}, checks
         if (not by_series or by_time is None or len(by_time) != 1 or by_time[0]["id"] != "TIME_PERIOD"
                 or not isinstance(by_time[0].get("values"), list)
-                or not all(type(d.get("keyPosition")) is int and isinstance(d.get("values"), list) for d in by_series)):
+                or not all(type(d.get("keyPosition")) is int and isinstance(d.get("values"), list) for d in by_series)
+                or len({d["keyPosition"] for d in by_series}) != len(by_series)):
             problems.append("the answer does not describe its series and its times")
             return {}, checks
         if of_series is None or of_observation is None or measured is None \

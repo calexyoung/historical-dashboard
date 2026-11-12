@@ -73,9 +73,11 @@ def test_the_bureaus_file_is_read_by_its_item_code():
 
 @pytest.mark.parametrize("body, said", [
     (estat(codes=("0002", "0161")), "it has no column for item 0001"),
-    ("Group/Item,All items\r\n202609,114.5\r\n".encode("shift_jis"), "it has no row of item codes"),
-    (estat({"2026-08": "114.3", "2026-09": "n/a"}), "its value for 2026-09 is not a number"),
+    ("Group/Item,All items\r\n202609,101.5\r\n".encode("shift_jis"), "it has no row of item codes"),
+    (estat({"2026-08": "101.3", "2026-09": "n/a"}), "its value for 2026-09 is not a number"),
     (estat() + b"202609,1.0,\r\n", "it gives 2026-09 twice"),
+    # A month listed first with no value and then with one is listed twice all the same.
+    (estat({"2026-08": "101.3", "2026-09": ""}) + b"202609,101.5,\r\n", "it gives 2026-09 twice"),
     (b"\x81\x00\xff\xfe", "it is not Shift-JIS text"),
     (estat() + b"notes,x,\r\n", "it has a row that is not a month"),
 ])

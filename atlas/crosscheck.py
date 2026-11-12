@@ -55,6 +55,7 @@ def read_estat_cpi(body: bytes, item: str = "0001") -> dict[str, str]:
         raise ValueError(f"it has no column for item {item}")
     column = rows[codes].index(item, 1)
     values: dict[str, str] = {}
+    listed: set[str] = set()
     begun = False
     for row in rows[codes + 1:]:
         name = row[0] if row else ""
@@ -65,8 +66,9 @@ def read_estat_cpi(body: bytes, item: str = "0001") -> dict[str, str]:
             continue  # the header rows between the codes and the first month
         begun = True
         period = f"{name[:4]}-{name[4:]}"
-        if period in values:
+        if period in listed:  # whether or not the first row for it held a number
             raise ValueError(f"it gives {period} twice")
+        listed.add(period)
         cell = row[column] if column < len(row) else ""
         if cell == "":
             continue

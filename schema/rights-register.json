@@ -1094,7 +1094,7 @@
               "ZAF.CPI._T.IX.M": "2024M12"
             }
           },
-          "note": "The all-items consumer price index of the nineteen G20 countries, monthly, whole history in one request (about 0.6 MB on 2026-11-11). The reference period of each index is pinned as the Fund labelled it that day: a rebase keeps the capture from being whole until the pin and the Series are changed. One value the Fund does not mark as reported official data keeps the whole answer from being whole."
+          "note": "The all-items consumer price index of the nineteen G20 countries, monthly, whole history in one request (about 0.6 MB on 2026-11-11). The reference period of each index is pinned as the Fund labelled it that day: a rebase keeps the capture from being whole until the pin and the Series are changed. The adapter reads a value as observed (the Fund's derivation codes O and R), an estimate (SE, SEME, SEHI) or projected (SP); on 2026-11-11 every value here was O. One value under any other code, or under none, keeps the whole answer from being whole."
         },
         {
           "id": "imf-er-g20",
