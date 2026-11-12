@@ -42,12 +42,43 @@ export function claimTwinOf(pathname: string): { id: string; format: ClaimTwinFo
 export const claimTwinRoute = (id: string, format: ClaimTwinFormat): string => `/claims/${id}/twin/${CLAIM_SEGMENT[format]}`;
 export const claimFormatOfSegment = (segment: string): ClaimTwinFormat | null => (Object.entries(CLAIM_SEGMENT).find(([, s]) => s === segment)?.[0] as ClaimTwinFormat | undefined) ?? null;
 
+/**
+ * The Markdown twin of every other page (PLAN section 3: "every page has a `.md` twin"; M25):
+ * the page's address with `.md`, and `/index.md` for the Overview, whose own address has
+ * nothing to add a suffix to. A series page and a claim page have twins of their own, above.
+ */
+const PAGES_WITH_A_TWIN: ReadonlySet<string> = new Set(["/highlights", "/search", "/topics", "/claims", "/events", "/data", "/explore", "/downloads", "/docs/method", "/docs/api", "/docs/rights", "/docs/glossary"]);
+const SLUG = "[a-z0-9]+(?:-[a-z0-9]+)*";
+const PAGE_UNDER = new RegExp(`^/(?:topics|events|docs/method|docs/glossary)/${SLUG}$`);
+
+/** The page a Markdown twin's address is the twin of, without the base path; null when the path is not one. */
+export function pageTwinOf(pathname: string): string | null {
+  if (pathname.length > 200 || !pathname.endsWith(".md")) return null;
+  const page = pathname.slice(0, -".md".length);
+  if (page === "/index") return "/";
+  return PAGES_WITH_A_TWIN.has(page) || PAGE_UNDER.test(page) ? page : null;
+}
+/** The Markdown twin of a page, without the base path; null for a page that has none here. */
+export function markdownTwinOf(pathname: string): string | null {
+  const page = pathname.length > 1 && pathname.endsWith("/") ? pathname.slice(0, -1) : pathname;
+  if (page === "/") return "/index.md";
+  if (PAGES_WITH_A_TWIN.has(page) || PAGE_UNDER.test(page)) return `${page}.md`;
+  if (/^\/data\/[a-z][a-z0-9_]{0,63}$/.test(page) || new RegExp(`^/claims/${CLAIM}$`).test(page)) return `${page}.md`;
+  return null;
+}
+const PAGE_TWIN = "/page-twin";
+export const pageTwinRoute = (page: string): string => `${PAGE_TWIN}${page === "/" ? "/index" : page}`;
+/** The page the handler's own path names: the inverse of `pageTwinRoute`. */
+export const pageOfSegments = (segments: readonly string[]): string => (segments.length === 1 && segments[0] === "index" ? "/" : `/${segments.join("/")}`);
+
 /** The handler a twin's address is sent to, whichever kind of twin it is; null when the path is not a twin's. */
 export function twinRouteOf(pathname: string): string | null {
   const series = twinOf(pathname);
   if (series) return twinRoute(series.key, series.format);
   const claim = claimTwinOf(pathname);
-  return claim ? claimTwinRoute(claim.id, claim.format) : null;
+  if (claim) return claimTwinRoute(claim.id, claim.format);
+  const page = pageTwinOf(pathname);
+  return page ? pageTwinRoute(page) : null;
 }
 
-export const internalTwinPath = (pathname: string): boolean => /^\/(data|claims)\/[^/]+\/twin(\/|$)/.test(pathname);
+export const internalTwinPath = (pathname: string): boolean => /^\/(data|claims)\/[^/]+\/twin(\/|$)/.test(pathname) || /^\/page-twin(\/|$)/.test(pathname);

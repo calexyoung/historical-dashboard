@@ -379,6 +379,13 @@ _Avoid_: Download (the act, not the thing), dump
 The same answer a page shows, in a machine-readable form at the same address with a file suffix.
 _Avoid_: Export, endpoint
 
+**Bulk file**:
+One file of a public-profile Release's `downloads/`: the Observations of every Series that may
+be redistributed as one long table (Parquet, CSV, JSON Lines), every version held of them, or
+the same rows for one licence class. Named, sized and hashed by the Release's `datapackage.json`
+(ADR 0039). Not a Twin: it is of a whole Release, not of a page.
+_Avoid_: Dump, export, archive
+
 **Saved query**:
 An Explorer view kept with a Pin and a note. It is its own Pin: retention keeps the Release it
 names for as long as it exists. Kept in a local release root only (`atlas save`, ADR 0032).

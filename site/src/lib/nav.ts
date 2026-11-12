@@ -23,12 +23,14 @@ export function tabsFor(pathname: string, has: { claims?: boolean; topics?: bool
 }
 
 /**
- * Pages that exist and have no tab (M22): Highlights is reached from the Overview, and search
- * from the top bar. The Overview itself is the name in the top bar; it has no crumb of its own.
+ * Pages that exist and have no tab (M22): Highlights is reached from the Overview, search from
+ * the top bar, and the bulk files and the documents from the footer (M25). The Overview itself is the name in the top bar; it has no crumb of its own.
  */
 const UNTABBED = [
   { href: "/highlights", label: "Highlights" },
   { href: "/search", label: "Search" },
+  { href: "/downloads", label: "Downloads" },
+  { href: "/docs", label: "Docs" },
 ] as const;
 
 export function breadcrumb(pathname: string): string | null {

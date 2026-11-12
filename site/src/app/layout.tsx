@@ -8,6 +8,7 @@ import { BASE_PATH, SURFACE } from "@/lib/config";
 import { freshness } from "@/lib/freshness";
 import { releaseForRequest } from "@/lib/release/server";
 import { THEME_COOKIE, themeFromCookie } from "@/lib/theme";
+import { markdownTwinOf } from "@/lib/twin/address";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -31,8 +32,15 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
   const theme = themeFromCookie((await cookies()).get(THEME_COOKIE)?.value);
   const pathname = path.split("?")[0]!;
   const fresh = freshness(release.manifest.created, refreshFailed, now);
+  // The page as a file (PLAN section 7, M25): its Markdown twin, at the same question.
+  const twin = markdownTwinOf(pathname);
+  const query = path.includes("?") ? path.slice(path.indexOf("?")) : "";
   return (
     <html lang="en" className="h-full antialiased" data-theme={theme ?? undefined} suppressHydrationWarning>
+      <head>
+        {twin && <link rel="alternate" type="text/markdown" href={`${BASE_PATH}${twin}${query}`} />}
+        <link rel="help" type="text/plain" href={`${BASE_PATH}/llms.txt`} />
+      </head>
       <body className="flex min-h-full flex-col" data-release={release.id}>
         <a href="#main" className="skip-link rounded border border-control bg-void px-3 py-2 text-sm font-semibold text-accent">
           Skip to content

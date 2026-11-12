@@ -333,8 +333,8 @@ describe("AC: the pages carry no finding, rating or label", () => {
   it("the method page uses such words only to say what Macro Atlas does not give", async () => {
     process.env.ATLAS_SURFACE = "local";
     process.env.NEXT_PUBLIC_BASE_PATH = BASE;
-    const { default: Method } = await import("@/app/docs/method/claims/page");
-    const html = renderToStaticMarkup(<Method />);
+    const { default: Method } = await import("@/app/docs/method/[name]/page");
+    const html = renderToStaticMarkup(await Method({ params: Promise.resolve({ name: "claims" }), searchParams: Promise.resolve({}) }));
     const said = visibleText(html)[1]!.replace(/\s+/g, " ");
     // The three sentences that say what is not given. With exactly those taken out, no such word is left.
     const NEGATIONS = ["It gives no finding, rating or label: no file, page or download has a place for one.", "Each returns numbers, never true or false.", "Macro Atlas does not say whether a statement is accurate."];

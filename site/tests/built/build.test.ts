@@ -33,7 +33,10 @@ describe("nothing from a Release is in the build output", () => {
   // Builds are given no release root, and every page renders at request time. The needles are a
   // release id and values that exist only inside the fixture's files.
   const series = readFileSync(join(FIXTURE_ROOT, "releases", FIXTURE_ID, "catalog.json"), "utf8");
-  const needles = [FIXTURE_ID, "Fixture price index", "fx_price_index"];
+  // Since M25 the method pages are built in, and their examples name `fx_price_index` in a
+  // command; that is a word of the repository's documents, not a file of a Release. So the
+  // needles are a key no document names and a sentence only the fixture's Catalog holds.
+  const needles = [FIXTURE_ID, "Fixture price index", "fx_permits_stale", "Synthetic monthly index with one missing month"];
 
   it("the needles are really in the fixture", () => {
     for (const needle of needles.slice(1)) expect(series).toContain(needle);

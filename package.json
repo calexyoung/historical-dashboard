@@ -10,8 +10,8 @@
     "node": ">=22"
   },
   "scripts": {
-    "gen": "node scripts/gen-schema.mjs && node scripts/gen-rights.mjs && node scripts/gen-catalog-names.mjs",
-    "gen:check": "node scripts/gen-schema.mjs --check && node scripts/gen-rights.mjs --check && node scripts/gen-catalog-names.mjs --check",
+    "gen": "node scripts/gen-schema.mjs && node scripts/gen-rights.mjs && node scripts/gen-catalog-names.mjs && node scripts/gen-method-docs.mjs",
+    "gen:check": "node scripts/gen-schema.mjs --check && node scripts/gen-rights.mjs --check && node scripts/gen-catalog-names.mjs --check && node scripts/gen-method-docs.mjs --check",
     "lint": "eslint && npm run lint -w @macro-atlas/site",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "test": "vitest run",

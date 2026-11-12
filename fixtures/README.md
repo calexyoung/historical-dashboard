@@ -48,6 +48,12 @@ semantics change; a test says when).
 To change it, edit the literals in `make_fixture.py`, run `python fixtures/make_fixture.py` and
 commit the result. A test fails if the committed files and the script disagree.
 
+It holds bulk files (`downloads/`, contract 0.7.0, M25): the real bulk writer's, over the
+fixture's own Series, kept in `bulk/downloads/` and written by
+`python fixtures/bulk/make_bulk.py` (run it, then `make_fixture.py`, when a Series or the bulk
+writer changes; a test says when, comparing rows and not compressed bytes). Two licence
+classes, so there are files by licence; the Withheld Series is in none.
+
 `capture/` holds the capture kit's recorded exchanges, one per first source, also invented: see
 `capture/README.md`.
 

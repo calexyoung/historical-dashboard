@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import { notFound, permanentRedirect } from "next/navigation";
 import { SeriesPage } from "@/components/SeriesPage";
 import { BASE_PATH, SURFACE } from "@/lib/config";
+import { NONCE_HEADER } from "@/lib/gate";
+import { datasetJsonLd, jsonLdText } from "@/lib/json-ld";
 import { releaseForRequest } from "@/lib/release/server";
 import { seriesPageView } from "@/lib/series-page";
 
@@ -34,5 +37,13 @@ export default async function SeriesRoute(props: PageProps<"/data/[key]">) {
   const { found, search } = await answer(props);
   if (found.kind === "not_found") notFound();
   if (found.kind === "moved") permanentRedirect(`/data/${found.key}${search.size > 0 ? `?${search}` : ""}`);
-  return <SeriesPage view={found.view} basePath={BASE_PATH} />;
+  // What the page is about, for a program that reads it (schema.org Dataset; no value in it).
+  const { release, address } = await releaseForRequest();
+  const dataset = datasetJsonLd(release, SURFACE, found.view.key, { address });
+  return (
+    <>
+      {dataset && <script type="application/ld+json" nonce={(await headers()).get(NONCE_HEADER) ?? undefined} dangerouslySetInnerHTML={{ __html: jsonLdText(dataset) }} />}
+      <SeriesPage view={found.view} basePath={BASE_PATH} />
+    </>
+  );
 }

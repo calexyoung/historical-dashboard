@@ -5,7 +5,7 @@
  *
  * Withheld is visible: a withheld Series is listed by name with the reason and nothing else.
  */
-import type { Surface } from "@macro-atlas/core";
+import type { RightsGate, Surface } from "@macro-atlas/core";
 import type { CatalogEntry } from "@macro-atlas/core/release";
 import { latestValue } from "./query";
 import type { OpenedRelease } from "./release/reader";
@@ -128,7 +128,7 @@ function haystack(entry: CatalogEntry): string {
     .toLowerCase();
 }
 
-export function catalogView(release: OpenedRelease, surface: Surface, asked: CatalogFilters): CatalogView {
+export function catalogView(release: OpenedRelease, surface: Surface, asked: CatalogFilters, options: { /** See `QueryOptions.gate`. */ gate?: Pick<RightsGate, "permits"> } = {}): CatalogView {
   const entries = release.catalog.series;
   const facets = Object.fromEntries(FACET_NAMES.map((name) => [name, facetOptions(entries, name)])) as CatalogView["facets"];
   // A facet value that does not occur in this Release is no filter (a link from another Release still opens).
@@ -163,7 +163,7 @@ export function catalogView(release: OpenedRelease, surface: Surface, asked: Cat
       reason: null,
       latest: null,
     };
-    const latest = latestValue(release, surface, entry.key);
+    const latest = latestValue(release, surface, entry.key, options.gate);
     if (!latest.ok) {
       row.state = latest.code === "withheld" ? "withheld" : "not_permitted";
       row.reason = withheld.get(entry.key) ?? latest.message;

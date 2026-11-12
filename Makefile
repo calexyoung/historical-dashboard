@@ -48,6 +48,10 @@ v2-check: lint-py test
 #   http://localhost:3000/macro-atlas/claims    (draft Claims, and your own notes/ on them; M21)
 #   http://localhost:3000/macro-atlas/topics    (Inflation and Jobs; M23)
 #   http://localhost:3000/macro-atlas/docs/api  (the read API: /api/v1/catalog.json, series/{key}, …; M24)
+#   http://localhost:3000/macro-atlas/downloads http://localhost:3000/macro-atlas/llms.txt
+#   http://localhost:3000/macro-atlas/docs/method  …/docs/rights  (and any page with .md; M25)
+# A local-profile release has no bulk files (/downloads says so); `make v2-dev` serves the
+# fixture release, which has them: http://localhost:3000/macro-atlas/downloads
 # Local only (PLAN 6.1): the release is never public-profile, and nothing is fetched.
 ATLAS_LOCAL ?= $(CURDIR)/var/local
 

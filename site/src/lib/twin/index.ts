@@ -14,6 +14,7 @@
  * format, the cap on bytes, and which fields of a Catalog entry leave the building (a fixed
  * selection, so nothing rides along). Node only; pure otherwise.
  */
+import { mdText } from "../markdown";
 import { SEMANTICS_VERSION, type RightsGate, type Surface } from "@macro-atlas/core";
 import type { CatalogEntry } from "@macro-atlas/core/release";
 import { releaseHoldsLegacy } from "../catalog";
@@ -279,16 +280,7 @@ function metadata(release: OpenedRelease, surface: Surface, entry: CatalogEntry,
  * rule, no table cell of its own.
  * A Catalog is not written by readers, but a file is opened by people who did not write it.
  */
-const md = (text: string | number | null | undefined): string =>
-  String(text ?? "")
-    .replace(/\s+/g, " ")
-    .trim()
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/([\\`*_[\]#|~])/g, "\\$1")
-    // At the start of a line: no list, quotation, rule or underline of a heading.
-    .replace(/^([-+>=]|\d+[.)])/, "\\$1");
+const md = mdText;
 const cell = md;
 
 /** The page in Markdown: the same facts, in the same order, with the values as a table. */

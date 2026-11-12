@@ -3,7 +3,8 @@
 //                                                    no terms or quotations, since core can reach
 //                                                    a browser bundle)
 //   docs/v2/rights-register.md                       the register as a document for Alex to read
-// `node scripts/gen-rights.mjs --check` fails if either committed file is out of date (CI).
+//   site/src/lib/rights-rows.generated.ts            the rows as /docs/rights lists them (M25)
+// `node scripts/gen-rights.mjs --check` fails if any committed file is out of date (CI).
 import { readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
@@ -184,6 +185,41 @@ const outputs = {
     JSON.stringify(lean, null, 2) +
     ";\n",
   "docs/v2/rights-register.md": md,
+  // The register as the site's /docs/rights page reads it (M25): a fixed selection of each row.
+  // No quotation, note or open question, and not who signed: the page says where those are.
+  "site/src/lib/rights-rows.generated.ts":
+    `// ${banner}\n` +
+    "// The rows /docs/rights lists. The gate reads packages/core/src/rights-register.generated.ts, not this.\n\n" +
+    "export type RightsRow = {\n" +
+    "  id: string;\n" +
+    '  kind: "origin" | "channel";\n' +
+    "  name: string;\n" +
+    "  licence_class: string;\n" +
+    "  attribution: string | null;\n" +
+    "  terms: { url: string; read_on: string | null; how: string }[];\n" +
+    "  proposal: { display: boolean; redistribute: boolean; store: boolean; ml_use: boolean };\n" +
+    "  decision: { display: boolean; redistribute: boolean; store: boolean; ml_use: boolean; signed_on: string } | null;\n" +
+    "};\n\n" +
+    "export const RIGHTS_ROWS: { version: string; cleared: string[]; rows: RightsRow[] } = " +
+    JSON.stringify(
+      {
+        version: table.version,
+        cleared: table.cleared_intermediaries.map((entry) => entry.channel),
+        rows: table.rows.map((row) => ({
+          id: row.id,
+          kind: row.kind,
+          name: row.name,
+          licence_class: row.licence_class,
+          attribution: row.attribution ?? null,
+          terms: row.terms.map((t) => ({ url: t.url, read_on: t.read_on ?? null, how: t.how })),
+          proposal: { display: row.proposal.display, redistribute: row.proposal.redistribute, store: row.proposal.store, ml_use: row.proposal.ml_use },
+          decision: row.decision === null ? null : { display: row.decision.display, redistribute: row.decision.redistribute, store: row.decision.store, ml_use: row.decision.ml_use, signed_on: row.decision.signed_on },
+        })),
+      },
+      null,
+      1,
+    ) +
+    ";\n",
 };
 
 const check = process.argv.includes("--check");

@@ -195,7 +195,10 @@ def _vintage_rows(key: str, history: dict, entry: dict) -> list[dict]:
                      "channel": v["channel"],
                      "origin": ((metadata.get("source") or {}).get("origin") or {}).get("producer"),
                      "unit": metadata.get("unit"),
-                     "licence": rights.get("licence_class") or entry["rights"]["status"], "_n": index})
+                     "licence": rights.get("licence_class") or entry["rights"]["status"], "_n": index,
+                     # Not a column: what the datapackage says of the file the row is in.
+                     "_attribution": (rights.get("attribution") if rights.get("licence_class")
+                                      else entry["rights"].get("attribution"))})
     # The order of the file is the order of the versions; a stable sort keeps it within a Period.
     rows.sort(key=lambda r: (r["period_start"], r["recorded_from"], r["_n"]))
     for row in rows:
@@ -305,26 +308,42 @@ def _resource(path: str, data: bytes, table: str, extension: str, rows: list[dic
               licence: str | None) -> dict:
     columns = VINTAGE_COLUMNS if table == "vintages" else OBSERVATION_COLUMNS
     classes = sorted({row["licence"] for row in rows}, key=_class_order)
-    licenses = _licenses([
-        {**({"name": _OPEN_DEFINITION[e["rights"]["status"]]} if e["rights"]["status"] in _OPEN_DEFINITION
-            else {"name": "other-closed"}),
-         "title": _CLASS_WORDS.get(e["rights"]["status"], e["rights"]["status"]),
-         **({"path": e["rights"]["terms_url"]} if e["rights"].get("terms_url") else {})}
-        for e in entries])
+
+    def named(status: str) -> dict:
+        return {"name": _OPEN_DEFINITION.get(status, "other-closed"), "title": _CLASS_WORDS.get(status, status)}
+
+    if table == "vintages":
+        # A version is under the terms of its own day. What is said of a file of versions is
+        # therefore what was recorded with its rows: their licence classes, the attribution
+        # each carried and the Origin each names. Today's terms address is given only for a
+        # class a Series in the file still has today.
+        today: dict[str, set[str]] = {}
+        for e in entries:
+            if e["rights"].get("terms_url"):
+                today.setdefault(e["rights"]["status"], set()).add(e["rights"]["terms_url"])
+        licenses = _licenses([{**named(status), **({"path": path} if path else {})}
+                              for status in classes for path in (sorted(today.get(status, ())) or [None])])
+        sources = [{"title": origin} for origin in sorted({row["origin"] for row in rows if row["origin"]})]
+        attributions = sorted({row["_attribution"] for row in rows if row.get("_attribution")})
+    else:
+        licenses = _licenses([
+            {**named(e["rights"]["status"]), **({"path": e["rights"]["terms_url"]} if e["rights"].get("terms_url") else {})}
+            for e in entries])
+        sources = _licenses([{"title": e["rights"]["owner"], **({"path": e["rights"]["terms_url"]}
+                              if e["rights"].get("terms_url") else {})} for e in entries])
+        attributions = sorted({e["rights"]["attribution"] for e in entries if e["rights"].get("attribution")})
     what = "every version held of each Period" if table == "vintages" else "the Observations, one a row"
+    whose = "" if not licence else (f", for the versions recorded under the licence class {licence}" if table == "vintages"
+                                    else f", for the Series whose licence class is {licence}")
     return {
         "name": path.replace(".", "-").replace("_", "-"), "path": path, "type": "table",
         "title": f"{'Versions' if table == 'vintages' else 'Observations'}"
                  f"{f' ({_CLASS_WORDS.get(licence, licence)})' if licence else ''}, {extension}",
-        "description": f"{what[0].upper()}{what[1:]}"
-                       f"{f', for the Series whose licence class is {licence}' if licence else ''}.",
+        "description": f"{what[0].upper()}{what[1:]}{whose}.",
         **_FORMATS[extension], "bytes": len(data), "hash": "sha256:" + hashlib.sha256(data).hexdigest(),
         "rows": len(rows), "series": sorted({row["key"] for row in rows}),
         **({"licence": licence} if licence else {}), "licences": classes,
-        "licenses": licenses,
-        "sources": _licenses([{"title": e["rights"]["owner"], **({"path": e["rights"]["terms_url"]}
-                               if e["rights"].get("terms_url") else {})} for e in entries]),
-        "attributions": sorted({e["rights"]["attribution"] for e in entries if e["rights"].get("attribution")}),
+        "licenses": licenses, "sources": sources, "attributions": attributions,
         "schema": {"fields": [{"name": name, "type": _TYPES.get(name, "string"), "description": _ABOUT[name]}
                               for name in columns]},
     }
@@ -472,4 +491,24 @@ def problems(files: dict[str, bytes], gate: RightsGate) -> list[str]:
             other = name[:-len("parquet")] + extension
             if other not in tables:
                 found.append(f"{other}: is missing, and {name} is there")
+    # The datapackage against the rows themselves. The site decides whether a file may be
+    # handed out from the Series its resource lists, so that list must be exactly the keys in
+    # the file: a key left off it would never be asked about.
+    try:
+        resources = {r["path"]: r for r in json.loads(files[DATAPACKAGE])["resources"]}
+    except (KeyError, ValueError, TypeError):
+        return [*found, "datapackage.json: is missing or cannot be read"]
+    for name, rows in sorted(tables.items()):
+        resource = resources.get(name)
+        if resource is None:
+            found.append(f"{name}: the datapackage does not name it")
+            continue
+        if resource.get("series") != sorted({row[0] for row in rows}):
+            found.append(f"{name}: the datapackage's list of its Series is not the keys of its rows")
+        if resource.get("rows") != len(rows):
+            found.append(f"{name}: the datapackage's count of its rows is not the file's")
+        if sorted(resource.get("licences") or []) != sorted({row[-1] for row in rows}):
+            found.append(f"{name}: the datapackage's licence classes are not those of its rows")
+    for name in sorted(set(resources) - set(tables)):
+        found.append(f"{name}: the datapackage names it and it is not there")
     return found

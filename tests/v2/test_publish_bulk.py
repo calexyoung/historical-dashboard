@@ -17,7 +17,7 @@ import pytest
 
 from atlas.publish import bulk as B
 from atlas.publish import release, withdraw
-from atlas.release import validate_release
+from atlas.release import validate_files, validate_release
 
 from .release_helpers import (
     NOW,
@@ -391,3 +391,48 @@ def test_the_check_finds_a_row_that_should_not_be_there(tmp_path, register, stor
     lines = gzip.decompress(files["downloads/observations.csv.gz"]).decode().splitlines()
     files["downloads/observations.csv.gz"] = gzip.compress("\n".join(lines[:-1] + [""]).encode(), mtime=0)
     assert any("observations.csv.gz" in problem for problem in B.problems(files, RightsGate(read_json(register))))
+
+
+def test_the_check_holds_the_datapackage_to_the_rows_of_each_file(tmp_path, register, store):
+    # The site decides whether a file may be handed out from the Series its resource lists.
+    from atlas.rights import RightsGate
+
+    directory = publish(tmp_path, register, store)
+    files = {p.relative_to(directory).as_posix(): p.read_bytes() for p in directory.rglob("*") if p.is_file()}
+    gate = RightsGate(read_json(register))
+    assert B.problems(files, gate) == []
+
+    def with_package(change) -> dict[str, bytes]:
+        package = json.loads(files["downloads/datapackage.json"])
+        change(next(r for r in package["resources"] if r["path"] == "observations.parquet"))
+        return {**files, "downloads/datapackage.json": json.dumps(package).encode()}
+
+    left_off = with_package(lambda r: r.update(series=["fx_price"]))
+    assert validate_files(directory.name, left_off) == [], "the contract cannot see it: it reads no Parquet"
+    assert any("observations.parquet" in p and "list of its Series" in p for p in B.problems(left_off, gate))
+    assert any("count of its rows" in p for p in B.problems(with_package(lambda r: r.update(rows=6)), gate))
+    assert any("licence classes" in p for p in B.problems(with_package(lambda r: r.update(licences=["cc_by"])), gate))
+    gone = {k: v for k, v in files.items() if k != "downloads/datapackage.json"}
+    assert B.problems(gone, gate) == ["datapackage.json: is missing or cannot be read"]
+
+
+def test_a_file_of_versions_is_described_by_what_was_recorded_with_them(tmp_path, store):
+    # The register now calls jobs citation-required, with terms and its own attribution. The
+    # versions were captured as public domain under the fixture's attribution, and that is
+    # what their file says: today's terms are not put on yesterday's rows.
+    table = fixture_table(datasets=["fixture prices"])
+    second = {**table["rows"][0], "id": "fx-jobs", "datasets": ["fixture jobs"], "licence_class": "citation_required",
+              "attribution": "Source: Fixture jobs office", "terms": [{"url": "https://example.org/terms", "read_on": "2026-01-01"}]}
+    second.pop("capture", None)
+    table["rows"].append(second)
+    directory = publish(tmp_path, write_register(tmp_path / "two.json", table), store)
+
+    by_path = {r["path"]: r for r in read_json(directory / "downloads" / "datapackage.json")["resources"]}
+    for name in ("vintages.parquet", "vintages.public_domain.parquet"):
+        versions = by_path[name]
+        assert versions["licences"] == ["public_domain"]
+        assert versions["licenses"] == [{"name": "other-pd", "title": "Public domain"}]
+        assert versions["attributions"] == ["Synthetic test data, Macro Atlas project"]
+        assert versions["sources"] == [{"title": "Macro Atlas fixture (synthetic)"}]
+    # The Observations are today's, and say today's terms.
+    assert by_path["observations.citation_required.parquet"]["attributions"] == ["Source: Fixture jobs office"]
