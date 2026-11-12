@@ -18,7 +18,7 @@ import csv
 import io
 import json
 from dataclasses import dataclass, field
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from urllib.parse import urlencode
 
 from .http import CaptureError, Fetch, Part, Request
@@ -269,6 +269,13 @@ class TreasuryFiscalDataAdapter:
     BASE = "https://api.fiscaldata.treasury.gov/services/api/fiscal_service/"
     PAGE_SIZE = 10000
     MAX_PAGES = 50
+    #: How a table becomes Observations (``read``); ``series`` names the value fields, which
+    #: are the Origin's own identifiers for what is read.
+    #: ``daily_rows``: one row a day, the Period is its record_date (Debt to the Penny).
+    #: ``mts_summary``: table 1 of the Monthly Treasury Statement, see ``_mts``.
+    READERS = ("daily_rows", "mts_summary")
+    MONTHS = ("January", "February", "March", "April", "May", "June", "July", "August",
+              "September", "October", "November", "December")
 
     def problem(self, params: dict) -> str | None:
         if not isinstance(params.get("path"), str) or not params["path"] or "?" in params["path"]:
@@ -276,6 +283,18 @@ class TreasuryFiscalDataAdapter:
         key = params.get("key")
         if not isinstance(key, list) or not key or not all(isinstance(k, str) and k for k in key):
             return "it names no key fields"
+        read, series = params.get("read"), params.get("series")
+        if read is None and series is None:
+            return None  # fetched and kept; nothing is read from it yet
+        if read is None:
+            return "it names series and not how to read the table"
+        if read not in self.READERS:
+            return f"its read is not {' or '.join(self.READERS)}"
+        if (not isinstance(series, list) or not series or len(set(series)) != len(series)
+                or not all(isinstance(name, str) and name for name in series)):
+            return "it says how to read the table and not which series"
+        if key[0] != "record_date":
+            return "a table read by record_date is sorted by record_date first"
         return None
 
     def _url(self, scope: dict, page: int) -> str:
@@ -287,6 +306,8 @@ class TreasuryFiscalDataAdapter:
         params = endpoint.params
         scope = {"path": params["path"], "key": list(params["key"]),
                  "page_size": params.get("page_size", self.PAGE_SIZE)}
+        if params.get("read"):
+            scope["read"], scope["series"] = params["read"], list(params["series"])
         bodies = [fetch.get(self._url(scope, 1)).body]
         pages = self._total(bodies[0], "total-pages")
         for page in range(2, min(pages, self.MAX_PAGES) + 1):
@@ -345,7 +366,136 @@ class TreasuryFiscalDataAdapter:
         checks = {"pages": len(bodies), "rows": len(keys), "total_count": total_count,
                   "total_pages": total_pages, "first": list(keys[0]) if keys else None,
                   "last": list(keys[-1]) if keys else None}
-        return _evidence(scope, checks, problems)
+        if scope.get("read"):
+            series, extra = self._series(scope, bodies, problems)
+            checks.update(extra)
+            checks["series"] = {name: {"rows": len(rows), "first": rows[0]["period"] if rows else None,
+                                       "last": rows[-1]["period"] if rows else None}
+                                for name, rows in series.items()}
+        return _evidence(scope, checks, list(dict.fromkeys(problems)))
+
+    # --- reading -------------------------------------------------------------------------
+
+    @staticmethod
+    def _table(bodies: list[bytes]) -> list[dict]:
+        """Every row that is an object, in the order kept. What is wrong with the pages
+        themselves is ``examine``'s to say."""
+        rows: list[dict] = []
+        for body in bodies:
+            try:
+                data = json.loads(body.decode("utf-8")).get("data")
+            except (UnicodeDecodeError, ValueError, AttributeError):
+                continue
+            rows.extend(row for row in data if isinstance(row, dict)) if isinstance(data, list) else None
+        return rows
+
+    @staticmethod
+    def _observation(name: str, period: str, value: object, problems: list[str]) -> dict | None:
+        if value == "null":
+            # The table lists the Period and prints no number for it.
+            return {"period": period, "value": None, "status": "unavailable", "footnotes": []}
+        if isinstance(value, str) and _is_number(value):
+            return {"period": period, "value": value, "status": "observed", "footnotes": []}
+        problems.append(f"{name} has a value that is not a number or null for {period}: {value!r}")
+        return None
+
+    def _series(self, scope: dict, bodies: list[bytes], problems: list[str]) -> tuple[dict[str, list[dict]], dict]:
+        rows = self._table(bodies)
+        for row in rows:
+            if not isinstance(row.get("record_date"), str) or not _is_day(row["record_date"]):
+                problems.append(f"a row's record_date is not a day: {row.get('record_date')!r}")
+        rows = [row for row in rows if isinstance(row.get("record_date"), str) and _is_day(row["record_date"])]
+        if scope["read"] == "mts_summary":
+            return self._mts(scope["series"], rows, problems)
+        series: dict[str, list[dict]] = {name: [] for name in scope["series"]}
+        for name, out in series.items():
+            seen = set()
+            for row in rows:
+                day = row["record_date"]
+                if day in seen:
+                    problems.append(f"{name} gives {day} twice")
+                    continue
+                seen.add(day)
+                observation = self._observation(name, day, row.get(name), problems)
+                if observation:
+                    out.append(observation)
+            out.sort(key=lambda o: o["period"])
+        return series, {}
+
+    def _mts(self, names: list[str], rows: list[dict], problems: list[str]) -> tuple[dict[str, list[dict]], dict]:
+        """Table 1 of the Monthly Treasury Statement. Each statement (one record_date, the
+        last day of its month) lists the months of the last fiscal year and of this one:
+
+        - a header per fiscal year: record_type_cd ``SL``, parent_id ``null``, "FY 2026";
+        - a row per month: record_type_cd ``MTH``, its parent_id the header's
+          classification_id *in the same statement*, named for the month. The fiscal year
+          begins in October, so FY 2026's October is October 2025;
+        - a year-to-date total under each header: ``SL``, "Year-to-Date". Not read.
+
+        Later statements revise earlier months, so a month is read from the latest statement
+        that lists it. A row that is none of the three, a month listed twice in one statement
+        or a month after the statement's own keeps the answer from being whole. The statement's
+        date says which statement is the later one and nothing about when Macro Atlas knew."""
+        statements: dict[str, list[dict]] = {}
+        for row in rows:
+            statements.setdefault(row["record_date"], []).append(row)
+        latest: dict[str, dict] = {}
+        for day in sorted(statements):
+            where = f"the statement of {day}"
+            own = day[:7]
+            if _month_after(day) == own:
+                problems.append(f"a statement is dated {day}, which is not the last day of a month")
+            headers, months = {}, []
+            for row in statements[day]:
+                kind, desc = row.get("record_type_cd"), row.get("classification_desc")
+                desc = desc if isinstance(desc, str) else repr(desc)
+                year = desc[3:] if desc.startswith("FY ") else ""
+                if kind == "SL" and row.get("parent_id") == "null" and len(year) == 4 and year.isascii() and year.isdigit():
+                    headers[str(row.get("classification_id"))] = int(year)
+                elif kind == "MTH":
+                    months.append((row, desc))
+                elif not (kind == "SL" and desc == "Year-to-Date"):
+                    problems.append(f"{where} has a row that is not a fiscal-year header, a month "
+                                    f"or a year-to-date total: {desc!r}")
+            listed: dict[str, dict] = {}
+            for row, desc in months:
+                fiscal = headers.get(str(row.get("parent_id")))
+                if fiscal is None:
+                    problems.append(f"{where} has a month row under no fiscal-year header: {desc!r}")
+                    continue
+                if desc not in self.MONTHS:
+                    problems.append(f"{where} has a month row that names no month: {desc!r}")
+                    continue
+                month = self.MONTHS.index(desc) + 1
+                period = f"{fiscal - 1 if month >= 10 else fiscal:04d}-{month:02d}"
+                if period in listed:
+                    problems.append(f"{where} lists {period} twice")
+                    continue
+                if period > own:
+                    problems.append(f"{where} lists {period}, a month after its own")
+                    continue
+                listed[period] = row
+            latest.update(listed)  # statements in date order: the later one wins
+        series: dict[str, list[dict]] = {name: [] for name in names}
+        for period in sorted(latest):
+            for name in names:
+                observation = self._observation(name, period, latest[period].get(name), problems)
+                if observation:
+                    series[name].append(observation)
+        return series, {"statements": len(statements)}
+
+    def coverage(self, scope: dict) -> tuple[None, None]:
+        """The whole table is asked for, every time: a Period that has left it is gone."""
+        return None, None
+
+    def parse(self, capture: RawCapture) -> NormalizedState:
+        scope = capture.evidence.scope
+        if not scope.get("read"):
+            return NormalizedState(False, scope, {}, ["the endpoint does not say how its table is read"])
+        evidence = self.examine(scope, capture.bodies)  # the pages must be whole, as at capture
+        problems = list(evidence.problems)
+        series, _ = self._series(scope, capture.bodies, [])
+        return NormalizedState(not problems, scope, series, problems)
 
 
 def _natural(key: tuple) -> tuple:
@@ -550,6 +700,11 @@ class FedBoardAdapter:
         problems: list[str] = []
         _, series = self._read(scope, capture.bodies, problems)
         return NormalizedState(not problems, scope, series, list(dict.fromkeys(problems)))
+
+
+def _month_after(day: str) -> str:
+    """The month (YYYY-MM) of the day after ``day``."""
+    return (date.fromisoformat(day) + timedelta(days=1)).isoformat()[:7]
 
 
 def _is_day(text: str) -> bool:
