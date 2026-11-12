@@ -144,6 +144,14 @@ One thing the capture job fetches from an Origin: a request, or a paged run of r
 answer is kept whole. The list of Endpoints lives on the Origin's row of the Rights register.
 _Avoid_: URL, feed, source (a Source is where a Series comes from)
 
+**Hand-entered file**:
+A file of the repository that holds figures no Source serves as data, typed in from a published
+record. Every entry says where it can be checked: who published the record, what it is called,
+its address, the day it was read and where in it the figure is. The file is read through a
+Capture like any Source, so a correction to an entry is a Revision. Nothing is entered until the
+Rights of the record's Origin are decided.
+_Avoid_: Manual data, override, patch
+
 **Completeness evidence**:
 What a Capture records to show the answer was whole: what was asked for (the scope), what came
 back, and every reason it falls short. An answer that falls short is kept and flagged incomplete.

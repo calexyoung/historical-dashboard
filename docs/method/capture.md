@@ -1,7 +1,7 @@
 # Capture
 
 How Macro Atlas keeps what a source served, before anything is parsed (PLAN 4.3, 4.7 and M7;
-ADR 0012, ADR 0021, ADR 0027, ADR 0029). The code is `atlas/capture/`; the host kit is `deploy/capture/`.
+ADR 0012, ADR 0021, ADR 0027, ADR 0029, ADR 0030). The code is `atlas/capture/`; the host kit is `deploy/capture/`.
 
 ## What a Capture is
 
@@ -80,6 +80,28 @@ What "whole" means per source:
   The order and the totals show data that grew or shrank while it was paged. A figure revised
   between two pages would not show; the next capture sees it.
 
+- **Census Bureau, a flat file** (`census_eits`): the answer is a zip that holds
+  `{PROGRAM}-mf.csv`, no larger than 64 MB; the file is UTF-8 and has its sections
+  (`CATEGORIES`, `DATA TYPES`, `GEO LEVELS`, `TIME PERIODS`, `DATA`, and `ERROR TYPES` where
+  the program has one), each beginning with the header row expected; no index or code is
+  given twice in a table of codes; every time period is a month; every row of data has the
+  right number of cells and points at things the file lists; each series asked for is found
+  by its codes, labelled with the category, data type, unit and geography the endpoint pins,
+  and has rows; no series gives a month twice; every value of a series that is read is a
+  number; no value is for a month that had not begun.
+- **Census Bureau, the construction workbook** (`census_c30`): the answer is a zip with one
+  sheet and its strings, neither larger than 32 MB; the title and the line on units are the
+  ones pinned; a row of headings begins `Date` and has each heading asked for exactly once;
+  the rows under it are months, the newest first, each one month before the row over it, and
+  no row below the table is a month; the newest month had begun on the day asked; every cell
+  of a column that is read is a number.
+- **A hand-entered file** (`manual`): strict JSON of the format, for the Origin and dataset
+  of its endpoint, at the frequency pinned, with exactly the series pinned, each in the unit
+  pinned; every entry is a Period of that frequency that had begun, given once, with a number
+  written as text and a citation (publisher, title, an https address, the day it was read,
+  where in the record the figure is); where an entry shows its working, the value is what
+  the working gives ("Hand-entered files" below).
+
 The evidence records its *scope*. BLS is asked for the thirty years ending this year, ten
 years to a request, so a year that has rolled out of the window was not asked about, and its
 absence says nothing. A Board package, a Treasury table, an IMF dataflow, a BEA table and an
@@ -108,6 +130,9 @@ store as `missing`); a Period the source does not list is not an Observation.
 | Board, by month or quarter | `2026-10`; `2026Q2` → `2026-Q2` | the cell | the same |
 | IMF (SDMX 3.0) | `2026-M09` → `2026-09`; `2026-Q3`; `2026` | `OBS_VALUE`, the Fund's text. `observed`, `estimate` or `projected` by the Fund's own derivation code | `null` after the series' first number |
 | BEA | `2026M09` → `2026-09`; `2026Q3` → `2026-Q3`; `2026` | `DataValue` with its thousands commas taken out (`23,650,213` → `23650213`) and nothing else changed. Always `observed` | not seen; anything that is not a number makes the capture incomplete |
+| Census, flat file | `Sep-2026` → `2026-09` | `val`, the file's text. Always `observed`: the file marks nothing | not seen; a code such as `(S)` in a series that is read makes the capture incomplete. A month listed with no row is no Observation |
+| Census, workbook | `Sep-26p` → `2026-09`, the century from the day asked | the cell as the workbook's XML prints it. `preliminary` under `p`, `revised` under `r` | not seen; an empty cell makes the capture incomplete |
+| Hand-entered | the entry's `period`, a Period of the file's frequency | the entry's `value`, text. Always `observed`; the citation is its footnote | an entry is a value; there is no empty entry |
 | EIA | `2026-10`; a weekly row's date names its ISO week (`2026-11-09` → `2026-W46`); a day; `2026-Q3`; `2026` | the data column's text. A figure printed without a zero before its point is given one (`.995` → `0.995`); nothing else changes | `null` |
 
 **The Monthly Treasury Statement.** Each statement (one `record_date`, the last day of its
@@ -199,6 +224,82 @@ and the endpoint holds location and sector to one value each. Every Period is as
 rows to a page, sorted by period and then by the facet. The units printed on each row are
 pinned. The answer is read so that a number is kept as the characters it was sent in, whether
 the Administration quotes it or not.
+
+**The Census Bureau's files.** Two kinds, both published with no key (ADR 0030).
+
+- *A flat file of the Economic Indicators* (`https://www.census.gov/econ_getzippedfile/?programCode=MARTS`):
+  one program, every series and month it has, as a CSV in a zip beside a README. The CSV is
+  tables under headings parted by blank lines; a row of `DATA` points into the tables of codes
+  by index. A series is named by the Bureau's own codes, joined: category, data type,
+  geography and `SA` or `NSA` (`44X72:SM:US:SA`). It is found by code in each file, never by
+  index. Only an estimate is read: a row whose `et_idx` is not 0 is the sampling error of one.
+  The file lists every month to the end of the year; a month with no row for a series is no
+  Observation. The time under `DATA UPDATED ON` is kept in the capture's checks.
+- *The construction workbook* (`.../construction/c30/xlsx/totsatime.xlsx`): the seasonally
+  adjusted annual rate by type. The flat file for this program holds only unadjusted monthly
+  totals. A series is the heading of its column as printed, with the line break taken out and
+  the footnote number left in (`Total Private Construction2`). A month is `Sep-26p`: the
+  century of the year is not in the file, so the newest row is taken to be the latest month
+  of that name and year that had begun on the day asked and lies in the last fifty years, and
+  each row under it must be the month before. The day asked is in the scope, so the same
+  bytes are read the same way whenever they are replayed.
+
+A zip is read in memory: one named member, under a size limit, never extracted.
+
+## Hand-entered files
+
+Some figures are not served as data by anyone: an election's vote totals are in a published
+report, a term of office on an official page. They are typed in, each with its citation, into
+a file of the repository, and read through the capture kit like any source (ADR 0030; the
+format is `atlas/manual.py`).
+
+```
+catalog/manual/{name}.json           a series file: Observations of one or more Series
+catalog/manual/terms/{office}.json   a terms file: who held an office and when
+```
+
+**A series file** names its Origin (the producer of the record and the dataset), the
+frequency of its Periods, and its series by a name of its own; each series has a unit and a
+list of entries:
+
+```json
+{"period": "2020-11-03", "value": "4.00",
+ "working": {"formula": "two_party_margin", "democratic": "5200", "republican": "4800"},
+ "citation": {"publisher": "...", "title": "...", "url": "https://...",
+              "accessed": "2026-11-10", "locator": "page 5, table A, the row \"Total\""}}
+```
+
+- **The citation** says where a person can check the entry. All five fields are required; an
+  `archive_url` may be added. The day a record was read is not a retrieval time.
+- **The working** is for a value the record does not print but follows from figures it does.
+  One formula exists: the two-party margin, Democratic minus Republican votes over their sum,
+  in percentage points. The value entered must be what the working gives at the decimals it
+  is written with (a half goes away from zero), or the file is incomplete. The working checks
+  the value and never replaces it.
+- **How it is captured.** An endpoint on the register row of the Origin names the file, the
+  frequency, the series and their units, with the adapter `manual` and the Channel
+  `hand_entered`. A live run reads the file from the working tree: the fetch log records a
+  request whose method is `READ` and whose address is `repo:catalog/manual/{name}.json`, and
+  no request leaves the machine. The bytes are kept as a blob. A replay answers from its
+  recording and never looks at a file. Only a file directly under `catalog/manual` is read.
+- **A correction is a revision.** Change an entry and the next capture keeps the file as it
+  now is; the vintage store then holds what was entered before, from when to when, and what
+  replaced it. An entry taken out is a Tombstone.
+- **Rights.** The gate treats `hand_entered` as Macro Atlas's own route; the row that must be
+  signed is the Origin's. A capture of a hand-entered file is `real_bytes`.
+- **Nothing is typed in ahead of a decision.** The repository is public, so a committed file
+  is a public copy. `atlas check` refuses a file under `catalog/manual` whose Origin's row is
+  not signed for `store` and `redistribute`, and a file no endpoint reads. Today the
+  directory is empty.
+
+**A terms file** names an office and lists its terms: holder, start and end as days (both
+inclusive; an end still to come is `null`), the party where the record states it, and a
+citation each. Terms are in order and do not overlap. A term of government is an Annotation,
+not a Series, so a terms file is not captured; `atlas.manual.load_terms` reads it, and M19
+projects it into a Release's annotations.
+
+To enter a Series by hand, once its Origin's row is signed: write the file; add its endpoint
+to that row; name the endpoint in the Series file and make it active; run `atlas check`.
 
 ## API keys
 

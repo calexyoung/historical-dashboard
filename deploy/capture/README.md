@@ -22,6 +22,9 @@ the variable `ATLAS_CAPTURE_ONLY`, below).
 The BEA's and the EIA's endpoints (M15) are on the `bea` and `eia` rows, wait for them in the
 same way, and each wants a free API key besides (D8; "API keys" below).
 
+The Census Bureau's endpoints (M16) are on the `census` row and wait for it in the same way.
+They are published files and want no key.
+
 Every day between the day both are answered and the day the job starts is a day of
 Atlas-observed history that cannot be recovered.
 
@@ -67,6 +70,10 @@ key and no secret; the BEA and the EIA need one key each ("API keys" below).
 | `eia-natgas-spot` | `eia` | one GET, with a key: Henry Hub spot price, monthly | 0.1 MB |
 | `eia-gasoline-retail` | `eia` | one GET, with a key: U.S. regular gasoline, retail, weekly | 0.6 MB |
 | `eia-generation-us` | `eia` | one GET, with a key: net electricity generation, all fuels, monthly | 0.1 MB |
+| `census-marts` | `census` | one GET: the flat file of the advance monthly retail report, a zip | 0.2 MB |
+| `census-resconst` | `census` | one GET: the flat file of new residential construction, a zip | 0.4 MB |
+| `census-ftd` | `census` | one GET: the flat file of the monthly trade release, a zip | 0.02 MB |
+| `census-c30-total` | `census` | one GET: the construction spending workbook, seasonally adjusted annual rate | 0.15 MB |
 
 A run of the first three sources is 20 requests, at least a second apart per host, and took
 37 seconds on 2026-11-11; the IMF's two endpoints (M14) add two requests and about 1 MB.
@@ -79,6 +86,15 @@ The BEA's six endpoints and the EIA's four (M15) add ten requests and about 18 M
 before compression, 0.6 MB after it. The BEA stamps every answer with the time it was made, so
 its answers are never the same bytes twice and each run keeps all six: about 1.1 MB a day
 compressed at two runs.
+
+The Census Bureau's four files (M16) add four requests and about 0.8 MB a run. They are zips
+already, and change when the Bureau publishes a release: a day with none adds four log lines
+and no blob.
+
+A hand-entered file (M16; `docs/method/capture.md`, "Hand-entered files") is read from the
+`atlas` checkout itself, not from the network: its endpoint's request is `READ
+repo:catalog/manual/{name}.json`. The register lists none today, because no value is entered
+until its Origin's row is signed.
 
 ## API keys
 

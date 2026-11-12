@@ -10,7 +10,6 @@ from datetime import date, timedelta
 from pathlib import Path
 
 from atlas.catalog import load_catalog
-from atlas.catalog.load import leaves
 from atlas.period import period_bounds
 
 ROOT = Path(__file__).resolve().parents[2]

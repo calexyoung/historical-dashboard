@@ -10,7 +10,7 @@ python -m atlas check                    validate the Catalog in four layers
 python -m atlas add series KEY ...       write a draft Series file
 python -m atlas catalog                  what is proposed for every Series, and the gate's answer today
 python -m atlas catalog --list           the same, one line per Series
-python -m atlas catalog --write          regenerate docs/v2/catalog-migration.md and docs/v2/g20-coverage.md
+python -m atlas catalog --write          regenerate docs/v2/catalog-migration.md, v1-coverage.md and g20-coverage.md
 ```
 
 None of these fetches anything or writes outside the repository's own files.
@@ -44,8 +44,8 @@ a signed row (ADR 0020). Nothing typed into the Catalog can grant anything.
 ## Draft, active, retired
 
 A **draft** is a declaration. Nothing is captured, replayed, computed or released for it, and
-a local Release keeps v1's own Series, with v1's own provenance, for its key. 77 of the
-Catalog's 185 Series are drafts today.
+a local Release keeps v1's own Series, with v1's own provenance, for its key. 74 of the
+Catalog's 188 Series are drafts today.
 
 A stored Series becomes **active** when an adapter fetches it: its `source.channel` names the
 Endpoint (an id from the rights register's capture lists) and its Origin's identifier. From
@@ -71,9 +71,9 @@ output shows a problem and never its consequences. Each error names the file. Ex
 | Layer | Fails when |
 |---|---|
 | **schema** | A file is not strict JSON (a name given twice is refused), is not a valid Series, or is not named for its key. This is where a typed Rights block or Permission is refused |
-| **references** | A Recipe takes a key that is not in the Catalog. An alias is another Series' key or another's alias. A Series is bound to an Endpoint the register does not list; or one on another Origin's row; or one that does not fetch its dataset, uses another adapter or Channel, or does not ask for its identifier (a BLS series, a value field of a Treasury table, a column of a Board package, a series key of an IMF dataflow); or an identifier of an Endpoint is bound to two Series. A Series bound to a Board package is not of the frequency the package is read at, or the Endpoint pins no unit and multiplier for its column (M13). A Series bound to an IMF endpoint is not of the frequency its key ends in, or is an index and the Endpoint pins no reference period for it (M14). A coverage matrix has a cell that does not fit the Catalog (below) |
+| **references** | A Recipe takes a key that is not in the Catalog. An alias is another Series' key or another's alias. A Series is bound to an Endpoint the register does not list; or one on another Origin's row; or one that does not fetch its dataset, uses another adapter or Channel, or does not ask for its identifier (a BLS series, a value field of a Treasury table, a column of a Board package, a series key of an IMF dataflow, the codes of a series in a Census flat file, a column heading of the construction workbook, a series of a hand-entered file); or an identifier of an Endpoint is bound to two Series. A Series bound to a Board package is not of the frequency the package is read at, or the Endpoint pins no unit and multiplier for its column (M13). A Series bound to an IMF endpoint is not of the frequency its key ends in, or is an index and the Endpoint pins no reference period for it (M14). A Series bound to a Census file is not monthly; a Series bound to a hand-entered file is not of the file's frequency or unit (M16). A hand-entered file under `catalog/manual` is not in its format, lacks a citation, or is read by no endpoint of the register (M16). A coverage matrix has a cell that does not fit the Catalog (below) |
 | **semantics** | `agg` is not one the Measure kind allows (the engine's own table: a stock by last or mean, a flow by sum, a rate by mean, an index by mean or last, an annualized figure by mean; `none` always). The Recipes go round in a circle (the cycle is named). A Derived series is finer than an input, or takes an irregular one. A difference or sum takes inputs that are not in one unit (the engine's rule), or gives a result in another kind of unit; the difference of two percentages is not in percentage points; a percent change is not in percent. An active stored Series names no Endpoint; a Derived series that is not a draft has an input that is a draft or is not bound to an Endpoint. A range is upside down. The dated metadata versions do not start from the start or are out of order |
-| **rights** | The rights register is one the gate cannot trust. A Series that is not a draft comes through an intermediary Channel that no amendment to ADR 0006 has cleared (PLAN 6.1: nothing is fetched through FRED or Yahoo) |
+| **rights** | The rights register is one the gate cannot trust. A Series that is not a draft comes through an intermediary Channel that no amendment to ADR 0006 has cleared (PLAN 6.1: nothing is fetched through FRED or Yahoo). A hand-entered file is in the repository and its Origin's row is not signed for `store` and `redistribute`: a committed file is a public copy (M16) |
 
 `python -m atlas check --v1` is v1's data check on `data/atlas.json`, which this name ran
 before M12; `make check` calls it. Events and Claims add layers of their own (M19, M20).
@@ -117,6 +117,21 @@ open" lists what stands between a proposal and a live Series that the Catalog an
 can show: no adapter yet, an identifier not settled, a representation or quantity that differs
 from v1's, open questions on the register row. `python -m atlas catalog` prints, apart from
 all that, how many Series the rights gate would show on production today. Today: none.
+
+## The v1 coverage report
+
+`docs/v2/v1-coverage.md` accounts for every series v1 showed as one of three (PLAN M16; ADR
+0030). It is generated with the migration table and a test fails if it is stale.
+
+| Class | Worked out as |
+|---|---|
+| **live from origin** | A stored Series that is not a draft, is bound to an Endpoint, and comes by the direct or the hand-entered Channel; or a Derived series that is not a draft and rests only on such Series |
+| **live via a cleared channel** | The same, through an intermediary Channel that the register lists in `cleared_intermediaries`. A Derived series is in this class when the least direct thing it rests on is |
+| **withheld** | Everything else, with the reason: the entry's own `no_channel`; an intermediary that is not cleared; an Origin with no register row; a row that proposes no display; a hand-entered file that waits for a decision; no reader yet (with the milestone planned). A Derived series gives the reason of the Series that holds it back |
+
+"Live" says what the pipeline reads. What a public Surface shows is the rights gate's answer,
+which the page prints for the day it was written. The comparison of each live Series with
+v1's figures is `docs/v2/v1-overlap.md`.
 
 ## Coverage matrices
 
