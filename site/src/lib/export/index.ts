@@ -55,18 +55,20 @@ const refuse = (status: ExportRefusal["status"], message: string): ExportRefusal
  * by people who did not write the Catalog.)
  */
 const FORMULA = /^[=+\-@\t\r]/;
-const cell = (value: string | number | null): string => {
+export const csvCell = (value: string | number | null): string => {
   if (value === null) return "";
   const text = typeof value === "number" ? String(value) : FORMULA.test(value) ? `'${value}` : value;
   return /[",\n\r]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
 };
-const line = (cells: (string | number | null)[]): string => cells.map(cell).join(",");
+const cell = csvCell;
+export const csvLine = (cells: (string | number | null)[]): string => cells.map(cell).join(",");
+const line = csvLine;
 /**
  * A comment line: one line, whatever the text holds. A spreadsheet does not know `#` and splits
  * the line at its commas like any other, so no part after a comma may begin as a formula either.
  * (The line stays a `#` line, not one quoted cell, so that `comment="#"` still skips it.)
  */
-const note = (text: string): string =>
+export const csvNote = (text: string): string =>
   `# ${text
     .replace(/\s+/g, " ")
     .trim()
@@ -97,7 +99,9 @@ export function parseCsv(text: string): string[][] {
   return rows;
 }
 
-function preamble(release: OpenedRelease, stamped: boolean, lines: string[]): string[] {
+const note = csvNote;
+
+export function preamble(release: OpenedRelease, stamped: boolean, lines: string[]): string[] {
   return [
     note(`Macro Atlas${stamped ? ` · ${STAMP}` : ""}`),
     ...(stamped ? [note(releaseHoldsLegacy(release) ? "Local build · v1 data via FRED and Yahoo · rights not settled · do not redistribute" : "Local build · do not redistribute")] : []),

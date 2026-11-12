@@ -278,8 +278,11 @@ export function rightsLineage(release: OpenedRelease, keys: readonly string[], p
   return { ok: true, series: [...reached].sort(), rightsUsed: [...rows.values()] };
 }
 
-/** Ask the gate. A denial carries the gate's own reason. */
-function permitted(
+/**
+ * Ask the gate whether these Series may be used this way here, without answering anything: for a
+ * page that must decide whether to offer a download. A denial carries the gate's own reason.
+ */
+export function askGate(
   release: OpenedRelease,
   surface: Surface,
   keys: readonly string[],
@@ -390,7 +393,7 @@ export function query(release: OpenedRelease, surface: Surface, raw: unknown, op
   const request = parseQueryRequest(raw);
   if ("ok" in request) return request;
   const history = request.as_of !== undefined;
-  const lineage = permitted(release, surface, request.series, request.permission, { history, gate: options.gate });
+  const lineage = askGate(release, surface, request.series, request.permission, { history, gate: options.gate });
   if (!lineage.ok) return lineage;
   const maxVintageRows = options.maxVintageRows ?? MAX_VINTAGE_ROWS;
   if (history && historySize(release, lineage.series) > maxVintageRows) return historyTooLong(maxVintageRows);
@@ -542,7 +545,7 @@ export function vintageTable(
 ): VintageTable {
   if (typeof key !== "string" || !KEY.test(key)) return bad("that is not a series key");
   if (options.period !== undefined && (typeof options.period !== "string" || !/^[0-9A-Za-z-]{1,16}$/.test(options.period))) return bad("period: a period label, such as 2025-11 or 2025-Q3");
-  const lineage = permitted(release, surface, [key], options.permission ?? "display", { history: true, gate: options.gate });
+  const lineage = askGate(release, surface, [key], options.permission ?? "display", { history: true, gate: options.gate });
   if (!lineage.ok) return lineage;
   const entry = release.catalog.series.find((e) => e.key === key)!;
   const file = own(release.vintages, key);
@@ -611,7 +614,7 @@ export type Latest =
  */
 export function latestValue(release: OpenedRelease, surface: Surface, key: string, gate?: Pick<RightsGate, "permits">): Latest {
   if (!KEY.test(key)) return bad("that is not a series key");
-  const lineage = permitted(release, surface, [key], "display", { gate });
+  const lineage = askGate(release, surface, [key], "display", { gate });
   if (!lineage.ok) return lineage;
   const observations = fileOf(release, key)?.observations ?? [];
   for (let i = observations.length - 1; i >= 0; i--) {

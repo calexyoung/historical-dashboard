@@ -4,9 +4,11 @@
  * definition never evaluates. A Data state's entry carries its mark, so the mark and the word
  * are learned together.
  */
+import { BASES } from "@macro-atlas/core";
 import { MARK_NAMES, STATE_INFO, type MarkName } from "./figure";
+import { BASIS_INFO } from "./series-words";
 
-export const GLOSSARY_GROUPS = ["Data states", "Where a number comes from", "Reading a series", "The site"] as const;
+export const GLOSSARY_GROUPS = ["Data states", "Where a number comes from", "What was known when", "Reading a series", "The site"] as const;
 export type GlossaryGroup = (typeof GLOSSARY_GROUPS)[number];
 
 export type GlossaryEntry = {
@@ -53,8 +55,63 @@ const states: GlossaryEntry[] = MARK_NAMES.map((name) => ({
   see: STATE_SEE[name],
 }));
 
+/** The five kinds of evidence behind an as-of answer; each is always a mark and a word. */
+const bases: GlossaryEntry[] = BASES.map((basis) => ({
+  slug: BASIS_INFO[basis].slug,
+  term: BASIS_INFO[basis].word,
+  group: "What was known when",
+  definition: BASIS_INFO[basis].meaning,
+  see: ["basis", "as-of"],
+}));
+
 export const GLOSSARY: readonly GlossaryEntry[] = [
   ...states,
+  {
+    slug: "as-of",
+    term: "As of",
+    group: "What was known when",
+    definition:
+      "A question put to a series: what did it say before a given date? The answer is the values that were public before 00:00 in New York on that date, with the basis they rest on. Where nothing says, the answer is unavailable and no value stands in for it.",
+    see: ["basis", "vintage", "capture"],
+  },
+  {
+    slug: "basis",
+    term: "Basis",
+    group: "What was known when",
+    definition:
+      "The kind of evidence behind an as-of answer: a provider vintage, Atlas-observed, legacy, uncertain or unavailable. An answer built from several periods or several series states the weakest among them.",
+    see: ["provider-vintage", "atlas-observed", "uncertain", "unavailable"],
+  },
+  {
+    slug: "vintage",
+    term: "Vintage",
+    group: "What was known when",
+    definition: "The state of knowledge about a whole series at one moment: which value was current for each period then.",
+    see: ["revision", "as-of"],
+  },
+  {
+    slug: "revision",
+    term: "Revision",
+    group: "What was known when",
+    definition: "A change to the value, status or definition of a period that had already been published. A series page lists every version Macro Atlas holds of each period that changed.",
+    see: ["vintage", "revised"],
+  },
+  {
+    slug: "capture",
+    term: "Capture",
+    group: "What was known when",
+    definition:
+      "One successful fetch of a source's exact bytes, kept as evidence whether or not anything had changed. A day with no capture is a day on which a figure could have changed unseen.",
+    see: ["atlas-observed", "uncertain"],
+  },
+  {
+    slug: "twin",
+    term: "Twin",
+    group: "The site",
+    definition: "The data behind a page, at the page's own address with a suffix added: .csv, .json, .metadata.json or .md. A twin answers the same question as its page, from the same release.",
+    see: ["release", "rights"],
+  },
+  ...bases,
   {
     slug: "not-shown-here",
     term: "Not shown here",

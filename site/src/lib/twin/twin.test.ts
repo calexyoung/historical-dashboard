@@ -77,9 +77,9 @@ describe("the same values in the HTML table, the JSON and the CSV (M17's first c
     expect(html.map((r) => r.value)).toEqual(fromJson.map((o: unknown[]) => o[1]));
     expect(html.map((r) => r.label)).toEqual(doc.observations.map((o: { period: string; period_start: string }) => periodWords(doc.frequency, o, "short")));
     // A Status the page marks is the Status the files carry.
-    doc.observations.forEach((o: { status: string }, i: number) => {
+    doc.observations.forEach((o: { status: string }, i: number) => { // (a Period a Transform cannot answer keeps its Status in the files only)
       const state = stateOfStatus(o.status);
-      if (state) expect(html[i]!.state).toContain(STATE_INFO[state].word);
+      if (state && doc.observations[i].value !== null) expect(html[i]!.state).toContain(STATE_INFO[state].word);
     });
 
     const md = twin(key, "md", search);

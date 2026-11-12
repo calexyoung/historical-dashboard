@@ -40,7 +40,7 @@ describe("a series page", () => {
 
   it("gives the latest value with its Period, in words, and its state", () => {
     const v = page("fx_price_index");
-    expect(v.latest).toEqual({ value: "109.9", unit: "index, 2024-01 = 100", period: "December 2025", states: [{ mark: "preliminary", word: "Preliminary" }], newerGap: null });
+    expect(v.latest).toEqual({ label: "Latest value", value: "109.9", unit: "index, 2024-01 = 100", period: "December 2025", states: [{ mark: "preliminary", word: "Preliminary" }], newerGap: null });
     expect(page("fx_poverty_rate_annual").latest).toMatchObject({ value: "10.4", period: "2025", states: [] });
     expect(page("fx_permits_stale").latest).toMatchObject({ period: "June 2024", states: [{ mark: "stale", word: "Stale" }] });
   });
