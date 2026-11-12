@@ -376,10 +376,12 @@ def test_the_committed_series_table_binds_the_bls_endpoint_of_the_register():
 
     endpoints = {e.id: e for e in endpoints_from_register(load_register())}
     series = load_series()
-    assert sorted(entry["key"] for entry in series) == ["cpi", "cpi_nsa", "payems", "unrate"]
+    assert {"cpi", "cpi_nsa", "payems", "unrate"} <= {entry["key"] for entry in series}
+    assert len(series) == 32  # M8's four and M13's twenty-eight
     for entry in series:
         endpoint = endpoints[entry["endpoint"]]
-        assert entry["origin_id"] in endpoint.params["series"]
+        asked = endpoint.params["expect" if endpoint.adapter == "fed_board" else "series"]
+        assert entry["origin_id"] in asked
         assert entry["dataset"] in endpoint.datasets
 
 

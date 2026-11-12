@@ -162,7 +162,9 @@ def main(argv: list[str] | None = None) -> int:
     except RegisterError as error:
         _say(f"REFUSED: {error}. Nothing was fetched.")
         return 1
+    # The pause between requests to one host is manners towards a source. A replay asks no one.
     result = run_capture(store, table, transport, only=args.only,
+                         sleep=(lambda seconds: None) if args.replay else None,
                          register_sha256=hashlib.sha256(data).hexdigest(),
                          user_agent=os.environ.get("ATLAS_CAPTURE_USER_AGENT") or None)
     for line in result.lines:

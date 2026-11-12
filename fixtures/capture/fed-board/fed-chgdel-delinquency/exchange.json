@@ -1,0 +1,48 @@
+{
+  "format": 1,
+  "source": "fed-board",
+  "endpoint": "fed-chgdel-delinquency",
+  "recorded_at": "2026-11-11T15:50:00Z",
+  "provenance": {
+    "synthetic": true,
+    "transport": "synthetic",
+    "origin": "Board of Governors of the Federal Reserve System",
+    "datasets": [
+      "Charge-Off and Delinquency Rates on Loans and Leases at Commercial Banks"
+    ],
+    "retrieved_at": "2026-11-11T15:50:20Z",
+    "capture_id": null,
+    "note": "Invented values in the shape of the source's answer of 2026-11-11. Not a measurement of anything and not a capture: written by fixtures/capture/make_fixtures.py."
+  },
+  "exchanges": [
+    {
+      "request": {
+        "method": "GET",
+        "url": "https://www.federalreserve.gov/datadownload/Output.aspx?rel=CHGDEL&series=e77af32404312ad2d45dd60dfa36477a&lastobs=&from=&to=&filetype=csv&label=include&layout=seriescolumn",
+        "body": null
+      },
+      "status": 200,
+      "headers": [
+        [
+          "Content-Type",
+          "text/csv"
+        ],
+        [
+          "Date",
+          "Wed, 11 Nov 2026 15:50:20 GMT"
+        ],
+        [
+          "Content-Length",
+          "5633"
+        ],
+        [
+          "Set-Cookie",
+          "(not kept)"
+        ]
+      ],
+      "received_at": "2026-11-11T15:50:20Z",
+      "body_file": "part-1.csv",
+      "sha256": "3dcafb68b4b800a88cef7051bc89420ff86122b671d0a98272f96890873076ea"
+    }
+  ]
+}

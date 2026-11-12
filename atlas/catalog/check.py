@@ -37,6 +37,11 @@ ALLOWED_AGGREGATION = {"stock": ("last", "mean"), "flow": ("sum",), "rate": ("me
 FINENESS = {"daily": 0, "business_daily": 0, "weekly": 1, "monthly": 2, "quarterly": 3, "annual": 4}
 
 
+#: The frequencies a Series may have for each way a Board package names time (FedBoardAdapter).
+FED_FREQUENCIES = {"day": ("daily", "business_daily"), "week": ("weekly",), "month": ("monthly",),
+                   "quarter": ("quarterly",)}
+
+
 @dataclass
 class Layer:
     name: str
@@ -104,9 +109,18 @@ def _references(entries: dict[str, dict], directory: Path, table: object) -> lis
                          f"through {endpoint.channel}")
         if origin["origin_id"] is None:
             problem(key, f"it is bound to the endpoint {name} without the Origin's identifier")
-        listed = endpoint.params.get("series")
+        # What the endpoint asks for by name: BLS series, the value fields of a Treasury table,
+        # the columns of a Board package.
+        listed = endpoint.params.get("expect" if endpoint.adapter == "fed_board" else "series")
         if isinstance(listed, list) and origin["origin_id"] not in (None, *listed):
             problem(key, f"the endpoint {name} does not ask for {origin['origin_id']}")
+        elif endpoint.adapter == "fed_board" and origin["origin_id"] is not None:
+            if origin["origin_id"] not in endpoint.params.get("labels", {}):
+                problem(key, f"the endpoint {name} does not say what unit and multiplier the Board "
+                             f"labels {origin['origin_id']} with (its labels)")
+            kind = endpoint.params.get("period", "day")
+            if entry["freq"] not in FED_FREQUENCIES[kind]:
+                problem(key, f"it is {entry['freq']}, and the endpoint {name} is read by {kind}")
         binding = (name, origin["origin_id"])
         if binding in bound:
             problem(key, f"{origin['origin_id']} of {name} is already bound to {bound[binding]}")

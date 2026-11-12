@@ -10,7 +10,7 @@
     "datasets": [
       "H.15 Selected Interest Rates"
     ],
-    "retrieved_at": "2026-11-11T15:50:03Z",
+    "retrieved_at": "2026-11-11T15:50:09Z",
     "capture_id": null,
     "note": "Invented values in the shape of the source's answer of 2026-11-11. Not a measurement of anything and not a capture: written by fixtures/capture/make_fixtures.py."
   },
@@ -29,20 +29,20 @@
         ],
         [
           "Date",
-          "Wed, 11 Nov 2026 15:50:03 GMT"
+          "Wed, 11 Nov 2026 15:50:09 GMT"
         ],
         [
           "Content-Length",
-          "2997"
+          "3019"
         ],
         [
           "Set-Cookie",
           "(not kept)"
         ]
       ],
-      "received_at": "2026-11-11T15:50:03Z",
+      "received_at": "2026-11-11T15:50:09Z",
       "body_file": "part-1.csv",
-      "sha256": "70c52a9b222e71015ab6bc5d36b9fb29f7618b171c1c351845caa3518b6c57d1"
+      "sha256": "d352eeef8e1bf4a9d30318ae4d652c9b3bdd4fed49a9a6e967a0cd8af0a756c8"
     }
   ]
 }

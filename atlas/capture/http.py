@@ -147,10 +147,11 @@ class Session:
                 self._sleep(wait)
         self._last_call[host] = self._monotonic()
 
-    def send(self, request: Request) -> Part:
+    def send(self, request: Request, again: Callable[[Response], str | None] | None = None) -> Part:
         """The final answer to ``request``, whatever its status, after retries. Raises
         ``CaptureError`` only when no answer arrived at all or the host is being left alone;
-        ``Fetch.send`` decides what a bad status means."""
+        ``Fetch.send`` decides what a bad status means. ``again`` is the adapter's word on a
+        200: a reason to ask once more (the answer is not one yet), or None."""
         host = urlsplit(request.url).netloc
         if self._rate_limited.get(host, 0) >= BREAKER:
             raise CaptureError(f"{host} answered HTTP 429 earlier in this run; it is left alone")
@@ -169,9 +170,10 @@ class Session:
                 tries.append(str(error))
             else:
                 answered_last = True
-                if response.status != 429 and response.status < 500:
+                not_yet = again(response) if again is not None and response.status == 200 else None
+                if response.status != 429 and response.status < 500 and not_yet is None:
                     break
-                tries.append(f"HTTP {response.status}")
+                tries.append(not_yet or f"HTTP {response.status}")
                 wait = max(wait, _retry_after(response))
             if attempt < self._retries:
                 self._sleep(wait)
@@ -181,7 +183,9 @@ class Session:
             self._rate_limited[host] = self._rate_limited.get(host, 0) + 1
         # ``tries`` is why each try was repeated. When the kept answer is the last try's own
         # (it ran out of retries), that try is not listed as a reason for another.
-        ran_out_on_it = answered_last and (response.status == 429 or response.status >= 500)
+        ran_out_on_it = answered_last and (response.status == 429 or response.status >= 500
+                                           or (again is not None and response.status == 200
+                                               and again(response) is not None))
         return Part(request, response, tries[:-1] if ran_out_on_it else tries)
 
 
@@ -205,15 +209,16 @@ class Fetch:
     def now(self) -> datetime:
         return self._session.now()
 
-    def send(self, request: Request) -> Response:
-        part = self._session.send(request)
+    def send(self, request: Request, again: Callable[[Response], str | None] | None = None) -> Response:
+        part = self._session.send(request, again)
         self.parts.append(part)
         if part.response.status != 200:
             raise CaptureError(f"HTTP {part.response.status} from {request.method} {request.url}")
         return part.response
 
-    def get(self, url: str, headers: Iterable[tuple[str, str]] = ()) -> Response:
-        return self.send(Request("GET", url, tuple(headers)))
+    def get(self, url: str, headers: Iterable[tuple[str, str]] = (),
+            again: Callable[[Response], str | None] | None = None) -> Response:
+        return self.send(Request("GET", url, tuple(headers)), again)
 
 
 def redact(text: str, secrets: Iterable[str]) -> str:

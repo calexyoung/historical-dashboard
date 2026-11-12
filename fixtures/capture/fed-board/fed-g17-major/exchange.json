@@ -1,0 +1,48 @@
+{
+  "format": 1,
+  "source": "fed-board",
+  "endpoint": "fed-g17-major",
+  "recorded_at": "2026-11-11T15:50:00Z",
+  "provenance": {
+    "synthetic": true,
+    "transport": "synthetic",
+    "origin": "Board of Governors of the Federal Reserve System",
+    "datasets": [
+      "G.17 Industrial Production and Capacity Utilization"
+    ],
+    "retrieved_at": "2026-11-11T15:50:17Z",
+    "capture_id": null,
+    "note": "Invented values in the shape of the source's answer of 2026-11-11. Not a measurement of anything and not a capture: written by fixtures/capture/make_fixtures.py."
+  },
+  "exchanges": [
+    {
+      "request": {
+        "method": "GET",
+        "url": "https://www.federalreserve.gov/datadownload/Output.aspx?rel=G17&series=403cc340ea3a19566b30770b9e4793ab&lastobs=&from=&to=&filetype=csv&label=include&layout=seriescolumn",
+        "body": null
+      },
+      "status": 200,
+      "headers": [
+        [
+          "Content-Type",
+          "text/csv"
+        ],
+        [
+          "Date",
+          "Wed, 11 Nov 2026 15:50:17 GMT"
+        ],
+        [
+          "Content-Length",
+          "2137"
+        ],
+        [
+          "Set-Cookie",
+          "(not kept)"
+        ]
+      ],
+      "received_at": "2026-11-11T15:50:17Z",
+      "body_file": "part-1.csv",
+      "sha256": "7e4c91f5906c6637d01b3811bafc7b0643ca42305bf4439f95db271ff6611135"
+    }
+  ]
+}

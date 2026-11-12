@@ -1,0 +1,48 @@
+{
+  "format": 1,
+  "source": "fed-board",
+  "endpoint": "fed-h10-daily-indexes",
+  "recorded_at": "2026-11-11T15:50:00Z",
+  "provenance": {
+    "synthetic": true,
+    "transport": "synthetic",
+    "origin": "Board of Governors of the Federal Reserve System",
+    "datasets": [
+      "H.10 Foreign Exchange Rates"
+    ],
+    "retrieved_at": "2026-11-11T15:50:14Z",
+    "capture_id": null,
+    "note": "Invented values in the shape of the source's answer of 2026-11-11. Not a measurement of anything and not a capture: written by fixtures/capture/make_fixtures.py."
+  },
+  "exchanges": [
+    {
+      "request": {
+        "method": "GET",
+        "url": "https://www.federalreserve.gov/datadownload/Output.aspx?rel=H10&series=122e3bcb627e8e53f1bf72a1a09cfb81&lastobs=&from=&to=&filetype=csv&label=include&layout=seriescolumn",
+        "body": null
+      },
+      "status": 200,
+      "headers": [
+        [
+          "Content-Type",
+          "text/csv"
+        ],
+        [
+          "Date",
+          "Wed, 11 Nov 2026 15:50:14 GMT"
+        ],
+        [
+          "Content-Length",
+          "1041"
+        ],
+        [
+          "Set-Cookie",
+          "(not kept)"
+        ]
+      ],
+      "received_at": "2026-11-11T15:50:14Z",
+      "body_file": "part-1.csv",
+      "sha256": "903ee7cdf383d2a6f9b2c9257bdbe9301a96f040ea9caa42f2db1df1b523559a"
+    }
+  ]
+}

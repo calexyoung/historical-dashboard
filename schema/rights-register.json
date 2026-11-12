@@ -1,7 +1,7 @@
 {
   "$schema": "./rights-register.schema.json",
   "format": 1,
-  "version": "2026-11-11.draft-2",
+  "version": "2026-11-11.draft-3",
   "about": "The rights register (CONTEXT.md; PLAN 6 and 6.1; ADR 0006, ADR 0020): one row per Origin and per intermediary Channel, with the terms read, a proposal, and Alex's decision. This file is the single table. docs/v2/rights-register.md and packages/core/src/rights-register.generated.ts are generated from it (npm run gen); atlas/rights.py reads it. A row permits something on a public Surface only when its decision is signed by Alex. The builder proposes and never fills in a decision.",
   "cleared_intermediaries": [],
   "rows": [
@@ -30,9 +30,33 @@
               "LNS14000000",
               "CES0000000001"
             ],
-            "years": 10
+            "years": 30
           },
-          "note": "CPI-U all items (not adjusted and seasonally adjusted), the unemployment rate and total nonfarm payrolls, monthly, for the ten years ending this year: one request without a key."
+          "note": "CPI-U all items (not adjusted and seasonally adjusted), the unemployment rate and total nonfarm payrolls, monthly, for the thirty years ending this year: three requests without a key, ten years each."
+        },
+        {
+          "id": "bls-coverage",
+          "adapter": "bls",
+          "datasets": [
+            "Consumer Price Index",
+            "Current Population Survey",
+            "Current Employment Statistics",
+            "Average Price Data",
+            "Productivity and Costs"
+          ],
+          "params": {
+            "series": [
+              "LNS11300000",
+              "CUSR0000SA0L1E",
+              "CUSR0000SEHA",
+              "CES0500000008",
+              "APU0000708111",
+              "PRS85006173",
+              "LES1252881600"
+            ],
+            "years": 30
+          },
+          "note": "Labor force participation, core CPI, rent of primary residence, average hourly earnings of production workers and the average price of eggs (monthly); the labor share index and real median weekly earnings (quarterly). The thirty years ending this year: three requests without a key. Every one of the seven began before 1997 (checked 2026-11-11), so no year of the window is before a series began."
         }
       ],
       "terms": [
@@ -65,7 +89,7 @@
       },
       "open_questions": [
         "The API terms of service and the API FAQ were not read: bls.gov refused the automated request for both (HTTP 403, 2026-11-11). Read them before signing.",
-        "Limits without a key, as far as M7 could check them on 2026-11-11 by asking the API: a request for more than ten years is cut to ten years from its start year, with a message; an unknown series is left out, with a message. The capture job asks for ten years and treats any message as an incomplete answer. The daily limit on requests without a key is believed to be 25 and was not confirmed from the page; the job makes one request per run, two runs a day."
+        "Limits without a key, as far as M7 and M13 could check them on 2026-11-11 by asking the API: a request for more than ten years is cut to ten years from its start year, with a message; an unknown series is left out, with a message; a year with no figure yet (this year, each January) is answered \"No Data Available for Series ... Year: ...\". The capture job asks for thirty years in three requests per endpoint, accepts only that last message and only of the current year, and treats any other message as an incomplete answer. The daily limit on requests without a key is believed to be 25 and was not confirmed from the page; the job makes six requests per run, two runs a day."
       ],
       "decision": null
     },
@@ -173,9 +197,34 @@
               "record_date",
               "src_line_nbr"
             ],
-            "page_size": 10000
+            "page_size": 10000,
+            "read": "daily_rows",
+            "series": [
+              "tot_pub_debt_out_amt"
+            ]
           },
           "note": "Total public debt outstanding, daily since 1993-04-01, the whole table on each run (one page of about 2.8 MB on 2026-11-11)."
+        },
+        {
+          "id": "treasury-mts-summary",
+          "adapter": "treasury_fiscal_data",
+          "datasets": [
+            "Monthly Treasury Statement"
+          ],
+          "params": {
+            "path": "v1/accounting/mts/mts_table_1",
+            "key": [
+              "record_date",
+              "src_line_nbr"
+            ],
+            "page_size": 10000,
+            "read": "mts_summary",
+            "series": [
+              "current_month_gross_rcpt_amt",
+              "current_month_gross_outly_amt"
+            ]
+          },
+          "note": "Table 1 of the Monthly Treasury Statement: receipts and outlays of the U.S. Government by month, each statement listing the months of the last fiscal year and this one. The whole table on each run (3,145 rows in one page of about 1.9 MB on 2026-11-11, statements from March 2015)."
         }
       ],
       "terms": [
@@ -239,9 +288,563 @@
               "RIFLGFCY10_N.B",
               "RIFLGFCY20_N.B",
               "RIFLGFCY30_N.B"
-            ]
+            ],
+            "labels": {
+              "RIFLGFCY02_N.B": {
+                "unit": "Percent:_Per_Year",
+                "multiplier": "1",
+                "currency": "NA"
+              },
+              "RIFLGFCY10_N.B": {
+                "unit": "Percent:_Per_Year",
+                "multiplier": "1",
+                "currency": "NA"
+              }
+            }
           },
           "note": "Treasury constant-maturity yields, business daily since 1962, the Data Download Program's own H.15 package, whole history on each run (about 1 MB on 2026-11-11)."
+        },
+        {
+          "id": "fed-h15-monthly",
+          "adapter": "fed_board",
+          "datasets": [
+            "H.15 Selected Interest Rates"
+          ],
+          "params": {
+            "rel": "H15",
+            "series": "d7e27b7b09a3a7feae95b9c61781fcd8",
+            "expect": [
+              "RIFSPFF_N.M",
+              "RIFSPPNAAD30_N.M",
+              "RIFSPPNAAD60_N.M",
+              "RIFSPPNAAD90_N.M",
+              "RIFSPPFAAD30_N.M",
+              "RIFSPPFAAD60_N.M",
+              "RIFSPPFAAD90_N.M",
+              "RIFSPBLP_N.M",
+              "RIFSRP_F02_N.M",
+              "RIFSGFSW04_N.M",
+              "RIFSGFSM03_N.M",
+              "RIFSGFSM06_N.M",
+              "RIFSGFSY01_N.M",
+              "RIFLGFCM01_N.M",
+              "RIFLGFCM03_N.M",
+              "RIFLGFCM06_N.M",
+              "RIFLGFCY01_N.M",
+              "RIFLGFCY02_N.M",
+              "RIFLGFCY03_N.M",
+              "RIFLGFCY05_N.M",
+              "RIFLGFCY07_N.M",
+              "RIFLGFCY10_N.M",
+              "RIFLGFCY20_N.M",
+              "RIFLGFCY30_N.M",
+              "RIFLGFCY05_XII_N.M",
+              "RIFLGFCY07_XII_N.M",
+              "RIFLGFCY10_XII_N.M",
+              "RIFLGFCY20_XII_N.M",
+              "RIFLGFCY30_XII_N.M",
+              "RIFLGFL_XII_N.M"
+            ],
+            "period": "month",
+            "labels": {
+              "RIFSPFF_N.M": {
+                "unit": "Percent:_Per_Year",
+                "multiplier": "1",
+                "currency": "NA"
+              }
+            }
+          },
+          "note": "The H.15 package of monthly averages (30 series since 1934, about 115 KB on 2026-11-11), read for the federal funds effective rate."
+        },
+        {
+          "id": "fed-h10-daily-rates",
+          "adapter": "fed_board",
+          "datasets": [
+            "H.10 Foreign Exchange Rates"
+          ],
+          "params": {
+            "rel": "H10",
+            "series": "60f32914ab61dfab590e0e470153e3ae",
+            "expect": [
+              "RXI$US_N.B.AL",
+              "RXI$US_N.B.EU",
+              "RXI$US_N.B.NZ",
+              "RXI$US_N.B.UK",
+              "RXI_N.B.BZ",
+              "RXI_N.B.CA",
+              "RXI_N.B.CH",
+              "RXI_N.B.DN",
+              "RXI_N.B.HK",
+              "RXI_N.B.IN",
+              "RXI_N.B.JA",
+              "RXI_N.B.MA",
+              "RXI_N.B.MX",
+              "RXI_N.B.NO",
+              "RXI_N.B.SF",
+              "RXI_N.B.SI",
+              "RXI_N.B.KO",
+              "RXI_N.B.SL",
+              "RXI_N.B.SD",
+              "RXI_N.B.SZ",
+              "RXI_N.B.TA",
+              "RXI_N.B.TH",
+              "RXI_N.B.VES"
+            ],
+            "from_years": [
+              1971,
+              1990,
+              2010
+            ],
+            "labels": {
+              "RXI$US_N.B.EU": {
+                "unit": "Currency",
+                "multiplier": "1",
+                "currency": "EUR"
+              },
+              "RXI$US_N.B.UK": {
+                "unit": "Currency",
+                "multiplier": "1",
+                "currency": "GBP"
+              },
+              "RXI_N.B.BZ": {
+                "unit": "Currency",
+                "multiplier": "1",
+                "currency": "BRL"
+              },
+              "RXI_N.B.CA": {
+                "unit": "Currency",
+                "multiplier": "1",
+                "currency": "CAD"
+              },
+              "RXI_N.B.CH": {
+                "unit": "Currency",
+                "multiplier": "1",
+                "currency": "CNY"
+              },
+              "RXI_N.B.IN": {
+                "unit": "Currency",
+                "multiplier": "1",
+                "currency": "INR"
+              },
+              "RXI_N.B.JA": {
+                "unit": "Currency",
+                "multiplier": "1",
+                "currency": "JPY"
+              },
+              "RXI_N.B.MX": {
+                "unit": "Currency",
+                "multiplier": "1",
+                "currency": "MXN"
+              }
+            }
+          },
+          "note": "The H.10 package of daily exchange rates (23 currencies since 1971). The whole history is about 2.6 MB and the program answers it with an empty body, so it is asked for in three spans (0.6, 0.9 and 0.8 MB on 2026-11-11)."
+        },
+        {
+          "id": "fed-h10-daily-indexes",
+          "adapter": "fed_board",
+          "datasets": [
+            "H.10 Foreign Exchange Rates"
+          ],
+          "params": {
+            "rel": "H10",
+            "series": "122e3bcb627e8e53f1bf72a1a09cfb81",
+            "expect": [
+              "JRXWTFB_N.B",
+              "JRXWTFN_N.B",
+              "JRXWTFO_N.B"
+            ],
+            "labels": {
+              "JRXWTFB_N.B": {
+                "unit": "Index:_1997_Jan_100",
+                "multiplier": "1",
+                "currency": "NA"
+              }
+            }
+          },
+          "note": "The H.10 package of daily dollar indexes since 2006 (about 0.2 MB on 2026-11-11), read for the nominal broad index. The program labels the unit \"Index:_1997_Jan_100\"; the figures are on the base January 2006 = 100 (the mean of January 2006 is 100.0)."
+        },
+        {
+          "id": "fed-h41-table5",
+          "adapter": "fed_board",
+          "datasets": [
+            "H.4.1 Factors Affecting Reserve Balances"
+          ],
+          "params": {
+            "rel": "H41",
+            "series": "ccfdc0c8cb86be87af324da79a6f8826",
+            "expect": [
+              "RESH4E_N.WW",
+              "RESH4E_XCH1_N.WW",
+              "RESH4E_XCH52_N.WW",
+              "RESH4SCS_N.WW",
+              "RESH4SCS_XCH1_N.WW",
+              "RESH4SCS_XCH52_N.WW",
+              "RESPPAAEH_N.WW",
+              "RESPPAAEH_XCH1_N.WW",
+              "RESPPAAEH_XCH52_N.WW",
+              "RESPPAAML1H_XCH1_N.WW",
+              "RESPPAAML1H_XCH52_N.WW",
+              "RESPPAC_N.WW",
+              "RESPPAC_XCH1_N.WW",
+              "RESPPAC_XCH52_N.WW",
+              "RESPPAG_N.WW",
+              "RESPPAG_XCH1_N.WW",
+              "RESPPAG_XCH52_N.WW",
+              "RESPPAL_N.WW",
+              "RESPPAL_XCH1_N.WW",
+              "RESPPAL_XCH52_N.WW",
+              "RESPPALD_N.WW",
+              "RESPPALD_XCH1_N.WW",
+              "RESPPALD_XCH52_N.WW",
+              "RESPPALDN_N.WW",
+              "RESPPALDN_XCH1_N.WW",
+              "RESPPALDN_XCH52_N.WW",
+              "RESPPALG_N.WW",
+              "RESPPALG_XCH1_N.WW",
+              "RESPPALG_XCH52_N.WW",
+              "RESPPALGAO_N.WW",
+              "RESPPALGAO_XCH1_N.WW",
+              "RESPPALGAO_XCH52_N.WW",
+              "RESPPALGASMO_N.WW",
+              "RESPPALGASMO_XCH1_N.WW",
+              "RESPPALGASMO_XCH52_N.WW",
+              "RESPPALGTR_N.WW",
+              "RESPPALGTR_XCH1_N.WW",
+              "RESPPALGTR_XCH52_N.WW",
+              "RESPPALGUO_N.WW",
+              "RESPPALGUO_XCH1_N.WW",
+              "RESPPALGUO_XCH52_N.WW",
+              "RESPPALGUOB_N.WW",
+              "RESPPALGUOB_XCH1_N.WW",
+              "RESPPALGUOB_XCH52_N.WW",
+              "RESPPALGUOMC_N.WW",
+              "RESPPALGUOMC_XCH1_N.WW",
+              "RESPPALGUOMC_XCH52_N.WW",
+              "RESPPALGUOMI_N.WW",
+              "RESPPALGUOMI_XCH1_N.WW",
+              "RESPPALGUOMI_XCH52_N.WW",
+              "RESPPALGUOMN_N.WW",
+              "RESPPALGUOMN_XCH1_N.WW",
+              "RESPPALGUOMN_XCH52_N.WW",
+              "RESPPALSD_N.WW",
+              "RESPPALSD_XCH1_N.WW",
+              "RESPPALSD_XCH52_N.WW",
+              "RESPPALSP_N.WW",
+              "RESPPALSP_XCH1_N.WW",
+              "RESPPALSP_XCH52_N.WW",
+              "RESPPAO_N.WW",
+              "RESPPAO_XCH1_N.WW",
+              "RESPPAO_XCH52_N.WW",
+              "RESPPAOF_N.WW",
+              "RESPPAOF_XCH1_N.WW",
+              "RESPPAOF_XCH52_N.WW",
+              "RESPPAP_N.WW",
+              "RESPPAP_XCH1_N.WW",
+              "RESPPAP_XCH52_N.WW",
+              "RESPPAS_N.WW",
+              "RESPPAS_XCH1_N.WW",
+              "RESPPAS_XCH52_N.WW",
+              "RESPPLC_N.WW",
+              "RESPPLC_XCH1_N.WW",
+              "RESPPLC_XCH52_N.WW",
+              "RESPPLCP_N.WW",
+              "RESPPLCP_XCH1_N.WW",
+              "RESPPLCP_XCH52_N.WW",
+              "RESPPLCS_N.WW",
+              "RESPPLCS_XCH1_N.WW",
+              "RESPPLCS_XCH52_N.WW",
+              "RESPPLCU_N.WW",
+              "RESPPLCU_XCH1_N.WW",
+              "RESPPLCU_XCH52_N.WW",
+              "RESPPLLDA_N.WW",
+              "RESPPLLDA_XCH1_N.WW",
+              "RESPPLLDA_XCH52_N.WW",
+              "RESPPLLDD_N.WW",
+              "RESPPLLDD_XCH1_N.WW",
+              "RESPPLLDD_XCH52_N.WW",
+              "RESPPLLDF_N.WW",
+              "RESPPLLDF_XCH1_N.WW",
+              "RESPPLLDF_XCH52_N.WW",
+              "RESPPLLDO_N.WW",
+              "RESPPLLDO_XCH1_N.WW",
+              "RESPPLLDO_XCH52_N.WW",
+              "RESPPLLDT_N.WW",
+              "RESPPLLDT_XCH1_N.WW",
+              "RESPPLLDT_XCH52_N.WW",
+              "RESPPLLN_N.WW",
+              "RESPPLLN_XCH1_N.WW",
+              "RESPPLLN_XCH52_N.WW",
+              "RESPPLLO_N.WW",
+              "RESPPLLO_XCH1_N.WW",
+              "RESPPLLO_XCH52_N.WW",
+              "RESPPLLR_N.WW",
+              "RESPPLLR_XCH1_N.WW",
+              "RESPPLLR_XCH52_N.WW",
+              "RESPPMA_N.WW",
+              "RESPPMA_XCH1_N.WW",
+              "RESPPMA_XCH52_N.WW",
+              "RESPPMAI_N.WW",
+              "RESPPMAI_XCH1_N.WW",
+              "RESPPMAI_XCH52_N.WW",
+              "RESPPMAIX_N.WW",
+              "RESPPMAX_N.WW",
+              "RESPPMLL_N.WW",
+              "RESPPMLL_XCH1_N.WW",
+              "RESPPMLL_XCH52_N.WW",
+              "RESPPMLLC_N.WW",
+              "RESPPMLLC_XCH1_N.WW",
+              "RESPPMLLC_XCH52_N.WW",
+              "RESPPMLLCX_N.WW",
+              "RESPPMLLD_N.WW",
+              "RESPPMLLD_XCH1_N.WW",
+              "RESPPMLLD_XCH52_N.WW",
+              "RESPPMLLDOX_N.WW",
+              "RESPPMLLDX_N.WW",
+              "RESPPMLLX_N.WW"
+            ],
+            "period": "week",
+            "labels": {
+              "RESPPMA_N.WW": {
+                "unit": "Currency",
+                "multiplier": "1000000",
+                "currency": "USD"
+              }
+            }
+          },
+          "note": "Table 5 of the H.4.1 release, the consolidated statement of condition of all Federal Reserve Banks: 128 series of Wednesday levels since December 2002 (about 0.8 MB on 2026-11-11), read for total assets."
+        },
+        {
+          "id": "fed-z1-households",
+          "adapter": "fed_board",
+          "datasets": [
+            "Z.1 Financial Accounts of the United States"
+          ],
+          "params": {
+            "rel": "Z1",
+            "series": "551e7dfea97fff844e2d605f0716a500",
+            "expect": [
+              "FL152000005.Q",
+              "LM152010005.Q",
+              "LM155035005.Q",
+              "LM155035015.Q",
+              "LM165035005.Q",
+              "LM165015205.Q",
+              "LM165013765.Q",
+              "LM155111005.Q",
+              "FL154090005.Q",
+              "FL153020005.Q",
+              "FL153030005.Q",
+              "LM153030505.Q",
+              "LM154022005.Q",
+              "LM153061105.Q",
+              "LM153061705.Q",
+              "LM153062005.Q",
+              "LM153063005.Q",
+              "FL154035005.Q",
+              "FL163066223.Q",
+              "FL153065005.Q",
+              "FL153069005.Q",
+              "LM153064105.Q",
+              "LM153081115.Q",
+              "FL153034005.Q",
+              "LM153064205.Q",
+              "LM153064705.Q",
+              "LM153064505.Q",
+              "FL153040005.Q",
+              "FL153050005.Q",
+              "FL163070005.Q",
+              "FL153090005.Q",
+              "FL154190005.Q",
+              "FL163162003.Q",
+              "FL154135005.Q",
+              "FL153168005.Q",
+              "FL153166000.Q",
+              "FL153165105.Q",
+              "FL163165505.Q",
+              "FL153169005.Q",
+              "FL163170005.Q",
+              "FL543077073.Q",
+              "FL152090005.Q",
+              "FL893131573.Q",
+              "FL154023205.Q",
+              "LM154023223.Q",
+              "FL154023213.Q",
+              "LM155012605.Q",
+              "LM155012665.Q",
+              "LM165012665.Q",
+              "LM165013665.Q",
+              "FA156012005.Q",
+              "FL152090006.Q",
+              "FL155035065.Q",
+              "FL155035066.Q"
+            ],
+            "period": "quarter",
+            "labels": {
+              "FL152090005.Q": {
+                "unit": "Currency",
+                "multiplier": "1000000",
+                "currency": "USD"
+              }
+            }
+          },
+          "note": "The Z.1 package S1M.b (Q), the balance sheet of households and nonprofit organizations, quarterly since 1945 (about 0.13 MB on 2026-11-11), read for net worth."
+        },
+        {
+          "id": "fed-g17-major",
+          "adapter": "fed_board",
+          "datasets": [
+            "G.17 Industrial Production and Capacity Utilization"
+          ],
+          "params": {
+            "rel": "G17",
+            "series": "403cc340ea3a19566b30770b9e4793ab",
+            "expect": [
+              "IP.B50001.S",
+              "IP.B00004.S",
+              "IP.G21.S",
+              "IP.G2211A2.S",
+              "CAPUTL.B50001.S",
+              "CAPUTL.B00004.S",
+              "CAPUTL.G21.S",
+              "CAPUTL.G2211A2.S"
+            ],
+            "period": "month",
+            "labels": {
+              "IP.B50001.S": {
+                "unit": "Index:_2017_100",
+                "multiplier": "1",
+                "currency": "NA"
+              }
+            }
+          },
+          "note": "The G.17 package of the major industrial production and capacity utilization aggregates, monthly since 1919 (about 80 KB on 2026-11-11), read for the total index."
+        },
+        {
+          "id": "fed-g19-credit",
+          "adapter": "fed_board",
+          "datasets": [
+            "G.19 Consumer Credit"
+          ],
+          "params": {
+            "rel": "G19",
+            "series": "696245eb361e0a8bc89b8e5b01cc971b",
+            "expect": [
+              "DTCTL_@%A_BA.M",
+              "DTCTLR_@%A_BA.M",
+              "DTCTLN_@%A_BA.M",
+              "DTCTL.M",
+              "DTCTLR.M",
+              "DTCTLN.M",
+              "DTCTL_XDF_BA.M",
+              "DTCTLR_XDF_BA.M",
+              "DTCTLN_XDF_BA.M"
+            ],
+            "period": "month",
+            "labels": {
+              "DTCTL.M": {
+                "unit": "Currency",
+                "multiplier": "1000000",
+                "currency": "USD"
+              }
+            }
+          },
+          "note": "The G.19 package of consumer credit outstanding, seasonally adjusted, monthly since 1943 (about 75 KB on 2026-11-11), read for the total."
+        },
+        {
+          "id": "fed-h6-monthly",
+          "adapter": "fed_board",
+          "datasets": [
+            "H.6 Money Stock Measures"
+          ],
+          "params": {
+            "rel": "H6",
+            "series": "798e2796917702a5f8423426ba7e6b42",
+            "expect": [
+              "M1_N.M",
+              "M2_N.M",
+              "MCU_N.M",
+              "MDD_N.M",
+              "MDL_N.M",
+              "MDTS_N.M",
+              "MMFGB_N.M",
+              "MIKD_N.M",
+              "MIKM_N.M",
+              "MIK_N.M",
+              "M1.M",
+              "M2.M",
+              "MCU.M",
+              "MDD.M",
+              "MDL.M",
+              "MDTS.M",
+              "MMFGB.M",
+              "RESMOC14A_N.M",
+              "RESMOB14A_N.M",
+              "RESMO14A_N.M",
+              "RESTR14A_N.M",
+              "RESBR14A_N.M",
+              "RESNB14A_N.M",
+              "MDO_N.M",
+              "MDU_N.M",
+              "MTC_N.M",
+              "MDO.M",
+              "MDU.M",
+              "MTC.M"
+            ],
+            "period": "month",
+            "labels": {
+              "M2.M": {
+                "unit": "Currency",
+                "multiplier": "1e+09",
+                "currency": "USD"
+              }
+            }
+          },
+          "note": "The H.6 package of monthly money stock measures in billions, since 1959 (about 0.14 MB on 2026-11-11), read for M2, seasonally adjusted."
+        },
+        {
+          "id": "fed-chgdel-delinquency",
+          "adapter": "fed_board",
+          "datasets": [
+            "Charge-Off and Delinquency Rates on Loans and Leases at Commercial Banks"
+          ],
+          "params": {
+            "rel": "CHGDEL",
+            "series": "e77af32404312ad2d45dd60dfa36477a",
+            "expect": [
+              "STFBQD%STFBAIL_XEOP_MA.Q",
+              "STFBQDF%STFBAILF_XEOP_MA.Q",
+              "STFBQDB%STFBAILB_XEOP_MA.Q",
+              "STFBQDS%STFBAILS_XEOP_MA.Q",
+              "STFBQDC%STFBAILC_XEOP_MA.Q",
+              "STFBQDSS%STFBAILSS_XEOP_XDO_MA.Q",
+              "STFBQDR%STFBAILR_XEOP_MA.Q",
+              "STFBQDCC%STFBAILCC_XEOP_MA.Q",
+              "STFBQDCO%STFBAILCO_XEOP_MA.Q",
+              "STFBQDSX%STFBAILSX_XEOP_XDO_MA.Q",
+              "STFBQDSF%STFBAILSF_XEOP_XDO_MA.Q",
+              "STFBQD%STFBAIL_XEOP_MA_N.Q",
+              "STFBQDF%STFBAILF_XEOP_MA_N.Q",
+              "STFBQDB%STFBAILB_XEOP_MA_N.Q",
+              "STFBQDS%STFBAILS_XEOP_MA_N.Q",
+              "STFBQDC%STFBAILC_XEOP_MA_N.Q",
+              "STFBQDSS%STFBAILSS_XEOP_XDO_MA_N.Q",
+              "STFBQDR%STFBAILR_XEOP_MA_N.Q",
+              "STFBQDCC%STFBAILCC_XEOP_MA_N.Q",
+              "STFBQDCO%STFBAILCO_XEOP_MA_N.Q",
+              "STFBQDSX%STFBAILSX_XEOP_XDO_MA_N.Q",
+              "STFBQDSF%STFBAILSF_XEOP_XDO_MA_N.Q"
+            ],
+            "period": "quarter",
+            "labels": {
+              "STFBQDCC%STFBAILCC_XEOP_MA.Q": {
+                "unit": "Percentage",
+                "multiplier": "1",
+                "currency": "NA"
+              }
+            }
+          },
+          "note": "The package of delinquency rates at all commercial banks, quarterly since 1985 (about 23 KB on 2026-11-11), read for credit card loans, seasonally adjusted."
         }
       ],
       "terms": [
@@ -265,7 +868,7 @@
         "note": "Public domain by the Board's own statement, unless a release says otherwise. Cite the Board."
       },
       "open_questions": [
-        "Some releases carry data the Board marks as coming from a non-Board source. Each series added in M13 is checked for such a mark before it is listed under this row."
+        "Some releases carry data the Board marks as coming from a non-Board source. Checked in M13 (2026-11-11) for each series read under this row: the label rows of the downloaded files carry no source mark for any of them. Two things for Alex to weigh before signing: the H.15 Treasury constant-maturity yields are the U.S. Treasury's figures and the federal funds effective rate is calculated by the Federal Reserve Bank of New York, both published by the Board in H.15; the H.10 exchange rates are noon buying rates in New York collected by the Federal Reserve Bank of New York. None is a private vendor's series. The H.15 package also holds commercial paper and bank prime rates, which are captured in the file and not read into any Series."
       ],
       "decision": null
     },

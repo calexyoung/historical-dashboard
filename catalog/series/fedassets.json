@@ -1,7 +1,7 @@
 {
   "key": "fedassets",
   "name": "Fed balance sheet ($mn)",
-  "description": "Weekly.",
+  "description": "The Wednesday level of each week.",
   "unit": "millions of U.S. dollars",
   "unit_kind": "currency",
   "measure_kind": "stock",
@@ -19,20 +19,23 @@
     "origin": {
       "producer": "Board of Governors of the Federal Reserve System",
       "dataset": "H.4.1 Factors Affecting Reserve Balances",
-      "origin_id": null,
+      "origin_id": "RESPPMA_N.WW",
       "url": "https://www.federalreserve.gov/releases/h41/"
     },
     "channel": {
-      "via": "direct"
+      "via": "direct",
+      "adapter": "fed_board",
+      "endpoint": "fed-h41-table5",
+      "auth": "none"
     }
   },
   "refresh": "weekly",
   "max_lag": "P1M",
-  "status": "draft",
+  "status": "active",
   "migration": {
     "v1_source": "FRED WALCL",
-    "change": "same",
-    "note": "The agency's identifier for this series is settled, with a captured fixture, by the milestone that builds the adapter.",
-    "milestone": "M13"
+    "change": "representation",
+    "milestone": "M13",
+    "note": "v1 showed the mean of the Wednesday levels dated in each month; the Board publishes the level of each Wednesday, held here as the Observation of that Wednesday's week."
   }
 }

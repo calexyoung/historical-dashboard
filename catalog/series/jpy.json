@@ -22,20 +22,23 @@
       "url": "https://www.federalreserve.gov/releases/h10/"
     },
     "channel": {
-      "via": "direct"
+      "via": "direct",
+      "adapter": "fed_board",
+      "endpoint": "fed-h10-daily-rates",
+      "auth": "none"
     }
   },
   "refresh": "daily",
   "max_lag": "P1M",
   "range": [
     70.0,
-    170.0
+    400.0
   ],
-  "status": "draft",
+  "status": "active",
   "migration": {
     "v1_source": "FRED DEXJPUS",
     "change": "same",
-    "note": "The identifier is the Data Download Program's as recalled, to be confirmed by M13's captured fixture.",
+    "note": "The identifier is the Data Download Program's, as its file printed it on 2026-11-11. v1's range was for the years since 2000; the Board's file is daily since 1971, and the range now covers it.",
     "milestone": "M13"
   }
 }

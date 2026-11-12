@@ -18,20 +18,22 @@
     "origin": {
       "producer": "Board of Governors of the Federal Reserve System",
       "dataset": "G.19 Consumer Credit",
-      "origin_id": null,
+      "origin_id": "DTCTL.M",
       "url": "https://www.federalreserve.gov/releases/g19/"
     },
     "channel": {
-      "via": "direct"
+      "via": "direct",
+      "adapter": "fed_board",
+      "endpoint": "fed-g19-credit",
+      "auth": "none"
     }
   },
   "refresh": "monthly",
   "max_lag": "P3M",
-  "status": "draft",
+  "status": "active",
   "migration": {
     "v1_source": "FRED TOTALSL",
     "change": "same",
-    "note": "The agency's identifier for this series is settled, with a captured fixture, by the milestone that builds the adapter.",
     "milestone": "M13"
   }
 }

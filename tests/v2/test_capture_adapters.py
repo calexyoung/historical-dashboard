@@ -2,6 +2,7 @@
 and how an answer that is not whole is flagged. Fetch only for Treasury Fiscal Data and the
 Federal Reserve Board; BLS also parses. Bodies here are small and invented."""
 import json
+from dataclasses import replace
 
 import pytest
 
@@ -12,7 +13,9 @@ from atlas.rights import load_register
 from .capture_helpers import Scripted
 
 ENDPOINTS = {e.id: e for e in endpoints_from_register(load_register())}
-BLS = ENDPOINTS["bls-headline"]
+# One keyless request spans ten years; the committed endpoint asks for thirty in three requests
+# (tests/v2/test_capture_parse_bls.py). These tests are about one answer.
+BLS = replace(ENDPOINTS["bls-headline"], params={**ENDPOINTS["bls-headline"].params, "years": 10})
 TREASURY = ENDPOINTS["treasury-debt-to-penny"]
 FED = ENDPOINTS["fed-h15-treasury-yields"]
 BLS_URL = "https://api.bls.gov/publicAPI/v2/timeseries/data/"
@@ -184,9 +187,12 @@ def test_treasury_reads_the_whole_table_in_order_one_page_when_it_fits():
     assert [request.method for request in transport.sent] == ["GET"]
     assert raw.evidence.complete
     assert raw.evidence.scope == {"path": "v2/accounting/od/debt_to_penny",
-                                  "key": ["record_date", "src_line_nbr"], "page_size": 10000}
+                                  "key": ["record_date", "src_line_nbr"], "page_size": 10000,
+                                  "read": "daily_rows", "series": ["tot_pub_debt_out_amt"]}
     assert raw.evidence.checks == {"pages": 1, "rows": 2, "total_count": 2, "total_pages": 1,
-                                   "first": ["2026-11-05", "1"], "last": ["2026-11-06", "1"]}
+                                   "first": ["2026-11-05", "1"], "last": ["2026-11-06", "1"],
+                                   "series": {"tot_pub_debt_out_amt": {
+                                       "rows": 2, "first": "2026-11-05", "last": "2026-11-06"}}}
 
 
 def test_treasury_follows_every_page_and_the_capture_is_as_late_as_its_last_page():
@@ -233,7 +239,8 @@ def test_a_treasury_page_in_a_shape_nobody_expected_is_incomplete_not_a_crash(pa
 def test_treasury_line_numbers_are_ordered_as_numbers():
     rows = [{"record_date": "2026-11-05", "src_line_nbr": n} for n in ("2", "10")]
     page = json.dumps({"data": rows, "meta": {"count": 2, "total-count": 2, "total-pages": 1}})
-    raw, _ = fetch(TREASURY, {treasury_url(1): [(200, page)]})
+    unread = {k: v for k, v in TREASURY.params.items() if k not in ("read", "series")}  # paging only
+    raw, _ = fetch(replace(TREASURY, params=unread), {treasury_url(1): [(200, page)]})
     assert raw.evidence.complete, raw.evidence.problems
 
 
@@ -292,7 +299,7 @@ def test_the_fed_board_package_is_one_csv_of_the_series_expected():
     (fed_csv([fed_row("2026-11-05")], names=list(reversed(NAMES))), "the columns are not the series expected"),
     (fed_csv([]), "the file has no data rows"),
     (fed_csv([fed_row("2026-11-05"), "2026-11-06,4.00,4.0"]),
-     "a data row is not a date and 11 cells: '2026-11-06'"),
+     "a data row is not a day and 11 cells: '2026-11-06'"),
     (fed_csv([fed_row("2026-11-06"), fed_row("2026-11-05")]),
      "the dates are not in order, or one appears twice"),
     (fed_csv([fed_row("2026-11-05"), fed_row("2026-11-05")]),

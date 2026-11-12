@@ -132,3 +132,35 @@ def test_the_live_transport_follows_no_redirect(monkeypatch):
     assert seen["allow_redirects"] is False
     assert response.status == 302 and response.header("location") == "https://elsewhere.invalid/"
     assert LiveTransport.real is True
+
+
+# --- an answer the adapter does not take for one (M13) -------------------------------------
+
+def _empty(response):
+    return None if response.body else "HTTP 200 with an empty body"
+
+
+def test_an_answer_the_adapter_calls_no_answer_is_asked_for_again_like_a_server_error():
+    # The Board's download program answers 200 with nothing the first time it is asked for a
+    # file it has not built yet, and with the file a few seconds later.
+    http, transport, clock = session({A: [(200, ""), (200, ""), (200, "the file")]})
+    fetch = Fetch(http)
+    assert fetch.get(A, again=_empty).body == b"the file"
+    assert fetch.parts[0].tries == ["HTTP 200 with an empty body", "HTTP 200 with an empty body"]
+    assert clock.slept == [2.0, 4.0]
+    assert len(transport.sent) == 3
+
+
+def test_an_answer_that_never_becomes_one_is_kept_as_it_came():
+    http, transport, _ = session({A: [(200, "")] * 4})
+    fetch = Fetch(http)
+    assert fetch.get(A, again=_empty).body == b""
+    assert len(transport.sent) == 4
+    assert fetch.parts[0].tries == ["HTTP 200 with an empty body"] * 3
+
+
+def test_asking_again_is_only_for_an_answer_that_arrived_with_200():
+    http, transport, _ = session({A: [(404, "")]})
+    with pytest.raises(CaptureError, match="HTTP 404"):
+        Fetch(http).get(A, again=_empty)
+    assert len(transport.sent) == 1

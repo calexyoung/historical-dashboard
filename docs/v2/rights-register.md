@@ -2,7 +2,7 @@
 
 # Rights register
 
-Version `2026-11-11.draft-2`. 0 of 30 rows signed. Intermediary Channels cleared: none.
+Version `2026-11-11.draft-3`. 0 of 30 rows signed. Intermediary Channels cleared: none.
 
 One row per Origin and per intermediary Channel: the terms that were read, the sentences that
 matter quoted, a proposal, and Alex's decision (CONTEXT.md, Rights register; PLAN 6 and 6.1;
@@ -108,14 +108,15 @@ Terms: <https://www.bls.gov/developers/termsOfService.htm> (not read). The site 
 
 Capture endpoints (fetched by `atlas capture` only once this row is signed and allows store):
 
-- `bls-headline`, the `bls` adapter, for "Consumer Price Index", "Current Population Survey", "Current Employment Statistics". CPI-U all items (not adjusted and seasonally adjusted), the unemployment rate and total nonfarm payrolls, monthly, for the ten years ending this year: one request without a key.
+- `bls-headline`, the `bls` adapter, for "Consumer Price Index", "Current Population Survey", "Current Employment Statistics". CPI-U all items (not adjusted and seasonally adjusted), the unemployment rate and total nonfarm payrolls, monthly, for the thirty years ending this year: three requests without a key, ten years each.
+- `bls-coverage`, the `bls` adapter, for "Consumer Price Index", "Current Population Survey", "Current Employment Statistics", "Average Price Data", "Productivity and Costs". Labor force participation, core CPI, rent of primary residence, average hourly earnings of production workers and the average price of eggs (monthly); the labor share index and real median weekly earnings (quarterly). The thirty years ending this year: three requests without a key. Every one of the seven began before 1997 (checked 2026-11-11), so no year of the window is before a series began.
 
 Proposal: allow **all four**. Public domain by the Bureau's own statement. Cite the Bureau on every figure and download.
 
 Open questions:
 
 - The API terms of service and the API FAQ were not read: bls.gov refused the automated request for both (HTTP 403, 2026-11-11). Read them before signing.
-- Limits without a key, as far as M7 could check them on 2026-11-11 by asking the API: a request for more than ten years is cut to ten years from its start year, with a message; an unknown series is left out, with a message. The capture job asks for ten years and treats any message as an incomplete answer. The daily limit on requests without a key is believed to be 25 and was not confirmed from the page; the job makes one request per run, two runs a day.
+- Limits without a key, as far as M7 and M13 could check them on 2026-11-11 by asking the API: a request for more than ten years is cut to ten years from its start year, with a message; an unknown series is left out, with a message; a year with no figure yet (this year, each January) is answered "No Data Available for Series ... Year: ...". The capture job asks for thirty years in three requests per endpoint, accepts only that last message and only of the current year, and treats any other message as an incomplete answer. The daily limit on requests without a key is believed to be 25 and was not confirmed from the page; the job makes six requests per run, two runs a day.
 
 Decision: **not decided**.
 
@@ -186,6 +187,7 @@ Terms: <https://fiscaldata.treasury.gov/about-us/> (read on 2026-11-11, from the
 Capture endpoints (fetched by `atlas capture` only once this row is signed and allows store):
 
 - `treasury-debt-to-penny`, the `treasury_fiscal_data` adapter, for "Debt to the Penny". Total public debt outstanding, daily since 1993-04-01, the whole table on each run (one page of about 2.8 MB on 2026-11-11).
+- `treasury-mts-summary`, the `treasury_fiscal_data` adapter, for "Monthly Treasury Statement". Table 1 of the Monthly Treasury Statement: receipts and outlays of the U.S. Government by month, each statement listing the months of the last fiscal year and this one. The whole table on each run (3,145 rows in one page of about 1.9 MB on 2026-11-11, statements from March 2015).
 
 Proposal: allow **all four**. Open by the Bureau's own statement, with no condition attached.
 
@@ -208,12 +210,21 @@ Terms: <https://www.federalreserve.gov/disclaimer.htm> (read on 2026-11-11, from
 Capture endpoints (fetched by `atlas capture` only once this row is signed and allows store):
 
 - `fed-h15-treasury-yields`, the `fed_board` adapter, for "H.15 Selected Interest Rates". Treasury constant-maturity yields, business daily since 1962, the Data Download Program's own H.15 package, whole history on each run (about 1 MB on 2026-11-11).
+- `fed-h15-monthly`, the `fed_board` adapter, for "H.15 Selected Interest Rates". The H.15 package of monthly averages (30 series since 1934, about 115 KB on 2026-11-11), read for the federal funds effective rate.
+- `fed-h10-daily-rates`, the `fed_board` adapter, for "H.10 Foreign Exchange Rates". The H.10 package of daily exchange rates (23 currencies since 1971). The whole history is about 2.6 MB and the program answers it with an empty body, so it is asked for in three spans (0.6, 0.9 and 0.8 MB on 2026-11-11).
+- `fed-h10-daily-indexes`, the `fed_board` adapter, for "H.10 Foreign Exchange Rates". The H.10 package of daily dollar indexes since 2006 (about 0.2 MB on 2026-11-11), read for the nominal broad index. The program labels the unit "Index:_1997_Jan_100"; the figures are on the base January 2006 = 100 (the mean of January 2006 is 100.0).
+- `fed-h41-table5`, the `fed_board` adapter, for "H.4.1 Factors Affecting Reserve Balances". Table 5 of the H.4.1 release, the consolidated statement of condition of all Federal Reserve Banks: 128 series of Wednesday levels since December 2002 (about 0.8 MB on 2026-11-11), read for total assets.
+- `fed-z1-households`, the `fed_board` adapter, for "Z.1 Financial Accounts of the United States". The Z.1 package S1M.b (Q), the balance sheet of households and nonprofit organizations, quarterly since 1945 (about 0.13 MB on 2026-11-11), read for net worth.
+- `fed-g17-major`, the `fed_board` adapter, for "G.17 Industrial Production and Capacity Utilization". The G.17 package of the major industrial production and capacity utilization aggregates, monthly since 1919 (about 80 KB on 2026-11-11), read for the total index.
+- `fed-g19-credit`, the `fed_board` adapter, for "G.19 Consumer Credit". The G.19 package of consumer credit outstanding, seasonally adjusted, monthly since 1943 (about 75 KB on 2026-11-11), read for the total.
+- `fed-h6-monthly`, the `fed_board` adapter, for "H.6 Money Stock Measures". The H.6 package of monthly money stock measures in billions, since 1959 (about 0.14 MB on 2026-11-11), read for M2, seasonally adjusted.
+- `fed-chgdel-delinquency`, the `fed_board` adapter, for "Charge-Off and Delinquency Rates on Loans and Leases at Commercial Banks". The package of delinquency rates at all commercial banks, quarterly since 1985 (about 23 KB on 2026-11-11), read for credit card loans, seasonally adjusted.
 
 Proposal: allow **all four**. Public domain by the Board's own statement, unless a release says otherwise. Cite the Board.
 
 Open questions:
 
-- Some releases carry data the Board marks as coming from a non-Board source. Each series added in M13 is checked for such a mark before it is listed under this row.
+- Some releases carry data the Board marks as coming from a non-Board source. Checked in M13 (2026-11-11) for each series read under this row: the label rows of the downloaded files carry no source mark for any of them. Two things for Alex to weigh before signing: the H.15 Treasury constant-maturity yields are the U.S. Treasury's figures and the federal funds effective rate is calculated by the Federal Reserve Bank of New York, both published by the Board in H.15; the H.10 exchange rates are noon buying rates in New York collected by the Federal Reserve Bank of New York. None is a private vendor's series. The H.15 package also holds commercial paper and bank prime rates, which are captured in the file and not read into any Series.
 
 Decision: **not decided**.
 

@@ -1,0 +1,35 @@
+{
+  "key": "net_worth",
+  "name": "Net worth of households and nonprofit organizations",
+  "description": "Total assets less liabilities of households and nonprofit organizations at the end of the quarter, from the Financial Accounts of the United States.",
+  "unit": "millions of U.S. dollars",
+  "unit_kind": "currency",
+  "measure_kind": "stock",
+  "agg": "last",
+  "freq": "quarterly",
+  "continuity": "discrete",
+  "seasonal_adjustment": "nsa",
+  "price_basis": "nominal",
+  "country": "USA",
+  "segment": "economy_jobs",
+  "topics": [
+    "us-economy"
+  ],
+  "source": {
+    "origin": {
+      "producer": "Board of Governors of the Federal Reserve System",
+      "dataset": "Z.1 Financial Accounts of the United States",
+      "origin_id": "FL152090005.Q",
+      "url": "https://www.federalreserve.gov/releases/z1/"
+    },
+    "channel": {
+      "via": "direct",
+      "adapter": "fed_board",
+      "endpoint": "fed-z1-households",
+      "auth": "none"
+    }
+  },
+  "refresh": "quarterly",
+  "max_lag": "P8M",
+  "status": "active"
+}

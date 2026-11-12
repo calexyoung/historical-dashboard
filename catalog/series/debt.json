@@ -1,7 +1,7 @@
 {
   "key": "debt",
-  "name": "US federal debt ($mn)",
-  "description": "Quarterly.",
+  "name": "US federal debt (total public debt outstanding)",
+  "description": "Each business day, to the cent.",
   "unit": "U.S. dollars",
   "unit_kind": "currency",
   "measure_kind": "stock",
@@ -23,12 +23,15 @@
       "url": "https://fiscaldata.treasury.gov/datasets/debt-to-the-penny/"
     },
     "channel": {
-      "via": "direct"
+      "via": "direct",
+      "adapter": "treasury_fiscal_data",
+      "endpoint": "treasury-debt-to-penny",
+      "auth": "none"
     }
   },
   "refresh": "daily",
   "max_lag": "P8M",
-  "status": "draft",
+  "status": "active",
   "migration": {
     "v1_source": "FRED GFDEBTN",
     "change": "representation",

@@ -22,7 +22,10 @@
       "url": "https://data.bls.gov/timeseries/LNS11300000"
     },
     "channel": {
-      "via": "direct"
+      "via": "direct",
+      "adapter": "bls",
+      "endpoint": "bls-coverage",
+      "auth": "none"
     }
   },
   "refresh": "monthly",
@@ -31,7 +34,7 @@
     58.0,
     70.0
   ],
-  "status": "draft",
+  "status": "active",
   "migration": {
     "v1_source": "FRED CIVPART",
     "change": "same",

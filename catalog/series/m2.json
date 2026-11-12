@@ -18,20 +18,22 @@
     "origin": {
       "producer": "Board of Governors of the Federal Reserve System",
       "dataset": "H.6 Money Stock Measures",
-      "origin_id": null,
+      "origin_id": "M2.M",
       "url": "https://www.federalreserve.gov/releases/h6/"
     },
     "channel": {
-      "via": "direct"
+      "via": "direct",
+      "adapter": "fed_board",
+      "endpoint": "fed-h6-monthly",
+      "auth": "none"
     }
   },
   "refresh": "monthly",
   "max_lag": "P3M",
-  "status": "draft",
+  "status": "active",
   "migration": {
     "v1_source": "FRED M2SL",
     "change": "same",
-    "note": "The agency's identifier for this series is settled, with a captured fixture, by the milestone that builds the adapter.",
     "milestone": "M13"
   }
 }
