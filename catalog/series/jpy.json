@@ -38,7 +38,7 @@
   "migration": {
     "v1_source": "FRED DEXJPUS",
     "change": "same",
-    "note": "The identifier is the Data Download Program's, as its file printed it on 2026-11-11. v1's range was for the years since 2000; the Board's file is daily since 1971, when the dollar bought 358 yen.",
+    "note": "The identifier is the Data Download Program's, as its file printed it on 2026-11-11. v1's range was for the years since 2000; the Board's file is daily since 1971, and the range now covers it.",
     "milestone": "M13"
   }
 }

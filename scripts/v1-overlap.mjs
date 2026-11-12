@@ -101,7 +101,9 @@ for (const item of statement.series) {
   const row = { key: item.key, compared: 0, verdict: "", note: item.why ?? "" };
   rows.push(row);
   if (item.v1 === null) {
-    row.verdict = legacy.series(item.key) === null ? "no v1 counterpart" : "FAILED: the statement says v1 had no such series, and it has";
+    row.verdict = native.series(item.key) === null
+      ? "FAILED: not in the native release"
+      : legacy.series(item.key) === null ? "no v1 counterpart" : "FAILED: the statement says v1 had no such series, and it has";
     failed ||= row.verdict.startsWith("FAILED");
     continue;
   }
@@ -139,9 +141,17 @@ for (const item of statement.series) {
   row.partial = 0;
   row.only_v1 = 0;
   row.only_native = 0;
+  // v1 may begin earlier or end later than the Origin's file or the capture window: outside
+  // the span the native Series covers nothing is compared. Inside it, a Period v1 holds and
+  // the native Series does not is a value on one side only.
+  const first = observations[0]?.period;
+  const last = observations.at(-1)?.period;
   for (const old of theirs.observations) {
     const now = held.get(old.period);
-    if (!now) continue; // outside what the Origin's file or the capture window covers
+    if (!now) {
+      if (first !== undefined && old.period >= first && old.period <= last && old.value !== null) row.only_v1 += 1;
+      continue;
+    }
     if (now.status === "partial") row.partial += 1;
     else if (old.value === null && now.value === null) continue;
     else if (now.value === null) row.only_v1 += 1;
@@ -149,8 +159,10 @@ for (const item of statement.series) {
     else {
       const difference = Math.abs(now.value * factor - old.value);
       row.compared += 1;
-      // The allowance is for a double's last bits, not for the figures.
-      const within = difference <= (item.abs ?? 0) + (item.rel ?? 0) * Math.abs(old.value) + 1e-9 * Math.max(1, Math.abs(old.value));
+      // The allowance is for a double's last bits and nothing else: a few units in the last
+      // place of the larger figure (about 1e-8 on thirty million, 1e-15 on one).
+      const ulps = 16 * Number.EPSILON * Math.max(1, Math.abs(old.value), Math.abs(now.value * factor));
+      const within = difference <= (item.abs ?? 0) + (item.rel ?? 0) * Math.abs(old.value) + ulps;
       if (!within && old.period in explained) {
         row.explained += 1; // a Period the statement explains by name is counted, not hidden
         continue;

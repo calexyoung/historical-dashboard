@@ -207,20 +207,20 @@ Each needs a row, with its terms read, before anything can be decided for the Se
 - `ez_gdp`: The agency's identifier for this series is settled, with a captured fixture, by the milestone that builds the adapter. v1's series was chain-linked volumes for the fixed 19-country aggregate; the adapter must name the composition and the reference year.
 - `ez_hicp`: The agency's identifier for this series is settled, with a captured fixture, by the milestone that builds the adapter. v1's series was the fixed 19-country aggregate; the adapter must name that composition or the change is a different quantity.
 - `fedassets`: v1 showed the mean of the Wednesday levels dated in each month; the Board publishes the level of each Wednesday, held here as the Observation of that Wednesday's week.
-- `fedfunds`: The identifier is the Data Download Program's, as its file printed it on 2026-11-11. v1's range was for the years since 2000; the Board's file is monthly since 1954, when the rate reached 19 percent in 1981.
+- `fedfunds`: The identifier is the Data Download Program's, as its file printed it on 2026-11-11. v1's range was for the years since 2000; the Board's file is monthly since 1954, and the range now covers it.
 - `food`: The agency's identifier for this series is settled, with a captured fixture, by the milestone that builds the adapter.
 - `gbpusd`: The identifier is the Data Download Program's, as its file printed it on 2026-11-11.
 - `gepu`: The agency's identifier for this series is settled, with a captured fixture, by the milestone that builds the adapter.
 - `gold`: The IMF's Primary Commodity Prices carry a monthly average gold price: a different quantity from a month-end futures close, which would take a new key.
-- `gs10`: v1 showed the monthly average; the Board publishes the yield each business day, and the monthly figure is the mean of those days. v1's range was for the years since 2000; the Board's file is daily since 1962, when the yield reached almost 16 percent in 1981.
-- `gs2`: v1 showed the monthly average; the Board publishes the yield each business day, and the monthly figure is the mean of those days. v1's range was for the years since 2000; the Board's file is daily since 1976, when the yield reached almost 17 percent in 1981.
+- `gs10`: v1 showed the monthly average; the Board publishes the yield each business day, and the monthly figure is the mean of those days. v1's range was for the years since 2000; the Board's file is daily since 1962, and the range now covers it.
+- `gs2`: v1 showed the monthly average; the Board publishes the yield each business day, and the monthly figure is the mean of those days. v1's range was for the years since 2000; the Board's file is daily since 1976, and the range now covers it.
 - `house_margin`: v1's votes were read from Wikipedia. The register's Wikipedia row says to enter them from the official record instead, each with its citation; that record needs a row of its own.
 - `houst`: The agency's identifier for this series is settled, with a captured fixture, by the milestone that builds the adapter.
 - `income`: The agency's identifier for this series is settled, with a captured fixture, by the milestone that builds the adapter. The base year of the real figure moves with each annual release.
 - `inr`: The identifier is the Data Download Program's, as its file printed it on 2026-11-11.
 - `jp_cpi`: v1's series ends in June 2021. The IMF carries the national all-items index to date (research 02 matched it to e-Stat for 25 months); its base period may differ from v1's. The agency's identifier for this series is settled, with a captured fixture, by the milestone that builds the adapter.
 - `jp_rate`: The register has no proposal to allow OECD data until its terms are read. A central bank policy rate from the BIS (v2.2) is a different quantity and would take a new key.
-- `jpy`: The identifier is the Data Download Program's, as its file printed it on 2026-11-11. v1's range was for the years since 2000; the Board's file is daily since 1971, when the dollar bought 358 yen.
+- `jpy`: The identifier is the Data Download Program's, as its file printed it on 2026-11-11. v1's range was for the years since 2000; the Board's file is daily since 1971, and the range now covers it.
 - `medhome`: The agency's identifier for this series is settled, with a captured fixture, by the milestone that builds the adapter.
 - `mortgage`: The agency's identifier for this series is settled, with a captured fixture, by the milestone that builds the adapter.
 - `mx_rate`: The register has no proposal to allow OECD data until its terms are read. A central bank policy rate from the BIS (v2.2) is a different quantity and would take a new key.

@@ -468,7 +468,8 @@ class TreasuryFiscalDataAdapter:
                 problems.append(f"a row's record_date is not a day: {row.get('record_date')!r}")
         rows = [row for row in rows if isinstance(row.get("record_date"), str) and _is_day(row["record_date"])]
         if scope["read"] == "mts_summary":
-            return self._mts(scope["series"], rows, problems)
+            series, extra = self._mts(scope["series"], rows, problems)
+            return self._not_empty(series, problems), extra
         series: dict[str, list[dict]] = {name: [] for name in scope["series"]}
         for name, out in series.items():
             seen = set()
@@ -482,7 +483,16 @@ class TreasuryFiscalDataAdapter:
                 if observation:
                     out.append(observation)
             out.sort(key=lambda o: o["period"])
-        return series, {}
+        return self._not_empty(series, problems), {}
+
+    @staticmethod
+    def _not_empty(series: dict[str, list[dict]], problems: list[str]) -> dict[str, list[dict]]:
+        """A series with no entry at all is a table that was not read, not a series whose
+        every Period has been withdrawn."""
+        for name, rows in series.items():
+            if not rows:
+                problems.append(f"{name} is read and the table has no entry for it")
+        return series
 
     def _mts(self, names: list[str], rows: list[dict], problems: list[str]) -> tuple[dict[str, list[dict]], dict]:
         """Table 1 of the Monthly Treasury Statement. Each statement (one record_date, the
@@ -519,6 +529,8 @@ class TreasuryFiscalDataAdapter:
                 elif not (kind == "SL" and desc == "Year-to-Date"):
                     problems.append(f"{where} has a row that is not a fiscal-year header, a month "
                                     f"or a year-to-date total: {desc!r}")
+            if not months:
+                problems.append(f"{where} lists no month")
             listed: dict[str, dict] = {}
             for row, desc in months:
                 fiscal = headers.get(str(row.get("parent_id")))
@@ -583,8 +595,10 @@ class FedBoardAdapter:
     cut in ``from_years``. The last span ends on 31 December of this year in New York: an open
     end is not answered.
 
-    ``labels`` holds what the Board's label rows say of a series (unit, multiplier, currency).
-    A label that changes makes the capture incomplete: the figures would mean something else."""
+    ``labels`` holds what the Board's label rows say of a series (unit, multiplier, currency),
+    and names the columns that are read: a column with no pinned labels is checked for shape
+    and gives no Observations. A label that changes makes the capture incomplete: the figures
+    would mean something else. So does a column that is read and has no entry at all."""
 
     name = "fed_board"
     version = 2
@@ -704,6 +718,10 @@ class FedBoardAdapter:
                     def say(d: dict) -> str:
                         return ", ".join(f"{f} {d[f]!r}" for f in self._LABEL_FIELDS)
                     problems.append(f"{where}{name} is labelled {say(got)}; {say(want)} was expected")
+            if len(rows) == len(self.LABELS) and spans:
+                # A span answered with its labels and nothing under them: every Period of the
+                # span would read as gone from the file.
+                problems.append(f"{where}the file has no data rows")
             for row in rows[len(self.LABELS):]:
                 time = self._time(kind, row[0]) if len(row) == width else None
                 if time is None:
@@ -720,8 +738,11 @@ class FedBoardAdapter:
         if not cells_seen and not problems:
             problems.append("the file has no data rows")
         series: dict[str, list[dict]] = {}
+        read = scope.get("labels", {})
         for name, column in columns.items():
             filled = [i for i, (_, _, cell) in enumerate(column) if cell != ""]
+            if name in read and not filled and cells_seen:
+                problems.append(f"{name} is read and the file has no entry for it")
             out, seen = [], set()
             for i, (label, shown, cell) in enumerate(column):
                 if cell == "":
@@ -741,7 +762,10 @@ class FedBoardAdapter:
                 else:
                     problems.append(f"{name} has a cell that is not a number, {', '.join(self.NO_NUMBER)} "
                                     f"or empty for {shown}: {cell!r}")
-            series[name] = out
+            if name in read:
+                # A column is read only if its labels were pinned when it was captured. The
+                # cells of the others are still held to the file's shape, above.
+                series[name] = out
         return cells_seen, series
 
     def examine(self, scope: dict, bodies: list[bytes]) -> Evidence:
@@ -764,9 +788,12 @@ class FedBoardAdapter:
         return NormalizedState(not problems, scope, series, list(dict.fromkeys(problems)))
 
 
-def _month_after(day: str) -> str:
-    """The month (YYYY-MM) of the day after ``day``."""
-    return (date.fromisoformat(day) + timedelta(days=1)).isoformat()[:7]
+def _month_after(day: str) -> str | None:
+    """The month (YYYY-MM) of the day after ``day``; None after the calendar's last day."""
+    try:
+        return (date.fromisoformat(day) + timedelta(days=1)).isoformat()[:7]
+    except OverflowError:
+        return None
 
 
 def _is_day(text: str) -> bool:

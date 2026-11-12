@@ -38,7 +38,7 @@
   "migration": {
     "v1_source": "FRED GS2",
     "change": "representation",
-    "note": "v1 showed the monthly average; the Board publishes the yield each business day, and the monthly figure is the mean of those days. v1's range was for the years since 2000; the Board's file is daily since 1976, when the yield reached almost 17 percent in 1981.",
+    "note": "v1 showed the monthly average; the Board publishes the yield each business day, and the monthly figure is the mean of those days. v1's range was for the years since 2000; the Board's file is daily since 1976, and the range now covers it.",
     "milestone": "M13"
   }
 }

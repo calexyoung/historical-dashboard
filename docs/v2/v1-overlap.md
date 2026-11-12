@@ -5,7 +5,7 @@ Reserve Board "matches v1's value for the overlap within a stated tolerance or t
 is explained". The statement of tolerances and explanations is `checks/v1-overlap.json`; the
 check is `scripts/v1-overlap.mjs`; this page is what the check found when it was run.
 
-**No figure from an agency is on this page or in the repository.** The run below fetched the
+**No figure fetched from an agency is on this page or in the repository.** The run below fetched the
 14 endpoints into a temporary directory under a register signed only there, compared, and
 deleted the store. The table holds counts and differences. No register row is signed (D2), so
 the committed capture fixtures are still invented values, and a committed fixture of real
@@ -17,7 +17,7 @@ bytes waits for Alex.
   14 endpoints whole, 20 requests, 37 seconds.
 - Replayed into a vintage store and released with `atlas release --profile public` into a
   temporary root: 38 Series, none withheld, every check of the release writer passed,
-  including the spot value `cpi_yoy` 2022-06 (9.06 against the published 9.1, within 0.05).
+  including the spot value `cpi_yoy` 2022-06 (within 0.05 of the published 9.1).
 - v1's side: `atlas legacy-release` of v1's committed output, generated the same day.
 - Result: 33 Series match, 1 is different by design, 4 have no v1 counterpart. Exit status 0.
 
@@ -84,6 +84,8 @@ node scripts/v1-overlap.mjs --native ROOT --legacy var/local
 ```
 
 `ROOT` is a release root that `atlas release` built from a capture store, which needs the
-three rows signed for `store`. The comparison is of figures fetched within days of each other:
+three rows signed for `store`. Inside the span a native Series covers, a Period v1 holds and
+the native Series does not counts as a value on one side only and fails the Series; so does a
+Series with fewer than 100 Periods in common. The comparison is of figures fetched within days of each other:
 after an Origin revises (a payroll benchmark, a seasonal-factor revision) v1's frozen figures
 will differ, and that is not a fault of either.

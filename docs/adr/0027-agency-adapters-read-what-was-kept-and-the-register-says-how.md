@@ -31,7 +31,10 @@ v1 found is in `docs/v2/v1-overlap.md`.
    does not list is nothing.** The Board prints `ND`, `NA` or `NC`; Fiscal Data prints
    `null`; BLS prints `-`. Each becomes `missing` in the store with the source's mark kept
    beside it. An empty Board cell means the series had not begun or had ended; one between two
-   filled cells is a fault and the capture is incomplete. Skipping the codes was considered and
+   filled cells is a fault and the capture is incomplete. So is an answer with nothing in
+   it for something that is read: a span with labels and no rows, a statement with no month,
+   a column or a field with no entry at all. Each would otherwise read as every Period
+   withdrawn. Skipping the codes was considered and
    rejected: a day the Board lists without a figure would then look the same as a day
    withdrawn from the file.
 4. **A value keeps the source's unit, and the Board's label rows are pinned.** Debt to the
@@ -39,7 +42,10 @@ v1 found is in `docs/v2/v1-overlap.md`.
    nothing is rescaled at capture or in the store. For every Board series that is read, the
    endpoint records the unit, multiplier and currency of the label rows as they stood on
    2026-11-11, a capture whose labels differ is incomplete, and `atlas check` refuses a Series
-   bound to a Board package without them. The label is not always right about meaning (the
+   bound to a Board package without them. The pinned labels are also the list of columns
+   read: a Capture whose scope pins none (one made by version 1 of the adapter) gives no
+   Observations, so replay refuses the Series rather than trust today's Catalog about
+   yesterday's file. The label is not always right about meaning (the
    broad dollar index is labelled "1997 Jan = 100" and is on January 2006 = 100); it is pinned
    so that a change is seen, and the Catalog states the unit.
 5. **The Monthly Treasury Statement is read month by month from the latest statement that
@@ -87,7 +93,9 @@ v1 found is in `docs/v2/v1-overlap.md`.
     releases against it, using the engine's `aggregate()` to bring daily Series to v1's months
     (ADR 0003); `docs/v2/v1-overlap.md` records the run of 2026-11-11. The tolerance is half a
     unit of the last decimal v1 kept. A Period further off must be explained by name and is
-    counted, never dropped. The script cannot run in CI on real figures, since none may be
+    counted, never dropped; a Period v1 holds and the native Series lacks, inside the span the
+    native Series covers, fails it; so does too short an overlap or a Series missing from
+    either release. The script cannot run in CI on real figures, since none may be
     committed; its tests run it on invented releases.
 12. **The fixtures stay invented, and say so.** The generator answers each request of the real
     adapters with bytes of the shape that request gets, including the things the live sources

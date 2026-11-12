@@ -58,8 +58,8 @@ What "whole" means per source:
   a month, a quarter) with one cell per series, in order; every cell is a number, one of the
   Board's codes for "no number" (`ND`, `NA`, `NC`) or, only before a series begins or after it
   ends, empty; the unit, multiplier and currency the label rows give a series that is read are
-  the ones the endpoint expects; and a package asked for in spans answers each span with rows
-  inside it.
+  the ones the endpoint expects; a column that is read has at least one entry; and a package
+  asked for in spans answers each span with rows, all inside it.
 
 The evidence records its *scope*. BLS is asked for the thirty years ending this year, ten
 years to a request, so a year that has rolled out of the window was not asked about, and its
@@ -95,15 +95,16 @@ the header's `classification_id` in the same statement, named for the month) and
 "Year-to-Date" total, which is not read. The fiscal year begins in October, so FY 2026's
 October is `2025-10`. Later statements revise earlier months, so a month is read from the
 latest statement that lists it. A row that is none of the three kinds, a month listed twice in
-one statement, a month after the statement's own, or a statement not dated on the last day of
-a month makes the capture incomplete. The statement's date decides which statement is later.
+one statement, a month after the statement's own, a statement with no month row, or a
+statement not dated on the last day of a month makes the capture incomplete. The statement's date decides which statement is later.
 It says nothing about when Macro Atlas knew a figure: that is the Capture's retrieval time.
 
 **Units.** A value is kept in the unit the source prints, and the Catalog entry says what that
 is: Debt to the Penny in dollars, the Board's Z.1 and G.19 figures in millions, M2 in billions.
 For a Board series the endpoint pins the label rows (`labels`), so a change of multiplier
-stops the capture instead of changing every figure by a thousand. `atlas check` refuses a
-Series bound to a Board package whose endpoint pins no label for it.
+stops the capture instead of changing every figure by a thousand. Only a column with pinned
+labels is read, and `atlas check` refuses a Series bound to a Board package whose endpoint
+pins no label for it.
 
 ## What is written
 
