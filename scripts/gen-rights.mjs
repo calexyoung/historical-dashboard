@@ -40,6 +40,7 @@ const HOW = {
   page: "read on {date}, from the page's own text",
   extract: "read on {date} through a tool that returns short extracts; check the wording against the page before signing",
   not_read: "not read",
+  attested: "read by Alex on {date} in a browser; no quotation recorded",
 };
 const grantsText = (grants) => {
   const allowed = GRANTS.filter(([key]) => grants[key]).map(([, word]) => word);
@@ -164,7 +165,7 @@ const md = [
   "| Row | Kind | Licence class | Terms read | Proposed | Decision |",
   "|---|---|---|---|---|---|",
   ...table.rows.map((row) => {
-    const read = row.terms.length === 0 ? "none to read" : row.terms.every((t) => t.how === "not_read") ? "no" : row.terms.some((t) => t.how !== "page") ? "in part" : "yes";
+    const read = row.terms.length === 0 ? "none to read" : row.terms.every((t) => t.how === "not_read") ? "no" : row.terms.some((t) => t.how !== "page" && t.how !== "attested") ? "in part" : "yes";
     return `| \`${row.id}\` ${cell(row.name)} | ${row.kind} | ${LICENCE[row.licence_class]} | ${read} | ${grantsText(row.proposal)} | ${row.decision === null ? "not decided" : grantsText(row.decision)} |`;
   }),
   "",

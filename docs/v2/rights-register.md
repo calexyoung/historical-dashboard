@@ -2,7 +2,7 @@
 
 # Rights register
 
-Version `2026-11-12.1`. 1 of 31 rows signed. Intermediary Channels cleared: none.
+Version `2026-11-12.2`. 1 of 31 rows signed. Intermediary Channels cleared: none.
 
 One row per Origin and per intermediary Channel: the terms that were read, the sentences that
 matter quoted, a proposal, and Alex's decision (CONTEXT.md, Rights register; PLAN 6 and 6.1;
@@ -125,7 +125,7 @@ Terms: <https://www.bls.gov/bls/linksite.htm> (read on 2026-11-11 through a tool
 
 > we do ask that you cite the Bureau of Labor Statistics as the source
 
-Terms: <https://www.bls.gov/developers/termsOfService.htm> (not read). The site refused the automated request (HTTP 403).
+Terms: <https://www.bls.gov/developers/termsOfService.htm> (read by Alex on 2026-11-12 in a browser; no quotation recorded). Alex confirmed on 2026-11-12 that he had read this page in a browser and found nothing against signing. No quotation was supplied. Automated retrieval returned HTTP 403.
 
 Capture endpoints (fetched by `atlas capture` only once this row is signed and allows store):
 
@@ -136,7 +136,7 @@ Proposal: allow **all four**. Public domain by the Bureau's own statement. Cite 
 
 Open questions:
 
-- The API terms of service and the API FAQ were not read: bls.gov refused the automated request for both (HTTP 403, 2026-11-11). Read them before signing.
+- The API FAQ was not read: bls.gov refuses automated requests (HTTP 403). The API terms of service were read by Alex on 2026-11-12 (see the terms entry).
 - Limits without a key, as far as M7 and M13 could check them on 2026-11-11 by asking the API: a request for more than ten years is cut to ten years from its start year, with a message; an unknown series is left out, with a message; a year with no figure yet (this year, each January) is answered "No Data Available for Series ... Year: ...". The capture job asks for thirty years in three requests per endpoint, accepts only that last message and only of the current year, and treats any other message as an incomplete answer. The daily limit on requests without a key is believed to be 25 and was not confirmed from the page; the job makes six requests per run, two runs a day.
 
 Decision: allow **all four**. Signed by Alex on 2026-11-12.
