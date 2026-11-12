@@ -1091,6 +1091,12 @@ contains no finding, rating or label (test greps the rendered HTML against a wor
 source and the then/now figures are above the fold at 360×740; a user note renders on a local
 build, marked with its author, and is absent from a public-profile release; one fully worked real
 claim is included as a draft for Alex.
+(Built: ADR 0035. The page reads then, now when checked and Window sensitivity from the newest
+lock and latest from the Release; the drawing is of the lock's two rows; the four twins need
+redistribute; notes are read from `ATLAS_NOTES_DIR` by a local build of a local-profile Release.
+The real draft is `content/claims/2023-02-07-biden-on-the-unemployment-rate.md`: its record is
+whole and it has no lock, because no agency value can be captured until a register row is signed
+(awaiting Alex, D2). `/docs/method/claims`' Markdown twin is M25's.)
 
 **Checkpoint A2 [ALEX, non-blocking].** Alex tries one real claim end to end on a local build and
 comments on the page and the CLI. Work continues meanwhile.

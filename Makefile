@@ -44,11 +44,12 @@ v2-check: lint-py test
 # release under $ATLAS_LOCAL (default var/local, git-ignored), then serve it on the local surface:
 #   http://localhost:3000/macro-atlas/explore   http://localhost:3000/macro-atlas/data
 #   http://localhost:3000/macro-atlas/events    (v1's 83 Events, drafts marked; M19)
+#   http://localhost:3000/macro-atlas/claims    (draft Claims, and your own notes/ on them; M21)
 # Local only (PLAN 6.1): the release is never public-profile, and nothing is fetched.
 ATLAS_LOCAL ?= $(CURDIR)/var/local
 
 v2: v2-legacy-release
-	ATLAS_RELEASE_ROOT="$(ATLAS_LOCAL)" npm run dev -w @macro-atlas/site
+	ATLAS_RELEASE_ROOT="$(ATLAS_LOCAL)" ATLAS_NOTES_DIR="$(CURDIR)/notes" npm run dev -w @macro-atlas/site
 
 v2-legacy-release:
 	ATLAS_LOCAL="$(ATLAS_LOCAL)" $(PY) -m atlas legacy-release
