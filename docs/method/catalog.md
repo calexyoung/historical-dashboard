@@ -78,7 +78,7 @@ output shows a problem and never its consequences. Each error names the file. Ex
 | **content** (M19) | A file under `content/events` is not an Event (`schema/event.schema.json`; real dates; named for its id) and is not the review record. A citation has neither an archived copy nor the reason there is none. An Event names a Series that is not in the Catalog. A `public` Event's title or description has a word of the list of causal and evaluative terms that the Event does not carry as accepted (a draft with one is a NOTE). A file under `notes/` is not one user's note in that user's folder (`docs/method/content.md`) |
 
 `python -m atlas check --v1` is v1's data check on `data/atlas.json`, which this name ran
-before M12; `make check` calls it. Claims add rules of their own (M20).
+before M12; `make check` calls it. Claims add rules of their own (M20: `docs/method/claims.md`).
 
 `make v2-check` runs `atlas check` and `atlas catalog --check`, and the pytest suite holds the
 committed Catalog to every layer.

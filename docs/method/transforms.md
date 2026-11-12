@@ -8,12 +8,14 @@ frequency and for Recipes, which produce Derived series. `packages/core` impleme
 (`transform()` in `src/transform.ts`, `aggregate()` in `src/aggregate.ts`, `evaluateRecipe()` in
 `src/recipe.ts`) and is tested from this text.
 
-`semantics_version` for this contract: **0.6.0**. A change in behaviour here raises it.
+`semantics_version` for this contract: **0.7.0**. A change in behaviour here raises it.
 (0.3.0, M4: a Series may offer only some Transforms; see "Which Transforms a Series offers".
 0.4.0, M5: statistics were added to the engine, `docs/method/statistics.md`; no Transform changed.
 0.5.0, M10: vintage resolution was added, `docs/method/vintage-resolution.md`; no Transform changed.
 0.6.0, M11: aggregation, four Transforms and Recipes were added, and two things M2 defined
-changed. They are listed under "What 0.6.0 changed".)
+changed. They are listed under "What 0.6.0 changed".
+0.7.0, M20: Claim Measures, Evidence rows and drift were added, `docs/method/claims.md`; no
+Transform, aggregation or Recipe changed.)
 
 ## The request
 

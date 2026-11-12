@@ -343,6 +343,13 @@ before taking the Derived files in; spot values are `checks/spot.json`; a Derive
 published only when everything it rests on is, and carries the most restrictive rights status
 of its inputs; `semantics_version` is 0.6.0; `deploy/ingest.Dockerfile` is the ingest image.
 
+As built in M20 (ADR 0034, `docs/method/claims.md`): the release contract is 0.4.0;
+`content/claims.json` holds the Claims with their locks by name, `locks/` the locks that may
+be shown, and `evidence/latest.json` each locked Reading's latest row and the drift, written by
+the Node step at every release; Claims are `content/claims/{id}.md`, locks
+`content/claims/locks/` (public Profile, under the gate) or `{local root}/locks/`;
+`semantics_version` is 0.7.0; `atlas check`'s content layer holds the claim record rules.
+
 As built in M19 (ADR 0033, `docs/method/content.md`): the release contract is 0.3.0 and
 `content/events.json` holds the Events whole; the content compiler (`atlas/content/`) writes it
 and projects `content/annotations.json` for every writer; an Annotation typed in from a record
@@ -1068,6 +1075,10 @@ to overwrite a lock; a claim with one source or no archive URL fails `atlas chec
 rejects a finding, rating or label field; window-sensitivity numbers match a hand-computed
 fixture; a draft claim is absent from a public-profile release; a claim cannot be locked on a
 legacy-representation series.
+(Built: ADR 0034, `docs/method/claims.md`. Release contract 0.4.0, `semantics_version` 0.7.0.
+A lock in the repository needs display and redistribute, so with no register row signed every
+real lock is local (`--profile local`, `{root}/locks/`); no real Claim is committed. The
+fixture release holds one invented Claim with its lock and latest rows. `make v2-claim-demo`.)
 
 **M21 · Claim page and index (8 h). Needs Alex: —.** Needs M17, M20.
 `/claims/{id}` as in section 3, the claims index with filters by person, party and topic and a

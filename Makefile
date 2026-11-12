@@ -1,6 +1,6 @@
 PY ?= $(if $(wildcard .venv/bin/python),.venv/bin/python,python3)
 
-.PHONY: fetch build check test smoke serve clean setup lint-py v2 v2-legacy-release v2-setup v2-check v2-dev v2-site-check v2-up v2-image-check
+.PHONY: fetch build check test smoke serve clean setup lint-py v2 v2-legacy-release v2-setup v2-check v2-dev v2-site-check v2-up v2-image-check v2-claim-demo
 
 setup:
 	uv sync --extra dev && .venv/bin/python -m playwright install chromium
@@ -52,6 +52,11 @@ v2: v2-legacy-release
 
 v2-legacy-release:
 	ATLAS_LOCAL="$(ATLAS_LOCAL)" $(PY) -m atlas legacy-release
+
+# A Claim end to end on invented data, in a temporary directory (M20; docs/method/claims.md):
+# compute and lock, a revision, the latest row and the drift report, relock. Nothing is fetched.
+v2-claim-demo:
+	$(PY) fixtures/release/claim_demo.py
 
 # --- v2 site (M1). Everything below serves the synthetic fixture release unless told otherwise. ---
 
