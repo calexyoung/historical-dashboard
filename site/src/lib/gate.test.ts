@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
+import { SEMANTICS_VERSION } from "@macro-atlas/core";
 import { CURRENT_HEADER, FIRST_VISIT_HEADER, gate, RELEASE_HEADER, REFRESH_FAILED_HEADER, SEEN_COOKIE, TWIN_HEADER } from "./gate";
+import { createRateLimiter } from "./rate-limit";
 import type { Opened, OpenedRelease, ReleaseReader } from "./release/reader";
 
 const release = { id: "20260201T000000Z-aaaaaaa" } as OpenedRelease;
@@ -294,5 +296,125 @@ describe("gate: a reader's first visit to the Overview (PLAN section 8; ADR 0036
     const decision = await gate({ ...config, reader: readerOf(refused) }, overview);
     expect(decision).toMatchObject({ action: "respond", status: 503 });
     if (decision.action === "respond") expect(decision.headers["set-cookie"]).toBeUndefined();
+  });
+});
+
+describe("gate: rate limits on the read API and on files (PLAN section 7, M24)", () => {
+  const TOKEN = "t0ken-only-this-process-knows";
+  const held = { id: release.id, manifest: { created: "2026-02-01T00:00:00Z", profile: "public", sources: [{ producer: "An agency", via: "direct", fetched: "2026-02-01T00:00:00Z", outcome: "ok" }] } } as unknown as OpenedRelease;
+  const open: Opened = { ok: true, release: held, refreshFailed: null };
+  /** One token for each address and plenty for everybody, unless told otherwise. */
+  const limiter = (address = 1, global = 100) => createRateLimiter({ address: { burst: address, perSecond: 0.1 }, global: { burst: global, perSecond: 0.1 }, maxAddresses: 10, clock: () => 0 });
+  const config = (l = limiter(), opened: Opened = open) => ({ ...base, twinToken: TOKEN, reader: readerOf(opened), limiter: l });
+  const from = (pathname: string, forwardedFor: string | null = "203.0.113.7", more: Record<string, unknown> = {}) => ({ host: "mydashboards.co", pathname, forwardedFor, ...more });
+
+  const LIMITED = [
+    "/api/v1",
+    "/api/v1/catalog.json",
+    "/api/v1/series/fx_price_index",
+    "/api/v1/series/fx_price_index/vintages",
+    "/api/v1/events.json",
+    "/api/v1/claims.json",
+    "/api/v1/status",
+    "/api/v1/no/such/route",
+    "/data/fx_price_index.csv",
+    "/data/fx_price_index.json",
+    "/data/fx_price_index.metadata.json",
+    "/data/fx_price_index.md",
+    "/claims/2025-12-11-a-fixture-official-on-fixture-prices.json",
+    "/claims/2025-12-11-a-fixture-official-on-fixture-prices/evidence.csv",
+    "/explore/export",
+  ];
+
+  it.each(LIMITED)("%s: the request over the limit gets 429, with how long to wait and nothing stored", async (pathname) => {
+    const c = config();
+    expect((await gate(c, from(pathname))).action).toBe("forward");
+    const over = await gate(c, from(pathname));
+    expect(over).toMatchObject({ action: "respond", status: 429 });
+    if (over.action !== "respond") return;
+    expect(over.headers["retry-after"]).toBe("10");
+    expect(over.headers["cache-control"]).toBe("no-store");
+    expect(over.headers["x-content-type-options"]).toBe("nosniff"); // the security headers, as on every answer
+  });
+
+  it.each(["/", "/explore", "/data", "/data/fx_price_index", "/claims", "/search", "/search/hits", "/docs/api", "/api/health", "/api/theme", "/_next/static/chunks/a.js", "/api/v10", "/api/v1x/catalog.json"])("%s is not limited: a page, the health check and the app's own files always answer", async (pathname) => {
+    const c = config(limiter(0, 0));
+    for (let i = 0; i < 3; i++) expect((await gate(c, from(pathname))).action).toBe("forward");
+  });
+
+  it("an API answer over the limit is JSON and carries the fields every API body carries", async () => {
+    const c = config();
+    await gate(c, from("/api/v1/catalog.json"));
+    const over = await gate(c, from("/api/v1/catalog.json"));
+    if (over.action !== "respond") throw new Error("expected a response");
+    expect(over.headers["content-type"]).toMatch(/application\/json/);
+    const body = JSON.parse(over.body);
+    expect(body).toMatchObject({
+      error: { status: 429, code: "rate_limited", retry_after_seconds: 10 },
+      release_id: release.id,
+      semantics_version: SEMANTICS_VERSION,
+      provenance: { publisher: "Macro Atlas", release: { id: release.id, created: "2026-02-01T00:00:00Z", profile: "public" } },
+      rights: { permission: "none" },
+    });
+    expect(body.error.message).toMatch(/this address/);
+  });
+
+  it("a .json twin over the limit is JSON too; any other file is a line of text", async () => {
+    const c = config(limiter(0));
+    const json = await gate(c, from("/data/fx_price_index.json"));
+    expect(json.action === "respond" && JSON.parse(json.body)).toMatchObject({ error: { status: 429, code: "rate_limited" }, release_id: release.id });
+    const csv = await gate(c, from("/data/fx_price_index.csv"));
+    expect(csv.action === "respond" && csv.headers["content-type"]).toMatch(/text\/plain/);
+    expect(csv.action === "respond" && csv.body).toMatch(/Too many requests.*10 seconds/);
+  });
+
+  it("counts by the address the nearest proxy wrote: another address is still answered", async () => {
+    const c = config();
+    await gate(c, from("/api/v1/status", "198.51.100.9, 203.0.113.7"));
+    // What a client wrote in front of it changes nothing.
+    expect(await gate(c, from("/api/v1/status", "10.9.9.9, 203.0.113.7"))).toMatchObject({ status: 429 });
+    expect((await gate(c, from("/api/v1/status", "203.0.113.8"))).action).toBe("forward");
+    // With no proxy in front, every request shares one bucket.
+    expect((await gate(c, from("/api/v1/status", null))).action).toBe("forward");
+    expect(await gate(c, from("/api/v1/status", null))).toMatchObject({ status: 429 });
+  });
+
+  it("says so when it is everybody's limit that is spent", async () => {
+    const c = config(limiter(5, 1));
+    await gate(c, from("/api/v1/status"));
+    const over = await gate(c, from("/api/v1/status", "203.0.113.8"));
+    expect(over.action === "respond" && JSON.parse(over.body).error.message).toMatch(/every address together/);
+  });
+
+  it("a twin is counted once: the pass Next runs on the handler's own path spends nothing", async () => {
+    const l = limiter(2);
+    const c = config(l);
+    const first = await gate(c, from("/data/fx_price_index.csv"));
+    expect(first).toMatchObject({ action: "forward", rewrite: "/data/fx_price_index/twin/csv" });
+    for (let i = 0; i < 5; i++) expect(await gate(c, from("/data/fx_price_index/twin/csv", "203.0.113.7", { twinToken: TOKEN }))).toMatchObject({ action: "forward" });
+    expect((await gate(c, from("/data/fx_price_index.csv"))).action).toBe("forward"); // the second of two
+    expect(await gate(c, from("/data/fx_price_index.csv"))).toMatchObject({ status: 429 });
+  });
+
+  it("the handler's own path asked for directly is not found, and is not a way to spend or to dodge the limit", async () => {
+    const c = config(limiter(1));
+    for (let i = 0; i < 3; i++) expect(await gate(c, from("/data/fx_price_index/twin/csv", "203.0.113.7", { twinToken: "guess" }))).toMatchObject({ rewrite: "/not-found/not-an-address" });
+    expect((await gate(c, from("/data/fx_price_index.csv"))).action).toBe("forward");
+  });
+
+  it("the refusals of a build come first and spend nothing (503 with no release, 421 off this machine); the limit is said before a pinned Release is looked for", async () => {
+    const l = limiter(1);
+    for (let i = 0; i < 3; i++) expect(await gate({ ...config(l, refused) }, from("/api/v1/catalog.json"))).toMatchObject({ status: 503 });
+    for (let i = 0; i < 3; i++) expect(await gate({ ...config(l), surface: "local" }, { ...from("/api/v1/catalog.json"), host: "example.com" })).toMatchObject({ status: 421 });
+    expect((await gate(config(l), from("/api/v1/catalog.json"))).action).toBe("forward");
+    // Spent now: the limit is said before a pinned Release is looked for.
+    let looked = 0;
+    const reader = { ...readerOf(open), pinned: async () => (looked++, open) };
+    expect(await gate({ ...config(l), reader }, from("/explore/export", "203.0.113.7", { search: "?pin=20260101T000000Z-0000000" }))).toMatchObject({ status: 429 });
+    expect(looked).toBe(0);
+  });
+
+  it("a gate that was given no limiter limits nothing", async () => {
+    for (let i = 0; i < 3; i++) expect((await gate({ ...base, reader: readerOf(open) }, from("/api/v1/catalog.json"))).action).toBe("forward");
   });
 });
