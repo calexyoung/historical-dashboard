@@ -264,28 +264,25 @@ export function explorerView(release: OpenedRelease, surface: Surface, state: Ex
     asked = defaults;
     if (defaults.length > 0 && state.mode === null) mode = DEFAULT_VIEW.mode;
   }
-  const known: string[] = [];
+  // The cap counts every Series the Catalog knows, held here or not, in the order asked (v1
+  // counted to eight after dropping what it did not know).
+  const wanted: string[] = [];
   const unknown: string[] = [];
-  const absent: ExplorerView["absent"] = [];
   for (const key of asked) {
-    const resolved = entries.has(key) ? key : aliases.get(key);
-    if (resolved) {
-      if (!known.includes(resolved)) known.push(resolved);
-    } else if (inCatalog(key)) {
-      // In the Catalog and not in this Release: it is named, with the Catalog's own reason where it has one.
-      const [name, noChannel] = CATALOG_NAMES[key]!;
-      if (!absent.some((a) => a.key === key)) absent.push({ key, name, reason: noChannel ?? "Nothing has been published for it in this release.", removeQuery: "" });
-    } else unknown.push(key);
+    const resolved = entries.has(key) ? key : (aliases.get(key) ?? (inCatalog(key) ? key : null));
+    if (resolved === null) unknown.push(key);
+    else if (!wanted.includes(resolved)) wanted.push(resolved);
   }
   if (unknown.length > 0) notes.push(`This release has no series called ${list(unknown)}; ${unknown.length === 1 ? "it was" : "they were"} left out.`);
-  const keys = known.slice(0, MAX_SERIES);
   /** What an address of this view names: the Series shown, and those named as not in this Release, in the order asked. */
-  const named = [...keys, ...absent.map((a) => a.key)];
-  const addressKeys = (without?: string): string[] => {
-    const order = asked!.map((key) => (entries.has(key) ? key : (aliases.get(key) ?? key)));
-    return [...new Set(order)].filter((key) => named.includes(key) && key !== without);
-  };
-  if (known.length > MAX_SERIES) notes.push(`At most ${MAX_SERIES} series are shown at once; the first ${MAX_SERIES} of the ${known.length} asked for are shown.`);
+  const named = wanted.slice(0, MAX_SERIES);
+  if (wanted.length > MAX_SERIES) notes.push(`At most ${MAX_SERIES} series are shown at once; the first ${MAX_SERIES} of the ${wanted.length} asked for are shown.`);
+  const keys = named.filter((key) => entries.has(key));
+  // In the Catalog and not in this Release: named, with the Catalog's own reason where it has one.
+  const absent: ExplorerView["absent"] = named
+    .filter((key) => !entries.has(key))
+    .map((key) => ({ key, name: CATALOG_NAMES[key]![0], reason: CATALOG_NAMES[key]![1] ?? "Nothing has been published for it in this release.", removeQuery: "" }));
+  const addressKeys = (without?: string): string[] => named.filter((key) => key !== without);
 
   // --- values, through Query, one Series at a time, within one row cap for the page ---
   const window = { from: state.from ? monthStart(state.from) : undefined, to: state.to ? monthEnd(state.to) : undefined };
