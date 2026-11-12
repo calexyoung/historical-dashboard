@@ -112,6 +112,26 @@ def test_the_schema_has_no_field_for_prose_of_the_sites_own():
     assert SCHEMA["$defs"]["relation"]["enum"] == list(T.RELATIONS)
     for word in ("explanation", "finding", "published_accounts", "description", "note", "summary", "cause"):
         assert word not in SCHEMA["properties"] and word not in definition["properties"]
+    # Every string a Topic can hold, nested ones too, is a pattern, a closed list, a label, a
+    # one-line name of a cited page, or the quote.
+    citation = SCHEMA["$defs"]["citation"]
+    assert citation["additionalProperties"] is False and set(citation["properties"]) == {"name", "url", "archive_url", "no_archive"}
+    assert citation["properties"]["no_archive"]["enum"] == ["no_copy_found", "archiving_refused", "page_removed"]
+    assert citation["properties"]["name"]["maxLength"] == 120
+    free = []
+
+    def strings(node: dict, path: str) -> None:
+        node = SCHEMA["$defs"][node["$ref"].rsplit("/", 1)[1]] if "$ref" in node else node
+        if node.get("type") == "object":
+            for name, child in node["properties"].items():
+                strings(child, f"{path}/{name}")
+        elif node.get("type") == "array":
+            strings(node["items"], path)
+        elif "enum" not in node and not (node.get("pattern") and not node["pattern"].startswith("^\\S(")):
+            free.append(path)
+
+    strings(SCHEMA, "")
+    assert free == ["/definition/quote"]
     # The Release's own form of a Topic is as closed.
     held = RELEASE_SCHEMA["$defs"]["topic"]
     assert held["additionalProperties"] is False
@@ -129,6 +149,12 @@ def test_the_schema_has_no_field_for_prose_of_the_sites_own():
     ({"companions": [{"series": "rents", "relation": "drives"}]}, "relation"),
     ({"companions": [{"series": "rents", "relation": "component", "note": "Rents pushed prices up."}]}, "Additional properties"),
     ({"status": "published"}, "status"),
+    # No nested door either: the reason there is no archived copy is one of a closed list.
+    ({"definition": {**TOPIC["definition"], "source": {"name": "A", "url": "https://example.org/x",
+                                                       "no_archive": "No copy exists. Prices rose because of policy."}}}, "no_archive"),
+    ({"definition": {**TOPIC["definition"], "source": {**TOPIC["definition"]["source"], "name": "A name\nand a second line."}}}, "name"),
+    ({"definition": {**TOPIC["definition"], "source": {**TOPIC["definition"]["source"], "name": "A name\rand a second line"}}}, "name"),
+    ({"definition": {**TOPIC["definition"], "quote": "The invented index\rmeasures the change in invented prices."}}, "quote"),
 ])
 def test_a_field_the_schema_does_not_have_is_refused(change, said):
     topic, problems = T.read_topic((json.dumps({**TOPIC, **change})).join(["---\n", "\n---\n"]).encode(), "prices.md")
@@ -176,6 +202,8 @@ def test_a_dangling_reference_is_found_on_its_line():
     assert "a range needs at least three" in refs(wrong)[0][1]
     wrong = {**TOPIC, "series": [*TOPIC["series"], "gone"]}
     assert "retired" in refs(wrong)[0][1]
+    retired = {**CATALOG, "bb_infl": {**CATALOG["bb_infl"], "status": "retired"}}
+    assert refs(TOPIC, catalog=retired) == [(line_of(TOPIC, "indicator:"), "its member bb_infl is retired: a range is of Series that are still kept")]
 
 
 def test_a_relation_the_catalog_contradicts_is_a_problem():
@@ -183,13 +211,22 @@ def test_a_relation_the_catalog_contradicts_is_a_problem():
         return refs({**TOPIC, "companions": [{"series": series, "relation": name}]})
 
     assert relation("rents", "component") == [] and relation("rents", "same_survey") == []
-    assert relation("prices", "input") == [] and relation("jobs_count", "same_release") == []
+    assert relation("prices", "input") == []
+    stored = {**TOPIC, "main": "prices", "series": ["prices"]}
+
+    def release(series: str) -> list:
+        return refs({**stored, "companions": [{"series": series, "relation": "same_release"}]})
+
+    assert release("jobs_count") == []
     assert "is not computed from rents" in relation("rents", "input")[0][1]
     assert "one dataset of one agency" in relation("jobs_count", "same_survey")[0][1]
     assert "one dataset of one agency" in relation("jobs_count", "excludes_components")[0][1]
-    assert "not one agency's" in relation("elsewhere", "same_release")[0][1]
-    wrong = {**TOPIC, "companions": [{"series": "elsewhere", "relation": "same_release"}]}
-    assert relation("elsewhere", "same_release")[0][0] == line_of(wrong, "relation:")
+    assert "not one agency's" in release("elsewhere")[0][1]
+    # A Series computed here is in nobody's release.
+    derived = {**TOPIC, "main": "prices", "series": ["prices", "prices_yoy"], "companions": [{"series": "prices_yoy", "relation": "same_release"}]}
+    assert "prices_yoy is computed by Macro Atlas" in refs(derived)[0][1]
+    wrong = {**stored, "companions": [{"series": "elsewhere", "relation": "same_release"}]}
+    assert release("elsewhere")[0][0] == line_of(wrong, "relation:")
 
 
 def test_the_members_of_a_range_are_one_series_per_country_and_no_group_row():
@@ -264,11 +301,22 @@ def test_a_public_release_holds_no_draft_topic_and_no_id_of_a_draft_event(tmp_pa
     assert topics_of(local)[0]["events"] == [EVENT["id"], DRAFT_EVENT["id"]]
 
 
+def test_a_public_topics_own_words_are_held_to_the_word_list(tmp_path):
+    loaded = {**TOPIC, "title": "The price crisis", "definition": {**TOPIC["definition"], "source": {**TOPIC["definition"]["source"], "name": "A Bureau, a historic page"}}}
+    content = write(tmp_path, loaded)
+    with pytest.raises(ContentError, match=r"prices\.md:\d+: its title has crisis; .*prices\.md:\d+: its source name has historic"):
+        compile_(content)
+    assert topics_of(compile_(content, "local"))[0]["title"] == "The price crisis"
+    # The quote is the agency's and is not held to the list.
+    quoted = {**TOPIC, "definition": {**TOPIC["definition"], "quote": "The index rose because of a historic surge in invented prices."}}
+    assert topics_of(compile_(write(tmp_path / "b", quoted)))[0]["definition"]["quote"].startswith("The index rose because")
+
+
 def test_the_search_index_has_an_entry_for_each_topic_after_the_claims():
     held = {"topics": [{**TOPIC, "events": []}]}
     index = search_document({"series": []}, [], {"events": []}, {"claims": []}, held)
     assert index == {"entries": [{"kind": "topic", "id": "prices", "title": "Prices", "text": TOPIC["definition"]["quote"],
-                                  "keywords": ["economy_jobs", "An Invented Bureau, Handbook", "prices_yoy"]}]}
+                                  "keywords": ["An Invented Bureau, Handbook", "prices_yoy"]}]}
     assert search_document({"series": []}, [], {"events": []}, {"claims": []}) == {"entries": []}
 
 
@@ -333,12 +381,12 @@ def test_add_topic_writes_a_draft_that_passes_atlas_check(tmp_path, capsys):
     assert content_layer(content)[0].ok
     status, out = run(capsys, "add", "topic", "prices", "--title", "Prices", "--segment", "economy_jobs",
                       "--main", "cpi_yoy", "--quote", TOPIC["definition"]["quote"], "--source-name", "A",
-                      "--source", "https://example.org/handbook", "--no-archive", "It cannot be archived (invented).",
+                      "--source", "https://example.org/handbook", "--no-archive", "archiving_refused",
                       "--content", str(content))
     assert status == 1 and "already exists" in out
     status, out = run(capsys, "add", "topic", "rents", "--title", "Rents", "--segment", "economy_jobs",
                       "--main", "no_such_series", "--quote", TOPIC["definition"]["quote"], "--source-name", "A",
-                      "--source", "https://example.org/handbook", "--no-archive", "It cannot be archived (invented).",
+                      "--source", "https://example.org/handbook", "--no-archive", "archiving_refused",
                       "--content", str(content))
     assert status == 1 and "no_such_series is not a Series of the catalog" in out
 
@@ -351,6 +399,7 @@ def test_the_repository_has_the_two_topics_and_they_name_what_is_there():
     assert problems == []
     assert [t.slug for t in topics] == ["inflation", "jobs"]
     for topic in topics:
+        assert T.own_terms(topic) == []
         assert topic.record["definition"]["source"]["url"].startswith("https://www.bls.gov/")
         assert len(topic.record["companions"]) >= 2
     inflation = topics[0].record

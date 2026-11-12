@@ -397,7 +397,7 @@
     {"name": "a Topic's title is a label, not a sentence", "steps": [{"op": "set", "file": "content/topics.json", "path": ["topics", 0, "title"], "value": "Prices went up. A lot."}], "expect": ["schema"]},
     {"name": "a Companion's relation is one of the closed list", "steps": [{"op": "set", "file": "content/topics.json", "path": ["topics", 0, "companions", 0, "relation"], "value": "drives"}], "expect": ["schema"]},
     {"name": "a Topic's definition is quoted with its citation", "steps": [{"op": "delete", "file": "content/topics.json", "path": ["topics", 0, "definition", "source"]}], "expect": ["schema"]},
-    {"name": "a citation has an archived copy or the reason there is none, not both", "steps": [{"op": "set", "file": "content/topics.json", "path": ["topics", 0, "definition", "source", "no_archive"], "value": "It cannot be archived (synthetic reason)."}], "expect": ["schema"]},
+    {"name": "a citation has an archived copy or the reason there is none, not both", "steps": [{"op": "set", "file": "content/topics.json", "path": ["topics", 0, "definition", "source", "no_archive"], "value": "archiving_refused"}], "expect": ["schema"]},
     {"name": "two Topics may not share a slug", "steps": [{"op": "set", "file": "content/topics.json", "path": ["topics", 1, "slug"], "value": "inflation"}], "expect": ["duplicate_topic", "search_projection"]},
     {"name": "a Topic's main Series is one of its member Series", "steps": [{"op": "set", "file": "content/topics.json", "path": ["topics", 1, "series"], "value": ["fx_permits_stale"]}], "expect": ["topic"]},
     {"name": "a Companion is not the main Series", "steps": [{"op": "set", "file": "content/topics.json", "path": ["topics", 1, "companions", 0, "series"], "value": "fx_payrolls_break"}], "expect": ["topic"]},
@@ -408,6 +408,11 @@
     {"name": "a public release holds no draft Topic", "steps": [{"op": "set", "file": "content/topics.json", "path": ["topics", 1, "status"], "value": "draft"}], "expect": ["draft_in_public"]},
     {"name": "the search index names every Topic of the release", "steps": [{"op": "delete", "file": "search.json", "path": ["entries", 14]}], "expect": ["search_projection"]},
     {"name": "a Topic's entry of the search index is the definition it quotes", "steps": [{"op": "set", "file": "search.json", "path": ["entries", 13, "text"], "value": "Other words."}], "expect": ["search_projection"]},
-    {"name": "a release of the contract before Topics (0.5.0) is still read", "steps": [{"op": "set", "file": "manifest.json", "path": ["schema_version"], "value": "0.5.0"}, {"op": "remove_file", "file": "content/topics.json"}, {"op": "project_search"}], "expect": []}
+    {"name": "a release of the contract before Topics (0.5.0) is still read", "steps": [{"op": "set", "file": "manifest.json", "path": ["schema_version"], "value": "0.5.0"}, {"op": "remove_file", "file": "content/topics.json"}, {"op": "project_search"}], "expect": []},
+    {"name": "the reason a citation has no archived copy is one of a closed list, not a sentence", "steps": [{"op": "set", "file": "content/topics.json", "path": ["topics", 1, "definition", "source", "no_archive"], "value": "No copy exists. Prices rose because of policy."}], "expect": ["schema"]},
+    {"name": "a range has at least three members", "steps": [{"op": "set", "file": "content/topics.json", "path": ["topics", 0, "range", "members"], "value": []}], "expect": ["schema"]},
+    {"name": "a quoted definition is one line, whatever the line break", "steps": [{"op": "set", "file": "content/topics.json", "path": ["topics", 0, "definition", "quote"], "value": "The fixture price index\rmeasures the average change in prices."}, {"op": "project_search"}], "expect": ["schema"]},
+    {"name": "a citation's name is one line, whatever the line break", "steps": [{"op": "set", "file": "content/topics.json", "path": ["topics", 0, "definition", "source", "name"], "value": "Fixture office\rHandbook"}, {"op": "project_search"}], "expect": ["schema"]},
+    {"name": "a label is one line, whatever the line break", "steps": [{"op": "set", "file": "content/topics.json", "path": ["topics", 0, "title"], "value": "Infl\u2028ation"}, {"op": "project_search"}], "expect": ["schema"]}
   ]
 }

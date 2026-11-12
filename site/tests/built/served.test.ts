@@ -71,7 +71,7 @@ describe("the fixture release is served at both base paths", () => {
   it("shows only tabs whose pages exist, and marks the current one", async () => {
     const html = await (await get(servers[0]!.url("/explore"))).text();
     const nav = html.slice(html.indexOf('<nav aria-label="Sections"'), html.indexOf("</nav>", html.indexOf('<nav aria-label="Sections"')));
-    expect([...nav.matchAll(/<a [^>]*>([^<]+)<\/a>/g)].map((m) => m[1])).toEqual(["Claims", "Explore", "Events", "Data"]); // the fixture holds a Claim (M21)
+    expect([...nav.matchAll(/<a [^>]*>([^<]+)<\/a>/g)].map((m) => m[1])).toEqual(["Topics", "Claims", "Explore", "Events", "Data"]); // the fixture holds a Topic (M23) and a Claim (M21)
     expect(nav).toContain('aria-current="page"');
   });
 
@@ -187,10 +187,10 @@ describe("the catalog page, /data (PLAN section 3, M2)", () => {
 
   it("lists every series of the release in the HTML itself, from one release", async () => {
     const html = await page();
-    expect(rows(html)).toHaveLength(8);
+    expect(rows(html)).toHaveLength(11);
     expect(idsOn(html)).toEqual([FIXTURE_ID]);
     expect(html).toContain("Fixture price index");
-    expect(html).toContain("8 series");
+    expect(html).toContain("11 series");
     expect(html).toMatch(/<h1[^>]*>Data<\/h1>/);
   });
 
@@ -205,7 +205,7 @@ describe("the catalog page, /data (PLAN section 3, M2)", () => {
     expect(rows(await page("?freq=quarterly"))).toEqual(["fx_output_quarterly"]);
     expect(rows(await page("?segment=economy_jobs&freq=monthly&q=payrolls"))).toEqual(["fx_payrolls_break"]);
     const narrowed = await page("?q=vote");
-    expect(narrowed).toContain("1 of 8 series");
+    expect(narrowed).toContain("1 of 11 series");
     expect(narrowed).toMatch(/<input[^>]*name="q"[^>]*value="vote"/); // the form shows what was asked
   });
 
@@ -291,6 +291,64 @@ describe("series pages, /data/{key} (PLAN section 3, M3)", () => {
     for (const absent of ["data-latest", "data-figure-table", 'role="img"', "data-takeaway", "data-silence"]) expect(html, absent).not.toContain(absent);
     // Values that exist only in the fixture's series files.
     for (const value of ["109.9", "104.5", "566.4", "510.2", "5.167", "-1.5<"]) expect(html, value).not.toContain(value);
+  });
+
+  // --- Topic pages (PLAN section 3, M23; ADR 0037) ---
+
+  it("a Topic page is complete in its HTML: the quoted definition, the strip, every figure and its table, the range", async () => {
+    const response = await get(local.url("/topics/inflation"));
+    expect(response.status).toBe(200);
+    expect(response.headers.get("cache-control") ?? "").toMatch(/no-store|private/);
+    const html = await response.text();
+    expect(idsOn(html)).toEqual([ALIASED]);
+    expect(html).toMatch(/<h1[^>]*>Inflation/);
+    expect(html).toContain("The fixture price index measures the average change in the prices that synthetic households pay.");
+    expect(html).toContain('href="https://example.org/archive/2026/fixture-handbook"');
+    expect(html).toContain("data-change-strip");
+    // The main figure, four small multiples and the range: six plots, each drawn at three widths.
+    expect(html.match(/<svg[^>]*role="img"/g)).toHaveLength(18);
+    expect(html.match(/data-band=""/g)).toHaveLength(6);
+    expect(html).toContain("Among 3 of the 5 Fixture five members the lowest value was 2.20, the median 5.17 and the highest 7.20");
+    expect(html).toContain('href="/macro-atlas/explore?s=fx_price_index_yoy&amp;from=2015-12&amp;to=2025-12"');
+    expect(html).toContain('href="/macro-atlas/claims/2025-12-11-a-fixture-official-on-fixture-prices"');
+    expect(html).toContain('href="/macro-atlas/events/2024-09-18-fixture-rate-decision"');
+    expect(html).toContain("Withheld: The licence does not allow redistribution.");
+    expect(html).toContain("Not in this release.");
+    expect(html).not.toMatch(/<style\b/);
+    const index = await (await get(local.url("/topics"))).text();
+    expect(index).toMatch(/<h1[^>]*>Topics<\/h1>/);
+    expect(index).toContain('href="/macro-atlas/topics/inflation"');
+    expect(index).toContain('href="/macro-atlas/topics/jobs"');
+  });
+
+  it.each(["/topics/nope", "/topics/Inflation", "/topics/inflation/extra", "/topics/..%2Fmanifest"])("%s is not found", async (path) => {
+    expect((await get(local.url(path))).status).toBe(404);
+  });
+
+  it("on the production surface a Topic page names its Series with the reason and holds not one value, Period or drawing", async () => {
+    for (const slug of ["inflation", "jobs"]) {
+      const response = await get(production.url(`/topics/${slug}`));
+      expect(response.status).toBe(200);
+      const html = await response.text();
+      // The definition is a cited source's words: content, shown on every Surface.
+      expect(html).toContain("data-definition");
+      expect(html).toContain("(macro-atlas-fixture) is not signed, so it is not permitted on the production surface");
+      for (const absent of ["data-change-strip", "data-figure-table", 'role="img"', "data-takeaway", "data-band", "data-range-sentence", "data-range-counts", "data-small-multiples"]) expect(html, absent).not.toContain(absent);
+      // Values that exist only in the fixture's series files, and figures made from them.
+      for (const value of ["109.9", "104.5", "5.17", "4.05", "7.20", "9.4<", "1651", "1,651"]) expect(html, value).not.toContain(value);
+    }
+    const html = await (await get(production.url("/topics/inflation"))).text();
+    expect(html).toContain("cannot be shown here, so no range is drawn beside it");
+    expect(html.match(/data-member="/g)).toHaveLength(5);
+  });
+
+  it("search finds the two Topics with no script, on every surface (M23)", async () => {
+    for (const server of [local, production]) {
+      const html = await (await get(server.url("/search?q=inflation"))).text();
+      expect(html).toContain('data-group="topic"');
+      expect(html).toContain(`href="${server.base}/topics/inflation"`);
+      expect(await (await get(server.url("/search?q=jobs"))).text()).toContain(`href="${server.base}/topics/jobs"`);
+    }
   });
 
   it("the glossary is served on every surface", async () => {
@@ -531,7 +589,7 @@ describe("a production-surface build fails closed (PLAN 6.1 point 5, reader)", (
     expect(page).toContain("Not shown here");
     expect(page).not.toMatch(/109\.5|fx_price_index\.csv/);
     const status = await (await get(server.url("/api/v1/status"))).json();
-    expect(status).toMatchObject({ surface: "production", release_id: A, counts: { shown: 0, not_permitted: 7, withheld: 1 } });
+    expect(status).toMatchObject({ surface: "production", release_id: A, counts: { shown: 0, not_permitted: 10, withheld: 1 } });
     expect(JSON.stringify(status)).not.toMatch(/2025-12/);
   });
 
@@ -676,7 +734,7 @@ describe("twins of a series page, and status (PLAN section 7, M17)", () => {
     expect(response.status).toBe(200);
     expect(response.headers.get("cache-control")).toBe("no-store");
     const doc = await response.json();
-    expect(doc).toMatchObject({ status: "stale", surface: "local", release_id: FIXTURE_ID, last_run: null, counts: { series: 8, shown: 7, withheld: 1, stale: 1 } });
+    expect(doc).toMatchObject({ status: "stale", surface: "local", release_id: FIXTURE_ID, last_run: null, counts: { series: 11, shown: 10, withheld: 1, stale: 1 } });
     expect(doc.series.find((s: { key: string }) => s.key === "fx_permits_stale")).toMatchObject({ stale: true, last_period: "2024-06" });
   });
 });
@@ -992,7 +1050,7 @@ describe("the Overview, Highlights and search (PLAN M22)", () => {
   it("AC: one query returns grouped hits for a series, an event and a glossary term, with no JavaScript", async () => {
     const page = await html("/search?q=change");
     const groups = [...page.matchAll(/<ul[^>]*data-group="([a-z]+)"/g)].map((m) => m[1]);
-    expect(groups).toEqual(["series", "event", "glossary"]);
+    expect(groups).toEqual(["topic", "series", "event", "glossary"]);
     expect(page).toContain('href="/macro-atlas/data/fx_price_index_yoy"');
     expect(page).toContain('href="/macro-atlas/events/2024-09-18-fixture-rate-decision"');
     expect(page).toMatch(/href="\/macro-atlas\/docs\/glossary\/[a-z-]+"[^>]*>[^<]+<\/a>/);
@@ -1000,7 +1058,7 @@ describe("the Overview, Highlights and search (PLAN M22)", () => {
     // The sheet's answer is the page's, as JSON.
     const hits = (await (await get(server.url("/search/hits?q=change"))).json()) as { groups: { kind: string; hits: { id: string }[] }[] };
     expect(hits.groups.map((g) => g.kind)).toEqual(groups);
-    expect(hits.groups[0]!.hits.map((h) => h.id)).toContain("fx_price_index_yoy");
+    expect(hits.groups.find((g) => g.kind === "series")!.hits.map((h) => h.id)).toContain("fx_price_index_yoy");
   });
 
   it("search says so when nothing matches, and never puts what a reader typed into the page as markup", async () => {

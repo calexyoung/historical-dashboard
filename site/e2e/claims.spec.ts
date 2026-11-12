@@ -27,7 +27,7 @@ test.describe("claims", () => {
   test("the filters are a form: the address says what is listed, on both base paths", async ({ page, atlas, staging }) => {
     for (const site of [atlas, staging]) {
       await page.goto(site.url("/claims"));
-      await page.getByLabel("Topic").selectOption("inflation");
+      await page.getByLabel("Topic", { exact: true }).selectOption("inflation");
       await page.getByRole("button", { name: "Show" }).click();
       await expect(page).toHaveURL(/\/claims\?person=&party=&topic=inflation$/);
       await expect(page.locator("[data-claim]")).toHaveCount(1);

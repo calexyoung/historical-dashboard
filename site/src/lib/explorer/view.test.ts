@@ -273,7 +273,7 @@ describe("the picker", () => {
     const v = view("s=fx_price_index");
     const all = v.picker.flatMap((g) => g.series);
     expect(all).toHaveLength(release.catalog.series.length);
-    expect(v.picker.map((g) => g.label)).toEqual(["Economy & jobs", "Markets & money", "Infrastructure", "Governance & politics"]);
+    expect(v.picker.map((g) => g.label)).toEqual(["Economy & jobs", "Markets & money", "Infrastructure", "Governance & politics", "The US in the world"]);
     expect(all.filter((s) => s.checked).map((s) => s.key)).toEqual(["fx_price_index"]);
     expect(all.find((s) => s.key === "fx_exchange_index")).toMatchObject({ available: false, detail: "Withheld" });
   });

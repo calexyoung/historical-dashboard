@@ -10,7 +10,7 @@ test.describe("the catalog page", () => {
     await page.getByRole("navigation", { name: "Sections" }).getByRole("link", { name: "Data" }).click();
     await expect(page).toHaveURL(atlas.url("/data"));
     await expect(page.getByRole("heading", { level: 1, name: "Data" })).toBeVisible();
-    await expect(rows(page)).toHaveCount(8);
+    await expect(rows(page)).toHaveCount(11);
     await expect(page.getByRole("navigation", { name: "Sections" }).getByRole("link", { name: "Data" })).toHaveAttribute("aria-current", "page");
   });
 
@@ -29,7 +29,7 @@ test.describe("the catalog page", () => {
     await expect(page.getByText("No series match")).toBeVisible();
     await page.getByRole("link", { name: "Clear" }).first().click();
     await expect(page).toHaveURL(atlas.url("/data"));
-    await expect(rows(page)).toHaveCount(8);
+    await expect(rows(page)).toHaveCount(11);
   });
 
   test("a copied address reproduces the list in a fresh session", async ({ browser, staging }) => {
@@ -103,7 +103,7 @@ test.describe("the catalog page", () => {
     test.use({ javaScriptEnabled: false });
     test("the page is complete and the form works", async ({ page, atlas }) => {
       await page.goto(atlas.url("/data"));
-      await expect(rows(page)).toHaveCount(8);
+      await expect(rows(page)).toHaveCount(11);
       await page.getByRole("searchbox", { name: "Search" }).fill("vote");
       await page.getByRole("button", { name: "Show" }).click();
       await expect(page).toHaveURL(/\/data\?q=vote/);

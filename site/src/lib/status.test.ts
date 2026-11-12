@@ -24,7 +24,7 @@ describe("status", () => {
       key: "fx_price_index", name: "Fixture price index", frequency: "monthly", max_lag: "P2M", state: "shown", reason: null, last_period: "2025-12", last_period_end: "2025-12-31", stale: false,
     });
     expect(v.series.find((s) => s.key === "fx_permits_stale")).toMatchObject({ last_period: "2024-06", stale: true });
-    expect(v.counts).toMatchObject({ series: 8, shown: 7, withheld: 1, stale: 1 });
+    expect(v.counts).toMatchObject({ series: 11, shown: 10, withheld: 1, stale: 1 });
   });
 
   it("a fresh release with a stale Series or a failed source is reported as stale inputs", async () => {
@@ -42,7 +42,7 @@ describe("status", () => {
   it("a Series that may not be shown is listed by name and reason, with nothing about its values", () => {
     expect(view().series.find((s) => s.key === "fx_exchange_index")).toMatchObject({ name: "Fixture exchange index", state: "withheld", reason: "The licence does not allow redistribution.", last_period: null, stale: null });
     const v = view({}, "production");
-    expect(v.counts).toMatchObject({ shown: 0, not_permitted: 7, withheld: 1, stale: 0 });
+    expect(v.counts).toMatchObject({ shown: 0, not_permitted: 10, withheld: 1, stale: 0 });
     expect(v.series.every((s) => s.last_period === null && s.last_period_end === null)).toBe(true);
     expect(JSON.stringify(v)).not.toMatch(/109\.9|2025-12/);
   });

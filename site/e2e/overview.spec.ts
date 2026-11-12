@@ -41,7 +41,7 @@ test.describe("with JavaScript off (AC: the Overview renders complete)", () => {
     await page.getByRole("searchbox").fill("change");
     await page.getByRole("button", { name: "Search" }).click();
     await expect(page).toHaveURL(atlas.url("/search?q=change"));
-    await expect(page.getByRole("heading", { level: 2 })).toHaveText(["Series", "Events", "Glossary"]);
+    await expect(page.getByRole("heading", { level: 2 })).toHaveText(["Topics", "Series", "Events", "Glossary"]);
     await expect(page.locator("[data-group=series] [data-hit]")).toContainText(["Fixture price index, change from a year earlier"]);
   });
 
@@ -65,7 +65,7 @@ test.describe("the search sheet", () => {
     await expect(page).toHaveURL(atlas.url("/explore")); // in place: no navigation
     await expect(sheet.getByRole("searchbox")).toBeFocused();
     await page.keyboard.type("change");
-    await expect(sheet.getByRole("heading")).toHaveText([/^Series/, /^Events/, /^Glossary/]);
+    await expect(sheet.getByRole("heading")).toHaveText([/^Topics/, /^Series/, /^Events/, /^Glossary/]);
     await expect(sheet.locator("[data-group=event] a")).toHaveAttribute("href", "/macro-atlas/events/2024-09-18-fixture-rate-decision");
     await page.keyboard.press("Escape");
     await expect(sheet).toBeHidden();
