@@ -165,6 +165,22 @@ describe("frequencies and the stated order", () => {
     expect(table(evaluate("mean_of_yoy", w))[0]![1]).toBeCloseTo(10, 9);
   });
 
+  it("an empty Period at the edge still counts when the result is aggregated", () => {
+    // January to March: 10 - 1, 20 - 2, and no March for the second input. A quarter's sum
+    // with a month missing is not the quarter's sum; its mean over two of three months is given.
+    const a = stored("a", "monthly", "2024-01", [10, 20, 30]);
+    const b = stored("b", "monthly", "2024-01", [1, 2, null]);
+    const w = world(a, b,
+      derived("net_sum", "quarterly", { op: "difference", inputs: ["a", "b"], order: "compute_then_aggregate" }, { measure_kind: "flow", agg: "sum" }),
+      derived("net_mean", "quarterly", { op: "difference", inputs: ["a", "b"], order: "compute_then_aggregate" }, { measure_kind: "stock", agg: "mean" }),
+      derived("first_missing", "quarterly", { op: "difference", inputs: ["b", "a"], order: "compute_then_aggregate" }, { measure_kind: "flow", agg: "sum" }));
+    expect(evaluate("net_sum", w).unavailable).toMatchObject({ reason: "no_values" });
+    expect(table(evaluate("net_mean", w))).toEqual([["2024-Q1", 13.5, "final"]]);
+    const lead = world(stored("a", "monthly", "2024-01", [null, 20, 30]), stored("b", "monthly", "2024-01", [1, 2, 3]),
+      derived("net", "quarterly", { op: "difference", inputs: ["a", "b"], order: "compute_then_aggregate" }, { measure_kind: "flow", agg: "sum" }));
+    expect(evaluate("net", lead).unavailable).toMatchObject({ reason: "no_values" });
+  });
+
   it("refuses what the declarations do not cover", () => {
     const w = world(monthlyFlow, quarterlyFlow, stored("undeclared", "monthly", "2024-01", [1, 2, 3], { agg: "none" }),
       derived("mixed", "quarterly", { op: "ratio", inputs: ["m", "q"], order: "compute_then_aggregate" }, { agg: "mean" }),
@@ -282,6 +298,28 @@ describe("the fixture release", () => {
     const answer = evaluateRecipe("fx_mix", catalog, fixtureLoad, { asOf: "2025-12-11", ...RELEASE });
     expect(answer.rights_status).toBe("citation_required");
     expect(answer.basis).toBe("uncertain"); // Atlas-observed prices, an uncertain poverty rate
+  });
+
+  it("has no answer when an input's versions at the Cutoff were held under more than one metadata it cannot tell apart", () => {
+    // On the Origin's clock the answer is the versions the Origin dated; if they were recorded
+    // under different metadata (here: the first quarters in millions, the rest in billions)
+    // no one unit is in force, and today's must not stand in for it.
+    const load = (key: string): ResolveSeries | null => {
+      const series = fixtureLoad(key);
+      if (!series || key !== "fx_output_quarterly") return series;
+      const file = structuredClone(series.vintages!);
+      const line = file.metadata[0]!;
+      file.metadata.push({ ...line, hash: "f".repeat(64), metadata: { ...line.metadata, unit: "millions of fixture dollars" } });
+      for (const row of file.rows) if (row.period < "2023-Q1") row.metadata = "f".repeat(64);
+      return { ...series, vintages: file };
+    };
+    const catalog = withRecipes(derived("fx_output_change", "quarterly", { op: "pct_change", inputs: ["fx_output_quarterly"], order: "aggregate_then_compute", params: { lag: 1 } }));
+    const answer = evaluateRecipe("fx_output_change", catalog, load, { asOf: "2025-11-28", ...RELEASE });
+    expect(answer.inputs[0]).toMatchObject({ key: "fx_output_quarterly", basis: "provider" });
+    expect(answer.unavailable).toMatchObject({ reason: "input_metadata_mixed" });
+    expect(answer.observations).toEqual([]);
+    // With one metadata throughout, the same question has an answer.
+    expect(evaluateRecipe("fx_output_change", catalog, fixtureLoad, { asOf: "2025-11-28", ...RELEASE }).unavailable).toBeUndefined();
   });
 
   it("leaves out Periods still held under other metadata than was in force", () => {
