@@ -1,0 +1,13 @@
+# The throwaway Caddy of deploy/smoke.sh. Never a server's configuration: it exists to load
+# deploy/Caddyfile.snippet exactly as Alex's site block would, on a port of this machine.
+{
+	auto_https off
+	admin off
+}
+
+:8080 {
+	import /etc/caddy/macro-atlas.snippet
+	handle {
+		respond "not Macro Atlas" 404
+	}
+}

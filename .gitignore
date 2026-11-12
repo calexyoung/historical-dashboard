@@ -16,3 +16,9 @@ node_modules/
 # The committed fixture release (fixtures/public) is synthetic and is not ignored.
 /var/
 .next/
+
+# v2 server environment files hold API keys (deploy/RUNBOOK.md): never in the repository.
+# The two that are let back in name a build's Surface, path, port and directories; no secret.
+*.env
+!deploy/production.env
+!deploy/staging.env

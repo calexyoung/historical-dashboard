@@ -1,0 +1,14 @@
+# When the refresh runs (PLAN 4.7). New York's clock, not UTC: 10:45 is after the 08:30 and
+# 10:00 Eastern releases in winter and in summer alike, and 17:30 is after the Federal
+# Reserve's 16:15 H.15. A run missed while the machine was down is made up at start-up.
+[Unit]
+Description=Macro Atlas refresh (%i), twice a day by New York's clock
+
+[Timer]
+OnCalendar=*-*-* 10:45:00 America/New_York
+OnCalendar=*-*-* 17:30:00 America/New_York
+Persistent=true
+Unit=macro-atlas-ingest@%i.service
+
+[Install]
+WantedBy=timers.target

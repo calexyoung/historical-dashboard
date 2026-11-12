@@ -20,7 +20,7 @@ concurrency:
 jobs:
   python:
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v10.2.0
@@ -76,10 +76,14 @@ jobs:
 
   images:
     # Builds the web image for both base paths, reads every layer for seeded values and v1 data,
-    # and smoke-tests `docker compose up` on loopback. No push, no artefact.
+    # and smoke-tests `docker compose up` on loopback. Then the server deploy kit (M26): the
+    # production and staging builds behind a throwaway Caddy, on invented data. No push, no
+    # artefact, no deploy.
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v7
       - name: Build, inspect and smoke-test the images
         run: bash deploy/check-images.sh
+      - name: The deploy kit behind a throwaway Caddy (both paths, preflight, backup and restore)
+        run: bash deploy/smoke.sh

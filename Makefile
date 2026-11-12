@@ -1,6 +1,6 @@
 PY ?= $(if $(wildcard .venv/bin/python),.venv/bin/python,python3)
 
-.PHONY: fetch build check test smoke serve clean setup lint-py v2 v2-legacy-release v2-setup v2-check v2-dev v2-site-check v2-up v2-image-check v2-claim-demo
+.PHONY: fetch build check test smoke serve clean setup lint-py v2 v2-legacy-release v2-setup v2-check v2-dev v2-site-check v2-up v2-image-check v2-claim-demo v2-deploy-smoke
 
 setup:
 	uv sync --extra dev && .venv/bin/python -m playwright install chromium
@@ -86,3 +86,12 @@ v2-up:
 # Builds both images, reads every layer for seeded values, and smoke-tests `docker compose up`.
 v2-image-check:
 	bash deploy/check-images.sh
+
+# The server deploy kit, on this machine and on invented data (M26; deploy/RUNBOOK.md). Needs
+# Docker. Builds the production and the staging image from deploy/compose.yaml, puts both
+# behind a throwaway Caddy that loads deploy/Caddyfile.snippet, and checks: a deploy the
+# preflight refuses starts nothing; loopback only; each path is its own build; staging asks
+# for the password on every path; a Release is promoted with no restart; backup then restore.
+# It prints the throwaway address as it goes and ends "SMOKE OK". Nothing is deployed.
+v2-deploy-smoke:
+	bash deploy/smoke.sh

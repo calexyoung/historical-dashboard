@@ -1,0 +1,16 @@
+# Macro Atlas backup for one Surface (PLAN 4.3 and M26): one checked archive of the store and
+# the release root, taken between runs. A file for Alex to copy to /etc/systemd/system.
+# The off-host copy is ATLAS_BACKUP_REMOTE in the file below (deploy/RUNBOOK.md, "Backups").
+[Unit]
+Description=Macro Atlas backup (%i)
+Documentation=file:///srv/macro-atlas/checkout/deploy/RUNBOOK.md
+Requires=docker.service
+After=docker.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/srv/macro-atlas/checkout
+EnvironmentFile=-/srv/macro-atlas/env/backup.env
+ExecStart=/srv/macro-atlas/checkout/deploy/backup.sh %i
+TimeoutStartSec=120min
+Nice=15

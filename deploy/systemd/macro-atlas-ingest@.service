@@ -1,0 +1,19 @@
+# Macro Atlas refresh for one Surface (PLAN 4.7 and M26; ADR 0008): capture, replay, release.
+# A file for Alex to copy to /etc/systemd/system; the instance is the Surface:
+#   macro-atlas-ingest@production.service   macro-atlas-ingest@staging.service
+# The runbook (deploy/RUNBOOK.md) says when. It runs to completion; the timer is the retry.
+# A backup that is running is waited for (refresh.sh, --wait), not ordered against: the two
+# share a lock in the store.
+[Unit]
+Description=Macro Atlas refresh (%i): capture, replay, release
+Documentation=file:///srv/macro-atlas/checkout/deploy/RUNBOOK.md
+Wants=network-online.target
+Requires=docker.service
+After=network-online.target docker.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/srv/macro-atlas/checkout
+ExecStart=/srv/macro-atlas/checkout/deploy/refresh.sh %i
+TimeoutStartSec=90min
+Nice=10

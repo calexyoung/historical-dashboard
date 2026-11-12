@@ -12,7 +12,10 @@ python -m atlas release --profile public     write and promote a Release        
 ```
 
 A release run fetches nothing and records nothing in the store. It reads what the store holds
-now. One job that does all three in order, on a timer, is the deploy kit's (M26).
+now. One job does all three in order and lets no second one in: `python -m atlas refresh
+--profile public`, which the server's timer runs (M26; ADR 0040, `deploy/RUNBOOK.md`). A
+capture that did not end clean does not stop it; a replay that fails does, and `CURRENT` is
+as it was.
 
 ## Two Profiles, two roots
 

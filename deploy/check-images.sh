@@ -8,7 +8,8 @@
 #      its own build, that each container is healthy, and that both ports are bound to 127.0.0.1.
 #   3. Checks that a build with no Surface, or with one that does not match its base path, fails.
 #   4. Builds the ingest image (Python and Node, PLAN M11), reads its layers for the same seeds,
-#      and runs a whole release with Derived series inside it on the invented vintage fixture.
+#      checks its content/ is the tracked one, and runs a whole release with Derived series and
+#      the repository's Events inside it on the invented vintage fixture.
 #
 # Nothing is pushed and nothing is uploaded.
 set -euo pipefail
@@ -106,6 +107,14 @@ if python3 deploy/scan_image.py "$INGEST" "known=atlas-core verify --release" >/
   echo "FAIL: the layer scan did not find a string the ingest image is known to hold"; exit 1
 fi
 echo "ok  the scan finds a string that is in the ingest image"
+# The content in the image is the tracked content/ and nothing else: no note, no stray file,
+# no lock that is not committed (M26; ADR 0033, ADR 0040).
+if command -v git >/dev/null 2>&1 && git rev-parse --git-dir >/dev/null 2>&1; then
+  diff <(git ls-files content | LC_ALL=C sort) \
+       <(docker run --rm --entrypoint sh "$INGEST" -c 'cd /app && find content -type f' | LC_ALL=C sort) \
+    || { echo "FAIL: the ingest image's content/ is not the tracked content/"; exit 1; }
+  echo "ok  the ingest image holds exactly the tracked content files"
+fi
 [ "$(docker run --rm --entrypoint id "$INGEST" -u)" != 0 ] || { echo "FAIL: the ingest image runs as root"; exit 1; }
 # The real commands on the invented vintage fixture (mounted, never in the image): capture
 # replay, vintage replay, then a release whose two Derived series the Node step computes.
@@ -117,6 +126,8 @@ docker run --rm --read-only --tmpfs /tmp -v "$PWD/fixtures:/app/fixtures:ro" --e
   test -s "$release/derived/fx_price_change.json"
   test -s "$release/derived/fx_jobs_per_price.json"
   grep -q "\"semantics_version\":\"0\." "$release/manifest.json"
+  # The content the image holds is compiled into the Release (M26): public Events, no draft.
+  python -c "import json, sys; sys.exit(not json.load(open(sys.argv[1]))[\"events\"])" "$release/content/events.json"
   test ! -e /tmp/demo/public/.staging || test -z "$(ls -A /tmp/demo/public/.staging)"
 ' || { echo "FAIL: a release with Derived series could not be written inside the ingest image"; exit 1; }
 echo "ok  ingest: non-root, read-only filesystem, a release with Derived series from the Node step"
