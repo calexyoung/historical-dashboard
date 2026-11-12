@@ -19,20 +19,22 @@
     "origin": {
       "producer": "Board of Governors of the Federal Reserve System",
       "dataset": "Charge-Off and Delinquency Rates on Loans and Leases at Commercial Banks",
-      "origin_id": null,
+      "origin_id": "STFBQDCC%STFBAILCC_XEOP_MA.Q",
       "url": "https://www.federalreserve.gov/releases/chargeoff/"
     },
     "channel": {
-      "via": "direct"
+      "via": "direct",
+      "adapter": "fed_board",
+      "endpoint": "fed-chgdel-delinquency",
+      "auth": "none"
     }
   },
   "refresh": "quarterly",
   "max_lag": "P7M",
-  "status": "draft",
+  "status": "active",
   "migration": {
     "v1_source": "FRED DRCCLACBS",
     "change": "same",
-    "note": "The agency's identifier for this series is settled, with a captured fixture, by the milestone that builds the adapter.",
     "milestone": "M13"
   }
 }

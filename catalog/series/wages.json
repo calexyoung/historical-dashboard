@@ -23,12 +23,15 @@
       "url": "https://data.bls.gov/timeseries/CES0500000008"
     },
     "channel": {
-      "via": "direct"
+      "via": "direct",
+      "adapter": "bls",
+      "endpoint": "bls-coverage",
+      "auth": "none"
     }
   },
   "refresh": "monthly",
   "max_lag": "P3M",
-  "status": "draft",
+  "status": "active",
   "migration": {
     "v1_source": "FRED AHETPI",
     "change": "same",

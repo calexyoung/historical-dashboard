@@ -22,7 +22,10 @@
       "url": "https://www.federalreserve.gov/releases/h10/"
     },
     "channel": {
-      "via": "direct"
+      "via": "direct",
+      "adapter": "fed_board",
+      "endpoint": "fed-h10-daily-rates",
+      "auth": "none"
     }
   },
   "refresh": "daily",
@@ -31,7 +34,7 @@
     0.8,
     1.7
   ],
-  "status": "draft",
+  "status": "active",
   "migration": {
     "v1_source": "FRED DEXUSEU",
     "change": "same",

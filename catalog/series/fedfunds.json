@@ -22,7 +22,10 @@
       "url": "https://www.federalreserve.gov/releases/h15/"
     },
     "channel": {
-      "via": "direct"
+      "via": "direct",
+      "adapter": "fed_board",
+      "endpoint": "fed-h15-monthly",
+      "auth": "none"
     }
   },
   "refresh": "monthly",
@@ -31,7 +34,7 @@
     0.0,
     7.0
   ],
-  "status": "draft",
+  "status": "active",
   "migration": {
     "v1_source": "FRED FEDFUNDS",
     "change": "same",

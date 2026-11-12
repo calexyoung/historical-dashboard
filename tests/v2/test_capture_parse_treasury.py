@@ -137,11 +137,11 @@ def _broken(change):
     (_broken(lambda rows: rows[1].update(classification_desc="November")),
      "the statement of 2025-10-31 lists 2025-11, a month after its own"),
     (_broken(lambda rows: rows[2].update(record_type_cd="XX")),
-     "the statement of 2025-10-31 has a row that is not a fiscal-year header, a month or a "
-     "year-to-date total: 'Year-to-Date'"),
+     ("the statement of 2025-10-31 has a row that is not a fiscal-year header, a month or a "
+     "year-to-date total: 'Year-to-Date'")),
     (_broken(lambda rows: rows[0].update(classification_desc="Fiscal 2026")),
-     "the statement of 2025-10-31 has a row that is not a fiscal-year header, a month or a "
-     "year-to-date total: 'Fiscal 2026'"),
+     ("the statement of 2025-10-31 has a row that is not a fiscal-year header, a month or a "
+     "year-to-date total: 'Fiscal 2026'")),
     (_broken(lambda rows: rows[1].update({RECEIPTS: "about 400"})),
      f"{RECEIPTS} has a value that is not a number or null for 2025-10: 'about 400'"),
     (_broken(lambda rows: rows[0].update(record_date="2025-10-15") or rows[1].update(record_date="2025-10-15")

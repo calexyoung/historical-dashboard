@@ -1,0 +1,35 @@
+{
+  "key": "outlays",
+  "name": "U.S. Government outlays, by month",
+  "description": "Gross outlays of the U.S. Government in the month, from table 1 of the Monthly Treasury Statement, as the latest statement that lists the month gives them.",
+  "unit": "U.S. dollars",
+  "unit_kind": "currency",
+  "measure_kind": "flow",
+  "agg": "sum",
+  "freq": "monthly",
+  "continuity": "discrete",
+  "seasonal_adjustment": "nsa",
+  "price_basis": "nominal",
+  "country": "USA",
+  "segment": "economy_jobs",
+  "topics": [
+    "us-economy"
+  ],
+  "source": {
+    "origin": {
+      "producer": "U.S. Department of the Treasury, Bureau of the Fiscal Service",
+      "dataset": "Monthly Treasury Statement",
+      "url": "https://fiscaldata.treasury.gov/datasets/monthly-treasury-statement/",
+      "origin_id": "current_month_gross_outly_amt"
+    },
+    "channel": {
+      "via": "direct",
+      "adapter": "treasury_fiscal_data",
+      "endpoint": "treasury-mts-summary",
+      "auth": "none"
+    }
+  },
+  "refresh": "monthly",
+  "max_lag": "P3M",
+  "status": "active"
+}

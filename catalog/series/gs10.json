@@ -22,7 +22,10 @@
       "url": "https://www.federalreserve.gov/releases/h15/"
     },
     "channel": {
-      "via": "direct"
+      "via": "direct",
+      "adapter": "fed_board",
+      "endpoint": "fed-h15-treasury-yields",
+      "auth": "none"
     }
   },
   "refresh": "daily",
@@ -31,7 +34,7 @@
     0.0,
     8.0
   ],
-  "status": "draft",
+  "status": "active",
   "migration": {
     "v1_source": "FRED GS10",
     "change": "representation",

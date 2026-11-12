@@ -47,7 +47,7 @@ def test_every_v1_key_is_a_key_of_the_catalog_unchanged():
     catalog = load_catalog()
     assert len(V1_KEYS) == 126
     assert [key for key in V1_KEYS if key not in catalog] == []
-    assert sorted(set(catalog) - set(V1_KEYS)) == ["cpi_nsa"]
+    assert sorted(set(catalog) - set(V1_KEYS)) == ["cpi_nsa", "net_worth", "outlays", "receipts"]
     recorded = json.loads((ROOT / "checks" / "v1-links.json").read_text())
     selected = {key for group in ("presets", "links") for item in recorded.get(group, [])
                 for key in item["v1"]["sel"]}
@@ -90,8 +90,22 @@ def test_only_what_an_adapter_is_built_for_is_in_the_pipeline():
     """A draft is a proposal: it is never captured, replayed or released, so a local Release
     keeps v1's own Series, with v1's own provenance, for every key not yet live."""
     catalog = load_catalog()
-    assert sorted(k for k, e in catalog.items() if e["status"] != "draft") == [
-        "cpi", "cpi_nsa", "cpi_yoy", "payems", "ted", "unrate"]
+    live = sorted(k for k, e in catalog.items() if e["status"] != "draft")
+    assert [k for k in live if "recipe" in catalog[k]] == [
+        "corecpi_yoy", "cpi_yoy", "m2_yoy", "rent_yoy", "t10y2y", "wages_yoy"]
+    by_adapter: dict[str, list[str]] = {}
+    for key in live:
+        channel = catalog[key].get("source", {}).get("channel")
+        if channel:
+            by_adapter.setdefault(channel["adapter"], []).append(key)
+    assert by_adapter == {  # M7 and M8: four BLS Series. M13: the rest.
+        "bls": ["civpart", "corecpi", "cpi", "cpi_nsa", "eggs", "labor_share", "payems", "real_wages",
+                "rent_cpi", "unrate", "wages"],
+        "treasury_fiscal_data": ["debt", "outlays", "receipts"],
+        "fed_board": ["brl", "cad", "cny", "credit", "delinq", "eurusd", "fedassets", "fedfunds",
+                      "gbpusd", "gs10", "gs2", "indpro", "inr", "jpy", "m2", "mxn", "net_worth",
+                      "usd_broad"],
+    }
     assert catalog["ted"]["status"] == "retired" and catalog["ted"]["source"]["channel"] is None
     assert all(e["source"]["channel"] is None or "endpoint" not in e["source"]["channel"]
                for e in catalog.values() if e["status"] == "draft" and "source" in e)
@@ -217,7 +231,7 @@ def test_atlas_check_exits_zero_on_the_committed_catalog_and_names_each_layer(ca
     out = capsys.readouterr().out
     for layer in LAYERS:
         assert f"{layer}: ok" in out
-    assert "127 Series" in out
+    assert "130 Series" in out
 
 
 def test_atlas_check_exits_one_and_names_the_file_and_the_layers_not_run(tmp_path, capsys):
@@ -276,3 +290,35 @@ def test_a_catalog_that_passes_the_check_gives_a_series_table_the_store_can_load
     stored_keys = {e["key"] for e in load_series()}
     for row in load_derived():
         assert set(row["recipe"]["inputs"]) <= stored_keys | {r["key"] for r in load_derived()}
+
+
+# --- what an Endpoint must say of a Series bound to it (M13) ----------------------------------
+
+FED_SOURCE = {"origin": {"producer": "Board of Governors of the Federal Reserve System",
+                         "dataset": "H.15 Selected Interest Rates", "origin_id": "RIFLGFCY10_N.B", "url": None},
+              "channel": {"via": "direct", "adapter": "fed_board", "endpoint": "fed-h15-treasury-yields"}}
+
+
+def _fed(origin_id, freq="business_daily"):
+    source = {**FED_SOURCE, "origin": {**FED_SOURCE["origin"], "origin_id": origin_id}}
+    return stored("gs10", status="active", freq=freq, measure_kind="rate", unit="percent",
+                  unit_kind="percent", source=source)
+
+
+def test_a_series_bound_to_a_board_package_is_one_of_its_columns(tmp_path):
+    assert failed(run(tmp_path, _fed("RIFLGFCY10_N.B"))) == {}
+    assert failed(run(tmp_path, _fed("NOT_A_COLUMN"))) == {"references": [
+        "the endpoint fed-h15-treasury-yields does not ask for NOT_A_COLUMN"]}
+
+
+def test_a_series_read_from_a_board_package_has_its_unit_and_multiplier_pinned(tmp_path):
+    # RIFLGFCY30_N.B is a column of the package, and the endpoint pins no label for it: a
+    # change of unit or multiplier would go unseen.
+    assert failed(run(tmp_path, _fed("RIFLGFCY30_N.B"))) == {"references": [
+        ("the endpoint fed-h15-treasury-yields does not say what unit and multiplier the Board "
+        "labels RIFLGFCY30_N.B with (its labels)")]}
+
+
+def test_a_series_frequency_is_the_one_its_endpoint_reads_at(tmp_path):
+    assert failed(run(tmp_path, _fed("RIFLGFCY10_N.B", freq="monthly"))) == {"references": [
+        "it is monthly, and the endpoint fed-h15-treasury-yields is read by day"]}

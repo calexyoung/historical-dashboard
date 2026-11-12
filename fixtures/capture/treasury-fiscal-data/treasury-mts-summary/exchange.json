@@ -1,0 +1,48 @@
+{
+  "format": 1,
+  "source": "treasury-fiscal-data",
+  "endpoint": "treasury-mts-summary",
+  "recorded_at": "2026-11-11T15:50:00Z",
+  "provenance": {
+    "synthetic": true,
+    "transport": "synthetic",
+    "origin": "U.S. Department of the Treasury, Bureau of the Fiscal Service",
+    "datasets": [
+      "Monthly Treasury Statement"
+    ],
+    "retrieved_at": "2026-11-11T15:50:08Z",
+    "capture_id": null,
+    "note": "Invented values in the shape of the source's answer of 2026-11-11. Not a measurement of anything and not a capture: written by fixtures/capture/make_fixtures.py."
+  },
+  "exchanges": [
+    {
+      "request": {
+        "method": "GET",
+        "url": "https://api.fiscaldata.treasury.gov/services/api/fiscal_service/v1/accounting/mts/mts_table_1?format=json&sort=record_date%2Csrc_line_nbr&page%5Bnumber%5D=1&page%5Bsize%5D=10000",
+        "body": null
+      },
+      "status": 200,
+      "headers": [
+        [
+          "Content-Type",
+          "application/json"
+        ],
+        [
+          "Date",
+          "Wed, 11 Nov 2026 15:50:08 GMT"
+        ],
+        [
+          "Content-Length",
+          "63354"
+        ],
+        [
+          "Set-Cookie",
+          "(not kept)"
+        ]
+      ],
+      "received_at": "2026-11-11T15:50:08Z",
+      "body_file": "part-1.json",
+      "sha256": "9f805bf7c5c5bad4c493360c67a9062dc939a70e85be57f616e5d497f288e1bd"
+    }
+  ]
+}

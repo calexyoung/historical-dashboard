@@ -1,0 +1,110 @@
+{
+  "format": 1,
+  "source": "bls",
+  "endpoint": "bls-coverage",
+  "recorded_at": "2026-11-11T15:50:00Z",
+  "provenance": {
+    "synthetic": true,
+    "transport": "synthetic",
+    "origin": "U.S. Bureau of Labor Statistics",
+    "datasets": [
+      "Consumer Price Index",
+      "Current Population Survey",
+      "Current Employment Statistics",
+      "Average Price Data",
+      "Productivity and Costs"
+    ],
+    "retrieved_at": "2026-11-11T15:50:06Z",
+    "capture_id": null,
+    "note": "Invented values in the shape of the source's answer of 2026-11-11. Not a measurement of anything and not a capture: written by fixtures/capture/make_fixtures.py."
+  },
+  "exchanges": [
+    {
+      "request": {
+        "method": "POST",
+        "url": "https://api.bls.gov/publicAPI/v2/timeseries/data/",
+        "body": "{\"seriesid\": [\"LNS11300000\", \"CUSR0000SA0L1E\", \"CUSR0000SEHA\", \"CES0500000008\", \"APU0000708111\", \"PRS85006173\", \"LES1252881600\"], \"startyear\": \"1997\", \"endyear\": \"2006\"}"
+      },
+      "status": 200,
+      "headers": [
+        [
+          "Content-Type",
+          "application/json"
+        ],
+        [
+          "Date",
+          "Wed, 11 Nov 2026 15:50:04 GMT"
+        ],
+        [
+          "Content-Length",
+          "59689"
+        ],
+        [
+          "Set-Cookie",
+          "(not kept)"
+        ]
+      ],
+      "received_at": "2026-11-11T15:50:04Z",
+      "body_file": "part-1.json",
+      "sha256": "6c6659836d19799943a3d314232d8ad3c4bbb0c755db8a028ed736e43ff06a97"
+    },
+    {
+      "request": {
+        "method": "POST",
+        "url": "https://api.bls.gov/publicAPI/v2/timeseries/data/",
+        "body": "{\"seriesid\": [\"LNS11300000\", \"CUSR0000SA0L1E\", \"CUSR0000SEHA\", \"CES0500000008\", \"APU0000708111\", \"PRS85006173\", \"LES1252881600\"], \"startyear\": \"2007\", \"endyear\": \"2016\"}"
+      },
+      "status": 200,
+      "headers": [
+        [
+          "Content-Type",
+          "application/json"
+        ],
+        [
+          "Date",
+          "Wed, 11 Nov 2026 15:50:05 GMT"
+        ],
+        [
+          "Content-Length",
+          "59689"
+        ],
+        [
+          "Set-Cookie",
+          "(not kept)"
+        ]
+      ],
+      "received_at": "2026-11-11T15:50:05Z",
+      "body_file": "part-2.json",
+      "sha256": "b90e128871c8728fc51820650f27b88d01d4e876ea020c46c039d039e6074e9f"
+    },
+    {
+      "request": {
+        "method": "POST",
+        "url": "https://api.bls.gov/publicAPI/v2/timeseries/data/",
+        "body": "{\"seriesid\": [\"LNS11300000\", \"CUSR0000SA0L1E\", \"CUSR0000SEHA\", \"CES0500000008\", \"APU0000708111\", \"PRS85006173\", \"LES1252881600\"], \"startyear\": \"2017\", \"endyear\": \"2026\"}"
+      },
+      "status": 200,
+      "headers": [
+        [
+          "Content-Type",
+          "application/json"
+        ],
+        [
+          "Date",
+          "Wed, 11 Nov 2026 15:50:06 GMT"
+        ],
+        [
+          "Content-Length",
+          "59181"
+        ],
+        [
+          "Set-Cookie",
+          "(not kept)"
+        ]
+      ],
+      "received_at": "2026-11-11T15:50:06Z",
+      "body_file": "part-3.json",
+      "sha256": "7f16294d56f281eb4774c4621a1e88d00a4fd42eb4d0a12520f7a8c038722860"
+    }
+  ]
+}

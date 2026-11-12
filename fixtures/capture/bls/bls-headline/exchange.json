@@ -12,11 +12,69 @@
       "Current Population Survey",
       "Current Employment Statistics"
     ],
-    "retrieved_at": "2026-11-11T15:50:01Z",
+    "retrieved_at": "2026-11-11T15:50:03Z",
     "capture_id": null,
     "note": "Invented values in the shape of the source's answer of 2026-11-11. Not a measurement of anything and not a capture: written by fixtures/capture/make_fixtures.py."
   },
   "exchanges": [
+    {
+      "request": {
+        "method": "POST",
+        "url": "https://api.bls.gov/publicAPI/v2/timeseries/data/",
+        "body": "{\"seriesid\": [\"CUUR0000SA0\", \"CUSR0000SA0\", \"LNS14000000\", \"CES0000000001\"], \"startyear\": \"1997\", \"endyear\": \"2006\"}"
+      },
+      "status": 200,
+      "headers": [
+        [
+          "Content-Type",
+          "application/json"
+        ],
+        [
+          "Date",
+          "Wed, 11 Nov 2026 15:50:01 GMT"
+        ],
+        [
+          "Content-Length",
+          "41953"
+        ],
+        [
+          "Set-Cookie",
+          "(not kept)"
+        ]
+      ],
+      "received_at": "2026-11-11T15:50:01Z",
+      "body_file": "part-1.json",
+      "sha256": "d252409f1135a2714f9be29416b28cd042e467af89db26d6eb04ab15d4ade880"
+    },
+    {
+      "request": {
+        "method": "POST",
+        "url": "https://api.bls.gov/publicAPI/v2/timeseries/data/",
+        "body": "{\"seriesid\": [\"CUUR0000SA0\", \"CUSR0000SA0\", \"LNS14000000\", \"CES0000000001\"], \"startyear\": \"2007\", \"endyear\": \"2016\"}"
+      },
+      "status": 200,
+      "headers": [
+        [
+          "Content-Type",
+          "application/json"
+        ],
+        [
+          "Date",
+          "Wed, 11 Nov 2026 15:50:02 GMT"
+        ],
+        [
+          "Content-Length",
+          "41953"
+        ],
+        [
+          "Set-Cookie",
+          "(not kept)"
+        ]
+      ],
+      "received_at": "2026-11-11T15:50:02Z",
+      "body_file": "part-2.json",
+      "sha256": "06d38627bbb19ac800440632fe18af7ab4c1d8aa5e0b1a8ff5c3a3d2f08e77c1"
+    },
     {
       "request": {
         "method": "POST",
@@ -31,7 +89,7 @@
         ],
         [
           "Date",
-          "Wed, 11 Nov 2026 15:50:01 GMT"
+          "Wed, 11 Nov 2026 15:50:03 GMT"
         ],
         [
           "Content-Length",
@@ -42,9 +100,9 @@
           "(not kept)"
         ]
       ],
-      "received_at": "2026-11-11T15:50:01Z",
-      "body_file": "part-1.json",
-      "sha256": "b6eb86f26a2d490039ec885535e2393b7364da7525e924b99bd11354459c415e"
+      "received_at": "2026-11-11T15:50:03Z",
+      "body_file": "part-3.json",
+      "sha256": "4582198b6ec9c339a3a86f507a0f2b644a736e05eff6fa713b37baa87aad399e"
     }
   ]
 }

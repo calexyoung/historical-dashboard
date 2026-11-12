@@ -1,0 +1,48 @@
+{
+  "format": 1,
+  "source": "fed-board",
+  "endpoint": "fed-h15-monthly",
+  "recorded_at": "2026-11-11T15:50:00Z",
+  "provenance": {
+    "synthetic": true,
+    "transport": "synthetic",
+    "origin": "Board of Governors of the Federal Reserve System",
+    "datasets": [
+      "H.15 Selected Interest Rates"
+    ],
+    "retrieved_at": "2026-11-11T15:50:10Z",
+    "capture_id": null,
+    "note": "Invented values in the shape of the source's answer of 2026-11-11. Not a measurement of anything and not a capture: written by fixtures/capture/make_fixtures.py."
+  },
+  "exchanges": [
+    {
+      "request": {
+        "method": "GET",
+        "url": "https://www.federalreserve.gov/datadownload/Output.aspx?rel=H15&series=d7e27b7b09a3a7feae95b9c61781fcd8&lastobs=&from=&to=&filetype=csv&label=include&layout=seriescolumn",
+        "body": null
+      },
+      "status": 200,
+      "headers": [
+        [
+          "Content-Type",
+          "text/csv"
+        ],
+        [
+          "Date",
+          "Wed, 11 Nov 2026 15:50:10 GMT"
+        ],
+        [
+          "Content-Length",
+          "7410"
+        ],
+        [
+          "Set-Cookie",
+          "(not kept)"
+        ]
+      ],
+      "received_at": "2026-11-11T15:50:10Z",
+      "body_file": "part-1.csv",
+      "sha256": "9fdc3c61cfacfd39c24f54d8fac642937d7ef1b17992b71691e7b516971b7e4e"
+    }
+  ]
+}

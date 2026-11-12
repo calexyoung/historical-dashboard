@@ -24,12 +24,15 @@
       "url": "https://data.bls.gov/timeseries/PRS85006173"
     },
     "channel": {
-      "via": "direct"
+      "via": "direct",
+      "adapter": "bls",
+      "endpoint": "bls-coverage",
+      "auth": "none"
     }
   },
   "refresh": "quarterly",
   "max_lag": "P7M",
-  "status": "draft",
+  "status": "active",
   "migration": {
     "v1_source": "FRED PRS85006173",
     "change": "same",

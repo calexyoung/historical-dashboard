@@ -1,0 +1,106 @@
+{
+  "format": 1,
+  "source": "fed-board",
+  "endpoint": "fed-h10-daily-rates",
+  "recorded_at": "2026-11-11T15:50:00Z",
+  "provenance": {
+    "synthetic": true,
+    "transport": "synthetic",
+    "origin": "Board of Governors of the Federal Reserve System",
+    "datasets": [
+      "H.10 Foreign Exchange Rates"
+    ],
+    "retrieved_at": "2026-11-11T15:50:13Z",
+    "capture_id": null,
+    "note": "Invented values in the shape of the source's answer of 2026-11-11. Not a measurement of anything and not a capture: written by fixtures/capture/make_fixtures.py."
+  },
+  "exchanges": [
+    {
+      "request": {
+        "method": "GET",
+        "url": "https://www.federalreserve.gov/datadownload/Output.aspx?rel=H10&series=60f32914ab61dfab590e0e470153e3ae&lastobs=&from=01%2F01%2F1971&to=12%2F31%2F1989&filetype=csv&label=include&layout=seriescolumn",
+        "body": null
+      },
+      "status": 200,
+      "headers": [
+        [
+          "Content-Type",
+          "text/csv"
+        ],
+        [
+          "Date",
+          "Wed, 11 Nov 2026 15:50:11 GMT"
+        ],
+        [
+          "Content-Length",
+          "5889"
+        ],
+        [
+          "Set-Cookie",
+          "(not kept)"
+        ]
+      ],
+      "received_at": "2026-11-11T15:50:11Z",
+      "body_file": "part-1.csv",
+      "sha256": "a400fde5f1bf021cb21f4019181b8a560cee07e9794725ea6d54a480d3870a88"
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "https://www.federalreserve.gov/datadownload/Output.aspx?rel=H10&series=60f32914ab61dfab590e0e470153e3ae&lastobs=&from=01%2F01%2F1990&to=12%2F31%2F2009&filetype=csv&label=include&layout=seriescolumn",
+        "body": null
+      },
+      "status": 200,
+      "headers": [
+        [
+          "Content-Type",
+          "text/csv"
+        ],
+        [
+          "Date",
+          "Wed, 11 Nov 2026 15:50:12 GMT"
+        ],
+        [
+          "Content-Length",
+          "5895"
+        ],
+        [
+          "Set-Cookie",
+          "(not kept)"
+        ]
+      ],
+      "received_at": "2026-11-11T15:50:12Z",
+      "body_file": "part-2.csv",
+      "sha256": "c3e15e9bd7f4a2c6bdd2533c40eae2d08eac7fb9fcb3b4e6a40fb96933cabce5"
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "https://www.federalreserve.gov/datadownload/Output.aspx?rel=H10&series=60f32914ab61dfab590e0e470153e3ae&lastobs=&from=01%2F01%2F2010&to=12%2F31%2F2026&filetype=csv&label=include&layout=seriescolumn",
+        "body": null
+      },
+      "status": 200,
+      "headers": [
+        [
+          "Content-Type",
+          "text/csv"
+        ],
+        [
+          "Date",
+          "Wed, 11 Nov 2026 15:50:13 GMT"
+        ],
+        [
+          "Content-Length",
+          "5517"
+        ],
+        [
+          "Set-Cookie",
+          "(not kept)"
+        ]
+      ],
+      "received_at": "2026-11-11T15:50:13Z",
+      "body_file": "part-3.csv",
+      "sha256": "d8b8202a49885b9ff8c4766235656bd3bee27e71028d3375edb7cd586106250b"
+    }
+  ]
+}

@@ -23,12 +23,15 @@
       "url": "https://data.bls.gov/timeseries/CUSR0000SA0L1E"
     },
     "channel": {
-      "via": "direct"
+      "via": "direct",
+      "adapter": "bls",
+      "endpoint": "bls-coverage",
+      "auth": "none"
     }
   },
   "refresh": "monthly",
   "max_lag": "P3M",
-  "status": "draft",
+  "status": "active",
   "migration": {
     "v1_source": "FRED CPILFESL",
     "change": "same",

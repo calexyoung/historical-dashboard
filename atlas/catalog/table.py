@@ -138,6 +138,7 @@ def render_table(entries: dict[str, dict], table: object) -> str:
     gate = RightsGate(table)
     proposed = {key: proposal(entry, entries, table, gate) for key, entry in entries.items()}
     from_v1 = [key for key, entry in entries.items() if "migration" in entry]
+    new = sorted(key for key in entries if key not in from_v1)
     counts = {label: sum(proposed[key].label == label for key in from_v1) for label in RANK}
     missing: dict[str, list[str]] = {}
     for key, entry in entries.items():
@@ -173,8 +174,9 @@ def render_table(entries: dict[str, dict], table: object) -> str:
         (f"| withheld | {counts['withheld']} | No route is known: a rights restriction, no route "
          "established yet, or discontinued. The Series stays in the Catalog by name. |"),
         "",
-        ("One Series was never in v1: `cpi_nsa` (M8), which `cpi_yoy` is computed from "
-         f"(ADR 0025). {len(entries)} Series in all."),
+        (f"{len(new)} Series were never in v1: {', '.join(f'`{key}`' for key in new)}. `cpi_nsa` (M8) is "
+         "what `cpi_yoy` is computed from (ADR 0025); the others arrived with the adapter that "
+         f"reads them (M13, ADR 0027). {len(entries)} Series in all."),
         "",
     ]
     if missing:

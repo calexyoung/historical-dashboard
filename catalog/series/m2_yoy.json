@@ -16,7 +16,7 @@
   ],
   "refresh": "monthly",
   "max_lag": "P3M",
-  "status": "draft",
+  "status": "active",
   "recipe": {
     "op": "pct_change",
     "inputs": [
