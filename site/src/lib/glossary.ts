@@ -4,7 +4,7 @@
  * definition never evaluates. A Data state's entry carries its mark, so the mark and the word
  * are learned together.
  */
-import { BASES } from "@macro-atlas/core";
+import { BASES, type VintageBasis } from "@macro-atlas/core";
 import { MARK_NAMES, STATE_INFO, type MarkName } from "./figure";
 import { BASIS_INFO } from "./series-words";
 
@@ -17,6 +17,8 @@ export type GlossaryEntry = {
   group: GlossaryGroup;
   definition: string;
   mark?: MarkName;
+  /** A Basis's entry carries its mark too. */
+  basis?: VintageBasis;
   /** Slugs of related entries. */
   see?: string[];
 };
@@ -58,6 +60,7 @@ const states: GlossaryEntry[] = MARK_NAMES.map((name) => ({
 /** The five kinds of evidence behind an as-of answer; each is always a mark and a word. */
 const bases: GlossaryEntry[] = BASES.map((basis) => ({
   slug: BASIS_INFO[basis].slug,
+  basis,
   term: BASIS_INFO[basis].word,
   group: "What was known when",
   definition: BASIS_INFO[basis].meaning,

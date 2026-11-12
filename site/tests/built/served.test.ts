@@ -250,7 +250,7 @@ describe("series pages, /data/{key} (PLAN section 3, M3)", () => {
     expect(new URL(response.headers.get("location")!, local.origin).pathname).toBe("/macro-atlas/data/fx_price_index");
   });
 
-  it.each(["/data/nope", "/data/FX_PRICE_INDEX", "/data/fx_price_index.json", "/data/fx_price_index/extra", "/docs/glossary/nope"])("%s is not found", async (path) => {
+  it.each(["/data/nope", "/data/FX_PRICE_INDEX", "/data/fx_price_index.xml", "/data/fx_price_index/extra", "/docs/glossary/nope"])("%s is not found", async (path) => {
     expect((await get(local.url(path))).status).toBe(404);
   });
 
@@ -444,7 +444,7 @@ describe("rewriting CURRENT changes the served page with no restart", () => {
 describe("a production-surface build fails closed (PLAN 6.1 point 5, reader)", () => {
   let server: Running;
   const root = tempRoot();
-  const PATHS = ["/", "/explore", "/explore/", "/data", "/data?q=price", "/data/fx_price_index", "/data/fx_exchange_index", "/docs/glossary", "/docs/glossary/stale", "/api/health", "/api/theme", "/icon.svg", "/_next/static/chunks/x.js", "/no/such/page", "/explore/export?format=csv&s=fx_price_index", "/explore/export?format=svg&s=fx_price_index", "/explore/export?format=all"];
+  const PATHS = ["/", "/explore", "/explore/", "/data", "/data?q=price", "/data/fx_price_index", "/data/fx_exchange_index", "/docs/glossary", "/docs/glossary/stale", "/api/health", "/api/theme", "/icon.svg", "/_next/static/chunks/x.js", "/no/such/page", "/explore/export?format=csv&s=fx_price_index", "/explore/export?format=svg&s=fx_price_index", "/explore/export?format=all", "/data/fx_price_index.csv", "/data/fx_price_index.json?as_of=2025-12-13", "/data/fx_price_index.metadata.json", "/data/fx_price_index.md", "/data/fx_price_index/twin/csv", "/api/v1/status"];
 
   beforeAll(async () => {
     addRelease(root, { id: A });
@@ -457,7 +457,7 @@ describe("a production-surface build fails closed (PLAN 6.1 point 5, reader)", (
 
   it.each(PATHS)("pointed at a local-profile release, answers 503 on %s", async (path) => {
     for (const method of ["GET", "HEAD", "POST"]) {
-      const response = await get(server.url(path), { method, headers: { "x-atlas-release": A } });
+      const response = await get(server.url(path), { method, headers: { "x-atlas-release": A, "x-atlas-twin": "csv", "if-none-match": "*" } });
       expect(response.status, `${method} ${path}`).toBe(503);
       expect(await response.text()).not.toContain("SEEDED-FRED-VALUE");
     }
@@ -493,6 +493,28 @@ describe("a production-surface build fails closed (PLAN 6.1 point 5, reader)", (
     const html = await (await get(server.url("/explore?s=fx_price_index"))).text();
     expect(html).not.toContain("/explore/export");
     expect(html).toContain("Export is not available here");
+  });
+
+  it("refuses every twin of values while no register row is signed, and still names the Series (PLAN M17, 6.1)", async () => {
+    promote(root, A);
+    for (const path of ["/data/fx_price_index.csv", "/data/fx_price_index.json", "/data/fx_price_index.md", "/data/fx_price_index.json?as_of=2025-12-13", "/data/fx_exchange_index.csv"]) {
+      for (const headers of [{}, { "if-none-match": "*" }, { "x-atlas-twin": "metadata.json" }] as Record<string, string>[]) {
+        const response = await get(server.url(path), { headers });
+        expect(response.status, path).toBe(403);
+        expect(response.headers.get("cache-control"), path).toBe("no-store");
+        expect(response.headers.get("etag"), path).toBeNull();
+        expect(await response.text(), path).not.toMatch(/109\.9|109\.5|100\.4|period_start/);
+      }
+    }
+    const meta = await get(server.url("/data/fx_price_index.metadata.json"));
+    expect(meta.status).toBe(200);
+    expect(await meta.json()).toMatchObject({ name: "Fixture price index", state: "not_permitted", coverage: null, downloads: { permitted: false } });
+    const page = await (await get(server.url("/data/fx_price_index?as_of=2025-12-13"))).text();
+    expect(page).toContain("Not shown here");
+    expect(page).not.toMatch(/109\.5|fx_price_index\.csv/);
+    const status = await (await get(server.url("/api/v1/status"))).json();
+    expect(status).toMatchObject({ surface: "production", release_id: A, counts: { shown: 0, not_permitted: 7, withheld: 1 } });
+    expect(JSON.stringify(status)).not.toMatch(/2025-12/);
   });
 
   it("goes back to 503 the moment CURRENT names a local-profile release: no fallback to the good one", async () => {
@@ -537,5 +559,103 @@ describe("a production-surface build fails closed (PLAN 6.1 point 5, reader)", (
     } finally {
       await Promise.all([empty.stop(), unset.stop()]);
     }
+  });
+});
+
+describe("twins of a series page, and status (PLAN section 7, M17)", () => {
+  let atlas: Running;
+  let staging: Running;
+  beforeAll(async () => {
+    atlas = await startVariant("local-atlas", { root: FIXTURE_ROOT });
+    staging = await startVariant("local-staging", { root: FIXTURE_ROOT });
+  });
+  afterAll(() => Promise.all([atlas.stop(), staging.stop()]));
+
+  it.each([
+    ["csv", "text/csv; charset=utf-8"],
+    ["json", "application/json; charset=utf-8"],
+    ["metadata.json", "application/json; charset=utf-8"],
+    ["md", "text/markdown; charset=utf-8"],
+  ])("serves /data/{key}.%s under each base path, from the fixed release, never stored on a local build", async (suffix, type) => {
+    for (const server of [atlas, staging]) {
+      const response = await get(server.url(`/data/fx_price_index.${suffix}`));
+      expect(response.status, suffix).toBe(200);
+      expect(response.headers.get("content-type")).toBe(type);
+      expect(response.headers.get("cache-control")).toBe("no-store");
+      expect(response.headers.get("x-robots-tag")).toBe("noindex");
+      const body = await response.text();
+      expect(idsOn(body)).toEqual([FIXTURE_ID]);
+      expect(body).toContain(`${server.origin}${server.base}/data/fx_price_index`);
+      if (suffix !== "metadata.json") expect(body).toMatch(/not for publication/i);
+      const head = await get(server.url(`/data/fx_price_index.${suffix}`), { method: "HEAD" });
+      expect(head.status).toBe(200);
+      expect(await head.text()).toBe("");
+    }
+  });
+
+  it("the CSV, the JSON and the page hold the same values for the same question", async () => {
+    for (const query of ["", "?as_of=2025-12-13", "?transform=pc1&start=2025-06-01"]) {
+      const doc = (await (await get(atlas.url(`/data/fx_price_index.json${query}`))).json()) as { observations: { period: string; value: number | null }[] };
+      const csv = await (await get(atlas.url(`/data/fx_price_index.csv${query}`))).text();
+      const rows = csv.split("\n").filter((line) => line.startsWith("fx_price_index,")).map((line) => line.split(","));
+      expect(rows.map((r) => [r[1], r[4] === "" ? null : Number(r[4])])).toEqual(doc.observations.map((o) => [o.period, o.value]));
+      const html = await (await get(atlas.url(`/data/fx_price_index${query}`))).text();
+      const table = /<table data-figure-table="fx_price_index"[\s\S]*?<\/table>/.exec(html)![0];
+      const cells = [...table.matchAll(/<\/th><td>(?:<data value="([^"]*)">)?([^<]*)/g)].map((m) => (m[2] === "" && m[1] === undefined ? null : Number(m[1] ?? m[2]!.replace(/,/g, "").replace(/\u2212/g, "-"))));
+      expect(cells).toEqual(doc.observations.map((o) => o.value));
+      expect(html).toContain(`href="/macro-atlas/data/fx_price_index.csv${query.replace(/&/g, "&amp;")}"`);
+    }
+  });
+
+  it("a date without coverage: the page says unavailable and holds no value; the file holds no observation", async () => {
+    const html = await (await get(atlas.url("/data/fx_price_index?as_of=2025-12-01"))).text();
+    expect(html).toContain('data-basis="unavailable"');
+    expect(html).not.toMatch(/109\.9|109\.5|data-figure-table/);
+    expect(await (await get(atlas.url("/data/fx_price_index.json?as_of=2025-12-01"))).json()).toMatchObject({ basis: "unavailable", observations: [] });
+  });
+
+  it("the withheld Series: its page names it with no value, its files are 403 with the reason, its metadata is served", async () => {
+    const html = await (await get(atlas.url("/data/fx_exchange_index"))).text();
+    expect(html).toContain("Fixture exchange index");
+    expect(html).not.toContain("data-figure-table");
+    for (const suffix of ["csv", "json", "md"]) {
+      const response = await get(atlas.url(`/data/fx_exchange_index.${suffix}`));
+      expect(response.status).toBe(403);
+      expect(await response.text()).toContain("does not allow redistribution");
+    }
+    expect(await (await get(atlas.url("/data/fx_exchange_index.metadata.json"))).json()).toMatchObject({ state: "withheld", coverage: null });
+  });
+
+  it("refusals: 400 with the allowlist, 404 for a Series or a suffix that does not exist, and the handler's own path is not an address", async () => {
+    const bad = await get(atlas.url("/data/fx_price_index.csv?transform=sqrt"));
+    expect(bad.status).toBe(400);
+    expect(await bad.text()).toContain("transform: one of lin, chg");
+    expect((await get(atlas.url("/data/nope.json"))).status).toBe(404);
+    expect((await get(atlas.url("/data/fx_price_index.xml"))).status).toBe(404);
+    // The handler's own path is not an address: asked for directly, it is not found.
+    for (const headers of [{}, { "x-atlas-twin": "csv" }] as Record<string, string>[]) {
+      for (const path of ["/data/fx_price_index/twin", "/data/fx_price_index/twin/csv", "/data/fx_price_index/twin/json?as_of=2025-12-13"]) {
+        const direct = await get(atlas.url(path), { headers });
+        expect(direct.status, path).toBe(404);
+        expect(await direct.text(), path).not.toMatch(/109\.9|109\.5/);
+      }
+    }
+    // A forged header cannot change the format of a real twin either.
+    const forged = await get(atlas.url("/data/fx_price_index.csv"), { headers: { "x-atlas-twin": "json" } });
+    expect(forged.headers.get("content-type")).toBe("text/csv; charset=utf-8");
+  });
+
+  it("a Host that is not a host is not written into a file", async () => {
+    const response = await getAs(atlas.url("/data/fx_price_index.json"), 'localhost"><script>');
+    expect(response.body).not.toContain("<script>");
+  });
+
+  it("status: the release, each source and each Series, and stale inputs said as such", async () => {
+    const response = await get(atlas.url("/api/v1/status"));
+    expect(response.status).toBe(200);
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    const doc = await response.json();
+    expect(doc).toMatchObject({ status: "stale", surface: "local", release_id: FIXTURE_ID, last_run: null, counts: { series: 8, shown: 7, withheld: 1, stale: 1 } });
+    expect(doc.series.find((s: { key: string }) => s.key === "fx_permits_stale")).toMatchObject({ stale: true, last_period: "2024-06" });
   });
 });

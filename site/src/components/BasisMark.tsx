@@ -27,13 +27,20 @@ const SHAPES: Record<VintageBasis, React.ReactNode> = {
   unavailable: <rect x="3" y="3" width="10" height="10" {...stroke} strokeDasharray="2.5 2.5" />,
 };
 
+/** The mark alone, beside a word that is already there. */
+export function BasisIcon({ basis }: { basis: VintageBasis }) {
+  return (
+    <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false" data-basis-mark={basis} className="shrink-0">
+      {SHAPES[basis]}
+    </svg>
+  );
+}
+
 export function BasisMark({ basis, basePath, link = true }: { basis: VintageBasis; basePath: string; link?: boolean }) {
   const { word, slug } = BASIS_INFO[basis];
   return (
     <span data-basis={basis} className="inline-flex min-h-6 min-w-6 items-center gap-1 whitespace-nowrap align-middle font-medium text-ink">
-      <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false" className="shrink-0">
-        {SHAPES[basis]}
-      </svg>
+      <BasisIcon basis={basis} />
       {link ? (
         <a href={glossaryHref(basePath, slug)} className="press hover-ink inline-flex min-h-6 min-w-6 items-center text-accent underline underline-offset-2">
           {word}

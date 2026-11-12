@@ -24,17 +24,9 @@ import type { OpenedRelease } from "../release/reader";
 import { retrieved, seriesPageView, sourceWords } from "../series-page";
 import { parseSeriesRequest, toQuery, type SeriesRequest } from "../series-request";
 import { asOfLines, shownAs, shownUnit } from "../series-words";
+import { TWIN_FORMATS, type TwinFormat } from "./address";
 
-export const TWIN_FORMATS = ["csv", "json", "metadata.json", "md"] as const;
-export type TwinFormat = (typeof TWIN_FORMATS)[number];
-
-const TWIN_PATH = /^\/data\/([a-z][a-z0-9_]{0,63})\.(csv|json|metadata\.json|md)$/;
-
-/** The Series and format a path names, without the base path; null when it is not a twin's address. */
-export function twinOf(pathname: string): { key: string; format: TwinFormat } | null {
-  const match = TWIN_PATH.exec(pathname);
-  return match ? { key: match[1]!, format: match[2] as TwinFormat } : null;
-}
+export { TWIN_FORMATS, twinOf, type TwinFormat } from "./address";
 
 export type TwinResponse = {
   status: 200 | 308 | 400 | 403 | 404 | 422 | 503;

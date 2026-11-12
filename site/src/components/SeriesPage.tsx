@@ -337,7 +337,7 @@ export function SeriesPage({ view, basePath }: { view: SeriesPageView; basePath:
             </h3>
             {!view.downloads.permitted && (
               <p data-downloads-refused className="mb-1 text-ink-2">
-                <StateMark mark="withheld" word="Not offered here" basePath={basePath} link={false} />: {view.downloads.reason}
+                <span className="font-medium text-ink">Not offered here</span>: {view.downloads.reason}
                 {/[.!?]$/.test(view.downloads.reason ?? "") ? "" : "."} The file below holds no value.
               </p>
             )}

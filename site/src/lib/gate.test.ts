@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { gate, RELEASE_HEADER, REFRESH_FAILED_HEADER } from "./gate";
+import { gate, RELEASE_HEADER, REFRESH_FAILED_HEADER, TWIN_HEADER } from "./gate";
 import type { Opened, OpenedRelease, ReleaseReader } from "./release/reader";
 
 const release = { id: "20260201T000000Z-aaaaaaa" } as OpenedRelease;
@@ -109,5 +109,67 @@ describe("gate: a local-surface build answers only to this machine (PLAN 6.1, an
 
   it("a public surface answers to any host (Caddy decides that)", async () => {
     expect((await gate({ ...base, reader: readerOf(good) }, request)).action).toBe("forward");
+  });
+});
+
+describe("gate: a twin's address goes to the twin handler, after every refusal (M17)", () => {
+  const local = { surface: "local", dev: false, nonce: "N0nce" } as const;
+  const TOKEN = "t0ken-only-this-process-knows";
+  const ask = (pathname: string, twinToken: string | null = null) => gate({ ...base, twinToken: TOKEN, reader: readerOf(good) }, { host: "mydashboards.co", pathname, twinToken });
+
+  it.each([
+    ["/data/fx_price_index.csv", "/data/fx_price_index/twin/csv"],
+    ["/data/fx_price_index.json", "/data/fx_price_index/twin/json"],
+    ["/data/fx_price_index.metadata.json", "/data/fx_price_index/twin/metadata"],
+    ["/data/fx_price_index.md", "/data/fx_price_index/twin/md"],
+  ])("%s is sent to %s, marked with the process's token", async (pathname, rewrite) => {
+    const decision = await ask(pathname);
+    expect(decision).toMatchObject({ action: "forward", rewrite });
+    if (decision.action !== "forward") return;
+    expect(decision.requestHeaders[TWIN_HEADER]).toBe(TOKEN);
+    expect(decision.requestHeaders[RELEASE_HEADER]).toBe(release.id);
+    // The pass Next then runs on that path lets it through, and only because of the token.
+    expect((await ask(rewrite, TOKEN)).action === "forward" && (await ask(rewrite, TOKEN))).toMatchObject({ requestHeaders: { [TWIN_HEADER]: TOKEN } });
+    expect("rewrite" in (await ask(rewrite, TOKEN))).toBe(false);
+  });
+
+  it.each(["/data/fx_price_index", "/data", "/explore", "/data/fx_price_index.xml", "/data/a/b.csv"])("%s is left as it is, and a token a client sent is removed", async (pathname) => {
+    for (const sent of [null, TOKEN, "guess"]) {
+      const decision = await ask(pathname, sent);
+      expect(decision.action === "forward" && decision.rewrite).toBeUndefined();
+      expect(decision.action === "forward" && decision.requestHeaders[TWIN_HEADER]).toBeNull();
+    }
+  });
+
+  it.each(["/data/fx_price_index/twin", "/data/fx_price_index/twin/csv", "/data/x/twin/metadata", "/data/fx_price_index/twin/csv/more"])("the handler's own path, %s, is not an address: without the token it is sent nowhere", async (pathname) => {
+    for (const sent of [null, "", "guess", `${TOKEN}x`]) {
+      const decision = await ask(pathname, sent);
+      expect(decision).toMatchObject({ action: "forward", rewrite: "/not-found/not-an-address" });
+      expect(decision.action === "forward" && decision.requestHeaders[TWIN_HEADER]).toBeNull();
+    }
+  });
+
+  it("keeps the Host the reader named across the second pass, and never one a client sent", async () => {
+    const first = await gate({ ...base, twinToken: TOKEN, reader: readerOf(good) }, { host: "mydashboards.co", pathname: "/data/fx_price_index.csv", namedHost: "evil.example" });
+    expect(first.action === "forward" && first.requestHeaders["x-atlas-host"]).toBe("mydashboards.co");
+    const second = await gate({ ...base, twinToken: TOKEN, reader: readerOf(good) }, { host: "localhost:3000", pathname: "/data/fx_price_index/twin/csv", twinToken: TOKEN, namedHost: "mydashboards.co" });
+    expect(second.action === "forward" && second.requestHeaders["x-atlas-host"]).toBe("mydashboards.co");
+    const page = await gate({ ...base, twinToken: TOKEN, reader: readerOf(good) }, { host: "mydashboards.co", pathname: "/data/fx_price_index", namedHost: "evil.example", twinToken: TOKEN });
+    expect(page.action === "forward" && page.requestHeaders["x-atlas-host"]).toBe("mydashboards.co");
+  });
+
+  it("a gate that was given no token serves no twin at all", async () => {
+    for (const sent of [null, "", "undefined"]) {
+      const decision = await gate({ ...base, reader: readerOf(good) }, { host: "mydashboards.co", pathname: "/data/fx_price_index/twin/csv", twinToken: sent });
+      expect(decision).toMatchObject({ rewrite: "/not-found/not-an-address" });
+    }
+    expect(await gate({ ...base, reader: readerOf(good) }, { host: "mydashboards.co", pathname: "/data/fx_price_index.csv" })).toMatchObject({ rewrite: "/not-found/not-an-address" });
+  });
+
+  it("a twin is refused exactly as its page is: 503 with no release, 421 off this machine", async () => {
+    const none = await gate({ ...base, twinToken: TOKEN, reader: readerOf(refused) }, { host: "mydashboards.co", pathname: "/data/fx_price_index.csv" });
+    expect(none).toMatchObject({ action: "respond", status: 503 });
+    const elsewhere = await gate({ ...local, twinToken: TOKEN, reader: readerOf(good) }, { host: "example.com", pathname: "/data/fx_price_index.csv" });
+    expect(elsewhere).toMatchObject({ action: "respond", status: 421 });
   });
 });
