@@ -11,6 +11,9 @@
 #
 # The writer's container gets the parent directory, not the two mounts of compose.yaml: a
 # restore moves whole directories into place, which cannot be done to a mount point.
+#
+# The writer it runs is built from this checkout as the candidate. The image the timers run
+# (`latest`) is not touched: only a deploy that has succeeded replaces that one.
 set -euo pipefail
 USAGE="ARCHIVE"
 . "$(dirname "$0")/lib.sh"
@@ -25,9 +28,10 @@ if [ -n "$(compose ps -q web)" ]; then
   echo "         was started on. Stop the timers, then: docker compose -p $PROJECT down"
   exit 1
 fi
+export ATLAS_INGEST_TAG=candidate
 compose build ingest
 directory="$(cd "$(dirname "$archive")" && pwd)"
 docker run --rm --read-only --tmpfs /tmp --cap-drop ALL --security-opt no-new-privileges:true \
-  -v "$ATLAS_DATA_DIR:/data" -v "$directory:/backups:ro" "macro-atlas-$ATLAS_SURFACE-ingest" \
+  -v "$ATLAS_DATA_DIR:/data" -v "$directory:/backups:ro" "macro-atlas-$ATLAS_SURFACE-ingest:candidate" \
   restore --from "/backups/$(basename "$archive")" --store /data/store --public /data/public
 echo "RESTORED into $ATLAS_DATA_DIR. Next: deploy/deploy.sh $SURFACE, then start the timers."

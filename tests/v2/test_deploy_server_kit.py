@@ -400,6 +400,31 @@ def test_a_restore_refuses_while_the_web_app_runs_and_otherwise_mounts_the_paren
     assert "/data/store:/store" not in call                      # not the compose mounts: the parent
 
 
+def test_a_restore_never_replaces_the_writer_the_timers_run(host, tmp_path):
+    """A restore builds a writer from whatever commit is checked out, before any deploy of that
+    commit has passed. It builds and runs the candidate; `latest`, which refresh.sh runs, is
+    replaced by deploy.sh alone, and only when a deploy has succeeded."""
+    archive = tmp_path / "backups" / "macro-atlas-20260412T071500Z.tar.gz"
+    archive.parent.mkdir()
+    archive.write_bytes(b"")
+
+    assert host("restore.sh", "staging", str(archive)).returncode == 0
+    calls = host.calls()
+    assert not [call for call in calls if call.startswith("docker tag")]
+    (ran,) = [call for call in calls if call.startswith("docker run")]
+    assert " macro-atlas-staging-ingest:candidate restore " in ran
+    assert "export ATLAS_INGEST_TAG=candidate" in (DEPLOY / "restore.sh").read_text()
+
+
+def test_a_backup_is_restored_only_by_a_python_whose_tarfile_can_refuse_what_an_archive_may_hide():
+    """``tarfile``'s extraction filter came in 3.11.4; atlas/backup.py unpacks with it."""
+    import tomllib
+
+    floor = tomllib.loads((ROOT / "pyproject.toml").read_text())["project"]["requires-python"]
+    assert floor == ">=3.11.4"
+    assert "Python 3.11.4 or later" in (DEPLOY / "capture" / "README.md").read_text()
+
+
 @pytest.mark.parametrize("memory, disk, status", [("4096", "50000", 0), ("700", "50000", 1), ("4096", "900", 1)])
 def test_the_headroom_script_says_no_below_its_stated_minimums_and_changes_nothing(host, memory, disk, status):
     done = host("headroom.sh", "staging", HEADROOM_MEM_AVAILABLE_MB=memory, HEADROOM_DISK_FREE_MB=disk)
