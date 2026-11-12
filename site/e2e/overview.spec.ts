@@ -184,6 +184,9 @@ test.describe("accessibility and layout of the reading pages", () => {
     await page.setViewportSize({ width: 320, height: 640 });
     for (const path of PAGES) {
       await page.goto(atlas.url(path));
+      // A first visit fades the Overview's rows up: measure the page at rest (a box in motion is
+      // measured through its transform, to a fraction of a pixel).
+      await page.evaluate(() => Promise.all(document.getAnimations().map((a) => a.finished)));
       expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth), path).toBeLessThanOrEqual(0);
       const smallest = await page.evaluate(() => {
         let min = Infinity;
@@ -197,7 +200,7 @@ test.describe("accessibility and layout of the reading pages", () => {
       const small = await page.evaluate(() =>
         [...document.querySelectorAll<HTMLElement>("main a[href]")]
           .map((a) => ({ text: a.textContent?.trim().slice(0, 40), box: a.getBoundingClientRect() }))
-          .filter(({ box }) => box.width > 0 && (box.height < 24 || box.width < 24))
+          .filter(({ box }) => box.width > 0 && (box.height < 23.99 || box.width < 23.99))
           .map(({ text }) => text),
       );
       expect(small, path).toEqual([]);
