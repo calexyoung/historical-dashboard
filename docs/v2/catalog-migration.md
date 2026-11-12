@@ -193,45 +193,45 @@ Each needs a row, with its terms read, before anything can be decided for the Se
 - `boe`: The register has no proposal to allow OECD data until its terms are read. A central bank policy rate from the BIS (v2.2) is a different quantity and would take a new key.
 - `br_rate`: The register has no proposal to allow OECD data until its terms are read. A central bank policy rate from the BIS (v2.2) is a different quantity and would take a new key.
 - `brent`: The EIA publishes spot prices it takes from a commercial provider; whether the EIA row covers them is a question for the EIA row of the register.
-- `brl`: The identifier is the Data Download Program's as recalled, to be confirmed by M13's captured fixture.
-- `cad`: The identifier is the Data Download Program's as recalled, to be confirmed by M13's captured fixture.
+- `brl`: The identifier is the Data Download Program's, as its file printed it on 2026-11-11.
+- `cad`: The identifier is the Data Download Program's, as its file printed it on 2026-11-11.
 - `claims`: The agency's identifier for this series is settled, with a captured fixture, by the milestone that builds the adapter.
 - `cn_cpi`: The national all-items index; its base period may differ from v1's. The agency's identifier for this series is settled, with a captured fixture, by the milestone that builds the adapter.
-- `cny`: The identifier is the Data Download Program's as recalled, to be confirmed by M13's captured fixture.
+- `cny`: The identifier is the Data Download Program's, as its file printed it on 2026-11-11.
 - `copper`: The IMF's Primary Commodity Prices carry a monthly average copper price: a different quantity, which would take a new key.
 - `cpi_yoy`: v1 computed this from the seasonally adjusted index. Here it is the twelve-month change of the unadjusted index, the figure BLS publishes as the headline (ADR 0025, decision 2; open with Alex).
 - `debt`: v1 showed the quarter-end figure in millions of dollars; the Treasury publishes the same total each business day in dollars.
 - `ecb_assets`: The agency's identifier for this series is settled, with a captured fixture, by the milestone that builds the adapter.
 - `euepu`: The agency's identifier for this series is settled, with a captured fixture, by the milestone that builds the adapter.
-- `eurusd`: The identifier is the Data Download Program's as recalled, to be confirmed by M13's captured fixture.
+- `eurusd`: The identifier is the Data Download Program's, as its file printed it on 2026-11-11.
 - `ez_gdp`: The agency's identifier for this series is settled, with a captured fixture, by the milestone that builds the adapter. v1's series was chain-linked volumes for the fixed 19-country aggregate; the adapter must name the composition and the reference year.
 - `ez_hicp`: The agency's identifier for this series is settled, with a captured fixture, by the milestone that builds the adapter. v1's series was the fixed 19-country aggregate; the adapter must name that composition or the change is a different quantity.
 - `fedassets`: v1 showed the mean of the Wednesday levels dated in each month; the Board publishes the level of each Wednesday, held here as the Observation of that Wednesday's week.
-- `fedfunds`: The identifier is the Data Download Program's as recalled, to be confirmed by M13's captured fixture.
+- `fedfunds`: The identifier is the Data Download Program's, as its file printed it on 2026-11-11. v1's range was for the years since 2000; the Board's file is monthly since 1954, when the rate reached 19 percent in 1981.
 - `food`: The agency's identifier for this series is settled, with a captured fixture, by the milestone that builds the adapter.
-- `gbpusd`: The identifier is the Data Download Program's as recalled, to be confirmed by M13's captured fixture.
+- `gbpusd`: The identifier is the Data Download Program's, as its file printed it on 2026-11-11.
 - `gepu`: The agency's identifier for this series is settled, with a captured fixture, by the milestone that builds the adapter.
 - `gold`: The IMF's Primary Commodity Prices carry a monthly average gold price: a different quantity from a month-end futures close, which would take a new key.
-- `gs10`: v1 showed the monthly average; the Board publishes the yield each business day, and the monthly figure is the mean of those days.
-- `gs2`: v1 showed the monthly average; the Board publishes the yield each business day, and the monthly figure is the mean of those days.
+- `gs10`: v1 showed the monthly average; the Board publishes the yield each business day, and the monthly figure is the mean of those days. v1's range was for the years since 2000; the Board's file is daily since 1962, when the yield reached almost 16 percent in 1981.
+- `gs2`: v1 showed the monthly average; the Board publishes the yield each business day, and the monthly figure is the mean of those days. v1's range was for the years since 2000; the Board's file is daily since 1976, when the yield reached almost 17 percent in 1981.
 - `house_margin`: v1's votes were read from Wikipedia. The register's Wikipedia row says to enter them from the official record instead, each with its citation; that record needs a row of its own.
 - `houst`: The agency's identifier for this series is settled, with a captured fixture, by the milestone that builds the adapter.
 - `income`: The agency's identifier for this series is settled, with a captured fixture, by the milestone that builds the adapter. The base year of the real figure moves with each annual release.
-- `inr`: The identifier is the Data Download Program's as recalled, to be confirmed by M13's captured fixture.
+- `inr`: The identifier is the Data Download Program's, as its file printed it on 2026-11-11.
 - `jp_cpi`: v1's series ends in June 2021. The IMF carries the national all-items index to date (research 02 matched it to e-Stat for 25 months); its base period may differ from v1's. The agency's identifier for this series is settled, with a captured fixture, by the milestone that builds the adapter.
 - `jp_rate`: The register has no proposal to allow OECD data until its terms are read. A central bank policy rate from the BIS (v2.2) is a different quantity and would take a new key.
-- `jpy`: The identifier is the Data Download Program's as recalled, to be confirmed by M13's captured fixture.
+- `jpy`: The identifier is the Data Download Program's, as its file printed it on 2026-11-11. v1's range was for the years since 2000; the Board's file is daily since 1971, when the dollar bought 358 yen.
 - `medhome`: The agency's identifier for this series is settled, with a captured fixture, by the milestone that builds the adapter.
 - `mortgage`: The agency's identifier for this series is settled, with a captured fixture, by the milestone that builds the adapter.
 - `mx_rate`: The register has no proposal to allow OECD data until its terms are read. A central bank policy rate from the BIS (v2.2) is a different quantity and would take a new key.
-- `mxn`: The identifier is the Data Download Program's as recalled, to be confirmed by M13's captured fixture.
+- `mxn`: The identifier is the Data Download Program's, as its file printed it on 2026-11-11.
 - `natgas`: The EIA publishes spot prices it takes from a commercial provider; whether the EIA row covers them is a question for the EIA row of the register.
 - `pres_margin`: v1's votes were read from Wikipedia. The register's Wikipedia row says to enter them from the official record instead, each with its citation; that record needs a row of its own.
 - `t10y2y`: v1 took the spread FRED computes. Here it is the same difference, computed by the engine from the two yields the Board publishes.
 - `tr_rate`: The register has no proposal to allow OECD data until its terms are read. A central bank policy rate from the BIS (v2.2) is a different quantity and would take a new key.
 - `trade`: The agency's identifier for this series is settled, with a captured fixture, by the milestone that builds the adapter.
 - `tryusd`: Monthly average, as v1 showed. The agency's identifier for this series is settled, with a captured fixture, by the milestone that builds the adapter.
-- `usd_broad`: The identifier is the Data Download Program's as recalled, to be confirmed by M13's captured fixture.
+- `usd_broad`: The identifier is the Data Download Program's, as its file printed it on 2026-11-11.
 - `usepu`: The agency's identifier for this series is settled, with a captured fixture, by the milestone that builds the adapter.
 - `usrec`: v1 took a monthly 0/1 indicator from FRED, which computes it from the NBER's dates. The dates themselves are entered by hand, each with its citation, when recessions become an Annotation layer.
 - `wti`: The EIA publishes spot prices it takes from a commercial provider; whether the EIA row covers them is a question for the EIA row of the register.

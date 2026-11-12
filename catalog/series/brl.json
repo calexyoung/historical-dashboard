@@ -34,7 +34,7 @@
   "migration": {
     "v1_source": "FRED DEXBZUS",
     "change": "same",
-    "note": "The identifier is the Data Download Program's as recalled, to be confirmed by M13's captured fixture.",
+    "note": "The identifier is the Data Download Program's, as its file printed it on 2026-11-11.",
     "milestone": "M13"
   }
 }

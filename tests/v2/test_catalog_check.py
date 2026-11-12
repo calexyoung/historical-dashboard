@@ -18,6 +18,8 @@ from .catalog_helpers import derived, stored, write
 ROOT = Path(__file__).resolve().parents[2]
 V1_KEYS = sorted([*json.loads((ROOT / "data" / "atlas.json").read_text())["series"],
                   "approval", "pres_margin", "house_margin"])
+#: Ranges M13 widened to the whole history the Board publishes (ADR 0027, decision 10).
+WIDENED = ("fedfunds", "gs10", "gs2", "jpy")
 BOUND = {"origin": {"producer": "U.S. Bureau of Labor Statistics", "dataset": "Consumer Price Index",
                     "origin_id": "CUSR0000SA0", "url": None},
          "channel": {"via": "direct", "adapter": "bls", "endpoint": "bls-headline"}}
@@ -64,7 +66,10 @@ def test_all_109_entries_of_v1s_catalog_are_migrated_with_what_v1_said_of_them()
         assert entry["topics"] and entry["segment"]
         if old["key"] not in ("cpi", "unrate", "payems"):  # bound in M8, with limits of their own
             assert entry["max_lag"] == f"P{old['max_lag_months']}M", old["key"]
-            assert entry.get("range") == ([float(x) for x in old["range"]] if "range" in old else None), old["key"]
+            if old["key"] not in WIDENED:
+                assert entry.get("range") == ([float(x) for x in old["range"]] if "range" in old else None), old["key"]
+            else:  # v1's range was for the years since 2000; the Board's file begins decades earlier
+                assert entry["range"][0] <= old["range"][0] and entry["range"][1] > old["range"][1], old["key"]
 
 
 def test_the_fourteen_year_over_year_series_and_the_ratio_are_recipes():

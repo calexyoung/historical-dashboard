@@ -7,7 +7,9 @@ The fixtures' values are invented (fixtures/capture/README.md). A decision in a 
 is test data and says nothing of what Alex has decided."""
 from __future__ import annotations
 
+import functools
 import json
+import operator
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -69,7 +71,7 @@ def test_every_series_the_three_adapters_read_passes_the_release_gate(released):
     manifest = json.loads((current / "manifest.json").read_text())
     assert validate_release(current) == []
     published = {entry["key"]: entry for entry in json.loads((current / "catalog.json").read_text())["series"]}
-    expected = sorted([*sum(STORED.values(), []), *DERIVED, *M8])
+    expected = sorted([*functools.reduce(operator.iadd, STORED.values(), []), *DERIVED, *M8])
     assert sorted(published) == expected
     assert manifest["withheld"] == []
     # Every check of the release writer, by name: none failed and none only warned.
@@ -117,7 +119,7 @@ def test_values_reach_the_release_as_the_source_printed_them(released):
     # The Board: ND is a day listed with no number; a week is named for its Wednesday's ISO week.
     assert series("gs10")["2026-10-12"] == {**series("gs10")["2026-10-12"], "value": None, "status": "missing"}
     assert list(series("fedassets"))[:2] == ["2026-W34", "2026-W35"]
-    assert list(series("net_worth"))[-1] == "2026-Q2" and list(series("delinq"))[0] == "2021-Q3"
+    assert list(series("net_worth"))[-1] == "2026-Q2" and next(iter(series("delinq"))) == "2021-Q3"
     # BLS: a quarter, a revised figure, and the quarter that was not produced.
     assert series("labor_share")["2026-Q2"]["status"] == "revised"
     assert series("real_wages")["2025-Q4"] == {**series("real_wages")["2025-Q4"], "value": None, "status": "missing"}
