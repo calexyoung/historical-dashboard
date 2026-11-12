@@ -2,8 +2,10 @@
 
 `release.schema.json` is the contract between whatever writes a Release and everything that reads
 one (PLAN 4.2). Words in capitals are defined in `/CONTEXT.md`. This is **v0**
-(`schema_version` `0.1.0`): it already carries what tracks A to D need, and later milestones add
-to it (vintages, locks, search, downloads) by raising the version.
+(`schema_version` `0.2.0`; M10 added `vintages/`): it already carries what tracks A to D need, and later milestones add
+to it (locks, search, downloads) by raising the version. A reader refuses a version it does
+not know. It still reads 0.1.0, the contract before vintages: such a Release holds no
+`vintages/` file, so every Release kept in a root stays readable (ADR 0024). Writers write 0.2.0.
 
 Three things write a Release: the committed fixture (`fixtures/public`), the legacy converter
 (M2) and the real writer (M9). Two validators read the contract and must agree:
@@ -28,6 +30,7 @@ TypeScript's types and its copy of the schema are generated: `npm run gen` after
   catalog.json                       every Series known, including withheld ones (by name)
   series/{key}.json                  stored Series at native frequency
   derived/{key}.json                 outputs of Recipes
+  vintages/{key}.json                what was held for a stored Series over time (optional)
   content/annotations.json           every Annotation, one shape
 ```
 
@@ -103,6 +106,21 @@ output's unit is the entry's own. Validators check structure only: the shape abo
 no cycle, nothing shown rests on a withheld input. Only the engine in `packages/core` computes a
 Recipe (ADR 0003).
 
+**Vintages.** `vintages/{key}.json` holds every version of every Observation of one stored
+Series: `rows` in Period order, a Period's versions in the order they were recorded. A version
+was held from `recorded_from` up to, not including, `recorded_to` (`null`: held now); both are
+retrieval times of Captures. `deleted` marks a Tombstone. `provider_from`, `provider_to` and
+`provider_precision` are set only where the Origin, or an archive of its releases, dates the
+version; a day is written as that day at `00:00:00Z` with precision `date`. `provider_coverage`
+is the span over which that record is known complete. `metadata` is the history of what was
+declared and where the values came from, as a fixed selection of fields; its `rights` is what
+the register said when the bytes were fetched and authorises nothing. `captures` are the
+complete Captures recorded, oldest first, each with the `scope` it asked about; one whose
+`change` is `none` is a Capture confirmation. The versions current now are exactly the Series'
+own file, once that file's gaps are written out. A Series need not have a vintage file; a
+legacy Series, a Derived series and a withheld Series never have one. Only the engine answers
+an as-of question from it (`docs/method/vintage-resolution.md`).
+
 **Annotations.** One shape for every layer. `category` is the layer within a kind (an Event's
 category); `attributes` holds named facts a layer needs to draw itself (the party of a term of
 government). There is no field for a judgment, on an Annotation or anywhere else in the contract
@@ -110,7 +128,8 @@ government). There is no field for a judgment, on an Annotation or anywhere else
 
 ## Rules beyond the schema
 
-Checks run in stages and stop at the first stage that reports something.
+Checks run in stages and stop at the first stage that reports something. Vintage files are
+the last stage: they are judged against Series files already known to be sound.
 
 | Stage | Code | Meaning |
 |---|---|---|
@@ -137,6 +156,10 @@ Checks run in stages and stop at the first stage that reports something.
 | rules | `unknown_recipe_input`, `recipe_cycle`, `withheld_input` | Recipe structure |
 | rules | `duplicate_annotation_id`, `unknown_series_ref`, `bad_anchor` | Annotations |
 | rules | `unsigned_register`, `legacy_in_public`, `draft_in_public` | a public Release must name a signed rights register and hold no legacy data and no drafts |
+| vintages | `orphan_vintage_file` | a vintage file for a key with no file under `series/` |
+| vintages | `withheld_present` | a withheld Series has a vintage file |
+| vintages | `manifest_mismatch`, `hash_mismatch` | a vintage file and the manifest's `vintages_sha256` do not match one to one, or the bytes differ |
+| vintages | `vintage_mismatch` | the file is not for that Series (key, frequency, a legacy Series); a version's dates are not its Period's; versions out of Period order, two held at once, or two current; a provider time without precision or the other way round; a version that names metadata the file lacks or a Channel that is not its metadata's; two different metadata under one hash; a version held from or to a time that is no Capture's, or before the metadata it names was recorded; two versions the Origin dated in force at once; Captures or metadata not oldest first; a scope or coverage that ends before it begins; the versions current now are not the Series' own file |
 
 ## What this contract does not decide
 

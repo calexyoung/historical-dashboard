@@ -1,0 +1,592 @@
+{
+  "key": "fx_poverty_rate_annual",
+  "freq": "annual",
+  "representation": "native",
+  "provider_coverage": null,
+  "metadata": [
+    {
+      "hash": "38ec7d7f9ba0fb4451a4693b999f466f2eafe2ab5397d97141ed87dd58eeb863",
+      "metadata": {
+        "name": "Fixture poverty rate",
+        "unit": "percent of persons",
+        "seasonal_adjustment": "not_applicable",
+        "source": {
+          "origin": {
+            "producer": "Macro Atlas fixture (synthetic)",
+            "dataset": "fixture",
+            "origin_id": "FX-POVERTY",
+            "url": null
+          },
+          "channel": {
+            "via": "fixture",
+            "adapter": "hand_written",
+            "auth": "none"
+          }
+        },
+        "rights": {
+          "licence_class": "citation_required",
+          "attribution": "Synthetic test data, Macro Atlas project"
+        }
+      },
+      "recorded_from": "2025-12-08T15:45:00Z"
+    },
+    {
+      "hash": "9b2dbbcb0d3875471d757d1a733c05818043fda7c83b39d973e50660e39a0423",
+      "metadata": {
+        "name": "Fixture poverty rate",
+        "unit": "percent of residents",
+        "seasonal_adjustment": "not_applicable",
+        "source": {
+          "origin": {
+            "producer": "Macro Atlas fixture (synthetic)",
+            "dataset": "fixture",
+            "origin_id": "FX-POVERTY",
+            "url": null
+          },
+          "channel": {
+            "via": "fixture",
+            "adapter": "hand_written",
+            "auth": "none"
+          }
+        },
+        "rights": {
+          "licence_class": "citation_required",
+          "attribution": "Synthetic test data, Macro Atlas project"
+        }
+      },
+      "recorded_from": "2025-12-09T15:45:00Z"
+    }
+  ],
+  "captures": [
+    {
+      "retrieved_at": "2025-12-08T15:45:00Z",
+      "scope": [
+        "2012-01-01",
+        "2025-12-31"
+      ],
+      "change": "first"
+    },
+    {
+      "retrieved_at": "2025-12-09T15:45:00Z",
+      "scope": [
+        "2016-01-01",
+        "2025-12-31"
+      ],
+      "change": "metadata"
+    },
+    {
+      "retrieved_at": "2025-12-10T15:45:00Z",
+      "scope": [
+        "2016-01-01",
+        "2025-12-31"
+      ],
+      "change": "none"
+    },
+    {
+      "retrieved_at": "2025-12-11T15:45:00Z",
+      "scope": [
+        "2016-01-01",
+        "2025-12-31"
+      ],
+      "change": "none"
+    },
+    {
+      "retrieved_at": "2025-12-15T15:45:00Z",
+      "scope": [
+        "2016-01-01",
+        "2025-12-31"
+      ],
+      "change": "none"
+    },
+    {
+      "retrieved_at": "2025-12-16T15:45:00Z",
+      "scope": [
+        "2016-01-01",
+        "2025-12-31"
+      ],
+      "change": "none"
+    },
+    {
+      "retrieved_at": "2025-12-17T15:45:00Z",
+      "scope": [
+        "2016-01-01",
+        "2025-12-31"
+      ],
+      "change": "none"
+    },
+    {
+      "retrieved_at": "2025-12-18T15:45:00Z",
+      "scope": [
+        "2016-01-01",
+        "2025-12-31"
+      ],
+      "change": "none"
+    },
+    {
+      "retrieved_at": "2025-12-19T15:45:00Z",
+      "scope": [
+        "2016-01-01",
+        "2025-12-31"
+      ],
+      "change": "none"
+    },
+    {
+      "retrieved_at": "2025-12-20T15:45:00Z",
+      "scope": [
+        "2016-01-01",
+        "2025-12-31"
+      ],
+      "change": "none"
+    },
+    {
+      "retrieved_at": "2025-12-21T15:45:00Z",
+      "scope": [
+        "2016-01-01",
+        "2025-12-31"
+      ],
+      "change": "none"
+    },
+    {
+      "retrieved_at": "2025-12-22T15:45:00Z",
+      "scope": [
+        "2016-01-01",
+        "2025-12-31"
+      ],
+      "change": "none"
+    },
+    {
+      "retrieved_at": "2025-12-23T15:45:00Z",
+      "scope": [
+        "2016-01-01",
+        "2025-12-31"
+      ],
+      "change": "none"
+    },
+    {
+      "retrieved_at": "2025-12-24T15:45:00Z",
+      "scope": [
+        "2016-01-01",
+        "2025-12-31"
+      ],
+      "change": "none"
+    },
+    {
+      "retrieved_at": "2025-12-25T15:45:00Z",
+      "scope": [
+        "2016-01-01",
+        "2025-12-31"
+      ],
+      "change": "none"
+    },
+    {
+      "retrieved_at": "2025-12-26T15:45:00Z",
+      "scope": [
+        "2016-01-01",
+        "2025-12-31"
+      ],
+      "change": "none"
+    },
+    {
+      "retrieved_at": "2025-12-27T15:45:00Z",
+      "scope": [
+        "2016-01-01",
+        "2025-12-31"
+      ],
+      "change": "none"
+    },
+    {
+      "retrieved_at": "2025-12-28T15:45:00Z",
+      "scope": [
+        "2016-01-01",
+        "2025-12-31"
+      ],
+      "change": "none"
+    },
+    {
+      "retrieved_at": "2025-12-29T15:45:00Z",
+      "scope": [
+        "2016-01-01",
+        "2025-12-31"
+      ],
+      "change": "none"
+    },
+    {
+      "retrieved_at": "2025-12-30T15:45:00Z",
+      "scope": [
+        "2016-01-01",
+        "2025-12-31"
+      ],
+      "change": "none"
+    },
+    {
+      "retrieved_at": "2025-12-31T15:45:00Z",
+      "scope": [
+        "2016-01-01",
+        "2025-12-31"
+      ],
+      "change": "none"
+    }
+  ],
+  "rows": [
+    {
+      "period": "2012",
+      "period_start": "2012-01-01",
+      "period_end": "2012-12-31",
+      "value": 15.0,
+      "status": "final",
+      "deleted": false,
+      "recorded_from": "2025-12-08T15:45:00Z",
+      "recorded_to": null,
+      "provider_from": null,
+      "provider_to": null,
+      "provider_precision": null,
+      "channel": "fixture",
+      "metadata": "38ec7d7f9ba0fb4451a4693b999f466f2eafe2ab5397d97141ed87dd58eeb863"
+    },
+    {
+      "period": "2013",
+      "period_start": "2013-01-01",
+      "period_end": "2013-12-31",
+      "value": 14.8,
+      "status": "final",
+      "deleted": false,
+      "recorded_from": "2025-12-08T15:45:00Z",
+      "recorded_to": null,
+      "provider_from": null,
+      "provider_to": null,
+      "provider_precision": null,
+      "channel": "fixture",
+      "metadata": "38ec7d7f9ba0fb4451a4693b999f466f2eafe2ab5397d97141ed87dd58eeb863"
+    },
+    {
+      "period": "2014",
+      "period_start": "2014-01-01",
+      "period_end": "2014-12-31",
+      "value": 14.8,
+      "status": "final",
+      "deleted": false,
+      "recorded_from": "2025-12-08T15:45:00Z",
+      "recorded_to": null,
+      "provider_from": null,
+      "provider_to": null,
+      "provider_precision": null,
+      "channel": "fixture",
+      "metadata": "38ec7d7f9ba0fb4451a4693b999f466f2eafe2ab5397d97141ed87dd58eeb863"
+    },
+    {
+      "period": "2015",
+      "period_start": "2015-01-01",
+      "period_end": "2015-12-31",
+      "value": 13.5,
+      "status": "final",
+      "deleted": false,
+      "recorded_from": "2025-12-08T15:45:00Z",
+      "recorded_to": null,
+      "provider_from": null,
+      "provider_to": null,
+      "provider_precision": null,
+      "channel": "fixture",
+      "metadata": "38ec7d7f9ba0fb4451a4693b999f466f2eafe2ab5397d97141ed87dd58eeb863"
+    },
+    {
+      "period": "2016",
+      "period_start": "2016-01-01",
+      "period_end": "2016-12-31",
+      "value": 12.7,
+      "status": "final",
+      "deleted": false,
+      "recorded_from": "2025-12-08T15:45:00Z",
+      "recorded_to": "2025-12-09T15:45:00Z",
+      "provider_from": null,
+      "provider_to": null,
+      "provider_precision": null,
+      "channel": "fixture",
+      "metadata": "38ec7d7f9ba0fb4451a4693b999f466f2eafe2ab5397d97141ed87dd58eeb863"
+    },
+    {
+      "period": "2016",
+      "period_start": "2016-01-01",
+      "period_end": "2016-12-31",
+      "value": 12.7,
+      "status": "final",
+      "deleted": false,
+      "recorded_from": "2025-12-09T15:45:00Z",
+      "recorded_to": null,
+      "provider_from": null,
+      "provider_to": null,
+      "provider_precision": null,
+      "channel": "fixture",
+      "metadata": "9b2dbbcb0d3875471d757d1a733c05818043fda7c83b39d973e50660e39a0423"
+    },
+    {
+      "period": "2017",
+      "period_start": "2017-01-01",
+      "period_end": "2017-12-31",
+      "value": 12.3,
+      "status": "final",
+      "deleted": false,
+      "recorded_from": "2025-12-08T15:45:00Z",
+      "recorded_to": "2025-12-09T15:45:00Z",
+      "provider_from": null,
+      "provider_to": null,
+      "provider_precision": null,
+      "channel": "fixture",
+      "metadata": "38ec7d7f9ba0fb4451a4693b999f466f2eafe2ab5397d97141ed87dd58eeb863"
+    },
+    {
+      "period": "2017",
+      "period_start": "2017-01-01",
+      "period_end": "2017-12-31",
+      "value": 12.3,
+      "status": "final",
+      "deleted": false,
+      "recorded_from": "2025-12-09T15:45:00Z",
+      "recorded_to": null,
+      "provider_from": null,
+      "provider_to": null,
+      "provider_precision": null,
+      "channel": "fixture",
+      "metadata": "9b2dbbcb0d3875471d757d1a733c05818043fda7c83b39d973e50660e39a0423"
+    },
+    {
+      "period": "2018",
+      "period_start": "2018-01-01",
+      "period_end": "2018-12-31",
+      "value": 11.8,
+      "status": "final",
+      "deleted": false,
+      "recorded_from": "2025-12-08T15:45:00Z",
+      "recorded_to": "2025-12-09T15:45:00Z",
+      "provider_from": null,
+      "provider_to": null,
+      "provider_precision": null,
+      "channel": "fixture",
+      "metadata": "38ec7d7f9ba0fb4451a4693b999f466f2eafe2ab5397d97141ed87dd58eeb863"
+    },
+    {
+      "period": "2018",
+      "period_start": "2018-01-01",
+      "period_end": "2018-12-31",
+      "value": 11.8,
+      "status": "final",
+      "deleted": false,
+      "recorded_from": "2025-12-09T15:45:00Z",
+      "recorded_to": null,
+      "provider_from": null,
+      "provider_to": null,
+      "provider_precision": null,
+      "channel": "fixture",
+      "metadata": "9b2dbbcb0d3875471d757d1a733c05818043fda7c83b39d973e50660e39a0423"
+    },
+    {
+      "period": "2019",
+      "period_start": "2019-01-01",
+      "period_end": "2019-12-31",
+      "value": 10.5,
+      "status": "final",
+      "deleted": false,
+      "recorded_from": "2025-12-08T15:45:00Z",
+      "recorded_to": "2025-12-09T15:45:00Z",
+      "provider_from": null,
+      "provider_to": null,
+      "provider_precision": null,
+      "channel": "fixture",
+      "metadata": "38ec7d7f9ba0fb4451a4693b999f466f2eafe2ab5397d97141ed87dd58eeb863"
+    },
+    {
+      "period": "2019",
+      "period_start": "2019-01-01",
+      "period_end": "2019-12-31",
+      "value": 10.5,
+      "status": "final",
+      "deleted": false,
+      "recorded_from": "2025-12-09T15:45:00Z",
+      "recorded_to": null,
+      "provider_from": null,
+      "provider_to": null,
+      "provider_precision": null,
+      "channel": "fixture",
+      "metadata": "9b2dbbcb0d3875471d757d1a733c05818043fda7c83b39d973e50660e39a0423"
+    },
+    {
+      "period": "2020",
+      "period_start": "2020-01-01",
+      "period_end": "2020-12-31",
+      "value": 11.5,
+      "status": "final",
+      "deleted": false,
+      "recorded_from": "2025-12-08T15:45:00Z",
+      "recorded_to": "2025-12-09T15:45:00Z",
+      "provider_from": null,
+      "provider_to": null,
+      "provider_precision": null,
+      "channel": "fixture",
+      "metadata": "38ec7d7f9ba0fb4451a4693b999f466f2eafe2ab5397d97141ed87dd58eeb863"
+    },
+    {
+      "period": "2020",
+      "period_start": "2020-01-01",
+      "period_end": "2020-12-31",
+      "value": 11.5,
+      "status": "final",
+      "deleted": false,
+      "recorded_from": "2025-12-09T15:45:00Z",
+      "recorded_to": null,
+      "provider_from": null,
+      "provider_to": null,
+      "provider_precision": null,
+      "channel": "fixture",
+      "metadata": "9b2dbbcb0d3875471d757d1a733c05818043fda7c83b39d973e50660e39a0423"
+    },
+    {
+      "period": "2021",
+      "period_start": "2021-01-01",
+      "period_end": "2021-12-31",
+      "value": 11.6,
+      "status": "final",
+      "deleted": false,
+      "recorded_from": "2025-12-08T15:45:00Z",
+      "recorded_to": "2025-12-09T15:45:00Z",
+      "provider_from": null,
+      "provider_to": null,
+      "provider_precision": null,
+      "channel": "fixture",
+      "metadata": "38ec7d7f9ba0fb4451a4693b999f466f2eafe2ab5397d97141ed87dd58eeb863"
+    },
+    {
+      "period": "2021",
+      "period_start": "2021-01-01",
+      "period_end": "2021-12-31",
+      "value": 11.6,
+      "status": "final",
+      "deleted": false,
+      "recorded_from": "2025-12-09T15:45:00Z",
+      "recorded_to": null,
+      "provider_from": null,
+      "provider_to": null,
+      "provider_precision": null,
+      "channel": "fixture",
+      "metadata": "9b2dbbcb0d3875471d757d1a733c05818043fda7c83b39d973e50660e39a0423"
+    },
+    {
+      "period": "2022",
+      "period_start": "2022-01-01",
+      "period_end": "2022-12-31",
+      "value": 11.5,
+      "status": "final",
+      "deleted": false,
+      "recorded_from": "2025-12-08T15:45:00Z",
+      "recorded_to": "2025-12-09T15:45:00Z",
+      "provider_from": null,
+      "provider_to": null,
+      "provider_precision": null,
+      "channel": "fixture",
+      "metadata": "38ec7d7f9ba0fb4451a4693b999f466f2eafe2ab5397d97141ed87dd58eeb863"
+    },
+    {
+      "period": "2022",
+      "period_start": "2022-01-01",
+      "period_end": "2022-12-31",
+      "value": 11.5,
+      "status": "final",
+      "deleted": false,
+      "recorded_from": "2025-12-09T15:45:00Z",
+      "recorded_to": null,
+      "provider_from": null,
+      "provider_to": null,
+      "provider_precision": null,
+      "channel": "fixture",
+      "metadata": "9b2dbbcb0d3875471d757d1a733c05818043fda7c83b39d973e50660e39a0423"
+    },
+    {
+      "period": "2023",
+      "period_start": "2023-01-01",
+      "period_end": "2023-12-31",
+      "value": 11.1,
+      "status": "final",
+      "deleted": false,
+      "recorded_from": "2025-12-08T15:45:00Z",
+      "recorded_to": "2025-12-09T15:45:00Z",
+      "provider_from": null,
+      "provider_to": null,
+      "provider_precision": null,
+      "channel": "fixture",
+      "metadata": "38ec7d7f9ba0fb4451a4693b999f466f2eafe2ab5397d97141ed87dd58eeb863"
+    },
+    {
+      "period": "2023",
+      "period_start": "2023-01-01",
+      "period_end": "2023-12-31",
+      "value": 11.1,
+      "status": "final",
+      "deleted": false,
+      "recorded_from": "2025-12-09T15:45:00Z",
+      "recorded_to": null,
+      "provider_from": null,
+      "provider_to": null,
+      "provider_precision": null,
+      "channel": "fixture",
+      "metadata": "9b2dbbcb0d3875471d757d1a733c05818043fda7c83b39d973e50660e39a0423"
+    },
+    {
+      "period": "2024",
+      "period_start": "2024-01-01",
+      "period_end": "2024-12-31",
+      "value": 10.6,
+      "status": "final",
+      "deleted": false,
+      "recorded_from": "2025-12-08T15:45:00Z",
+      "recorded_to": "2025-12-09T15:45:00Z",
+      "provider_from": null,
+      "provider_to": null,
+      "provider_precision": null,
+      "channel": "fixture",
+      "metadata": "38ec7d7f9ba0fb4451a4693b999f466f2eafe2ab5397d97141ed87dd58eeb863"
+    },
+    {
+      "period": "2024",
+      "period_start": "2024-01-01",
+      "period_end": "2024-12-31",
+      "value": 10.6,
+      "status": "final",
+      "deleted": false,
+      "recorded_from": "2025-12-09T15:45:00Z",
+      "recorded_to": null,
+      "provider_from": null,
+      "provider_to": null,
+      "provider_precision": null,
+      "channel": "fixture",
+      "metadata": "9b2dbbcb0d3875471d757d1a733c05818043fda7c83b39d973e50660e39a0423"
+    },
+    {
+      "period": "2025",
+      "period_start": "2025-01-01",
+      "period_end": "2025-12-31",
+      "value": 10.4,
+      "status": "final",
+      "deleted": false,
+      "recorded_from": "2025-12-08T15:45:00Z",
+      "recorded_to": "2025-12-09T15:45:00Z",
+      "provider_from": null,
+      "provider_to": null,
+      "provider_precision": null,
+      "channel": "fixture",
+      "metadata": "38ec7d7f9ba0fb4451a4693b999f466f2eafe2ab5397d97141ed87dd58eeb863"
+    },
+    {
+      "period": "2025",
+      "period_start": "2025-01-01",
+      "period_end": "2025-12-31",
+      "value": 10.4,
+      "status": "final",
+      "deleted": false,
+      "recorded_from": "2025-12-09T15:45:00Z",
+      "recorded_to": null,
+      "provider_from": null,
+      "provider_to": null,
+      "provider_precision": null,
+      "channel": "fixture",
+      "metadata": "9b2dbbcb0d3875471d757d1a733c05818043fda7c83b39d973e50660e39a0423"
+    }
+  ]
+}

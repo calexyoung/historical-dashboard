@@ -14,13 +14,15 @@
     "gen:check": "node scripts/gen-schema.mjs --check && node scripts/gen-rights.mjs --check",
     "lint": "eslint && npm run lint -w @macro-atlas/site",
     "typecheck": "npm run typecheck --workspaces --if-present",
-    "test": "vitest run"
+    "test": "vitest run",
+    "as-of": "node scripts/as-of.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^9",
     "@types/node": "^24.19.2",
     "eslint": "^9",
     "json-schema-to-typescript": "^15",
+    "rolldown": "^1.2.19",
     "typescript": "^5",
     "typescript-eslint": "^8",
     "vitest": "^5.1.0"

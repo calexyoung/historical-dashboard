@@ -26,13 +26,17 @@ from jsonschema import Draft202012Validator, ValidationError, validators
 from atlas.period import next_period, period_bounds
 
 SCHEMA_PATH = Path(__file__).resolve().parents[1] / "schema" / "release.schema.json"
-SCHEMA_VERSION = "0.1.0"
+SCHEMA_VERSION = "0.2.0"
+#: Every version this reader knows; a writer writes ``SCHEMA_VERSION``. 0.2.0 (M10) added
+#: ``vintages/`` and ``vintages_sha256``, so a 0.1.0 Release is one that holds neither.
+SCHEMA_VERSIONS = ("0.1.0", SCHEMA_VERSION)
 
 MANIFEST = "manifest.json"
 CATALOG = "catalog.json"
 ANNOTATIONS = "content/annotations.json"
 REQUIRED_FILES = (MANIFEST, CATALOG, ANNOTATIONS)
-_SERIES_FILE = re.compile(r"(series|derived)/([a-z][a-z0-9_]{0,63})\.json")
+_SERIES_FILE = re.compile(r"(series|derived|vintages)/([a-z][a-z0-9_]{0,63})\.json")
+VINTAGES = "vintages"
 _KIND_OF_FOLDER = {"series": "stored", "derived": "derived"}
 LEGACY = "legacy_monthly_rounded"
 
@@ -99,10 +103,10 @@ def validate_files(release_id: str, files: Mapping[str, bytes]) -> list[Issue]:
 
     Checks run in stages and stop at the first stage that finds something, so a reader is never
     shown consequences of a problem instead of the problem: files present and named by the
-    contract, JSON, schema version, schema, then the cross-file rules.
+    contract, JSON, schema version, schema, the cross-file rules, then the vintage files.
     """
     issues: list[Issue] = []
-    series_paths: dict[str, dict[str, str]] = {"series": {}, "derived": {}}  # folder -> key -> path
+    series_paths: dict[str, dict[str, str]] = {"series": {}, "derived": {}, VINTAGES: {}}  # folder -> key -> path
     for path in sorted(files):
         match = _SERIES_FILE.fullmatch(path)
         if match:
@@ -133,21 +137,27 @@ def validate_files(release_id: str, files: Mapping[str, bytes]) -> list[Issue]:
 
     manifest = parsed[MANIFEST]
     version = manifest.get("schema_version") if isinstance(manifest, dict) else None
-    if version is not None and version != SCHEMA_VERSION:
+    if version is not None and version not in SCHEMA_VERSIONS:
         issues.append(
             Issue(
                 "unsupported_schema_version",
                 MANIFEST,
-                f"this reader knows schema_version {SCHEMA_VERSION}, not {version!r}",
+                f"this reader knows schema_version {' and '.join(SCHEMA_VERSIONS)}, not {version!r}",
             )
         )
         return issues
+    if version == "0.1.0":
+        for path in sorted(series_paths[VINTAGES].values()):
+            issues.append(Issue("unknown_file", path, "schema_version 0.1.0 does not name this file"))
+        if issues:
+            return issues
 
     bundle = {
         "manifest": manifest,
         "catalog": parsed[CATALOG],
         "series": {key: parsed[path] for key, path in series_paths["series"].items()},
         "derived": {key: parsed[path] for key, path in series_paths["derived"].items()},
+        "vintages": {key: parsed[path] for key, path in series_paths[VINTAGES].items()},
         "annotations": parsed[ANNOTATIONS],
     }
     for error in sorted(_validator().iter_errors(bundle), key=lambda e: list(map(str, e.absolute_path))):
@@ -156,7 +166,10 @@ def validate_files(release_id: str, files: Mapping[str, bytes]) -> list[Issue]:
     if any(i.code == "schema" for i in issues):
         return issues
 
+    vintage_paths = series_paths.pop(VINTAGES)
     issues.extend(_cross_file_rules(release_id, bundle, files, series_paths))
+    if not issues:  # a last stage: a vintage file is judged against Series files that are sound
+        issues.extend(_vintage_rules(bundle, files, vintage_paths))
     return issues
 
 
@@ -195,7 +208,7 @@ def _locate(parts: list) -> tuple:
     if not parts:
         return MANIFEST, "/"
     head, rest = parts[0], parts[1:]
-    if head in ("series", "derived") and rest:
+    if head in ("series", "derived", VINTAGES) and rest:
         return f"{head}/{rest[0]}.json", "/" + "/".join(map(str, rest[1:]))
     file = {"manifest": MANIFEST, "catalog": CATALOG, "annotations": ANNOTATIONS}.get(head, str(head))
     return file, "/" + "/".join(map(str, rest))
@@ -402,4 +415,144 @@ def _recipe_rules(entries: dict[str, dict], withheld: set) -> list[Issue]:
             issues.append(
                 Issue("withheld_input", CATALOG, f"{key} is derived from withheld {', '.join(blocked)}")
             )
+    return issues
+
+
+def _same_number(a, b) -> bool:
+    """Two values of a Release are the same when they are the same double: every reader takes
+    a JSON number as one (schema/README.md, "Strict JSON"), and Python alone keeps an integer
+    past 2**53 exact."""
+    return a == b if a is None or b is None else float(a) == float(b)
+
+
+def instant_key(text: str) -> str:
+    """An Instant as text that sorts in time order: the fraction, if any, padded to nine digits.
+    (``...:00Z`` and ``...:00.5Z`` do not sort as written.)"""
+    whole, _, fraction = text[:-1].partition(".")
+    return f"{whole}.{fraction:0<9}"
+
+
+def _vintage_rules(bundle, files, vintage_paths: dict[str, str]) -> list[Issue]:
+    """vintages/{key}.json against the manifest, the catalog and the Series' own file, then its
+    own order in time (schema/README.md). Resolving an as-of question from the file is the
+    engine's job alone (ADR 0003)."""
+    issues: list[Issue] = []
+    manifest = bundle["manifest"]
+    entries = {entry["key"]: entry for entry in bundle["catalog"]["series"]}
+    withheld = {row["key"] for row in manifest["withheld"]}
+
+    for key, row in manifest["series"].items():
+        if "vintages_sha256" in row and key not in vintage_paths:
+            issues.append(Issue("manifest_mismatch", MANIFEST,
+                                f"{key}: the manifest names a vintage file the release does not hold"))
+    for key, path in vintage_paths.items():
+        def bad(message: str, path=path) -> None:
+            issues.append(Issue("vintage_mismatch", path, message))
+
+        if key in withheld:
+            issues.append(Issue("withheld_present", path,
+                                f"{key} is withheld, so the release may not hold its past values"))
+            continue
+        series = bundle["series"].get(key)
+        if series is None or key not in entries:
+            issues.append(Issue("orphan_vintage_file", path, f"{key} has no file under series/"))
+            continue
+        row = manifest["series"].get(key, {})
+        if "vintages_sha256" not in row:
+            issues.append(Issue("manifest_mismatch", MANIFEST, f"{key}: the manifest has no vintages_sha256"))
+        elif hashlib.sha256(bytes(files[path])).hexdigest() != row["vintages_sha256"]:
+            issues.append(Issue("hash_mismatch", path, "the file's bytes do not match the manifest's vintages_sha256"))
+        doc = bundle["vintages"][key]
+        if doc["key"] != key:
+            bad(f"key {doc['key']!r} is not the file name")
+            continue
+        if doc["freq"] != entries[key]["freq"]:
+            bad(f"freq {doc['freq']!r} is not the catalog's {entries[key]['freq']!r}")
+            continue
+        if series["representation"] != doc["representation"]:
+            bad(f"series/{key}.json is not in the native representation, so it has no vintages")
+            continue
+
+        coverage = doc["provider_coverage"]
+        if coverage is not None and instant_key(coverage["from"]) > instant_key(coverage["to"]):
+            bad("provider_coverage ends before it begins")
+        times = [instant_key(capture["retrieved_at"]) for capture in doc["captures"]]
+        if times != sorted(times):
+            bad("captures are not oldest first")
+        for capture in doc["captures"]:
+            first, last = capture["scope"]
+            if first is not None and last is not None and first > last:
+                bad(f"the scope of the capture at {capture['retrieved_at']} ends before it begins")
+        times = [instant_key(line["recorded_from"]) for line in doc["metadata"]]
+        if times != sorted(times):
+            bad("the metadata history is not oldest first")
+        captured = {instant_key(capture["retrieved_at"]) for capture in doc["captures"]}
+        channel_of: dict[str, str] = {}
+        since: dict[str, str] = {}  # metadata hash -> when it was first recorded
+        said: dict[str, str] = {}
+        for line in doc["metadata"]:
+            since.setdefault(line["hash"], instant_key(line["recorded_from"]))
+            text = json.dumps(line["metadata"], sort_keys=True)
+            if said.setdefault(line["hash"], text) != text:
+                bad(f"two different metadata share the hash {line['hash'][:12]}")
+            channel_of[line["hash"]] = line["metadata"]["source"]["channel"]["via"]
+
+        current: dict[str, dict] = {}
+        seen: set = set()
+        before = None
+        dated = None
+        for version in doc["rows"]:
+            period = version["period"]
+            if period_bounds(doc["freq"], period) != (version["period_start"], version["period_end"]):
+                bad(f"{period}: its dates are not that Period's")
+            start, stop = instant_key(version["recorded_from"]), version["recorded_to"]
+            if stop is not None and instant_key(stop) < start:
+                bad(f"{period}: a version is replaced before it was first held")
+            if start not in captured or (stop is not None and instant_key(stop) not in captured):
+                bad(f"{period}: a version is held from or to a time that is no Capture's")
+            if version["metadata"] in since and start < since[version["metadata"]]:
+                bad(f"{period}: a version is held before the metadata it names was recorded")
+            if before is None or before["period"] != period:
+                dated = None  # the last version of this Period that the Origin dated
+            if version["provider_from"] is not None:
+                if dated is not None and (dated["provider_to"] is None or instant_key(
+                        dated["provider_to"]) > instant_key(version["provider_from"])):
+                    bad(f"{period}: two versions the Origin dated were in force at once")
+                dated = version
+            if version["provider_from"] is None:
+                if version["provider_to"] is not None or version["provider_precision"] is not None:
+                    bad(f"{period}: a version the Origin did not date carries a provider time")
+            elif version["provider_precision"] is None:
+                bad(f"{period}: a version the Origin dated does not say how precisely")
+            elif version["provider_to"] is not None and instant_key(version["provider_to"]) < instant_key(version["provider_from"]):
+                bad(f"{period}: a version is superseded before the Origin published it")
+            if version["metadata"] not in channel_of:
+                bad(f"{period}: a version names metadata the file does not hold")
+            elif channel_of[version["metadata"]] != version["channel"]:
+                bad(f"{period}: a version's Channel is not the one its metadata names")
+            if before is not None and before["period"] == period:
+                if before["recorded_to"] is None:
+                    bad(f"{period}: more than one version is current")
+                elif instant_key(before["recorded_to"]) > start:
+                    bad(f"{period}: two versions were held at once")
+            elif before is not None and (period in seen or version["period_start"] < before["period_start"]):
+                bad(f"{period}: versions are not in Period order")
+            seen.add(period)
+            before = version
+            if stop is None and not version["deleted"]:
+                current[period] = version
+
+        # The versions current now are the Series' own file, once its gaps are written out.
+        listed = set()
+        for observation in series["observations"]:
+            period = observation["period"]
+            listed.add(period)
+            version = current.get(period)
+            if version is None:
+                if observation["value"] is not None or observation["status"] != "missing":
+                    bad(f"{period}: series/{key}.json has a value that no current version holds")
+            elif not _same_number(version["value"], observation["value"]) or version["status"] != observation["status"]:
+                bad(f"{period}: the current version is not what series/{key}.json holds")
+        for period in sorted(set(current) - listed):
+            bad(f"{period}: a current version is not in series/{key}.json")
     return issues

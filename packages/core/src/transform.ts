@@ -12,7 +12,7 @@
 import type { Frequency } from "./period";
 
 /** Raised by any change in what a Transform returns (PLAN 4.5). */
-export const SEMANTICS_VERSION = "0.4.0";
+export const SEMANTICS_VERSION = "0.5.0";
 
 /** v1's six scale modes under FRED's names, plus v1's drawdown. The rest arrive in M11. */
 export const TRANSFORMS = ["lin", "log", "rebase", "z", "pc1", "drawdown"] as const;

@@ -57,6 +57,9 @@ def apply_case(case, files, release_id):
                 data = files.get(f"{folder}/{key}.json")
                 if data is not None:
                     row["sha256"] = hashlib.sha256(data).hexdigest()
+            history = files.get(f"vintages/{key}.json")
+            if history is not None and "vintages_sha256" in row:
+                row["vintages_sha256"] = hashlib.sha256(history).hexdigest()
         files["manifest.json"] = json.dumps(manifest).encode()
     return release_id, files
 

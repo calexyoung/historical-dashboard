@@ -329,6 +329,13 @@ milestones (`vintages/` M10, `derived/` M11, content M19, `locks/` M20, `search.
 `downloads/` M25). A release run does not fetch: `atlas capture`, `atlas replay`, `atlas release`
 run in that order, and one job for the three is M26's.
 
+As built in M10 (ADR 0024, `docs/method/vintage-resolution.md`): the release contract is 0.2.0
+and `vintages/{key}.json` holds, for each published stored Series, its versions, metadata
+history and Captures with their scope; the manifest row carries `vintages_sha256`. The file is
+written only when the gate permits every Origin, dataset and Channel the history came through.
+`resolve()` never mixes the Origin's clock and Macro Atlas's in one answer, and decides
+`uncertain` per Observation from the Captures that asked about its Period.
+
 Rules:
 
 - **A release is immutable once promoted.** Promotion is one atomic replacement of `CURRENT`. A

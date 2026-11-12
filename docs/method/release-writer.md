@@ -60,7 +60,24 @@ When the shortest decimal that names that double is not the same number as the t
 of more than about sixteen digits, such as a debt to the cent), the check report carries a
 warning that names the Series. The exact text stays in the store.
 
-**Not written yet.** `derived/` (the engine's, M11), `vintages/` (M10), search and bulk files
+**Vintages** (M10, ADR 0024). Each published Series also gets `vintages/{key}.json`: every
+version the store holds for it, its metadata history and its Captures, with values turned into
+numbers exactly as above, and the manifest row's `vintages_sha256`. Past values are values:
+
+- a withheld Series has no vintage file;
+- in a public-profile Release the gate is asked about every Origin, dataset and Channel the
+  history came through. If one is refused the Series is published without its history, and the
+  check `vintages` warns and names it. Such a Series has no as-of answer;
+- recorded metadata is published as a fixed selection of fields (name, unit, adjustment, Source,
+  and the licence class and attribution the register gave that day), whatever else the store
+  holds;
+- `--reuse-data` links the vintage files with the Series files, and a withdrawal drops them
+  with the Series.
+
+The check over a Release's files (`atlas doctor --surface production`, rollback, pin, reuse)
+reads the lineage of every vintage file too, against today's register.
+
+**Not written yet.** `derived/` (the engine's, M11), search and bulk files
 (M22, M25), and content other than an empty Annotations list (M19). A local Release carries
 v1's Derived series and Annotations as the legacy converter writes them.
 

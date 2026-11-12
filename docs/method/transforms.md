@@ -7,9 +7,10 @@ implements it (`transform()` in `src/transform.ts`) and is tested from this text
 allowlist in PLAN 4.5 (`chg`, `ch1`, `pch`, `pca`), aggregation to a coarser frequency and daily
 year-over-year arrive in M11 and extend this page.
 
-`semantics_version` for this contract: **0.4.0**. A change in behaviour here raises it.
+`semantics_version` for this contract: **0.5.0**. A change in behaviour here raises it.
 (0.3.0, M4: a Series may offer only some Transforms; see "Which Transforms a Series offers".
-0.4.0, M5: statistics were added to the engine, `docs/method/statistics.md`; no Transform changed.)
+0.4.0, M5: statistics were added to the engine, `docs/method/statistics.md`; no Transform changed.
+0.5.0, M10: vintage resolution was added, `docs/method/vintage-resolution.md`; no Transform changed.)
 
 ## The request
 

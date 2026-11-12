@@ -416,6 +416,142 @@ ANNOTATIONS = {
 }
 
 
+# --- vintages: what was held for three of the Series, and from when (invented) -------------------
+#
+# Written out by hand, version by version, independently of atlas/vintage (the store) and of
+# packages/core (which resolves as-of questions from these files). Captures are daily at 10:45
+# New York time (15:45Z in December) from 8 December 2025, with none on 12, 13 and 14 December:
+# a Capture gap of three days.
+
+def capture_time(day: int) -> str:
+    return f"2025-12-{day:02d}T15:45:00Z"
+
+
+CAPTURE_DAYS = [8, 9, 10, 11] + list(range(15, 32))
+FIRST = capture_time(8)
+
+
+def recorded_metadata(key: str, unit: str | None = None) -> dict:
+    entry = next(e for e in CATALOG["series"] if e["key"] == key)
+    metadata = {
+        "name": entry["name"],
+        "unit": unit or entry["unit"],
+        "seasonal_adjustment": entry["seasonal_adjustment"],
+        "source": entry["source"],
+        "rights": {"licence_class": entry["rights"]["status"], "attribution": entry["rights"]["attribution"]},
+    }
+    text = json.dumps(metadata, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    return {"hash": hashlib.sha256(text.encode("utf-8")).hexdigest(), "metadata": metadata}
+
+
+def version(period, value, status, held_from, held_to, metadata, **provider) -> dict:
+    label, start, end = period
+    return {
+        "period": label, "period_start": start, "period_end": end,
+        "value": value, "status": status, "deleted": False,
+        "recorded_from": held_from, "recorded_to": held_to,
+        "provider_from": provider.get("published"), "provider_to": provider.get("superseded"),
+        "provider_precision": provider.get("precision"),
+        "channel": "fixture", "metadata": metadata["hash"],
+    }  # fmt: skip
+
+
+def captures(changes: dict[int, str], scope, later_scope=None) -> list[dict]:
+    """One line per capture day; a day not named in ``changes`` found nothing changed."""
+    return [
+        {
+            "retrieved_at": capture_time(day),
+            "scope": list(scope if day == CAPTURE_DAYS[0] or later_scope is None else later_scope),
+            "change": changes.get(day, "none"),
+        }
+        for day in CAPTURE_DAYS
+    ]
+
+
+def vintage_file(key: str, freq: str, metadata: list[dict], caps: list[dict], rows: list[dict], coverage=None) -> dict:
+    return {"key": key, "freq": freq, "representation": "native", "provider_coverage": coverage,
+            "metadata": metadata, "captures": caps, "rows": rows}  # fmt: skip
+
+
+# fx_price_index, Atlas-observed. 8 December: January 2024 to October 2025, October preliminary
+# at 109.2. 10 December: October becomes 109.0 final and November arrives, 109.5 preliminary.
+# 15 December (after the gap): November becomes 109.3 final and December arrives.
+price_meta = recorded_metadata("fx_price_index")
+price_rows = []
+for period, value in zip(price_periods[:21], PRICE[:21]):
+    price_rows.append(version(period, value, "missing" if value is None else "final", FIRST, None, price_meta))
+price_rows += [
+    version(price_periods[21], 109.2, "preliminary", FIRST, capture_time(10), price_meta),
+    version(price_periods[21], 109.0, "final", capture_time(10), None, price_meta),
+    version(price_periods[22], 109.5, "preliminary", capture_time(10), capture_time(15), price_meta),
+    version(price_periods[22], 109.3, "final", capture_time(15), None, price_meta),
+    version(price_periods[23], 109.9, "preliminary", capture_time(15), None, price_meta),
+]
+price_vintages = vintage_file(
+    "fx_price_index", "monthly", [{**price_meta, "recorded_from": FIRST}],
+    captures({8: "first", 10: "revision", 15: "revision"}, ("2024-01-01", "2025-12-31")), price_rows,
+)  # fmt: skip
+
+# fx_output_quarterly, provider vintages: an archive of the Origin's releases, imported whole on
+# 8 December and complete from April 2022 to that day. Each quarter was published on the 28th
+# of the month after it ended. 2025-Q2 and 2025-Q3 were each revised a month later; the Q3
+# releases are dated only to the day. 2025-Q4 is an advance estimate of 5 December.
+output_meta = recorded_metadata("fx_output_quarterly")
+output_rows = []
+for (label, start, end), value in zip(quarters(2022, 16), OUTPUT):
+    year, quarter = int(label[:4]), int(label[-1])
+    month_after = quarter * 3 + 1
+    published = f"{year + month_after // 13}-{(month_after - 1) % 12 + 1:02d}-28T13:30:00Z"
+    period = (label, start, end)
+    if label == "2025-Q2":
+        output_rows += [
+            version(period, 557.9, "preliminary", FIRST, FIRST, output_meta, published=published, superseded="2025-08-28T13:30:00Z", precision="datetime"),
+            version(period, value, "final", FIRST, None, output_meta, published="2025-08-28T13:30:00Z", precision="datetime"),
+        ]  # fmt: skip
+    elif label == "2025-Q3":
+        output_rows += [
+            version(period, 560.2, "preliminary", FIRST, FIRST, output_meta, published="2025-10-28T00:00:00Z", superseded="2025-11-28T00:00:00Z", precision="date"),
+            version(period, value, "revised", FIRST, None, output_meta, published="2025-11-28T00:00:00Z", precision="date"),
+        ]  # fmt: skip
+    elif label == "2025-Q4":
+        output_rows.append(version(period, value, "estimate", FIRST, None, output_meta, published="2025-12-05T13:30:00Z", precision="datetime"))  # fmt: skip
+    else:
+        output_rows.append(version(period, value, "missing" if value is None else "final", FIRST, None, output_meta, published=published, precision="datetime"))  # fmt: skip
+output_vintages = vintage_file(
+    "fx_output_quarterly", "quarterly", [{**output_meta, "recorded_from": FIRST}],
+    captures({8: "first"}, (None, None)), output_rows,
+    coverage={"from": "2022-04-01T00:00:00Z", "to": "2025-12-08T00:00:00Z"},
+)  # fmt: skip
+
+# fx_poverty_rate_annual, a metadata change. On 8 December the whole Series was asked about and
+# recorded as "percent of persons". From 9 December the source is asked only about 2016 onwards
+# and the unit is declared as "percent of residents": those years are recorded again under it,
+# with the same numbers. 2012 to 2015 were not asked about and keep the earlier metadata.
+poverty_then = recorded_metadata("fx_poverty_rate_annual", unit="percent of persons")
+poverty_now = recorded_metadata("fx_poverty_rate_annual")
+poverty_rows = []
+for period, value in zip(years(2012, 14), POVERTY):
+    if period[0] < "2016":
+        poverty_rows.append(version(period, value, "final", FIRST, None, poverty_then))
+    else:
+        poverty_rows += [
+            version(period, value, "final", FIRST, capture_time(9), poverty_then),
+            version(period, value, "final", capture_time(9), None, poverty_now),
+        ]
+poverty_vintages = vintage_file(
+    "fx_poverty_rate_annual", "annual",
+    [{**poverty_then, "recorded_from": FIRST}, {**poverty_now, "recorded_from": capture_time(9)}],
+    captures({8: "first", 9: "metadata"}, ("2012-01-01", "2025-12-31"), ("2016-01-01", "2025-12-31")),
+    poverty_rows,
+)
+
+VINTAGES = {
+    "fx_price_index": price_vintages,
+    "fx_output_quarterly": output_vintages,
+    "fx_poverty_rate_annual": poverty_vintages,
+}
+
+
 def dump(obj) -> bytes:
     return (json.dumps(obj, indent=2, ensure_ascii=False) + "\n").encode("utf-8")
 
@@ -427,6 +563,7 @@ def build(root: Path) -> Path:
         shutil.rmtree(release)
     (release / "series").mkdir(parents=True)
     (release / "derived").mkdir()
+    (release / "vintages").mkdir()
     (release / "content").mkdir()
 
     by_key = {entry["key"]: entry for entry in CATALOG["series"]}
@@ -442,9 +579,13 @@ def build(root: Path) -> Path:
                 "rights_status": by_key[key]["rights"]["status"],
                 "representation": by_key[key]["representation"],
             }
+    for key, doc in VINTAGES.items():
+        data = dump(doc)
+        (release / "vintages" / f"{key}.json").write_bytes(data)
+        rows[key]["vintages_sha256"] = hashlib.sha256(data).hexdigest()
 
     manifest = {
-        "schema_version": "0.1.0",
+        "schema_version": "0.2.0",
         "semantics_version": "0",
         "release_id": RELEASE_ID,
         "profile": "public",

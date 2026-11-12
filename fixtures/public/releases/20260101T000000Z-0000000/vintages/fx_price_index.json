@@ -1,0 +1,596 @@
+{
+  "key": "fx_price_index",
+  "freq": "monthly",
+  "representation": "native",
+  "provider_coverage": null,
+  "metadata": [
+    {
+      "hash": "9a480d247b1cee1ac31da37c5e1b79d354b401c2ba49ff55e2fcd719f4e8196a",
+      "metadata": {
+        "name": "Fixture price index",
+        "unit": "index, 2024-01 = 100",
+        "seasonal_adjustment": "sa",
+        "source": {
+          "origin": {
+            "producer": "Macro Atlas fixture (synthetic)",
+            "dataset": "fixture",
+            "origin_id": "FX-PRICE",
+            "url": null
+          },
+          "channel": {
+            "via": "fixture",
+            "adapter": "hand_written",
+            "auth": "none"
+          }
+        },
+        "rights": {
+          "licence_class": "public_domain",
+          "attribution": "Synthetic test data, Macro Atlas project"
+        }
+      },
+      "recorded_from": "2025-12-08T15:45:00Z"
+    }
+  ],
+  "captures": [
+    {
+      "retrieved_at": "2025-12-08T15:45:00Z",
+      "scope": [
+        "2024-01-01",
+        "2025-12-31"
+      ],
+      "change": "first"
+    },
+    {
+      "retrieved_at": "2025-12-09T15:45:00Z",
+      "scope": [
+        "2024-01-01",
+        "2025-12-31"
+      ],
+      "change": "none"
+    },
+    {
+      "retrieved_at": "2025-12-10T15:45:00Z",
+      "scope": [
+        "2024-01-01",
+        "2025-12-31"
+      ],
+      "change": "revision"
+    },
+    {
+      "retrieved_at": "2025-12-11T15:45:00Z",
+      "scope": [
+        "2024-01-01",
+        "2025-12-31"
+      ],
+      "change": "none"
+    },
+    {
+      "retrieved_at": "2025-12-15T15:45:00Z",
+      "scope": [
+        "2024-01-01",
+        "2025-12-31"
+      ],
+      "change": "revision"
+    },
+    {
+      "retrieved_at": "2025-12-16T15:45:00Z",
+      "scope": [
+        "2024-01-01",
+        "2025-12-31"
+      ],
+      "change": "none"
+    },
+    {
+      "retrieved_at": "2025-12-17T15:45:00Z",
+      "scope": [
+        "2024-01-01",
+        "2025-12-31"
+      ],
+      "change": "none"
+    },
+    {
+      "retrieved_at": "2025-12-18T15:45:00Z",
+      "scope": [
+        "2024-01-01",
+        "2025-12-31"
+      ],
+      "change": "none"
+    },
+    {
+      "retrieved_at": "2025-12-19T15:45:00Z",
+      "scope": [
+        "2024-01-01",
+        "2025-12-31"
+      ],
+      "change": "none"
+    },
+    {
+      "retrieved_at": "2025-12-20T15:45:00Z",
+      "scope": [
+        "2024-01-01",
+        "2025-12-31"
+      ],
+      "change": "none"
+    },
+    {
+      "retrieved_at": "2025-12-21T15:45:00Z",
+      "scope": [
+        "2024-01-01",
+        "2025-12-31"
+      ],
+      "change": "none"
+    },
+    {
+      "retrieved_at": "2025-12-22T15:45:00Z",
+      "scope": [
+        "2024-01-01",
+        "2025-12-31"
+      ],
+      "change": "none"
+    },
+    {
+      "retrieved_at": "2025-12-23T15:45:00Z",
+      "scope": [
+        "2024-01-01",
+        "2025-12-31"
+      ],
+      "change": "none"
+    },
+    {
+      "retrieved_at": "2025-12-24T15:45:00Z",
+      "scope": [
+        "2024-01-01",
+        "2025-12-31"
+      ],
+      "change": "none"
+    },
+    {
+      "retrieved_at": "2025-12-25T15:45:00Z",
+      "scope": [
+        "2024-01-01",
+        "2025-12-31"
+      ],
+      "change": "none"
+    },
+    {
+      "retrieved_at": "2025-12-26T15:45:00Z",
+      "scope": [
+        "2024-01-01",
+        "2025-12-31"
+      ],
+      "change": "none"
+    },
+    {
+      "retrieved_at": "2025-12-27T15:45:00Z",
+      "scope": [
+        "2024-01-01",
+        "2025-12-31"
+      ],
+      "change": "none"
+    },
+    {
+      "retrieved_at": "2025-12-28T15:45:00Z",
+      "scope": [
+        "2024-01-01",
+        "2025-12-31"
+      ],
+      "change": "none"
+    },
+    {
+      "retrieved_at": "2025-12-29T15:45:00Z",
+      "scope": [
+        "2024-01-01",
+        "2025-12-31"
+      ],
+      "change": "none"
+    },
+    {
+      "retrieved_at": "2025-12-30T15:45:00Z",
+      "scope": [
+        "2024-01-01",
+        "2025-12-31"
+      ],
+      "change": "none"
+    },
+    {
+      "retrieved_at": "2025-12-31T15:45:00Z",
+      "scope": [
+        "2024-01-01",
+        "2025-12-31"
+      ],
+      "change": "none"
+    }
+  ],
+  "rows": [
+    {
+      "period": "2024-01",
+      "period_start": "2024-01-01",
+      "period_end": "2024-01-31",
+      "value": 100.0,
+      "status": "final",
+      "deleted": false,
+      "recorded_from": "2025-12-08T15:45:00Z",
+      "recorded_to": null,
+      "provider_from": null,
+      "provider_to": null,
+      "provider_precision": null,
+      "channel": "fixture",
+      "metadata": "9a480d247b1cee1ac31da37c5e1b79d354b401c2ba49ff55e2fcd719f4e8196a"
+    },
+    {
+      "period": "2024-02",
+      "period_start": "2024-02-01",
+      "period_end": "2024-02-29",
+      "value": 100.4,
+      "status": "final",
+      "deleted": false,
+      "recorded_from": "2025-12-08T15:45:00Z",
+      "recorded_to": null,
+      "provider_from": null,
+      "provider_to": null,
+      "provider_precision": null,
+      "channel": "fixture",
+      "metadata": "9a480d247b1cee1ac31da37c5e1b79d354b401c2ba49ff55e2fcd719f4e8196a"
+    },
+    {
+      "period": "2024-03",
+      "period_start": "2024-03-01",
+      "period_end": "2024-03-31",
+      "value": 100.9,
+      "status": "final",
+      "deleted": false,
+      "recorded_from": "2025-12-08T15:45:00Z",
+      "recorded_to": null,
+      "provider_from": null,
+      "provider_to": null,
+      "provider_precision": null,
+      "channel": "fixture",
+      "metadata": "9a480d247b1cee1ac31da37c5e1b79d354b401c2ba49ff55e2fcd719f4e8196a"
+    },
+    {
+      "period": "2024-04",
+      "period_start": "2024-04-01",
+      "period_end": "2024-04-30",
+      "value": 101.1,
+      "status": "final",
+      "deleted": false,
+      "recorded_from": "2025-12-08T15:45:00Z",
+      "recorded_to": null,
+      "provider_from": null,
+      "provider_to": null,
+      "provider_precision": null,
+      "channel": "fixture",
+      "metadata": "9a480d247b1cee1ac31da37c5e1b79d354b401c2ba49ff55e2fcd719f4e8196a"
+    },
+    {
+      "period": "2024-05",
+      "period_start": "2024-05-01",
+      "period_end": "2024-05-31",
+      "value": 101.6,
+      "status": "final",
+      "deleted": false,
+      "recorded_from": "2025-12-08T15:45:00Z",
+      "recorded_to": null,
+      "provider_from": null,
+      "provider_to": null,
+      "provider_precision": null,
+      "channel": "fixture",
+      "metadata": "9a480d247b1cee1ac31da37c5e1b79d354b401c2ba49ff55e2fcd719f4e8196a"
+    },
+    {
+      "period": "2024-06",
+      "period_start": "2024-06-01",
+      "period_end": "2024-06-30",
+      "value": 102.0,
+      "status": "final",
+      "deleted": false,
+      "recorded_from": "2025-12-08T15:45:00Z",
+      "recorded_to": null,
+      "provider_from": null,
+      "provider_to": null,
+      "provider_precision": null,
+      "channel": "fixture",
+      "metadata": "9a480d247b1cee1ac31da37c5e1b79d354b401c2ba49ff55e2fcd719f4e8196a"
+    },
+    {
+      "period": "2024-07",
+      "period_start": "2024-07-01",
+      "period_end": "2024-07-31",
+      "value": 102.3,
+      "status": "final",
+      "deleted": false,
+      "recorded_from": "2025-12-08T15:45:00Z",
+      "recorded_to": null,
+      "provider_from": null,
+      "provider_to": null,
+      "provider_precision": null,
+      "channel": "fixture",
+      "metadata": "9a480d247b1cee1ac31da37c5e1b79d354b401c2ba49ff55e2fcd719f4e8196a"
+    },
+    {
+      "period": "2024-08",
+      "period_start": "2024-08-01",
+      "period_end": "2024-08-31",
+      "value": 102.9,
+      "status": "final",
+      "deleted": false,
+      "recorded_from": "2025-12-08T15:45:00Z",
+      "recorded_to": null,
+      "provider_from": null,
+      "provider_to": null,
+      "provider_precision": null,
+      "channel": "fixture",
+      "metadata": "9a480d247b1cee1ac31da37c5e1b79d354b401c2ba49ff55e2fcd719f4e8196a"
+    },
+    {
+      "period": "2024-09",
+      "period_start": "2024-09-01",
+      "period_end": "2024-09-30",
+      "value": 103.2,
+      "status": "final",
+      "deleted": false,
+      "recorded_from": "2025-12-08T15:45:00Z",
+      "recorded_to": null,
+      "provider_from": null,
+      "provider_to": null,
+      "provider_precision": null,
+      "channel": "fixture",
+      "metadata": "9a480d247b1cee1ac31da37c5e1b79d354b401c2ba49ff55e2fcd719f4e8196a"
+    },
+    {
+      "period": "2024-10",
+      "period_start": "2024-10-01",
+      "period_end": "2024-10-31",
+      "value": 103.8,
+      "status": "final",
+      "deleted": false,
+      "recorded_from": "2025-12-08T15:45:00Z",
+      "recorded_to": null,
+      "provider_from": null,
+      "provider_to": null,
+      "provider_precision": null,
+      "channel": "fixture",
+      "metadata": "9a480d247b1cee1ac31da37c5e1b79d354b401c2ba49ff55e2fcd719f4e8196a"
+    },
+    {
+      "period": "2024-11",
+      "period_start": "2024-11-01",
+      "period_end": "2024-11-30",
+      "value": 104.1,
+      "status": "final",
+      "deleted": false,
+      "recorded_from": "2025-12-08T15:45:00Z",
+      "recorded_to": null,
+      "provider_from": null,
+      "provider_to": null,
+      "provider_precision": null,
+      "channel": "fixture",
+      "metadata": "9a480d247b1cee1ac31da37c5e1b79d354b401c2ba49ff55e2fcd719f4e8196a"
+    },
+    {
+      "period": "2024-12",
+      "period_start": "2024-12-01",
+      "period_end": "2024-12-31",
+      "value": 104.5,
+      "status": "final",
+      "deleted": false,
+      "recorded_from": "2025-12-08T15:45:00Z",
+      "recorded_to": null,
+      "provider_from": null,
+      "provider_to": null,
+      "provider_precision": null,
+      "channel": "fixture",
+      "metadata": "9a480d247b1cee1ac31da37c5e1b79d354b401c2ba49ff55e2fcd719f4e8196a"
+    },
+    {
+      "period": "2025-01",
+      "period_start": "2025-01-01",
+      "period_end": "2025-01-31",
+      "value": 105.0,
+      "status": "final",
+      "deleted": false,
+      "recorded_from": "2025-12-08T15:45:00Z",
+      "recorded_to": null,
+      "provider_from": null,
+      "provider_to": null,
+      "provider_precision": null,
+      "channel": "fixture",
+      "metadata": "9a480d247b1cee1ac31da37c5e1b79d354b401c2ba49ff55e2fcd719f4e8196a"
+    },
+    {
+      "period": "2025-02",
+      "period_start": "2025-02-01",
+      "period_end": "2025-02-28",
+      "value": 105.2,
+      "status": "final",
+      "deleted": false,
+      "recorded_from": "2025-12-08T15:45:00Z",
+      "recorded_to": null,
+      "provider_from": null,
+      "provider_to": null,
+      "provider_precision": null,
+      "channel": "fixture",
+      "metadata": "9a480d247b1cee1ac31da37c5e1b79d354b401c2ba49ff55e2fcd719f4e8196a"
+    },
+    {
+      "period": "2025-03",
+      "period_start": "2025-03-01",
+      "period_end": "2025-03-31",
+      "value": null,
+      "status": "missing",
+      "deleted": false,
+      "recorded_from": "2025-12-08T15:45:00Z",
+      "recorded_to": null,
+      "provider_from": null,
+      "provider_to": null,
+      "provider_precision": null,
+      "channel": "fixture",
+      "metadata": "9a480d247b1cee1ac31da37c5e1b79d354b401c2ba49ff55e2fcd719f4e8196a"
+    },
+    {
+      "period": "2025-04",
+      "period_start": "2025-04-01",
+      "period_end": "2025-04-30",
+      "value": 106.3,
+      "status": "final",
+      "deleted": false,
+      "recorded_from": "2025-12-08T15:45:00Z",
+      "recorded_to": null,
+      "provider_from": null,
+      "provider_to": null,
+      "provider_precision": null,
+      "channel": "fixture",
+      "metadata": "9a480d247b1cee1ac31da37c5e1b79d354b401c2ba49ff55e2fcd719f4e8196a"
+    },
+    {
+      "period": "2025-05",
+      "period_start": "2025-05-01",
+      "period_end": "2025-05-31",
+      "value": 106.9,
+      "status": "final",
+      "deleted": false,
+      "recorded_from": "2025-12-08T15:45:00Z",
+      "recorded_to": null,
+      "provider_from": null,
+      "provider_to": null,
+      "provider_precision": null,
+      "channel": "fixture",
+      "metadata": "9a480d247b1cee1ac31da37c5e1b79d354b401c2ba49ff55e2fcd719f4e8196a"
+    },
+    {
+      "period": "2025-06",
+      "period_start": "2025-06-01",
+      "period_end": "2025-06-30",
+      "value": 107.2,
+      "status": "final",
+      "deleted": false,
+      "recorded_from": "2025-12-08T15:45:00Z",
+      "recorded_to": null,
+      "provider_from": null,
+      "provider_to": null,
+      "provider_precision": null,
+      "channel": "fixture",
+      "metadata": "9a480d247b1cee1ac31da37c5e1b79d354b401c2ba49ff55e2fcd719f4e8196a"
+    },
+    {
+      "period": "2025-07",
+      "period_start": "2025-07-01",
+      "period_end": "2025-07-31",
+      "value": 107.8,
+      "status": "final",
+      "deleted": false,
+      "recorded_from": "2025-12-08T15:45:00Z",
+      "recorded_to": null,
+      "provider_from": null,
+      "provider_to": null,
+      "provider_precision": null,
+      "channel": "fixture",
+      "metadata": "9a480d247b1cee1ac31da37c5e1b79d354b401c2ba49ff55e2fcd719f4e8196a"
+    },
+    {
+      "period": "2025-08",
+      "period_start": "2025-08-01",
+      "period_end": "2025-08-31",
+      "value": 108.1,
+      "status": "final",
+      "deleted": false,
+      "recorded_from": "2025-12-08T15:45:00Z",
+      "recorded_to": null,
+      "provider_from": null,
+      "provider_to": null,
+      "provider_precision": null,
+      "channel": "fixture",
+      "metadata": "9a480d247b1cee1ac31da37c5e1b79d354b401c2ba49ff55e2fcd719f4e8196a"
+    },
+    {
+      "period": "2025-09",
+      "period_start": "2025-09-01",
+      "period_end": "2025-09-30",
+      "value": 108.4,
+      "status": "final",
+      "deleted": false,
+      "recorded_from": "2025-12-08T15:45:00Z",
+      "recorded_to": null,
+      "provider_from": null,
+      "provider_to": null,
+      "provider_precision": null,
+      "channel": "fixture",
+      "metadata": "9a480d247b1cee1ac31da37c5e1b79d354b401c2ba49ff55e2fcd719f4e8196a"
+    },
+    {
+      "period": "2025-10",
+      "period_start": "2025-10-01",
+      "period_end": "2025-10-31",
+      "value": 109.2,
+      "status": "preliminary",
+      "deleted": false,
+      "recorded_from": "2025-12-08T15:45:00Z",
+      "recorded_to": "2025-12-10T15:45:00Z",
+      "provider_from": null,
+      "provider_to": null,
+      "provider_precision": null,
+      "channel": "fixture",
+      "metadata": "9a480d247b1cee1ac31da37c5e1b79d354b401c2ba49ff55e2fcd719f4e8196a"
+    },
+    {
+      "period": "2025-10",
+      "period_start": "2025-10-01",
+      "period_end": "2025-10-31",
+      "value": 109.0,
+      "status": "final",
+      "deleted": false,
+      "recorded_from": "2025-12-10T15:45:00Z",
+      "recorded_to": null,
+      "provider_from": null,
+      "provider_to": null,
+      "provider_precision": null,
+      "channel": "fixture",
+      "metadata": "9a480d247b1cee1ac31da37c5e1b79d354b401c2ba49ff55e2fcd719f4e8196a"
+    },
+    {
+      "period": "2025-11",
+      "period_start": "2025-11-01",
+      "period_end": "2025-11-30",
+      "value": 109.5,
+      "status": "preliminary",
+      "deleted": false,
+      "recorded_from": "2025-12-10T15:45:00Z",
+      "recorded_to": "2025-12-15T15:45:00Z",
+      "provider_from": null,
+      "provider_to": null,
+      "provider_precision": null,
+      "channel": "fixture",
+      "metadata": "9a480d247b1cee1ac31da37c5e1b79d354b401c2ba49ff55e2fcd719f4e8196a"
+    },
+    {
+      "period": "2025-11",
+      "period_start": "2025-11-01",
+      "period_end": "2025-11-30",
+      "value": 109.3,
+      "status": "final",
+      "deleted": false,
+      "recorded_from": "2025-12-15T15:45:00Z",
+      "recorded_to": null,
+      "provider_from": null,
+      "provider_to": null,
+      "provider_precision": null,
+      "channel": "fixture",
+      "metadata": "9a480d247b1cee1ac31da37c5e1b79d354b401c2ba49ff55e2fcd719f4e8196a"
+    },
+    {
+      "period": "2025-12",
+      "period_start": "2025-12-01",
+      "period_end": "2025-12-31",
+      "value": 109.9,
+      "status": "preliminary",
+      "deleted": false,
+      "recorded_from": "2025-12-15T15:45:00Z",
+      "recorded_to": null,
+      "provider_from": null,
+      "provider_to": null,
+      "provider_precision": null,
+      "channel": "fixture",
+      "metadata": "9a480d247b1cee1ac31da37c5e1b79d354b401c2ba49ff55e2fcd719f4e8196a"
+    }
+  ]
+}

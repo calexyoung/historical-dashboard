@@ -78,12 +78,14 @@ function applyCase(c: Pick<Case, "steps" | "rehash">): { id: string; files: Rele
     }
   }
   if (c.rehash !== false && files["manifest.json"]) {
-    const manifest = parse(files["manifest.json"]) as { series?: Record<string, { sha256: string }> };
+    const manifest = parse(files["manifest.json"]) as { series?: Record<string, { sha256: string; vintages_sha256?: string }> };
     for (const [key, row] of Object.entries(manifest.series ?? {})) {
       for (const folder of ["series", "derived"]) {
         const data = files[`${folder}/${key}.json`];
         if (data) row.sha256 = sha256(data);
       }
+      const history = files[`vintages/${key}.json`];
+      if (history && row.vintages_sha256 !== undefined) row.vintages_sha256 = sha256(history);
     }
     files["manifest.json"] = bytes(manifest);
   }

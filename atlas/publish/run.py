@@ -373,7 +373,7 @@ def _reuse(run: _Run, legacy: dict[str, bytes] | None, drop: dict[str, str] | No
         reason = (drop or {}).get(key) or "computed from a Series that was withdrawn"
         built.withheld.append({"key": key, "reason": reason})
     for path, data in files.items():
-        if path.startswith(("series/", "derived/")) and path.split("/")[1][:-len(".json")] not in gone:
+        if path.startswith(("series/", "derived/", "vintages/")) and path.split("/")[1][:-len(".json")] not in gone:
             built.files[path] = data
             built.links[path] = run.root / "releases" / source / path
     built.rows = {key: row for key, row in manifest["series"].items() if key not in gone}
