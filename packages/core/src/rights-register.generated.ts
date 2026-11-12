@@ -3,7 +3,7 @@
 
 export const RIGHTS_REGISTER: unknown = {
   "format": 1,
-  "version": "2026-11-12.2",
+  "version": "2026-11-12.3",
   "cleared_intermediaries": [],
   "rows": [
     {
@@ -47,7 +47,14 @@ export const RIGHTS_REGISTER: unknown = {
         "U.S. Department of the Treasury, Bureau of the Fiscal Service"
       ],
       "datasets": "*",
-      "decision": null
+      "decision": {
+        "display": true,
+        "redistribute": true,
+        "store": true,
+        "ml_use": true,
+        "signed_by": "Alex",
+        "signed_on": "2026-11-12"
+      }
     },
     {
       "id": "fed-board",
@@ -56,7 +63,14 @@ export const RIGHTS_REGISTER: unknown = {
         "Board of Governors of the Federal Reserve System"
       ],
       "datasets": "*",
-      "decision": null
+      "decision": {
+        "display": true,
+        "redistribute": true,
+        "store": true,
+        "ml_use": true,
+        "signed_by": "Alex",
+        "signed_on": "2026-11-12"
+      }
     },
     {
       "id": "eia",

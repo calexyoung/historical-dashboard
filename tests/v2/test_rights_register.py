@@ -59,7 +59,7 @@ PLAN_SOURCES = {
 # The rows Alex has signed. Only Alex adds to this list, in the same change in which he signs the
 # row in schema/rights-register.json. The builder never does (PLAN 6: "The agent proposes; Alex
 # decides and signs once").
-SIGNED_BY_ALEX: set[str] = {"bls"}
+SIGNED_BY_ALEX: set[str] = {"bls", "treasury-fiscal-data", "fed-board"}
 
 
 def test_the_register_has_the_shape_its_schema_describes():

@@ -2,7 +2,7 @@
 
 # Rights register
 
-Version `2026-11-12.2`. 1 of 31 rows signed. Intermediary Channels cleared: none.
+Version `2026-11-12.3`. 3 of 31 rows signed. Intermediary Channels cleared: none.
 
 One row per Origin and per intermediary Channel: the terms that were read, the sentences that
 matter quoted, a proposal, and Alex's decision (CONTEXT.md, Rights register; PLAN 6 and 6.1;
@@ -76,8 +76,8 @@ with that date in `cleared_intermediaries`.
 | `bls` Bureau of Labor Statistics | origin | public domain | in part | all four | all four |
 | `bea` Bureau of Economic Analysis | origin | public domain | yes | all four | not decided |
 | `census` Census Bureau | origin | public domain | yes | all four | not decided |
-| `treasury-fiscal-data` Treasury Fiscal Data | origin | public domain | yes | all four | not decided |
-| `fed-board` Federal Reserve Board | origin | public domain | yes | all four | not decided |
+| `treasury-fiscal-data` Treasury Fiscal Data | origin | public domain | yes | all four | all four |
+| `fed-board` Federal Reserve Board | origin | public domain | yes | all four | all four |
 | `eia` Energy Information Administration | origin | public domain | yes | all four | not decided |
 | `fred` FRED (Federal Reserve Bank of St. Louis), as a channel | channel | permission required | in part | nothing | not decided |
 | `alfred` ALFRED (Federal Reserve Bank of St. Louis), as a channel | channel | unknown | no | nothing | not decided |
@@ -233,7 +233,7 @@ Capture endpoints (fetched by `atlas capture` only once this row is signed and a
 
 Proposal: allow **all four**. Open by the Bureau's own statement, with no condition attached.
 
-Decision: **not decided**.
+Decision: allow **all four**. Signed by Alex on 2026-11-12.
 
 ### Federal Reserve Board
 
@@ -268,7 +268,7 @@ Open questions:
 
 - Some releases carry data the Board marks as coming from a non-Board source. Checked in M13 (2026-11-11) for each series read under this row: the label rows of the downloaded files carry no source mark for any of them. Two things for Alex to weigh before signing: the H.15 Treasury constant-maturity yields are the U.S. Treasury's figures and the federal funds effective rate is calculated by the Federal Reserve Bank of New York, both published by the Board in H.15; the H.10 exchange rates are noon buying rates in New York collected by the Federal Reserve Bank of New York. None is a private vendor's series. The H.15 package also holds commercial paper and bank prime rates, which are captured in the file and not read into any Series.
 
-Decision: **not decided**.
+Decision: allow **all four**. Signed by Alex on 2026-11-12.
 
 ### Energy Information Administration
 

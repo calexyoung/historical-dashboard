@@ -1,7 +1,7 @@
 {
   "$schema": "./rights-register.schema.json",
   "format": 1,
-  "version": "2026-11-12.2",
+  "version": "2026-11-12.3",
   "about": "The rights register (CONTEXT.md; PLAN 6 and 6.1; ADR 0006, ADR 0020): one row per Origin and per intermediary Channel, with the terms read, a proposal, and Alex's decision. This file is the single table. docs/v2/rights-register.md and packages/core/src/rights-register.generated.ts are generated from it (npm run gen); atlas/rights.py reads it. A row permits something on a public Surface only when its decision is signed by Alex. The builder proposes and never fills in a decision.",
   "cleared_intermediaries": [],
   "rows": [
@@ -526,7 +526,14 @@
         "note": "Open by the Bureau's own statement, with no condition attached."
       },
       "open_questions": [],
-      "decision": null
+      "decision": {
+        "display": true,
+        "redistribute": true,
+        "store": true,
+        "ml_use": true,
+        "signed_by": "Alex",
+        "signed_on": "2026-11-12"
+      }
     },
     {
       "id": "fed-board",
@@ -1141,7 +1148,14 @@
       "open_questions": [
         "Some releases carry data the Board marks as coming from a non-Board source. Checked in M13 (2026-11-11) for each series read under this row: the label rows of the downloaded files carry no source mark for any of them. Two things for Alex to weigh before signing: the H.15 Treasury constant-maturity yields are the U.S. Treasury's figures and the federal funds effective rate is calculated by the Federal Reserve Bank of New York, both published by the Board in H.15; the H.10 exchange rates are noon buying rates in New York collected by the Federal Reserve Bank of New York. None is a private vendor's series. The H.15 package also holds commercial paper and bank prime rates, which are captured in the file and not read into any Series."
       ],
-      "decision": null
+      "decision": {
+        "display": true,
+        "redistribute": true,
+        "store": true,
+        "ml_use": true,
+        "signed_by": "Alex",
+        "signed_on": "2026-11-12"
+      }
     },
     {
       "id": "eia",
