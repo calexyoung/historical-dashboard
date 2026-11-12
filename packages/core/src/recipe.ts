@@ -60,6 +60,7 @@ export type RecipeUnavailable =
   | "cycle"
   | "input_not_held"
   | "input_unavailable"
+  | "input_metadata_mixed"
   | "incompatible_units"
   | "mixed_frequencies"
   | "input_too_coarse"
@@ -256,12 +257,15 @@ function compute(entry: RecipeSeries, inputs: readonly Operand[]): TransformObse
         message: `${entry.key}: computing before aggregating needs every input at one frequency, and ${inputs[0]!.key} is ${freq.replace("_", " ")} while ${other.key} is ${other.freq.replace("_", " ")}`,
       };
     }
-    observations = trimmed(arithmetic(recipe, inputs));
-    if (freq !== entry.freq && observations.length > 0) {
+    // Not trimmed before it is aggregated: an empty Period at either end is still a member of
+    // the slower Period, and counts against its sum and its more-than-half.
+    observations = arithmetic(recipe, inputs);
+    if (freq !== entry.freq) {
       const at = brought({ key: entry.key, freq, continuity: entry.continuity, measure_kind: entry.measure_kind, agg: entry.agg, observations }, entry.freq);
       if (isFailure(at)) return at;
-      observations = trimmed(at);
+      observations = at;
     }
+    observations = trimmed(observations);
   }
   if (observations.length === 0) {
     return { reason: "no_values", message: `${entry.key}: its recipe gives no value from what its inputs hold` };
@@ -304,6 +308,16 @@ export function evaluateRecipe(
     const series = load(name);
     if (!series) return fail("input_not_held", `this release holds no values for ${name}, which ${key} rests on`);
     const resolved = resolve(series, asOf, { releaseId: options.releaseId });
+    if (asOf !== null && resolved.metadata === null && resolved.basis !== "legacy" && resolved.basis !== "unavailable") {
+      // The versions in the answer were recorded under more than one metadata and no one of
+      // them is in force (the Origin's clock, vintage-resolution.md). Today's unit must not
+      // stand in for it, so nothing is computed.
+      answer.inputs.push({
+        key: name, basis: resolved.basis, cutoff: resolved.cutoff, capture_gap: resolved.capture_gap,
+        same_day_release: resolved.same_day_release, unit: entry.unit, left_out_periods: [],
+      });
+      return fail("input_metadata_mixed", `${name} was held under more than one unit or definition at that time, and which applied to each Period cannot be told; ${key} is not computed across them`, resolved.basis);
+    }
     const leftOut = new Set(resolved.metadata?.other_metadata_periods ?? []);
     const unit = (asOf !== null && resolved.metadata?.metadata.unit) || entry.unit;
     answer.inputs.push({

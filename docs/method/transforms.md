@@ -229,7 +229,9 @@ operation, and the order of aggregation and arithmetic. Only the engine computes
   its own declared `agg`; then the arithmetic. `compute_then_aggregate`: the arithmetic is done
   at the inputs' frequency, which must be one and the same for all of them
   (`mixed_frequencies`), and the result is brought to the output frequency by the Derived
-  series' own Measure kind and `agg`. An input slower than the output is refused
+  series' own Measure kind and `agg`. A Period the arithmetic left empty is still a member of
+  its slower Period, at the edges of the Series too: it spoils a sum and counts against the
+  more-than-half of a mean. An input slower than the output is refused
   (`input_too_coarse`): nothing is spread over finer Periods.
 - **`lag` counts Periods of the frequency the arithmetic is done at**: the output's under
   `aggregate_then_compute`, the inputs' under `compute_then_aggregate`.
@@ -253,7 +255,10 @@ operation, and the order of aggregation and arithmetic. Only the engine computes
   not as-of (the Release's own state, which is what `derived/{key}.json` holds) has no Basis.
 - **Metadata in force.** In an as-of answer an input's unit is the one in force at the Cutoff,
   and that is the unit the rule on units judges. Periods an input still held under other
-  metadata then are left out of the arithmetic and listed (`left_out_periods`).
+  metadata then are left out of the arithmetic and listed (`left_out_periods`). Where the
+  versions in an input's answer were recorded under more than one metadata and none is in force
+  for all of them (possible on the Origin's clock), nothing is computed
+  (`input_metadata_mixed`): today's unit never stands in.
 - **Rights.** The answer carries the most restrictive Rights status among the stored Series it
   rests on, in the order `public_domain`, `cc_by`, `citation_required`, `permission_required`,
   `no_redistribution`, `unknown` (a status nobody recognises counts as `unknown`). It also
