@@ -17,6 +17,7 @@ from __future__ import annotations
 import csv
 import io
 import json
+import re
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
 from urllib.parse import urlencode
@@ -788,6 +789,312 @@ class FedBoardAdapter:
         return NormalizedState(not problems, scope, series, list(dict.fromkeys(problems)))
 
 
+class ImfSdmxAdapter:
+    """One dataflow of the International Monetary Fund's SDMX 3.0 data API, as SDMX-JSON, for a
+    named list of series, whole history, in one request (seen 2026-11-11: no key, no paging; the
+    consumer price index of nineteen countries is about 0.6 MB).
+
+    ``series`` are full SDMX keys (``JPN.CPI._T.IX.M``). One request asks for every combination
+    of the parts it names, so the list must be exactly such a set. The last part is the
+    frequency: M, Q or A.
+
+    The answer is read by name and never by position: a series by the ``keyPosition`` of each
+    dimension, an attribute by its ``id``. It is whole when it is one data set of the dataflow
+    asked for, holds exactly the series asked for, each with a number, and every Observation is
+    a Period of the series' frequency, once, with a value that is a number in text or null.
+
+    **Observed, estimated, projected.** The Fund says of each value how it was derived
+    (``DERIVATION_TYPE``, its code list CL_DERIVATION_TYPE as read on 2026-11-11): ``O``
+    reported official data and ``R`` raw data are *observed*; ``SE``, ``SEME`` and ``SEHI`` (IMF
+    staff estimates) are an *estimate*; ``SP`` (IMF staff projections) is *projected*. A value
+    with any other code, or with none, keeps the answer from being whole: whether it is
+    observed is not said, and it is never guessed. So does a value for a Period that had not
+    begun on the day of the fetch (``asked_on``, New York) unless the Fund calls it a
+    projection. A dataflow that does not mark its values this way (the World Economic Outlook,
+    seen 2026-11-11) cannot be read by this adapter until a contract for it is written.
+
+    ``marks`` are the values of the free-text ``STATUS`` attribute that someone has looked at.
+    A listed mark rides along as a footnote and changes nothing; any other keeps the answer from
+    being whole. A letter is never read for a meaning: no code list stands behind it.
+
+    ``reference`` pins the reference period of an index (``COMMON_REFERENCE_PERIOD``, such as
+    ``2020A``), per series. A rebase changes what every figure means, so it keeps the answer
+    from being whole until the endpoint and the Series say the new base.
+
+    A null before a series' first number is padding and no entry (Japan's index is listed from
+    1900 and begins in 1955). A null after it is a Period the Fund lists and prints no number
+    for. A Period the Fund does not list at all is no entry."""
+
+    name = "imf_sdmx"
+    version = 1
+    BASE = "https://api.imf.org/external/sdmx/3.0/data/dataflow"
+    FREQUENCIES = {"M": ("monthly", "month"), "Q": ("quarterly", "quarter"), "A": ("annual", "year")}
+    #: What each derivation code makes of a value. Anything else is not read.
+    DERIVATION = {"O": "observed", "R": "observed", "SE": "estimate", "SEME": "estimate",
+                  "SEHI": "estimate", "SP": "projected"}
+    _NAME = re.compile(r"[A-Za-z0-9_]+(\.[A-Za-z0-9_]+)*")
+    _PART = re.compile(r"[A-Za-z0-9_]+")
+
+    def problem(self, params: dict) -> str | None:
+        if not all(isinstance(params.get(name), str) and self._NAME.fullmatch(params[name])
+                   for name in ("agency", "flow")):
+            return "it names no agency and dataflow"
+        series = params.get("series")
+        if (not isinstance(series, list) or not series or len(set(map(str, series))) != len(series)
+                or not all(isinstance(key, str) and len(key.split(".")) >= 2
+                           and all(self._PART.fullmatch(part) for part in key.split(".")) for key in series)):
+            return "it does not name its series as distinct SDMX keys"
+        parts = [key.split(".") for key in series]
+        if len({len(p) for p in parts}) != 1:
+            return "its series keys are not all of one length"
+        if any(p[-1] not in self.FREQUENCIES for p in parts):
+            return "its series are not monthly (M), quarterly (Q) or annual (A)"
+        combinations = 1
+        for position in zip(*parts, strict=True):
+            combinations *= len(set(position))
+        if combinations != len(series):
+            return ("its series are not every combination of their parts, so one request cannot "
+                    "ask for exactly them")
+        reference = params.get("reference", {})
+        if not isinstance(reference, dict):
+            return "its reference periods are not an object"
+        for key, said in reference.items():
+            if key not in series:
+                return f"its reference names {key}, which it does not ask for"
+            if not isinstance(said, str) or not said:
+                return "its reference periods are not text"
+        marks = params.get("marks", [])
+        if (not isinstance(marks, list) or len(set(map(str, marks))) != len(marks)
+                or not all(isinstance(mark, str) and mark for mark in marks)):
+            return "its marks are not a list of distinct marks"
+        return None
+
+    def _url(self, scope: dict) -> str:
+        parts = zip(*(key.split(".") for key in scope["series"]), strict=True)
+        key = ".".join("+".join(dict.fromkeys(position)) for position in parts)
+        return f"{self.BASE}/{scope['agency']}/{scope['flow']}/+/{key}?dimensionAtObservation=TIME_PERIOD"
+
+    def fetch(self, endpoint: Endpoint, fetch: Fetch) -> Evidence:
+        params = endpoint.params
+        scope = {"agency": params["agency"], "flow": params["flow"], "series": list(params["series"])}
+        if params.get("reference"):
+            scope["reference"] = dict(params["reference"])
+        if params.get("marks"):
+            scope["marks"] = list(params["marks"])
+        scope["asked_on"] = fetch.now().astimezone(RELEASE_ZONE).date().isoformat()
+        return self.examine(scope, [fetch.get(self._url(scope)).body])
+
+    @classmethod
+    def _period(cls, frequency: str, time: object) -> tuple[str, str] | None:
+        """A TIME_PERIOD as (the Period's label, its first day), or None."""
+        from ..period import period_bounds
+
+        if not isinstance(time, str) or not time.isascii():
+            return None
+        if frequency == "M":
+            label = f"{time[:4]}-{time[6:]}" if len(time) == 8 and time[4:6] == "-M" else ""
+        elif frequency == "Q":
+            label = time if len(time) == 7 and time[4:6] == "-Q" else ""
+        else:
+            label = time if len(time) == 4 else ""
+        bounds = period_bounds(cls.FREQUENCIES[frequency][0], label) if label else None
+        return (label, bounds[0]) if bounds else None
+
+    @staticmethod
+    def _described(listed: object) -> list[dict] | None:
+        """A list of descriptors, each with an id, or None."""
+        if not isinstance(listed, list) or not all(isinstance(d, dict) and isinstance(d.get("id"), str)
+                                                   for d in listed):
+            return None
+        return listed
+
+    @staticmethod
+    def _said(descriptors: list[dict], cells: list) -> dict[str, object]:
+        """Each attribute by its id: text as sent, or the code an index points at. An index
+        outside the answer's own list is ``KeyError`` under the attribute's id."""
+        out: dict[str, object] = {}
+        for descriptor, cell in zip(descriptors, cells, strict=False):
+            codes = descriptor.get("values")
+            if cell is None or isinstance(cell, str):
+                out[descriptor["id"]] = cell
+            elif (type(cell) is int and isinstance(codes, list) and 0 <= cell < len(codes)
+                    and isinstance(codes[cell], dict) and isinstance(codes[cell].get("id"), str)):
+                out[descriptor["id"]] = codes[cell]["id"]
+            else:
+                raise KeyError(descriptor["id"])
+        return out
+
+    def _read(self, scope: dict, bodies: list[bytes], problems: list[str]) -> tuple[dict[str, list[dict]], dict]:
+        if len(bodies) != 1:
+            problems.append(f"1 part was asked for and {len(bodies)} were kept")
+            return {}, {}
+        answer = _json(bodies[0], problems, "the answer")
+        if answer is None:
+            return {}, {}
+        data = answer.get("data")
+        sets = data.get("dataSets") if isinstance(data, dict) else None
+        structures = data.get("structures") if isinstance(data, dict) else None
+        if not (isinstance(sets, list) and isinstance(structures, list) and len(sets) == 1 and len(structures) == 1
+                and isinstance(sets[0], dict) and isinstance(structures[0], dict)
+                and isinstance(sets[0].get("series"), dict)):
+            problems.append("the answer does not hold exactly one data set and one structure")
+            return {}, {}
+        structure = structures[0]
+        wanted = f"Dataflow={scope['agency']}:{scope['flow']}("
+        links = structure.get("links") if isinstance(structure.get("links"), list) else []
+        flows = [link["urn"].split("Dataflow=", 1)[1] for link in links
+                 if isinstance(link, dict) and isinstance(link.get("urn"), str) and wanted in link["urn"]]
+        if not flows:
+            problems.append(f"the answer does not say it is the dataflow {scope['agency']}:{scope['flow']}")
+            return {}, {}
+        checks: dict = {"dataflow": flows[0]}
+        dimensions = structure.get("dimensions") if isinstance(structure.get("dimensions"), dict) else {}
+        attributes = structure.get("attributes") if isinstance(structure.get("attributes"), dict) else {}
+        measures = structure.get("measures") if isinstance(structure.get("measures"), dict) else {}
+        by_series = self._described(dimensions.get("series"))
+        by_time = self._described(dimensions.get("observation"))
+        of_series = self._described(attributes.get("series", []))
+        of_observation = self._described(attributes.get("observation", []))
+        measured = self._described(measures.get("observation"))
+        if (not by_series or by_time is None or len(by_time) != 1 or by_time[0]["id"] != "TIME_PERIOD"
+                or not isinstance(by_time[0].get("values"), list)
+                or not all(type(d.get("keyPosition")) is int and isinstance(d.get("values"), list) for d in by_series)):
+            problems.append("the answer does not describe its series and its times")
+            return {}, checks
+        if of_series is None or of_observation is None or measured is None \
+                or [d["id"] for d in measured] != ["OBS_VALUE"]:
+            problems.append("the answer does not describe its observations as OBS_VALUE and attributes")
+            return {}, checks
+        times = by_time[0]["values"]
+        order = sorted(range(len(by_series)), key=lambda i: by_series[i]["keyPosition"])
+        found: dict[str, list[dict]] = {}
+        for index, entry in sets[0]["series"].items():
+            cells = index.split(":") if isinstance(index, str) else []
+            try:
+                if len(cells) != len(by_series) or not all(c.isascii() and c.isdigit() for c in cells):
+                    raise KeyError(index)
+                key = ".".join(by_series[i]["values"][int(cells[i])]["id"] for i in order)
+            except (KeyError, IndexError, TypeError):
+                problems.append(f"the answer has a series whose key is not in its own lists: {index!r}")
+                continue
+            if key not in scope["series"]:
+                problems.append(f"{key} was not asked for")
+                continue
+            if key in found:
+                problems.append(f"{key} is in the answer twice")
+                continue
+            found[key] = self._observations(scope, key, entry, of_series, of_observation, times, problems, checks)
+        for key in scope["series"]:
+            if key not in found:
+                problems.append(f"{key} is not in the answer")
+            elif not any(o["value"] is not None for o in found[key]):
+                problems.append(f"{key} is in the answer without a single number")
+        return found, checks
+
+    def _observations(self, scope: dict, key: str, entry: object, of_series: list[dict],
+                      of_observation: list[dict], times: list, problems: list[str], checks: dict) -> list[dict]:
+        frequency = key.rsplit(".", 1)[1]
+        kind = self.FREQUENCIES[frequency][1]
+        listed = entry.get("observations") if isinstance(entry, dict) else None
+        cells = entry.get("attributes", []) if isinstance(entry, dict) else None
+        if not isinstance(listed, dict) or not isinstance(cells, list):
+            problems.append(f"{key} is not a series with observations")
+            return []
+        try:
+            said = self._said(of_series, cells)
+        except KeyError as error:
+            problems.append(f"{key} has an attribute {error.args[0]} that is not in the answer's own list of codes")
+            return []
+        if said.get("SCALE") != "0":
+            scale = said.get("SCALE")
+            problems.append(f"{key} is scaled by 10^{scale}; a scale of 0 (units) was expected" if scale is not None
+                            else f"{key} does not say its scale; a scale of 0 (units) was expected")
+        pinned = scope.get("reference", {}).get(key)
+        if pinned is not None and said.get("COMMON_REFERENCE_PERIOD") != pinned:
+            problems.append(f"{key} is on the reference period {said.get('COMMON_REFERENCE_PERIOD')!r}; "
+                            f"{pinned!r} was expected (a rebase: every figure means something else)")
+        marks = scope.get("marks", [])
+        rows: list[tuple[str, dict]] = []
+        seen: set[str] = set()
+        for at, cell in listed.items():
+            time = times[int(at)] if isinstance(at, str) and at.isascii() and at.isdigit() and int(at) < len(times) else None
+            if not isinstance(time, dict):
+                problems.append(f"{key} has an observation whose time is not in the answer's own list: {at!r}")
+                continue
+            period = self._period(frequency, time.get("value"))
+            if period is None:
+                problems.append(f"{key} has a time that is not a {kind}: {time.get('value')!r}")
+                continue
+            label, first_day = period
+            if label in seen:
+                problems.append(f"{key} gives {label} twice")
+                continue
+            seen.add(label)
+            if not isinstance(cell, list) or not cell:
+                problems.append(f"{key} has an observation that is not a list for {label}")
+                continue
+            try:
+                about = self._said(of_observation, cell[1:])
+            except KeyError as error:
+                problems.append(f"{key} has an attribute {error.args[0]} that is not in the answer's own "
+                                f"list of codes for {label}")
+                continue
+            value = cell[0]
+            if value is not None and not (isinstance(value, str) and _is_number(value)):
+                problems.append(f"{key} has a value that is not a number in text or null for {label}: {value!r}")
+                continue
+            notes = []
+            mark = about.get("STATUS")
+            if mark is not None and mark not in marks:
+                problems.append(f"{key} carries the mark {mark!r} for {label}, which the endpoint does not "
+                                "list among the marks it has seen (its marks)")
+            elif mark is not None:
+                notes.append({"code": mark, "text": ""})
+            if value is None:
+                rows.append((first_day, {"period": label, "value": None, "status": "unavailable", "footnotes": notes}))
+                continue
+            derivation = about.get("DERIVATION_TYPE")
+            status = self.DERIVATION.get(derivation) if isinstance(derivation, str) else None
+            if status is None:
+                what = "no derivation type" if derivation is None else f"the derivation type {derivation!r}"
+                problems.append(f"{key} has {what} for {label}: whether that value is observed, an estimate "
+                                "or a projection is not said, and it is not guessed")
+                continue
+            if first_day > scope["asked_on"] and status != "projected":
+                problems.append(f"{key} has a value for {label}, a Period that had not begun on "
+                                f"{scope['asked_on']}, and does not call it a projection")
+            own = about.get("REFERENCE_PERIOD")
+            whole = said.get("COMMON_REFERENCE_PERIOD")
+            if pinned is not None and own is not None and own != whole:
+                # Against the series' own base: a rebase of the whole series is said once, above.
+                problems.append(f"{key} gives {label} on the reference period {own!r}; {whole!r} was expected")
+            rows.append((first_day, {"period": label, "value": value, "status": status, "footnotes": notes}))
+        rows.sort(key=lambda row: row[0])
+        begun = next((i for i, (_, row) in enumerate(rows) if row["value"] is not None), len(rows))
+        out = [row for _, row in rows[begun:]]
+        check = {"rows": len(out), "first": out[0]["period"] if out else None,
+                 "last": out[-1]["period"] if out else None}
+        if pinned is not None:
+            check["reference"] = said.get("COMMON_REFERENCE_PERIOD")
+        checks.setdefault("series", {})[key] = check
+        return out
+
+    def examine(self, scope: dict, bodies: list[bytes]) -> Evidence:
+        problems: list[str] = []
+        _, checks = self._read(scope, bodies, problems)
+        return _evidence(scope, checks, list(dict.fromkeys(problems)))
+
+    def coverage(self, scope: dict) -> tuple[None, None]:
+        """The whole history is asked for, every time: a Period that has left it is gone."""
+        return None, None
+
+    def parse(self, capture: RawCapture) -> NormalizedState:
+        scope = capture.evidence.scope
+        problems: list[str] = []
+        series, _ = self._read(scope, capture.bodies, problems)
+        return NormalizedState(not problems, scope, series, list(dict.fromkeys(problems)))
+
+
 def _month_after(day: str) -> str | None:
     """The month (YYYY-MM) of the day after ``day``; None after the calendar's last day."""
     try:
@@ -804,7 +1111,8 @@ def _is_day(text: str) -> bool:
 
 
 ADAPTERS = {adapter.name: adapter for adapter in
-            (FixtureAdapter(), BlsAdapter(), TreasuryFiscalDataAdapter(), FedBoardAdapter())}
+            (FixtureAdapter(), BlsAdapter(), TreasuryFiscalDataAdapter(), FedBoardAdapter(),
+             ImfSdmxAdapter())}
 
 
 def capture(endpoint: Endpoint, fetch: Fetch) -> RawCapture:

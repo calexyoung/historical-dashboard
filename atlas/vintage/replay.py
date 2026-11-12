@@ -34,7 +34,7 @@ SERIES_FORMAT = 1
 #: a published value the source did not mark preliminary; "unavailable" is a Period the source
 #: lists and prints no number for.
 STATUS = {"observed": "final", "preliminary": "preliminary", "revised": "revised",
-          "unavailable": "missing"}
+          "estimate": "estimate", "projected": "projected", "unavailable": "missing"}
 _KEY = re.compile(r"[a-z][a-z0-9_]{0,63}")
 
 
