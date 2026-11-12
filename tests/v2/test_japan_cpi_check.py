@@ -37,7 +37,7 @@ def estat(values: dict[str, str] | None = None, *, codes=("0001", "0161"), encod
                                                 if m <= "2026-09"}
     lines = ["類・品目,総合,生鮮食品を除く総合", 'Group/Item,All items,"All items, less fresh food"',
              f"類・品目符号(Group/Item code),{','.join(codes)}", "含類総連番(Serial number),001,733",
-             "ウエイト(Weight),3190396706,3064100061", "ウエイト１万分比(Weight per 10000),10000,9604"]
+             "ウエイト(Weight),1000000000,900000000", "ウエイト１万分比(Weight per 10000),10000,9000"]
     lines += [f"{month.replace('-', '')},{value}," for month, value in values.items()]
     return ("\r\n".join(lines) + "\r\n").encode(encoding)
 
