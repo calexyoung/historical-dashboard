@@ -51,11 +51,6 @@ export default function ClaimsMethodPage() {
             statement as a record and computes the figures needed to examine it. It gives no finding, rating or label: no file, page or download
             has a place for one. What the figures say about the statement is the reader&rsquo;s to decide.
           </p>
-          <p>
-            <a href={`${BASE_PATH}/claims`} className={link}>
-              All claims
-            </a>
-          </p>
         </div>
       </Panel>
 

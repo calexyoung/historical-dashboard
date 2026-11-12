@@ -91,7 +91,9 @@ export async function notesFor(options: { directory: string | undefined; surface
   try {
     const root = await realpath(options.directory);
     for (const user of (await readdir(root, { withFileTypes: true })).filter((e) => e.isDirectory() && USER.test(e.name)).map((e) => e.name).sort()) {
-      for (const file of (await readdir(join(root, user), { withFileTypes: true })).filter((e) => e.isFile() && e.name.endsWith(".md")).map((e) => e.name).sort()) {
+      // One user's folder that cannot be read does not hide another's notes.
+      const files = await readdir(join(root, user), { withFileTypes: true }).catch(() => []);
+      for (const file of files.filter((e) => e.isFile() && e.name.endsWith(".md")).map((e) => e.name).sort()) {
         if (notes.length >= MAX_NOTES) return notes;
         const path = join(root, user, file);
         try {

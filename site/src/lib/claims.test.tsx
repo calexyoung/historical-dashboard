@@ -166,6 +166,18 @@ describe("a Claim's page (PLAN section 3, M21)", () => {
     expect(html).toMatch(/data-origin="then".*?data-basis="unavailable"/s);
   });
 
+  it("a then row held under another unit says so, and is not put on the drawing's one axis", () => {
+    const release = copy();
+    release.locks[LOCK]!.parsed.readings[0]!.then.unit = "index, 2019-01 = 100";
+    const { view } = page(release);
+    const evidence = view.readings[0]!.evidence!;
+    expect(evidence.then.lines.at(-1)).toBe("For this row the series was held in another unit: index, 2019-01 = 100.");
+    expect(evidence.now.lines.join(" ")).not.toContain("another unit");
+    expect(evidence.drawing!.svg.attrs["aria-label"]).toBe("Then: no figure. Now when checked: 109.3 in Nov 2025. index, 2024-01 = 100.");
+    expect(evidence.drawing!.caption).toContain("Then is in another unit and is not drawn.");
+    expect(evidence.rows[0]!.then).toMatchObject({ kind: "value", text: "109.5" });
+  });
+
   it("an empty figure says why", () => {
     const release = copy();
     const figures = release.locks[LOCK]!.parsed.readings[1]!.then.figures;
@@ -397,6 +409,15 @@ describe("the Claims index (PLAN M21)", () => {
       { value: "b-example", label: "B. Example", count: 2 },
       { value: "c-sample", label: "C. Sample", count: 1 },
     ]);
+  });
+
+  it("a name with no Latin letter still has a filter of its own", () => {
+    const release = more();
+    release.claims.claims[1]!.claimant.name = "例の人";
+    const view = claimsIndexView(release, parseClaimFilters({}));
+    const option = view.options.person.find((o) => o.label === "例の人")!;
+    expect(option.value).toMatch(/^u-[0-9a-z-]+$/);
+    expect(claimsIndexView(release, parseClaimFilters({ person: option.value })).rows.map((r) => r.name)).toEqual(["例の人"]);
   });
 
   it("gathers every Correction of the Release, newest first", () => {

@@ -42,6 +42,8 @@ const slug = (text: string): string =>
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-|-$/g, "")
     .slice(0, 60);
+/** A filter's value for a name: its slug, or for a name with no Latin letter or digit, its code points. Never empty. */
+const facetValue = (text: string): string => slug(text) || `u-${[...text].map((c) => c.codePointAt(0)!.toString(36)).join("-")}`.slice(0, 60);
 /** The party as the record has it; `none` is said in words. No colour ever stands for a party (DESIGN.md). */
 export const partyWords = (party: string): string => (party.trim().toLowerCase() === "none" ? "No party" : party);
 const topicWords = (topic: string): string => topic.charAt(0).toUpperCase() + topic.slice(1).replaceAll("-", " ");
@@ -99,8 +101,8 @@ const FACET_NOUN: Record<ClaimFacet, string> = { person: "person", party: "party
 export function claimsIndexView(release: ReleaseClaims, asked: ClaimFilters): ClaimsIndexView {
   const claims = release.claims.claims;
   const values: Record<ClaimFacet, (claim: Claim) => { value: string; label: string }[]> = {
-    person: (c) => [{ value: slug(c.claimant.name), label: c.claimant.name }],
-    party: (c) => [{ value: slug(c.claimant.party), label: partyWords(c.claimant.party) }],
+    person: (c) => [{ value: facetValue(c.claimant.name), label: c.claimant.name }],
+    party: (c) => [{ value: facetValue(c.claimant.party), label: partyWords(c.claimant.party) }],
     topic: (c) => (c.topics ?? []).map((t) => ({ value: t, label: topicWords(t) })),
   };
   const options = {} as Record<ClaimFacet, FacetOption[]>;
@@ -391,7 +393,10 @@ function unavailableLine(row: EvidenceRow): string {
   return `No answer: ${UNAVAILABLE[u?.reason ?? ""] ?? u?.message ?? "this cannot be answered"}.`.replace(/\.\.$/, ".");
 }
 
-function thenInfo(row: EvidenceRow): ColumnInfo {
+/** A row whose Series was held under another unit than the Reading's says so. The unit is the Series', before any Transform. */
+const unitLine = (row: EvidenceRow, unit: string | null): string[] => (row.unit !== null && unit !== null && row.unit !== unit ? [`For this row the series was held in another unit: ${row.unit}.`] : []);
+
+function thenInfo(row: EvidenceRow, unit: string | null): ColumnInfo {
   const precise = row.cutoff?.precision === "datetime";
   const when = row.as_of === null ? "the Cutoff" : /^\d{4}-\d{2}-\d{2}$/.test(row.as_of) ? `${dayWords(row.as_of)} (00:00 in New York)` : instantWords(row.as_of);
   const lines = [`As known before ${when}${precise ? ", the time of the statement" : ""}.`];
@@ -405,15 +410,19 @@ function thenInfo(row: EvidenceRow): ColumnInfo {
       lines.push(`Last Capture of ${input.key} before then: ${instantWords(gap.from)}. ${unseen}`);
     }
     if (row.same_day_release) lines.push("A version is dated to that same day; it does not count as known before it.");
+    lines.push(...unitLine(row, unit));
   }
   return { answered, basis: row.basis, lines };
 }
 
-function ownStateInfo(row: EvidenceRow, lead: string): ColumnInfo {
+function ownStateInfo(row: EvidenceRow, lead: string, unit: string | null): ColumnInfo {
   const answered = !row.unavailable;
   const lines = [lead];
   if (!answered) lines.push(unavailableLine(row));
-  else for (const input of row.inputs) if (input.last_capture) lines.push(`Last Capture of ${input.key}: ${instantWords(input.last_capture)}.`);
+  else {
+    for (const input of row.inputs) if (input.last_capture) lines.push(`Last Capture of ${input.key}: ${instantWords(input.last_capture)}.`);
+    lines.push(...unitLine(row, unit));
+  }
   return { answered, basis: null, lines };
 }
 
@@ -451,10 +460,10 @@ export function claimPageView(release: OpenedRelease, surface: Surface, id: stri
     if (locked && lock && found.state === "held") {
       const late: LatestReading | undefined = latest?.readings.find((r) => r.id === reading.id);
       const lateRow = late?.latest ?? null;
-      const then = thenInfo(locked.then);
-      const now = ownStateInfo(locked.now_when_checked, `On ${dayWords(claim.checked_on)}, the day the claim was checked, in release ${lock.release.release_id}.`);
+      const then = thenInfo(locked.then, unit);
+      const now = ownStateInfo(locked.now_when_checked, `On ${dayWords(claim.checked_on)}, the day the claim was checked, in release ${lock.release.release_id}.`, unit);
       const latestInfo: ColumnInfo = lateRow
-        ? ownStateInfo(lateRow, `In this release, made ${dayWords(created.slice(0, 10))}. Computed when the release was written. It is not part of the lock.`)
+        ? ownStateInfo(lateRow, `In this release, made ${dayWords(created.slice(0, 10))}. Computed when the release was written. It is not part of the lock.`, unit)
         : { answered: false, basis: null, lines: [late?.refused ? `This release cannot measure it: ${sentence(late.refused.message)}` : found.latest.ok ? "This release holds no latest row for this reading." : found.latest.reason] };
       const figures = { then: then.answered ? locked.then.figures : null, now: now.answered ? locked.now_when_checked.figures : null, latest: lateRow && latestInfo.answered ? lateRow.figures : null };
       const order = names(locked.now_when_checked.figures, locked.then.figures, lateRow?.figures ?? null);
@@ -471,14 +480,19 @@ export function claimPageView(release: OpenedRelease, surface: Surface, id: stri
           windows.push({ declared: false, words: windowWords(w), rows: names(alt.now, alt.then, alt.latest, locked.now_when_checked.figures).map((name) => figureRow(name, reading, freq, alt)) });
         });
       }
-      const drawn = claimDrawing({ freq, unit: shown ?? "", then: figures.then, now: figures.now });
+      // One axis is one unit: a row held under another unit is in the table and not in the drawing.
+      const sameUnit = (row: EvidenceRow) => row.unit === null || row.unit === unit;
+      const drawnThen = sameUnit(locked.then) ? figures.then : null;
+      const drawn = sameUnit(locked.now_when_checked) ? claimDrawing({ freq, unit: shown ?? "", then: drawnThen, now: figures.now }) : null;
       evidence = {
         then,
         now,
         latest: latestInfo,
         rows,
         windows: windows.length > 1 ? windows : [],
-        drawing: drawn ? { svg: drawn, caption: `Drawn from the lock: ${figures.then ? "then (hollow, dashed) and " : ""}now when checked (filled).${figures.then ? "" : " The lock holds no figure for then."}` } : null,
+        drawing: drawn
+          ? { svg: drawn, caption: `Drawn from the lock: ${drawnThen ? "then (hollow, dashed) and " : ""}now when checked (filled).${drawnThen ? "" : figures.then ? " Then is in another unit and is not drawn." : " The lock holds no figure for then."}` }
+          : null,
       };
     }
     const span = locked?.window ?? reading.window ?? null;
@@ -517,7 +531,7 @@ export function claimPageView(release: OpenedRelease, surface: Surface, id: stri
   return {
     id: claim.id,
     quote: claim.quote.split(/\n\s*\n/).map((p) => p.trim().replace(/\s*\n\s*/g, " ")).filter(Boolean),
-    claimant: { name: claim.claimant.name, role: claim.claimant.role, party: partyWords(claim.claimant.party), personQuery: `person=${slug(claim.claimant.name)}` },
+    claimant: { name: claim.claimant.name, role: claim.claimant.role, party: partyWords(claim.claimant.party), personQuery: `person=${encodeURIComponent(facetValue(claim.claimant.name))}` },
     when: dayWords(claim.said_on),
     at: claim.said_at ? instantWords(claim.said_at) : null,
     venue: claim.venue,

@@ -358,7 +358,8 @@ def check(directory: Path | None = None, register: Path | None = None, content: 
     two levels up from it (``X/catalog/series`` and ``X/content``), not the repository's."""
     directory = Path(directory) if directory else CATALOG_DIR
     if directory.resolve() != CATALOG_DIR.resolve():
-        beside = directory.resolve().parent.parent
+        # Beside the path that was asked for: a linked catalog directory keeps its own content.
+        beside = directory.absolute().parent.parent
         content = beside / "content" if content is None else content
         notes = beside / "notes" if notes is None else notes
     entries, problems = read_catalog(directory)
