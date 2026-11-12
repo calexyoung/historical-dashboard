@@ -189,19 +189,23 @@ def test_the_committed_register_allowlists_exactly_what_rests_on_rows_alex_has_s
     table, catalog = load_register(), load_catalog()
     alex = {row["id"] for row in table["rows"] if (row["decision"] or {}).get("display") is True}
     assert alex <= signed_in_committed()
-    row_of = {origin: row for row in table["rows"] if row["kind"] == "origin" for origin in row["origins"]}
+
+    def row_of(origin: dict) -> str:
+        # An Origin may have more than one row; no two cover the same dataset (ADR 0020).
+        [row] = [row for row in table["rows"] if row["kind"] == "origin" and origin["producer"] in row["origins"]
+                 and (row["datasets"] == "*" or origin["dataset"] in row["datasets"])]
+        return row["id"]
 
     def rows_under(key: str) -> set[str]:
-        return {row_of[catalog[name]["source"]["origin"]["producer"]]["id"] for name in leaves(key, catalog)}
+        return {row_of(catalog[name]["source"]["origin"]) for name in leaves(key, catalog)}
 
     allowed = allowlist(ROOT / "schema" / "rights-register.json")
     assert bool(allowed) <= bool(alex)
     for key in allowed:
         assert rows_under(key) <= alex, key
-    whole = {row["id"] for row in table["rows"] if row["kind"] == "origin" and row["datasets"] == "*"}
     for key in allowlist(signed(tmp_path, ROWS)):  # the pipeline, under every capturing row
         below = [catalog[name]["source"] for name in leaves(key, catalog)]
-        if rows_under(key) <= alex & whole and all(one["channel"]["via"] == "direct" for one in below):
+        if rows_under(key) <= alex and all(one["channel"]["via"] == "direct" for one in below):
             assert key in allowed, key
 
 

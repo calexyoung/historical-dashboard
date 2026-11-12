@@ -20,20 +20,24 @@ from atlas.capture.adapters import ADAPTERS, key_of
 from atlas.capture.cli import main as capture_main
 from atlas.capture.http import usable_key
 from atlas.capture.replay import ReplayTransport, read_exchanges
-from atlas.capture.run import endpoints_from_register, run_capture
+from atlas.capture.run import endpoints_from_register, refusals, run_capture, select
 from atlas.capture.store import read_fetch_log
 from atlas.catalog import load_catalog
 from atlas.publish.run import release
 from atlas.release import validate_release
-from atlas.rights import load_register
+from atlas.rights import PERMISSIONS, RightsGate, load_register
 from atlas.vintage.cli import main as replay_main
 from atlas.vintage.store import VintageStore
 
-from .capture_helpers import LiveScripted, committed_with_file
+from .capture_helpers import LiveScripted, committed_with, committed_with_file
 
 ROOT = Path(__file__).resolve().parents[2]
 FIXTURES = ROOT / "fixtures" / "capture"
-ROWS = ("bea", "eia")
+#: The rows that list the two agencies' endpoints. The EIA's are on two rows: the spot prices it
+#: credits to a commercial provider have a row of their own.
+ROWS = ("bea", "eia", "eia-spot-prices")
+#: The Series that row covers. Their licence class is unknown until the provider's terms are read.
+SPOT = ("brent", "natgas", "wti")
 KEYS = ("BEA_API_KEY", "EIA_API_KEY")
 NOW = datetime(2026, 11, 12, 15, 0, 0, tzinfo=UTC)
 LATER = datetime(2026, 11, 13, 15, 0, 0, tzinfo=UTC)
@@ -139,7 +143,7 @@ def test_every_series_the_two_adapters_read_passes_the_release_gate_with_no_key_
         for key in keys:
             assert published[key]["source"]["channel"] == {
                 "via": "direct", "adapter": adapter, "endpoint": catalog[key]["source"]["channel"]["endpoint"]}, key
-            assert published[key]["rights"]["status"] == "public_domain", key
+            assert published[key]["rights"]["status"] == ("unknown" if key in SPOT else "public_domain"), key
 
 
 def test_values_reach_the_release_as_the_agencies_printed_them(released):
@@ -213,7 +217,8 @@ def keyed_endpoints():
 
 def test_the_two_agencies_endpoints_are_the_ones_that_want_a_key_and_each_names_its_own():
     assert {e.source: key_of(e) for e in keyed_endpoints()} == {
-        "bea": ("UserID", "BEA_API_KEY"), "eia": ("api_key", "EIA_API_KEY")}
+        "bea": ("UserID", "BEA_API_KEY"), "eia": ("api_key", "EIA_API_KEY"),
+        "eia-spot-prices": ("api_key", "EIA_API_KEY")}
     assert len(keyed_endpoints()) == 10
     assert not hasattr(ADAPTERS["bls"], "key")
 
@@ -286,6 +291,83 @@ def test_a_release_after_a_run_without_a_key_calls_the_source_stale_and_says_whe
     reused = json.loads((current(tmp_path / "public") / "manifest.json").read_text())
     [bea] = [s for s in reused["sources"] if s["producer"] == "U.S. Bureau of Economic Analysis"]
     assert bea["outcome"] == "stale" and "BEA_API_KEY is not set" in bea["detail"]
+
+
+# --- the EIA's rows: the spot prices it credits to a commercial provider wait on a row of their own
+
+EIA = "U.S. Energy Information Administration"
+
+
+def test_no_dataset_of_the_eia_is_claimed_by_two_rows_and_the_spot_prices_have_their_own():
+    rows = [row for row in load_register()["rows"] if row["kind"] == "origin" and EIA in row["origins"]]
+    assert {row["id"] for row in rows} == {"eia", "eia-spot-prices"}
+    assert all(isinstance(row["datasets"], list) for row in rows), "neither row takes every dataset"
+    claimed = [dataset for row in rows for dataset in row["datasets"]]
+    assert len(claimed) == len(set(claimed))
+    catalog = load_catalog()
+    by_row = {row["id"]: sorted(key for key, entry in catalog.items() if "source" in entry
+                                and entry["source"]["origin"]["producer"] == EIA
+                                and entry["source"]["origin"]["dataset"] in row["datasets"]) for row in rows}
+    assert by_row == {"eia": ["elec_gen", "gas"], "eia-spot-prices": list(SPOT)}
+    # Every Series of the Administration's is under one of the two rows.
+    assert sorted(key for keys in by_row.values() for key in keys) == sorted(STORED["eia"])
+
+
+def test_signing_the_eia_row_opens_gasoline_and_generation_and_not_the_spot_prices(tmp_path):
+    table = committed_with(("eia",))
+    gate, catalog = RightsGate(table), load_catalog()
+
+    def asked(key, permission, surface="production"):
+        origin = catalog[key]["source"]["origin"]
+        return gate.permits([{"origin": origin["producer"], "dataset": origin["dataset"], "channel": "direct",
+                              "representation": "native", "permission": permission}], surface)
+
+    for permission in PERMISSIONS:
+        for key in ("gas", "elec_gen"):
+            assert asked(key, permission).allowed and asked(key, permission, "staging").allowed
+        for key in SPOT:
+            for surface in ("staging", "production"):
+                assert "(eia-spot-prices) is not signed" in asked(key, permission, surface).reason
+    # A dataset of the Administration's that neither row lists is in no row, and is refused.
+    other = [{"origin": EIA, "dataset": "Some other dataset", "channel": "direct", "representation": "native",
+              "permission": "display"}]
+    assert "is not in the rights register" in gate.permits(other, "production").reason
+    assert not gate.may_store(EIA, "Some other dataset", "direct").allowed
+    for dataset in next(row for row in table["rows"] if row["id"] == "eia-spot-prices")["datasets"]:
+        assert not gate.may_store(EIA, dataset, "direct").allowed
+
+    # The capture job: the eia row alone is two endpoints, cleared; with the other row, none is fetched.
+    alone = select(table, ["eia"])
+    assert [e.id for e in alone] == ["eia-gasoline-retail", "eia-generation-us"] and refusals(table, alone) == {}
+    assert set(refusals(table, select(table, ["eia", "eia-spot-prices"]))) == {"eia-petroleum-spot", "eia-natgas-spot"}
+    live = Agencies()
+    both = run_capture(tmp_path / "both", table, live, only=("eia", "eia-spot-prices"), sleep=lambda s: None,
+                       keys=dict(SEEDED))
+    assert both.exit_code == 1 and live.sent == [] and not (tmp_path / "both").exists()
+    one = run_capture(tmp_path / "one", table, live, only=("eia",), sleep=lambda s: None, keys=dict(SEEDED))
+    assert one.exit_code == 0 and one.outcomes == dict.fromkeys(["eia-gasoline-retail", "eia-generation-us"], "captured")
+    assert len(live.sent) == 2 and not any("/pri/spt/" in url or "/pri/fut/" in url for url in live.sent)
+
+
+def test_a_public_release_under_the_eia_row_alone_withholds_the_spot_prices_by_name(tmp_path):
+    # Everything is in the store (as if captured under test decisions); only the eia row is signed
+    # when the Release is made.
+    everything, store = signed(tmp_path), tmp_path / "store"
+    only = [argument for row in ("eia", "eia-spot-prices") for argument in ("--only", row)]
+    assert capture_main(["--store", str(store), "--register", str(everything), "--replay", str(FIXTURES), *only]) == 0
+    assert replay_main(["--store", str(store), "--register", str(everything)]) == 0
+    register = committed_with_file(tmp_path, ("eia",), name="eia-alone.json")
+    result = release(profile="public", root=tmp_path / "public", store=store, register=register, now=NOW,
+                     spot=no_spots(tmp_path))
+    assert result.exit_code == 0, result.lines
+    here = current(tmp_path / "public")
+    manifest = json.loads((here / "manifest.json").read_text())
+    withheld = {w["key"]: w["reason"] for w in manifest["withheld"]}
+    assert all("(eia-spot-prices) is not signed" in withheld[key] for key in SPOT), withheld
+    assert not {"gas", "elec_gen"} & set(withheld)
+    for kind in ("series", "vintages"):
+        held = {path.stem for path in (here / kind).glob("*.json")}
+        assert {"gas", "elec_gen"} <= held and not set(SPOT) & held
 
 
 # --- keys never appear in the repo, logs or fixtures ----------------------------------------------

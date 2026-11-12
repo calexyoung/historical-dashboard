@@ -36,7 +36,7 @@ from atlas.publish.run import release
 from atlas.rights import load_register
 from atlas.vintage.cli import main as replay
 
-ROWS = ("bls", "treasury-fiscal-data", "fed-board", "imf", "bea", "eia")
+ROWS = ("bls", "treasury-fiscal-data", "fed-board", "imf", "bea", "eia", "eia-spot-prices")
 SHOW = ("debt", "receipts", "gs10", "fedfunds", "eurusd", "fedassets", "net_worth", "labor_share",
         "jp_cpi", "us_cpi", "tryusd", "ez_fx", "gdp", "saving", "trade_q", "wti", "gas", "elec_gen")
 
@@ -58,7 +58,7 @@ def run(directory: Path, keep: bool = False) -> int:
     # The gate takes only a decision that names Alex, so the demo's copy names him, as the
     # tests' registers do. It is not his decision, and the file says so where it is read first.
     table["about"] = ("A DEMO COPY written by fixtures/capture/demo.py. The decisions on the bls, "
-                      "treasury-fiscal-data, fed-board, imf, bea and eia rows are not Alex's. " + table["about"])
+                      "treasury-fiscal-data, fed-board, imf, bea, eia and eia-spot-prices rows are not Alex's. " + table["about"])
     register = directory / "register-signed-for-the-demo.json"
     register.write_text(json.dumps(table))
     spots = directory / "no-spots.json"

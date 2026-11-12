@@ -10,7 +10,7 @@
     "datasets": [
       "Gasoline and Diesel Fuel Update"
     ],
-    "retrieved_at": "2026-11-11T15:50:31Z",
+    "retrieved_at": "2026-11-11T15:50:29Z",
     "capture_id": null,
     "note": "Invented values in the shape of the source's answer of 2026-11-11. Not a measurement of anything and not a capture: written by fixtures/capture/make_fixtures.py."
   },
@@ -29,7 +29,7 @@
         ],
         [
           "Date",
-          "Wed, 11 Nov 2026 15:50:31 GMT"
+          "Wed, 11 Nov 2026 15:50:29 GMT"
         ],
         [
           "Content-Length",
@@ -40,7 +40,7 @@
           "(not kept)"
         ]
       ],
-      "received_at": "2026-11-11T15:50:31Z",
+      "received_at": "2026-11-11T15:50:29Z",
       "body_file": "part-1.json",
       "sha256": "e505e8693f15bed6e3633c0072e25e92997aa1ff7d8f51d5aa6826da75c8583d"
     }
