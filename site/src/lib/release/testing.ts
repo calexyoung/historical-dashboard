@@ -85,3 +85,26 @@ export function promote(root: string, id: string): void {
   writeFileSync(tmp, id + "\n");
   renameSync(tmp, join(root, "CURRENT"));
 }
+
+/**
+ * A rights register for tests only: the fixture Origin with a signed decision. It exists so a
+ * test can ask a gate that answers differently per Permission (a display-only Series). The
+ * committed register (`schema/rights-register.json`) holds no signed row, and nothing the app
+ * runs can be handed this table: a gate is passed in as an argument, by a test.
+ */
+export function fixtureRegister(decision: { display: boolean; redistribute: boolean }): unknown {
+  return {
+    format: 1,
+    version: "test-only",
+    cleared_intermediaries: [],
+    rows: [
+      {
+        id: "macro-atlas-fixture",
+        kind: "origin",
+        origins: ["Macro Atlas fixture (synthetic)"],
+        datasets: "*",
+        decision: { ...decision, store: false, ml_use: false, signed_by: "Alex", signed_on: "2026-01-01" },
+      },
+    ],
+  };
+}

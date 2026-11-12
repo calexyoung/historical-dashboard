@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { Panel } from "@/components/Panel";
 import { Svg } from "@/components/Svg";
 import { BASE_PATH } from "@/lib/config";
+import { BasisIcon } from "@/components/BasisMark";
 import { markIcon } from "@/lib/figure";
 import { glossaryEntry, glossaryHref } from "@/lib/glossary";
 
@@ -36,6 +37,11 @@ export default async function GlossaryTermPage({ params }: PageProps<"/docs/glos
         {entry.mark && (
           <span data-state={entry.mark} className="mt-0.5 shrink-0 text-ink">
             <Svg node={markIcon(entry.mark)} />
+          </span>
+        )}
+        {entry.basis && (
+          <span className="mt-0.5 shrink-0 text-ink">
+            <BasisIcon basis={entry.basis} />
           </span>
         )}
         <p className="text-ink">{entry.definition}</p>

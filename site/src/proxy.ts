@@ -4,8 +4,14 @@
  */
 import { NextResponse, type NextRequest } from "next/server";
 import { SURFACE } from "./lib/config";
-import { gate } from "./lib/gate";
+import { gate, HOST_HEADER, TWIN_HEADER } from "./lib/gate";
 import { getReader } from "./lib/release/server";
+
+// Made once per process and never sent out: how the pass that runs on a twin handler's own path
+// knows the request came from a twin's address (src/lib/gate.ts, point 4).
+const TOKEN = Symbol.for("macro-atlas.twin-token");
+const holder = globalThis as { [TOKEN]?: string };
+const twinToken = (holder[TOKEN] ??= Buffer.from(crypto.getRandomValues(new Uint8Array(24))).toString("base64url"));
 
 export async function proxy(request: NextRequest): Promise<Response> {
   const decision = await gate(
@@ -14,11 +20,14 @@ export async function proxy(request: NextRequest): Promise<Response> {
       surface: SURFACE,
       dev: process.env.NODE_ENV === "development",
       nonce: Buffer.from(crypto.getRandomValues(new Uint8Array(18))).toString("base64"),
+      twinToken,
     },
     {
       host: request.headers.get("host"),
       pathname: request.nextUrl.pathname,
       search: request.nextUrl.search,
+      twinToken: request.headers.get(TWIN_HEADER),
+      namedHost: request.headers.get(HOST_HEADER),
     },
   );
 
@@ -34,7 +43,14 @@ export async function proxy(request: NextRequest): Promise<Response> {
     if (value === null) headers.delete(name);
     else headers.set(name, value);
   }
-  const response = NextResponse.next({ request: { headers } });
+  let response: NextResponse;
+  if (decision.rewrite) {
+    const url = request.nextUrl.clone(); // keeps the base path and the query
+    url.pathname = decision.rewrite;
+    response = NextResponse.rewrite(url, { request: { headers } });
+  } else {
+    response = NextResponse.next({ request: { headers } });
+  }
   for (const [name, value] of Object.entries(decision.responseHeaders)) response.headers.set(name, value);
   return response;
 }

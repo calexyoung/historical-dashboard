@@ -65,7 +65,15 @@ export type ReleaseReader = {
   current(): Promise<Opened>;
   /** One Release by id, under the same validation and the same guard. */
   open(id: string): Promise<Opened>;
+  /**
+   * How the writer's last run in this root ended (`STATUS.json`), as a fixed selection; null
+   * when there is no record, or none that can be read. It may name a Release other than the
+   * one being served: a run that was rejected leaves CURRENT as it was.
+   */
+  lastRun?(): Promise<LastRun | null>;
 };
+
+export type LastRun = { started: string | null; finished: string | null; outcome: string; release_id: string | null; failed_checks: number };
 
 export const RELEASE_ID = /^[0-9]{8}T[0-9]{6}Z-[0-9a-f]{7,12}$/;
 const LEGACY = "legacy_monthly_rounded";
@@ -272,5 +280,23 @@ export function createReleaseReader(options: {
     return opened;
   }
 
-  return { current, open };
+  async function lastRun(): Promise<LastRun | null> {
+    try {
+      const doc = JSON.parse(await readFile(join(root, "STATUS.json"), "utf8")) as Record<string, unknown> | null;
+      if (typeof doc !== "object" || doc === null || typeof doc.outcome !== "string" || !/^[a-z_]{1,40}$/.test(doc.outcome)) return null;
+      const instant = (value: unknown): string | null => (typeof value === "string" && /^\d{4}-\d{2}-\d{2}T[0-9:.]{8,18}Z$/.test(value) ? value : null);
+      return {
+        started: instant(doc.started),
+        finished: instant(doc.finished),
+        outcome: doc.outcome,
+        release_id: typeof doc.release_id === "string" && RELEASE_ID.test(doc.release_id) ? doc.release_id : null,
+        // How many, not which: a check's own words are the writer's, and stay with it.
+        failed_checks: Array.isArray(doc.failed_checks) ? doc.failed_checks.length : 0,
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  return { current, open, lastRun };
 }

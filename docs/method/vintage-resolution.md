@@ -157,6 +157,10 @@ the Captures of one stored Series, written by the release writer from the vintag
 (`docs/method/release-writer.md`). The site's reader opens them with the Release, and
 `asOf(release, key, date)` in `site/src/lib/release/as-of.ts` hands `resolve()` its input.
 
+A reader asks through Query (`docs/method/twins.md`): `?as_of=` on a series page or one of its
+twins. Query asks the rights gate about the Series' whole past first, and claims the weakest
+Basis among the Periods the answer used, not the whole Series'.
+
 No adapter dates a version by the Origin's clock yet, so every real answer today would be
 Atlas-observed, uncertain or unavailable. The `provider` path is exercised by the fixture
 release and arrives for real data with provider vintages (M30).
