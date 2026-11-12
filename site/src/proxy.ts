@@ -5,6 +5,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { BASE_PATH, SURFACE } from "./lib/config";
 import { gate, HOST_HEADER, TWIN_HEADER } from "./lib/gate";
+import { createRateLimiter, type RateLimiter } from "./lib/rate-limit";
 import { getReader } from "./lib/release/server";
 
 // Made once per process and never sent out: how the pass that runs on a twin handler's own path
@@ -12,6 +13,10 @@ import { getReader } from "./lib/release/server";
 const TOKEN = Symbol.for("macro-atlas.twin-token");
 const holder = globalThis as { [TOKEN]?: string };
 const twinToken = (holder[TOKEN] ??= Buffer.from(crypto.getRandomValues(new Uint8Array(24))).toString("base64url"));
+
+// The buckets of this process (PLAN section 7): in memory, so they start full when it starts.
+const LIMITER = Symbol.for("macro-atlas.rate-limiter");
+const limiter = ((globalThis as { [LIMITER]?: RateLimiter })[LIMITER] ??= createRateLimiter());
 
 export async function proxy(request: NextRequest): Promise<Response> {
   const decision = await gate(
@@ -22,6 +27,7 @@ export async function proxy(request: NextRequest): Promise<Response> {
       nonce: Buffer.from(crypto.getRandomValues(new Uint8Array(18))).toString("base64"),
       twinToken,
       basePath: BASE_PATH,
+      limiter,
     },
     {
       host: request.headers.get("host"),
@@ -32,6 +38,7 @@ export async function proxy(request: NextRequest): Promise<Response> {
       method: request.method,
       cookie: request.headers.get("cookie"),
       prefetch: request.headers.has("next-router-prefetch") || /prefetch/i.test(`${request.headers.get("purpose") ?? ""} ${request.headers.get("sec-purpose") ?? ""}`),
+      forwardedFor: request.headers.get("x-forwarded-for"),
       secure: (request.headers.get("x-forwarded-proto") ?? request.nextUrl.protocol.replace(":", "")) === "https",
     },
   );

@@ -95,7 +95,7 @@ cell begins as a formula and a comment stays one line; JSON is JSON.
 | Time | 5 s for an answer and for a vintage table; one that took longer is not given (503) |
 | Bytes of one twin | 8 MiB (422) |
 
-Rate limits by address are the read API's (M24).
+Rate limits by address are in `api.md`: a twin is counted against them like a request to the read API (M24).
 
 ## Caching
 

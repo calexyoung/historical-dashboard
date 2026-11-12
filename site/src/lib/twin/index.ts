@@ -19,7 +19,7 @@ import type { CatalogEntry } from "@macro-atlas/core/release";
 import { releaseHoldsLegacy } from "../catalog";
 import { citation } from "../citation";
 import { csvLine, csvNote } from "../export";
-import { askGate, MAX_BYTES, query, tooManyBytes, vintageTable, type QueryFailure, type SeriesAnswer } from "../query";
+import { askGate, MAX_BYTES, query, tooManyBytes, vintageTable, type QueryAnswer, type QueryFailure, type SeriesAnswer } from "../query";
 import type { OpenedRelease } from "../release/reader";
 import { retrieved, seriesPageView, sourceWords } from "../series-page";
 import { parseSeriesRequest, toQuery, type SeriesRequest } from "../series-request";
@@ -56,22 +56,22 @@ const TYPES: Record<TwinFormat, string> = {
   "metadata.json": "application/json; charset=utf-8",
   md: "text/markdown; charset=utf-8",
 };
-const STAMP = "NOT FOR PUBLICATION";
-const localNote = (release: OpenedRelease): string =>
+export const STAMP = "NOT FOR PUBLICATION";
+export const localNote = (release: OpenedRelease): string =>
   releaseHoldsLegacy(release) ? "Local build · v1 data via FRED and Yahoo · rights not settled · do not redistribute" : "Local build · do not redistribute";
 
 const json = (doc: unknown): string => JSON.stringify(doc, null, 1) + "\n";
 const sentence = (text: string): string => `${text}${/[.!?]$/.test(text) ? "" : "."}`;
 
 /** The fields of a Source that a file names. A Channel's endpoint and how it signs in stay behind. */
-function sourceOf(entry: CatalogEntry) {
+export function sourceOf(entry: CatalogEntry) {
   const { origin, channel } = entry.source;
   return {
     origin: { producer: origin.producer, dataset: origin.dataset, origin_id: origin.origin_id, url: origin.url },
     channel: { via: channel.via, adapter: channel.adapter ?? null },
   };
 }
-function rightsOf(entry: CatalogEntry) {
+export function rightsOf(entry: CatalogEntry) {
   const { rights } = entry;
   return { status: rights.status, owner: rights.owner, attribution: rights.attribution ?? null, terms_url: rights.terms_url ?? null, reviewed: rights.reviewed ?? null };
 }
@@ -139,70 +139,93 @@ export function seriesTwin(release: OpenedRelease, surface: Surface, key: string
   }
 
   if (format === "json") {
-    const { vintage } = series;
-    const doc = {
-      ...(stamped ? { notice: `${STAMP} · ${localNote(release)}` } : {}),
-      key: entry.key,
-      name: entry.name,
-      description: entry.description ?? null,
-      unit,
-      frequency: series.answered_freq,
-      native_frequency: series.freq,
-      release_id: answer.release_id,
-      semantics_version: answer.semantics_version,
-      request: parsed.request,
-      transform: { name: parsed.request.transform, ...("reference" in series.result && series.result.reference ? { reference: series.result.reference } : {}) },
-      aggregated: series.aggregated,
-      as_of: vintage?.as_of ?? null,
-      basis: vintage?.basis ?? null,
-      ...(vintage
-        ? {
-            ...(vintage.reason ? { reason: vintage.reason } : {}),
-            cutoff: vintage.cutoff,
-            capture_gap: vintage.capture_gap,
-            same_day_release: vintage.same_day_release,
-            metadata_in_force: vintage.metadata,
-            left_out_periods: vintage.left_out_periods,
-            ...(vintage.inputs ? { inputs: vintage.inputs } : {}),
-          }
-        : {}),
-      provenance: {
-        ...sourceOf(entry),
-        representation: entry.representation,
-        retrieved: release.manifest.sources?.find((s) => s.producer === entry.source.origin.producer && s.via === entry.source.channel.via)?.fetched ?? null,
-        ...(entry.recipe ? { recipe: { op: entry.recipe.op, inputs: entry.recipe.inputs } } : {}),
-      },
-      rights: { ...rightsOf(entry), permission: "redistribute", lineage: answer.rights_used.map(({ origin, dataset, channel }) => ({ origin, dataset, channel })) },
-      citation: cite,
-      address: page,
-      observations: observations.map((o) => {
-        const e = evidence.get(o.period);
-        return {
-          period: o.period,
-          period_start: o.period_start,
-          period_end: o.period_end,
-          value: o.value,
-          status: o.status,
-          ...(o.empty && o.empty !== "missing" ? { empty: o.empty } : {}),
-          ...(e ? { basis: e.basis, known_from: e.known_from, known_by: e.known_by, last_checked: e.last_checked } : {}),
-        };
-      }),
-    };
+    const doc = seriesDocument(release, surface, entry, parsed.request, answer, series, address);
     return within(json(doc), { filename: `${name}.json`, disposition: "inline" });
   }
 
   return within(markdown(release, surface, entry, series, parsed.request, search, { ...options, unit, shown, when, cite, page, tail, stamped }), { filename: `${name}.md`, disposition: "inline" });
 }
 
-/** The Catalog's record of one Series, as a fixed selection, and no value. */
-function metadata(release: OpenedRelease, surface: Surface, entry: CatalogEntry, address: string, gate: TwinOptions["gate"]) {
+/**
+ * One Series as a JSON document: the answer Query gave, with its Provenance, its Rights and, for
+ * an as-of answer, what it rests on. The `.json` twin and the read API's `series/{key}` both give
+ * this document, so the two cannot hold different values or say different things about them.
+ * Called only with an answer the gate allowed for `redistribute`.
+ */
+export function seriesDocument(release: OpenedRelease, surface: Surface, entry: CatalogEntry, request: SeriesRequest, answer: QueryAnswer, series: SeriesAnswer, address: string) {
+  if (!series.result.ok) throw new Error("a document is made only from an answer that holds values");
+  const { vintage } = series;
+  const observations = series.result.observations;
+  const evidence = new Map((vintage?.evidence ?? []).map((e) => [e.period, e]));
+  const unit = shownUnit(request.transform, series.unit);
+  const stamped = surface === "local";
+  const page = `${address}/data/${entry.key}`;
+  const cite = citation(release, entry, page, request.as_of);
+  const parsed = { request };
+  return {
+    ...(stamped ? { notice: `${STAMP} · ${localNote(release)}` } : {}),
+    key: entry.key,
+    name: entry.name,
+    description: entry.description ?? null,
+    unit,
+    frequency: series.answered_freq,
+    native_frequency: series.freq,
+    release_id: answer.release_id,
+    semantics_version: answer.semantics_version,
+    request: parsed.request,
+    transform: { name: parsed.request.transform, ...("reference" in series.result && series.result.reference ? { reference: series.result.reference } : {}) },
+    aggregated: series.aggregated,
+    as_of: vintage?.as_of ?? null,
+    basis: vintage?.basis ?? null,
+    ...(vintage
+      ? {
+          ...(vintage.reason ? { reason: vintage.reason } : {}),
+          cutoff: vintage.cutoff,
+          capture_gap: vintage.capture_gap,
+          same_day_release: vintage.same_day_release,
+          metadata_in_force: vintage.metadata,
+          left_out_periods: vintage.left_out_periods,
+          ...(vintage.inputs ? { inputs: vintage.inputs } : {}),
+        }
+      : {}),
+    provenance: {
+      ...sourceOf(entry),
+      representation: entry.representation,
+      retrieved: release.manifest.sources?.find((s) => s.producer === entry.source.origin.producer && s.via === entry.source.channel.via)?.fetched ?? null,
+      ...(entry.recipe ? { recipe: { op: entry.recipe.op, inputs: entry.recipe.inputs } } : {}),
+    },
+    rights: { ...rightsOf(entry), permission: "redistribute", permitted: true, lineage: answer.rights_used.map(({ origin, dataset, channel }) => ({ origin, dataset, channel })) },
+    citation: cite,
+    address: page,
+    observations: observations.map((o) => {
+      const e = evidence.get(o.period);
+      return {
+        period: o.period,
+        period_start: o.period_start,
+        period_end: o.period_end,
+        value: o.value,
+        status: o.status,
+        ...(o.empty && o.empty !== "missing" ? { empty: o.empty } : {}),
+        ...(e ? { basis: e.basis, known_from: e.known_from, known_by: e.known_by, last_checked: e.last_checked } : {}),
+      };
+    }),
+  };
+}
+
+/**
+ * The Catalog's record of one Series, as a fixed selection, and no value. The metadata twin and
+ * each row of the read API's `catalog.json` are this record. Where the Series may not be shown
+ * it does not say how far its values run. `history` (how many Captures, how many Periods were
+ * revised) reads the Series' vintage file, so a list of every Series leaves it out.
+ */
+export function seriesRecord(release: OpenedRelease, surface: Surface, entry: CatalogEntry, options: { gate?: TwinOptions["gate"]; history: boolean }) {
+  const { gate } = options;
   const withheld = release.manifest.withheld.find((row) => row.key === entry.key);
   const display = askGate(release, surface, [entry.key], "display", { gate });
   const hand = askGate(release, surface, [entry.key], "redistribute", { gate });
   const state = withheld ? "withheld" : display.ok ? "shown" : "not_permitted";
   const file = display.ok ? (release.series[entry.key] ?? release.derived[entry.key]) : undefined;
-  const history = display.ok ? vintageTable(release, surface, entry.key, { gate }) : null;
-  const page = `${address}/data/${entry.key}`;
+  const history = options.history && display.ok ? vintageTable(release, surface, entry.key, { gate }) : null;
   return {
     key: entry.key,
     name: entry.name,
@@ -235,7 +258,14 @@ function metadata(release: OpenedRelease, surface: Surface, entry: CatalogEntry,
     coverage: file
       ? { first_period: file.observations[0]?.period ?? null, last_period: file.observations.at(-1)?.period ?? null, periods: file.observations.length }
       : null,
-    history: history && history.ok && history.held ? { captures: history.captures.count, first_capture: history.captures.first, last_capture: history.captures.last, revised_periods: history.revised_periods.length } : null,
+    ...(options.history ? { history: history && history.ok && history.held ? { captures: history.captures.count, first_capture: history.captures.first, last_capture: history.captures.last, revised_periods: history.revised_periods.length } : null } : {}),
+  };
+}
+
+function metadata(release: OpenedRelease, surface: Surface, entry: CatalogEntry, address: string, gate: TwinOptions["gate"]) {
+  const page = `${address}/data/${entry.key}`;
+  return {
+    ...seriesRecord(release, surface, entry, { gate, history: true }),
     release_id: release.id,
     semantics_version: SEMANTICS_VERSION,
     address: page,

@@ -33,3 +33,13 @@ docker build -f deploy/Dockerfile --build-arg ATLAS_SURFACE=production --build-a
 
 Such a build serves only public-profile Releases built against a signed rights register, and
 answers 503 on every path, its health check included, when pointed at anything else (ADR 0015).
+
+## The proxy in front, and the rate limits (M24)
+
+The app counts requests to the read API, the twins and the export by the **last** address in
+`X-Forwarded-For` (`docs/method/api.md`; ADR 0038). That is the reader only when exactly one
+proxy stands in front, writes that header itself and drops whatever a client sent (Caddy's
+`reverse_proxy` does both by default), and the app listens on loopback. Do not set
+`trusted_proxies` so that a client's own header is passed through, and do not put a CDN or a
+second proxy in front of Caddy without changing that rule first: every reader would then share
+one bucket, or a client could choose its own.
