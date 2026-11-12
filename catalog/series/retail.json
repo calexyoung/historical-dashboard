@@ -1,6 +1,6 @@
 {
   "key": "retail",
-  "name": "US retail sales ($mn)",
+  "name": "US retail and food services sales ($mn)",
   "unit": "millions of U.S. dollars",
   "unit_kind": "currency",
   "measure_kind": "flow",
@@ -17,20 +17,24 @@
   "source": {
     "origin": {
       "producer": "U.S. Census Bureau",
-      "dataset": "Monthly Retail Trade",
-      "origin_id": "44X72",
+      "dataset": "Advance Monthly Sales for Retail and Food Services",
+      "origin_id": "44X72:SM:US:SA",
       "url": "https://www.census.gov/retail/sales.html"
     },
     "channel": {
-      "via": "direct"
+      "via": "direct",
+      "adapter": "census_eits",
+      "endpoint": "census-marts"
     }
   },
   "refresh": "monthly",
   "max_lag": "P3M",
-  "status": "draft",
+  "status": "active",
   "migration": {
     "v1_source": "FRED RSAFS",
     "change": "same",
-    "milestone": "M16"
-  }
+    "milestone": "M16",
+    "note": "The same figure v1 took from FRED (RSAFS), read from the Bureau's own flat file of the advance monthly retail report."
+  },
+  "description": "Monthly, seasonally adjusted. The latest month is the Bureau's advance estimate, which the file does not mark."
 }

@@ -51,6 +51,7 @@ def test_every_v1_key_is_a_key_of_the_catalog_unchanged():
     assert [key for key in V1_KEYS if key not in catalog] == []
     new = sorted(set(catalog) - set(V1_KEYS))
     assert [key for key in new if not key.endswith(("_cpi", "_infl", "_fx"))] == [
+        "construction_private", "construction_public", "construction_total",  # M16: the C30 totals
         "cpi_nsa", "elec_gen", "gdp_nominal", "net_worth", "outlays", "pce", "personal_income",
         "real_dpi", "receipts", "trade_q", "uk_cpi_imf", "uk_infl_imf"]  # M15 added six
     # M14: the G20 rows. An index and its change for sixteen countries v1 had neither for, and
@@ -133,10 +134,16 @@ def test_only_what_an_adapter_is_built_for_is_in_the_pipeline():
         "bea": ["gdp", "gdp_nominal", "gdp_qoq", "pce", "personal_income", "profits", "real_dpi", "saving",
                 "trade_q"],
         "eia": ["brent", "elec_gen", "gas", "natgas", "wti"],
+        # M16: three flat files of the Census Bureau's Economic Indicators, and its construction workbook.
+        "census_eits": ["houst", "retail", "trade"],
+        "census_c30": ["construction_private", "construction_public", "construction_total"],
     }
     assert all(catalog[key]["source"]["channel"]["auth"] == "api_key" for key in (*by_adapter["bea"], *by_adapter["eia"]))
-    # The monthly balance v1 showed is not in the BEA's API: it waits for the Census files.
-    assert catalog["trade"]["status"] == "draft" and catalog["trade"]["migration"]["milestone"] == "M16"
+    # The monthly balance v1 showed is not in the BEA's API: it is read from the Census Bureau's file.
+    assert catalog["trade"]["source"]["origin"]["producer"] == "U.S. Census Bureau"
+    assert catalog["trade"]["migration"]["milestone"] == "M16" and catalog["trade_q"]["status"] == "active"
+    # The hand-entered Series wait for a signed row: the adapter is built, no value is entered.
+    assert {catalog[key]["status"] for key in ("approval", "pres_margin", "house_margin")} == {"draft"}
     # v1's UK index is the ONS's, which the Fund's is not: it stays a draft under its own key.
     assert catalog["uk_cpi"]["status"] == catalog["uk_infl"]["status"] == "draft"
     assert catalog["uk_cpi"]["source"]["origin"]["origin_id"] == "D7BT"
@@ -265,7 +272,7 @@ def test_atlas_check_exits_zero_on_the_committed_catalog_and_names_each_layer(ca
     out = capsys.readouterr().out
     for layer in LAYERS:
         assert f"{layer}: ok" in out
-    assert "185 Series" in out
+    assert "188 Series" in out
 
 
 def test_atlas_check_exits_one_and_names_the_file_and_the_layers_not_run(tmp_path, capsys):
@@ -427,3 +434,25 @@ def test_a_series_bound_to_an_eia_route_is_one_of_its_series_at_the_routes_frequ
     assert failed(run(tmp_path, _keyed("gas", *eia, "EMM_EPMR_PTE_NUS_DPG", freq="weekly"))) == {}
     assert failed(run(tmp_path, _keyed("gas", *eia, "EMM_EPMR_PTE_NUS_DPG", freq="monthly"))) == {"references": [
         "it is monthly, and the endpoint eia-gasoline-retail asks the Administration for weekly figures"]}
+
+
+# --- what a Census endpoint must say of a Series bound to it (M16) -----------------------------
+
+
+def _census(key, adapter, endpoint, dataset, origin_id, **changes):
+    source = {"origin": {"producer": "U.S. Census Bureau", "dataset": dataset, "origin_id": origin_id, "url": None},
+              "channel": {"via": "direct", "adapter": adapter, "endpoint": endpoint}}
+    return stored(key, status="active", source=source, **changes)
+
+
+def test_a_series_bound_to_a_census_file_is_one_of_the_series_it_reads_and_is_monthly(tmp_path):
+    flat = ("census_eits", "census-marts", "Advance Monthly Sales for Retail and Food Services")
+    assert failed(run(tmp_path, _census("retail", *flat, "44X72:SM:US:SA"))) == {}
+    assert failed(run(tmp_path, _census("retail", *flat, "44000:SM:US:SA"))) == {"references": [
+        "the endpoint census-marts does not ask for 44000:SM:US:SA"]}
+    assert failed(run(tmp_path, _census("retail", *flat, "44X72:SM:US:SA", freq="quarterly"))) == {"references": [
+        "it is quarterly, and the endpoint census-marts reads a file of monthly figures"]}
+    book = ("census_c30", "census-c30-total", "Value of Construction Put in Place")
+    assert failed(run(tmp_path / "book", _census("construction_total", *book, "Total Construction1"))) == {}
+    assert failed(run(tmp_path / "book", _census("construction_total", *book, "Total Construction1", freq="annual"))) == {
+        "references": ["it is annual, and the endpoint census-c30-total reads a file of monthly figures"]}

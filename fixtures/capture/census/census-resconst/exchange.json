@@ -1,0 +1,48 @@
+{
+  "format": 1,
+  "source": "census",
+  "endpoint": "census-resconst",
+  "recorded_at": "2026-11-11T15:50:00Z",
+  "provenance": {
+    "synthetic": true,
+    "transport": "synthetic",
+    "origin": "U.S. Census Bureau",
+    "datasets": [
+      "New Residential Construction"
+    ],
+    "retrieved_at": "2026-11-11T15:50:34Z",
+    "capture_id": null,
+    "note": "Invented values in the shape of the source's answer of 2026-11-11. Not a measurement of anything and not a capture: written by fixtures/capture/make_fixtures.py."
+  },
+  "exchanges": [
+    {
+      "request": {
+        "method": "GET",
+        "url": "https://www.census.gov/econ_getzippedfile/?programCode=RESCONST",
+        "body": null
+      },
+      "status": 200,
+      "headers": [
+        [
+          "Content-Type",
+          "application/octet-stream"
+        ],
+        [
+          "Date",
+          "Wed, 11 Nov 2026 15:50:34 GMT"
+        ],
+        [
+          "Content-Length",
+          "13822"
+        ],
+        [
+          "Set-Cookie",
+          "(not kept)"
+        ]
+      ],
+      "received_at": "2026-11-11T15:50:34Z",
+      "body_file": "part-1.bin",
+      "sha256": "987525ee932e0757c5d05dbcd63ccccc8639c1e42662b584b2df1e20e467a01d"
+    }
+  ]
+}

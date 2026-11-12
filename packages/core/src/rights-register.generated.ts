@@ -3,7 +3,7 @@
 
 export const RIGHTS_REGISTER: unknown = {
   "format": 1,
-  "version": "2026-11-11.draft-5",
+  "version": "2026-11-11.draft-6",
   "cleared_intermediaries": [],
   "rows": [
     {

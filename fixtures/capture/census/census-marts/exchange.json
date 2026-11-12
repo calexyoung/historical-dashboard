@@ -1,0 +1,48 @@
+{
+  "format": 1,
+  "source": "census",
+  "endpoint": "census-marts",
+  "recorded_at": "2026-11-11T15:50:00Z",
+  "provenance": {
+    "synthetic": true,
+    "transport": "synthetic",
+    "origin": "U.S. Census Bureau",
+    "datasets": [
+      "Advance Monthly Sales for Retail and Food Services"
+    ],
+    "retrieved_at": "2026-11-11T15:50:33Z",
+    "capture_id": null,
+    "note": "Invented values in the shape of the source's answer of 2026-11-11. Not a measurement of anything and not a capture: written by fixtures/capture/make_fixtures.py."
+  },
+  "exchanges": [
+    {
+      "request": {
+        "method": "GET",
+        "url": "https://www.census.gov/econ_getzippedfile/?programCode=MARTS",
+        "body": null
+      },
+      "status": 200,
+      "headers": [
+        [
+          "Content-Type",
+          "application/octet-stream"
+        ],
+        [
+          "Date",
+          "Wed, 11 Nov 2026 15:50:33 GMT"
+        ],
+        [
+          "Content-Length",
+          "14169"
+        ],
+        [
+          "Set-Cookie",
+          "(not kept)"
+        ]
+      ],
+      "received_at": "2026-11-11T15:50:33Z",
+      "body_file": "part-1.bin",
+      "sha256": "b87f05c67316197620996596708981b1a5fe011e7eca1923d169103cef693c34"
+    }
+  ]
+}

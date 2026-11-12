@@ -116,7 +116,8 @@ def _references(entries: dict[str, dict], directory: Path, table: object) -> lis
         if origin["origin_id"] is None:
             problem(key, f"it is bound to the endpoint {name} without the Origin's identifier")
         # What the endpoint asks for by name: BLS series, the value fields of a Treasury table,
-        # the columns of a Board package, the series keys of an IMF dataflow.
+        # the columns of a Board package, the series keys of an IMF dataflow, the codes of a
+        # Census flat file, the column headings of the construction workbook.
         listed = endpoint.params.get("expect" if endpoint.adapter == "fed_board" else "series")
         if isinstance(listed, list) and origin["origin_id"] not in (None, *listed):
             problem(key, f"the endpoint {name} does not ask for {origin['origin_id']}")
@@ -146,6 +147,10 @@ def _references(entries: dict[str, dict], directory: Path, table: object) -> lis
             if entry["freq"] != frequency:
                 problem(key, f"it is {entry['freq']}, and the endpoint {name} asks the {agency} for "
                              f"{frequency} figures")
+        elif (endpoint.adapter in ("census_eits", "census_c30") and origin["origin_id"] is not None
+              and entry["freq"] != "monthly"):
+            # Both Census readers read months and nothing else (M16).
+            problem(key, f"it is {entry['freq']}, and the endpoint {name} reads a file of monthly figures")
         binding = (name, origin["origin_id"])
         if binding in bound:
             problem(key, f"{origin['origin_id']} of {name} is already bound to {bound[binding]}")

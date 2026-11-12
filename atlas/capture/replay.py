@@ -30,7 +30,8 @@ from .adapters import ADAPTERS, Evidence, RawCapture
 from .http import CaptureError, Part, Request, Response
 
 EXCHANGE_FORMAT = 1
-_EXTENSIONS = {"application/json": "json", "text/csv": "csv"}
+_EXTENSIONS = {"application/json": "json", "text/csv": "csv",
+               "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "xlsx"}
 
 
 class ExportRefused(RuntimeError):

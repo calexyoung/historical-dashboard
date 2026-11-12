@@ -1,0 +1,48 @@
+{
+  "format": 1,
+  "source": "census",
+  "endpoint": "census-c30-total",
+  "recorded_at": "2026-11-11T15:50:00Z",
+  "provenance": {
+    "synthetic": true,
+    "transport": "synthetic",
+    "origin": "U.S. Census Bureau",
+    "datasets": [
+      "Value of Construction Put in Place"
+    ],
+    "retrieved_at": "2026-11-11T15:50:36Z",
+    "capture_id": null,
+    "note": "Invented values in the shape of the source's answer of 2026-11-11. Not a measurement of anything and not a capture: written by fixtures/capture/make_fixtures.py."
+  },
+  "exchanges": [
+    {
+      "request": {
+        "method": "GET",
+        "url": "https://www.census.gov/construction/c30/xlsx/totsatime.xlsx",
+        "body": null
+      },
+      "status": 200,
+      "headers": [
+        [
+          "Content-Type",
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        ],
+        [
+          "Date",
+          "Wed, 11 Nov 2026 15:50:36 GMT"
+        ],
+        [
+          "Content-Length",
+          "40121"
+        ],
+        [
+          "Set-Cookie",
+          "(not kept)"
+        ]
+      ],
+      "received_at": "2026-11-11T15:50:36Z",
+      "body_file": "part-1.xlsx",
+      "sha256": "46a75ff83d13026e847ffa3e1e837c9bb7311579ae92b64aeda82ae60fc9e551"
+    }
+  ]
+}

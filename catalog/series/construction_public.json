@@ -1,0 +1,38 @@
+{
+  "key": "construction_public",
+  "name": "US construction spending, public",
+  "description": "Value of public construction put in place, monthly at a seasonally adjusted annual rate.",
+  "unit": "millions of U.S. dollars, annual rate",
+  "unit_kind": "currency",
+  "measure_kind": "annualized",
+  "agg": "mean",
+  "freq": "monthly",
+  "continuity": "discrete",
+  "seasonal_adjustment": "saar",
+  "price_basis": "nominal",
+  "country": "USA",
+  "segment": "infrastructure",
+  "topics": [
+    "construction"
+  ],
+  "source": {
+    "origin": {
+      "producer": "U.S. Census Bureau",
+      "dataset": "Value of Construction Put in Place",
+      "origin_id": "Total Public Construction3",
+      "url": "https://www.census.gov/construction/c30/c30index.html"
+    },
+    "channel": {
+      "via": "direct",
+      "adapter": "census_c30",
+      "endpoint": "census-c30-total"
+    }
+  },
+  "refresh": "monthly",
+  "max_lag": "P3M",
+  "range": [
+    100000,
+    20000000
+  ],
+  "status": "active"
+}

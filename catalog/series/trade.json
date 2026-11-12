@@ -1,7 +1,7 @@
 {
   "key": "trade",
   "name": "US trade balance ($mn)",
-  "description": "Goods & services.",
+  "description": "Goods and services, balance of payments basis, monthly, seasonally adjusted.",
   "unit": "millions of U.S. dollars",
   "unit_kind": "currency",
   "measure_kind": "flow",
@@ -17,22 +17,24 @@
   ],
   "source": {
     "origin": {
-      "producer": "U.S. Bureau of Economic Analysis",
-      "dataset": "U.S. International Trade in Goods and Services (FT-900, with the Census Bureau)",
-      "origin_id": null,
-      "url": "https://www.bea.gov/data/intl-trade-investment/international-trade-goods-and-services"
+      "producer": "U.S. Census Bureau",
+      "dataset": "U.S. International Trade in Goods and Services (FT-900)",
+      "origin_id": "BOPGS:BAL:US:SA",
+      "url": "https://www.census.gov/foreign-trade/Press-Release/current_press_release/index.html"
     },
     "channel": {
-      "via": "direct"
+      "via": "direct",
+      "adapter": "census_eits",
+      "endpoint": "census-ftd"
     }
   },
   "refresh": "monthly",
   "max_lag": "P3M",
-  "status": "draft",
+  "status": "active",
   "migration": {
     "v1_source": "FRED BOPGSTB",
     "change": "same",
-    "note": "The monthly balance is the FT-900 release, which the Bureau compiles with the Census Bureau. The Bureau's API does not carry it (checked in M15: its international accounts are quarterly and annual), so this stays a draft until the Census files are read (M16). The quarterly balance from the international transactions accounts is trade_q.",
+    "note": "The monthly balance of the FT-900 release, which the Census Bureau compiles with the Bureau of Economic Analysis; read from the Census Bureau's flat file, which gives the balance from January 1996. v1 took the same figure from FRED (BOPGSTB). The quarterly balance of the international transactions accounts is trade_q.",
     "milestone": "M16"
   }
 }

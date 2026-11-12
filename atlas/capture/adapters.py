@@ -1649,11 +1649,11 @@ class CensusEitsAdapter:
     version = 1
     URL = "https://www.census.gov/econ_getzippedfile/?programCode="
     MAX_BYTES = 64 * 2**20
-    SECTIONS = {"CATEGORIES": ("cat_idx", "cat_code", "cat_desc", "cat_indent"),
-                "DATA TYPES": ("dt_idx", "dt_code", "dt_desc", "dt_unit"),
-                "ERROR TYPES": None, "GEO LEVELS": ("geo_idx", "geo_code", "geo_desc"),
-                "TIME PERIODS": ("per_idx", "per_name"), "NOTES": None, "DATA UPDATED ON": None,
-                "DATA": None}
+    SECTIONS = MappingProxyType({
+        "CATEGORIES": ("cat_idx", "cat_code", "cat_desc", "cat_indent"),
+        "DATA TYPES": ("dt_idx", "dt_code", "dt_desc", "dt_unit"),
+        "ERROR TYPES": None, "GEO LEVELS": ("geo_idx", "geo_code", "geo_desc"),
+        "TIME PERIODS": ("per_idx", "per_name"), "NOTES": None, "DATA UPDATED ON": None, "DATA": None})
     REQUIRED = ("CATEGORIES", "DATA TYPES", "GEO LEVELS", "TIME PERIODS", "DATA")
     LABELS = ("category", "data_type", "unit", "geo")
     _PROGRAM = re.compile(r"[A-Z][A-Z0-9]{1,11}")
