@@ -1,0 +1,37 @@
+{
+  "key": "usepu",
+  "name": "US economic policy uncertainty",
+  "description": "Baker-Bloom-Davis.",
+  "unit": "index",
+  "unit_kind": "index",
+  "measure_kind": "index",
+  "agg": "mean",
+  "freq": "monthly",
+  "continuity": "discrete",
+  "seasonal_adjustment": "not_applicable",
+  "price_basis": "not_applicable",
+  "country": "USA",
+  "segment": "governance_politics",
+  "topics": [
+    "politics-sentiment"
+  ],
+  "source": {
+    "origin": {
+      "producer": "Economic Policy Uncertainty (Baker, Bloom and Davis)",
+      "dataset": "US Monthly Economic Policy Uncertainty Index",
+      "origin_id": null,
+      "url": "https://www.policyuncertainty.com/us_monthly.html"
+    },
+    "channel": {
+      "via": "direct"
+    }
+  },
+  "refresh": "monthly",
+  "max_lag": "P3M",
+  "status": "draft",
+  "migration": {
+    "v1_source": "FRED USEPUINDXM",
+    "change": "same",
+    "note": "The agency's identifier for this series is settled, with a captured fixture, by the milestone that builds the adapter."
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "key": "gold_eur",
+  "name": "Gold in euros (€/oz)",
+  "description": "Gold month-end close divided by the EUR/USD monthly average.",
+  "unit": "euros per troy ounce",
+  "unit_kind": "currency",
+  "measure_kind": "rate",
+  "agg": "none",
+  "freq": "monthly",
+  "continuity": "discrete",
+  "seasonal_adjustment": "not_applicable",
+  "price_basis": "nominal",
+  "country": "WLD",
+  "segment": "markets_money",
+  "topics": [
+    "commodities-energy"
+  ],
+  "refresh": "none",
+  "max_lag": "P1M",
+  "status": "draft",
+  "recipe": {
+    "op": "ratio",
+    "inputs": [
+      "gold",
+      "eurusd"
+    ],
+    "order": "aggregate_then_compute"
+  },
+  "migration": {
+    "v1_source": "Computed: gold / eurusd",
+    "change": "same"
+  }
+}

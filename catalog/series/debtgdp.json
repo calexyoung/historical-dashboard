@@ -1,0 +1,38 @@
+{
+  "key": "debtgdp",
+  "name": "US federal debt / GDP",
+  "description": "Quarterly.",
+  "unit": "percent",
+  "unit_kind": "percent",
+  "measure_kind": "rate",
+  "agg": "none",
+  "freq": "quarterly",
+  "continuity": "discrete",
+  "seasonal_adjustment": "sa",
+  "price_basis": "not_applicable",
+  "country": "USA",
+  "segment": "economy_jobs",
+  "topics": [
+    "us-economy"
+  ],
+  "source": {
+    "origin": {
+      "producer": "No single Origin (v1 used a ratio the Federal Reserve Bank of St. Louis computes)",
+      "dataset": "Federal debt as a percent of gross domestic product",
+      "origin_id": "GFDEGDQ188S",
+      "url": null
+    },
+    "channel": null,
+    "no_channel": {
+      "kind": "no_route_established",
+      "reason": "No agency publishes this quarterly ratio. It can be a Recipe over debt and nominal GDP once the Catalog holds nominal GDP (M15) and the engine has a ratio in percent; neither exists yet."
+    }
+  },
+  "refresh": "none",
+  "max_lag": "P8M",
+  "status": "draft",
+  "migration": {
+    "v1_source": "FRED GFDEGDQ188S",
+    "change": "same"
+  }
+}

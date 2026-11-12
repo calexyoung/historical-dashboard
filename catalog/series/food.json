@@ -1,0 +1,39 @@
+{
+  "key": "food",
+  "name": "Global food price index (IMF)",
+  "description": "IMF primary commodity prices; stands in for the FAO index (no stable CSV endpoint).",
+  "unit": "index, 2016 = 100",
+  "unit_kind": "index",
+  "measure_kind": "index",
+  "agg": "mean",
+  "freq": "monthly",
+  "continuity": "discrete",
+  "seasonal_adjustment": "not_applicable",
+  "price_basis": "nominal",
+  "base_period": "2016",
+  "country": "WLD",
+  "segment": "markets_money",
+  "topics": [
+    "commodities-energy"
+  ],
+  "source": {
+    "origin": {
+      "producer": "International Monetary Fund",
+      "dataset": "Primary Commodity Price System",
+      "origin_id": null,
+      "url": "https://www.imf.org/en/Research/commodity-prices"
+    },
+    "channel": {
+      "via": "direct"
+    }
+  },
+  "refresh": "monthly",
+  "max_lag": "P4M",
+  "status": "draft",
+  "migration": {
+    "v1_source": "FRED PFOODINDEXM",
+    "change": "same",
+    "note": "The agency's identifier for this series is settled, with a captured fixture, by the milestone that builds the adapter.",
+    "milestone": "v2.2"
+  }
+}

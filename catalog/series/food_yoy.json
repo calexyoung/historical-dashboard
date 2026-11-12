@@ -1,0 +1,34 @@
+{
+  "key": "food_yoy",
+  "name": "Global food price inflation (y/y)",
+  "unit": "percent change from a year earlier",
+  "unit_kind": "percent",
+  "measure_kind": "rate",
+  "agg": "none",
+  "freq": "monthly",
+  "continuity": "discrete",
+  "seasonal_adjustment": "not_applicable",
+  "price_basis": "nominal",
+  "country": "WLD",
+  "segment": "markets_money",
+  "topics": [
+    "commodities-energy"
+  ],
+  "refresh": "monthly",
+  "max_lag": "P4M",
+  "status": "draft",
+  "recipe": {
+    "op": "pct_change",
+    "inputs": [
+      "food"
+    ],
+    "order": "aggregate_then_compute",
+    "params": {
+      "lag": 12
+    }
+  },
+  "migration": {
+    "v1_source": "Computed: food y/y",
+    "change": "same"
+  }
+}

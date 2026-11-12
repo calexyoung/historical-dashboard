@@ -1,0 +1,36 @@
+{
+  "key": "de_unemp",
+  "name": "Germany unemployment",
+  "unit": "percent",
+  "unit_kind": "percent",
+  "measure_kind": "rate",
+  "agg": "mean",
+  "freq": "monthly",
+  "continuity": "discrete",
+  "seasonal_adjustment": "sa",
+  "price_basis": "not_applicable",
+  "country": "DEU",
+  "segment": "us_in_the_world",
+  "topics": [
+    "europe"
+  ],
+  "source": {
+    "origin": {
+      "producer": "Eurostat",
+      "dataset": "une_rt_m (Unemployment by sex and age, monthly)",
+      "origin_id": "M.SA.TOTAL.PC_ACT.T.DE",
+      "url": "https://ec.europa.eu/eurostat/databrowser/view/une_rt_m/default/table"
+    },
+    "channel": {
+      "via": "direct"
+    }
+  },
+  "refresh": "monthly",
+  "max_lag": "P3M",
+  "status": "draft",
+  "migration": {
+    "v1_source": "FRED LRHUTTTTDEM156S",
+    "change": "same",
+    "milestone": "v2.2"
+  }
+}

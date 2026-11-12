@@ -1,0 +1,38 @@
+{
+  "key": "sox",
+  "name": "Semiconductors (SOX)",
+  "description": "Month-end close.",
+  "unit": "index",
+  "unit_kind": "index",
+  "measure_kind": "index",
+  "agg": "last",
+  "freq": "monthly",
+  "continuity": "discrete",
+  "seasonal_adjustment": "not_applicable",
+  "price_basis": "nominal",
+  "country": "USA",
+  "segment": "markets_money",
+  "topics": [
+    "us-markets"
+  ],
+  "source": {
+    "origin": {
+      "producer": "Nasdaq",
+      "dataset": "PHLX Semiconductor Sector Index",
+      "origin_id": "SOX",
+      "url": null
+    },
+    "channel": null,
+    "no_channel": {
+      "kind": "rights_restriction",
+      "reason": "Index levels are licensed by their owner on every free channel found; the register's Yahoo row proposes no display (PLAN D5)."
+    }
+  },
+  "refresh": "none",
+  "max_lag": "P1M",
+  "status": "draft",
+  "migration": {
+    "v1_source": "Yahoo ^SOX",
+    "change": "same"
+  }
+}

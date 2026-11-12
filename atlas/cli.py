@@ -81,6 +81,16 @@ def cmd_publish(argv) -> int:
     return publish_main(argv)
 
 
+def cmd_catalog(argv) -> int:
+    """v2 (PLAN M12): the Catalog. `check` is the layered validation; v1's data check, which
+    this name used to run, is `check --v1` (the Makefile's `check` target, until cutover)."""
+    from .catalog import cli as catalog_cli
+
+    name, rest = argv[0], argv[1:]
+    return {"check": catalog_cli.check_main, "add": catalog_cli.add_main,
+            "catalog": catalog_cli.catalog_main}[name](rest)
+
+
 PUBLISH_COMMANDS = ("release", "rollback", "pin", "unpin", "withdraw", "doctor")
 
 
@@ -88,6 +98,8 @@ def main(argv=None) -> int:
     argv = sys.argv[1:] if argv is None else list(argv)
     if argv[:1] and argv[0] in PUBLISH_COMMANDS:
         return cmd_publish(argv)
+    if argv[:1] and argv[0] in ("add", "catalog") or (argv[:1] == ["check"] and "--v1" not in argv):
+        return cmd_catalog(argv)
     if argv[:1] == ["replay"]:
         return cmd_replay(argv[1:])
     if argv[:1] == ["capture"]:
@@ -102,7 +114,11 @@ def main(argv=None) -> int:
     b = sub.add_parser("build", help="assemble data/atlas.json and render dist/index.html")
     b.add_argument("--force", action="store_true", help="refetch everything")
     b.add_argument("--offline", action="store_true", help="use cached raw files only")
-    sub.add_parser("check", help="data QA")
+    c = sub.add_parser("check", help="v2: validate the Catalog in layers (see python -m atlas check "
+                                     "--help); with --v1, v1's data QA")
+    c.add_argument("--v1", action="store_true", help="run v1's data QA on data/atlas.json")
+    sub.add_parser("add", help="v2: write a draft file, such as `add series KEY ...`")
+    sub.add_parser("catalog", help="v2: what is proposed for every Series; --write the migration table")
     s = sub.add_parser("serve", help="serve dist/")
     s.add_argument("--port", type=int, default=8000)
     sub.add_parser(

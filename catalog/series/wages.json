@@ -1,0 +1,37 @@
+{
+  "key": "wages",
+  "name": "US avg hourly earnings ($)",
+  "description": "Production & nonsupervisory.",
+  "unit": "U.S. dollars per hour",
+  "unit_kind": "currency",
+  "measure_kind": "rate",
+  "agg": "mean",
+  "freq": "monthly",
+  "continuity": "discrete",
+  "seasonal_adjustment": "sa",
+  "price_basis": "nominal",
+  "country": "USA",
+  "segment": "economy_jobs",
+  "topics": [
+    "us-economy"
+  ],
+  "source": {
+    "origin": {
+      "producer": "U.S. Bureau of Labor Statistics",
+      "dataset": "Current Employment Statistics",
+      "origin_id": "CES0500000008",
+      "url": "https://data.bls.gov/timeseries/CES0500000008"
+    },
+    "channel": {
+      "via": "direct"
+    }
+  },
+  "refresh": "monthly",
+  "max_lag": "P3M",
+  "status": "draft",
+  "migration": {
+    "v1_source": "FRED AHETPI",
+    "change": "same",
+    "milestone": "M13"
+  }
+}

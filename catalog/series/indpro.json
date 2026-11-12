@@ -1,0 +1,38 @@
+{
+  "key": "indpro",
+  "name": "US industrial production (index)",
+  "unit": "index, 2017 = 100",
+  "unit_kind": "index",
+  "measure_kind": "index",
+  "agg": "mean",
+  "freq": "monthly",
+  "continuity": "discrete",
+  "seasonal_adjustment": "sa",
+  "price_basis": "not_applicable",
+  "base_period": "2017",
+  "country": "USA",
+  "segment": "economy_jobs",
+  "topics": [
+    "us-economy"
+  ],
+  "source": {
+    "origin": {
+      "producer": "Board of Governors of the Federal Reserve System",
+      "dataset": "G.17 Industrial Production and Capacity Utilization",
+      "origin_id": null,
+      "url": "https://www.federalreserve.gov/releases/g17/"
+    },
+    "channel": {
+      "via": "direct"
+    }
+  },
+  "refresh": "monthly",
+  "max_lag": "P3M",
+  "status": "draft",
+  "migration": {
+    "v1_source": "FRED INDPRO",
+    "change": "same",
+    "note": "The agency's identifier for this series is settled, with a captured fixture, by the milestone that builds the adapter.",
+    "milestone": "M13"
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "key": "jp_infl",
+  "name": "Japan inflation (y/y)",
+  "unit": "percent change from a year earlier",
+  "unit_kind": "percent",
+  "measure_kind": "rate",
+  "agg": "none",
+  "freq": "monthly",
+  "continuity": "discrete",
+  "seasonal_adjustment": "nsa",
+  "price_basis": "not_applicable",
+  "country": "JPN",
+  "segment": "us_in_the_world",
+  "topics": [
+    "asia-other"
+  ],
+  "refresh": "monthly",
+  "max_lag": "P3M",
+  "status": "draft",
+  "recipe": {
+    "op": "pct_change",
+    "inputs": [
+      "jp_cpi"
+    ],
+    "order": "aggregate_then_compute",
+    "params": {
+      "lag": 12
+    }
+  },
+  "migration": {
+    "v1_source": "Computed: jp_cpi y/y",
+    "change": "same"
+  }
+}

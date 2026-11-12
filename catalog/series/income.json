@@ -1,0 +1,38 @@
+{
+  "key": "income",
+  "name": "US real median household income ($)",
+  "description": "Annual.",
+  "unit": "U.S. dollars, at the prices of the latest year",
+  "unit_kind": "currency",
+  "measure_kind": "rate",
+  "agg": "mean",
+  "freq": "annual",
+  "continuity": "discrete",
+  "seasonal_adjustment": "not_applicable",
+  "price_basis": "real",
+  "country": "USA",
+  "segment": "economy_jobs",
+  "topics": [
+    "us-economy"
+  ],
+  "source": {
+    "origin": {
+      "producer": "U.S. Census Bureau",
+      "dataset": "Historical Income Tables: Households (Current Population Survey, Annual Social and Economic Supplement)",
+      "origin_id": null,
+      "url": "https://www.census.gov/data/tables/time-series/demo/income-poverty/historical-income-households.html"
+    },
+    "channel": {
+      "via": "direct"
+    }
+  },
+  "refresh": "annual",
+  "max_lag": "P30M",
+  "status": "draft",
+  "migration": {
+    "v1_source": "FRED MEHOINUSA672N",
+    "change": "same",
+    "note": "The agency's identifier for this series is settled, with a captured fixture, by the milestone that builds the adapter. The base year of the real figure moves with each annual release.",
+    "milestone": "M16"
+  }
+}

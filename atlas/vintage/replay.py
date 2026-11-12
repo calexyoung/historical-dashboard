@@ -6,10 +6,11 @@ Recording is by retrieval time, so replaying a year of Captures today writes the
 recording each on its own day. A Capture already in a Series' capture log is passed by, so a
 replay can be run again after every capture run.
 
-Which Series a source's own identifier is recorded under comes from the *series table*
-(``atlas/vintage/series.json`` until the catalog of M12). It also holds the metadata Macro Atlas
-declares for the Series, as dated versions, so that history can be rebuilt from the table and
-the Captures alone.
+Which Series a source's own identifier is recorded under comes from the *series table*: since
+M12 the Catalog's own projection (``atlas.catalog.series_table`` over ``catalog/series``), or a
+table file of the same shape (the fixtures). It also holds the metadata Macro Atlas declares
+for the Series, as dated versions, so that history can be rebuilt from the table and the
+Captures alone.
 
 Replay asks the rights gate before it writes anything: the observation log is a stored copy of
 what an Origin served, and needs the same permission the Capture did.
@@ -28,7 +29,6 @@ from ..period import FREQUENCIES
 from ..rights import RightsGate
 from .store import CaptureRef, ChangeSet, SeriesState, StoreError, VintageStore
 
-SERIES_PATH = Path(__file__).with_name("series.json")
 SERIES_FORMAT = 1
 #: An adapter's word for a kind of value, in the release contract's vocabulary. "observed" is
 #: a published value the source did not mark preliminary; "unavailable" is a Period the source
@@ -41,15 +41,30 @@ class SeriesTableError(ValueError):
     """The series table cannot be used."""
 
 
-def load_series(path: Path | None = None) -> list[dict]:
-    """The series table's entries, checked. Raises ``SeriesTableError``."""
-    path = Path(path) if path else SERIES_PATH
+def _table(path: Path | None) -> tuple[dict, str]:
+    """The series table and what to call it: the Catalog's own projection (the default, or a
+    catalog directory), or a table file of the M8 format (the fixtures)."""
+    if path is None or Path(path).is_dir():
+        from ..catalog import CatalogError, load_catalog, series_table
+
+        try:
+            return series_table(load_catalog(path)), f"the catalog at {path or 'catalog/series'}"
+        except CatalogError as error:
+            raise SeriesTableError(str(error)) from None
+    path = Path(path)
     try:
         table = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, ValueError) as error:
         raise SeriesTableError(f"the series table at {path} cannot be read: {error}") from None
     if not isinstance(table, dict) or table.get("format") != SERIES_FORMAT:
         raise SeriesTableError(f"{path} is not series table format {SERIES_FORMAT}")
+    return table, str(path)
+
+
+def load_series(path: Path | None = None) -> list[dict]:
+    """The series table's entries, checked: from the Catalog (``catalog/series``, or another
+    catalog directory), or from a table file. Raises ``SeriesTableError``."""
+    table, path = _table(path)
     entries = table.get("series")
     if not isinstance(entries, list):
         raise SeriesTableError(f"{path} lists no series")
@@ -108,8 +123,8 @@ def load_derived(path: Path | None = None) -> list[dict]:
     block. Structure only: computing a Recipe is the engine's alone (ADR 0003). A table with no
     such list has none. Raises ``SeriesTableError``, naming the cycle if the Recipes have one."""
     stored = {entry["key"] for entry in load_series(path)}
-    path = Path(path) if path else SERIES_PATH
-    entries = json.loads(path.read_text(encoding="utf-8")).get("derived", [])
+    table, path = _table(path)
+    entries = table.get("derived", [])
     if not isinstance(entries, list):
         raise SeriesTableError(f"{path}: its derived list is not a list")
     inputs: dict[str, list[str]] = {}

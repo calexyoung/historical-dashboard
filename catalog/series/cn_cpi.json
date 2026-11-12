@@ -1,0 +1,39 @@
+{
+  "key": "cn_cpi",
+  "name": "China CPI (index)",
+  "description": "OECD Prices database (from NBS); replaces the FRED copy CHNCPIALLMINMEI, which ends Apr 2025.",
+  "unit": "index, 2015 = 100",
+  "unit_kind": "index",
+  "measure_kind": "index",
+  "agg": "mean",
+  "freq": "monthly",
+  "continuity": "discrete",
+  "seasonal_adjustment": "nsa",
+  "price_basis": "not_applicable",
+  "base_period": "2015",
+  "country": "CHN",
+  "segment": "us_in_the_world",
+  "topics": [
+    "asia-other"
+  ],
+  "source": {
+    "origin": {
+      "producer": "International Monetary Fund",
+      "dataset": "Consumer Price Index",
+      "origin_id": null,
+      "url": "https://data.imf.org/"
+    },
+    "channel": {
+      "via": "direct"
+    }
+  },
+  "refresh": "monthly",
+  "max_lag": "P3M",
+  "status": "draft",
+  "migration": {
+    "v1_source": "OECD CHN.CPI",
+    "change": "representation",
+    "note": "The national all-items index; its base period may differ from v1's. The agency's identifier for this series is settled, with a captured fixture, by the milestone that builds the adapter.",
+    "milestone": "M14"
+  }
+}

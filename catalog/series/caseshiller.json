@@ -1,0 +1,38 @@
+{
+  "key": "caseshiller",
+  "name": "Case-Shiller US home price index",
+  "unit": "index, January 2000 = 100",
+  "unit_kind": "index",
+  "measure_kind": "index",
+  "agg": "mean",
+  "freq": "monthly",
+  "continuity": "discrete",
+  "seasonal_adjustment": "nsa",
+  "price_basis": "nominal",
+  "base_period": "2000-01",
+  "country": "USA",
+  "segment": "economy_jobs",
+  "topics": [
+    "housing"
+  ],
+  "source": {
+    "origin": {
+      "producer": "S&P Dow Jones Indices (S&P CoreLogic Case-Shiller)",
+      "dataset": "S&P CoreLogic Case-Shiller U.S. National Home Price Index",
+      "origin_id": "CSUSHPINSA",
+      "url": null
+    },
+    "channel": null,
+    "no_channel": {
+      "kind": "no_route_established",
+      "reason": "A proprietary index whose terms have not been read. The Federal Housing Finance Agency's house price index is a different quantity and would take a new key."
+    }
+  },
+  "refresh": "none",
+  "max_lag": "P3M",
+  "status": "draft",
+  "migration": {
+    "v1_source": "FRED CSUSHPINSA",
+    "change": "same"
+  }
+}

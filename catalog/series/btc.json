@@ -1,0 +1,42 @@
+{
+  "key": "btc",
+  "name": "Bitcoin ($)",
+  "description": "Month-end close.",
+  "unit": "U.S. dollars",
+  "unit_kind": "currency",
+  "measure_kind": "rate",
+  "agg": "none",
+  "freq": "monthly",
+  "continuity": "discrete",
+  "seasonal_adjustment": "not_applicable",
+  "price_basis": "nominal",
+  "country": "WLD",
+  "segment": "markets_money",
+  "topics": [
+    "commodities-energy"
+  ],
+  "source": {
+    "origin": {
+      "producer": "No single Origin (exchange prices)",
+      "dataset": "Bitcoin in U.S. dollars",
+      "origin_id": "BTC-USD",
+      "url": null
+    },
+    "channel": null,
+    "no_channel": {
+      "kind": "no_route_established",
+      "reason": "An exchange-traded price. No origin-agency route has been found, and v1's channel (Yahoo) is proposed for no display."
+    }
+  },
+  "refresh": "none",
+  "max_lag": "P1M",
+  "range": [
+    0.0,
+    500000.0
+  ],
+  "status": "draft",
+  "migration": {
+    "v1_source": "Yahoo BTC-USD",
+    "change": "same"
+  }
+}

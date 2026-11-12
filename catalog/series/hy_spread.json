@@ -1,0 +1,42 @@
+{
+  "key": "hy_spread",
+  "name": "US high-yield spread (ICE BofA OAS)",
+  "description": "FRED carries only the latest 3 years (ICE licensing).",
+  "unit": "percentage points",
+  "unit_kind": "percentage_points",
+  "measure_kind": "rate",
+  "agg": "mean",
+  "freq": "business_daily",
+  "continuity": "discrete",
+  "seasonal_adjustment": "not_applicable",
+  "price_basis": "not_applicable",
+  "country": "USA",
+  "segment": "markets_money",
+  "topics": [
+    "rates-money"
+  ],
+  "source": {
+    "origin": {
+      "producer": "ICE Data Indices",
+      "dataset": "ICE BofA US High Yield Index Option-Adjusted Spread",
+      "origin_id": "H0A0",
+      "url": null
+    },
+    "channel": null,
+    "no_channel": {
+      "kind": "rights_restriction",
+      "reason": "The index is licensed by ICE; v1's channel carried only three years of it for that reason."
+    }
+  },
+  "refresh": "none",
+  "max_lag": "P1M",
+  "range": [
+    1.0,
+    25.0
+  ],
+  "status": "draft",
+  "migration": {
+    "v1_source": "FRED BAMLH0A0HYM2",
+    "change": "same"
+  }
+}

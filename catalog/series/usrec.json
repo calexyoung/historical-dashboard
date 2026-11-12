@@ -1,0 +1,41 @@
+{
+  "key": "usrec",
+  "name": "US recession (NBER)",
+  "unit": "indicator, 1 = recession",
+  "unit_kind": "other",
+  "measure_kind": "rate",
+  "agg": "mean",
+  "freq": "monthly",
+  "continuity": "discrete",
+  "seasonal_adjustment": "not_applicable",
+  "price_basis": "not_applicable",
+  "country": "USA",
+  "segment": "governance_politics",
+  "topics": [
+    "politics-sentiment"
+  ],
+  "source": {
+    "origin": {
+      "producer": "National Bureau of Economic Research",
+      "dataset": "US Business Cycle Expansions and Contractions",
+      "origin_id": null,
+      "url": "https://www.nber.org/research/data/us-business-cycle-expansions-and-contractions"
+    },
+    "channel": {
+      "via": "hand_entered"
+    }
+  },
+  "refresh": "irregular",
+  "max_lag": "P3M",
+  "range": [
+    0.0,
+    1.0
+  ],
+  "status": "draft",
+  "migration": {
+    "v1_source": "FRED USREC",
+    "change": "representation",
+    "note": "v1 took a monthly 0/1 indicator from FRED, which computes it from the NBER's dates. The dates themselves are entered by hand, each with its citation, when recessions become an Annotation layer.",
+    "milestone": "M19"
+  }
+}

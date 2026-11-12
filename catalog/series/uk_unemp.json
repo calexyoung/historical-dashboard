@@ -1,0 +1,36 @@
+{
+  "key": "uk_unemp",
+  "name": "UK unemployment",
+  "unit": "percent",
+  "unit_kind": "percent",
+  "measure_kind": "rate",
+  "agg": "mean",
+  "freq": "monthly",
+  "continuity": "discrete",
+  "seasonal_adjustment": "sa",
+  "price_basis": "not_applicable",
+  "country": "GBR",
+  "segment": "us_in_the_world",
+  "topics": [
+    "europe"
+  ],
+  "source": {
+    "origin": {
+      "producer": "Office for National Statistics (United Kingdom)",
+      "dataset": "Labour market statistics",
+      "origin_id": "MGSX",
+      "url": "https://www.ons.gov.uk/employmentandlabourmarket/peoplenotinwork/unemployment/timeseries/mgsx/lms"
+    },
+    "channel": {
+      "via": "direct"
+    }
+  },
+  "refresh": "monthly",
+  "max_lag": "P4M",
+  "status": "draft",
+  "migration": {
+    "v1_source": "FRED LRHUTTTTGBM156S",
+    "change": "same",
+    "milestone": "v2.2"
+  }
+}

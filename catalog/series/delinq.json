@@ -1,0 +1,38 @@
+{
+  "key": "delinq",
+  "name": "US credit card delinquency rate",
+  "description": "Quarterly.",
+  "unit": "percent",
+  "unit_kind": "percent",
+  "measure_kind": "rate",
+  "agg": "mean",
+  "freq": "quarterly",
+  "continuity": "discrete",
+  "seasonal_adjustment": "sa",
+  "price_basis": "not_applicable",
+  "country": "USA",
+  "segment": "markets_money",
+  "topics": [
+    "rates-money"
+  ],
+  "source": {
+    "origin": {
+      "producer": "Board of Governors of the Federal Reserve System",
+      "dataset": "Charge-Off and Delinquency Rates on Loans and Leases at Commercial Banks",
+      "origin_id": null,
+      "url": "https://www.federalreserve.gov/releases/chargeoff/"
+    },
+    "channel": {
+      "via": "direct"
+    }
+  },
+  "refresh": "quarterly",
+  "max_lag": "P7M",
+  "status": "draft",
+  "migration": {
+    "v1_source": "FRED DRCCLACBS",
+    "change": "same",
+    "note": "The agency's identifier for this series is settled, with a captured fixture, by the milestone that builds the adapter.",
+    "milestone": "M13"
+  }
+}

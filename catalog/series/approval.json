@@ -1,0 +1,37 @@
+{
+  "key": "approval",
+  "name": "Presidential approval (Gallup, approx.)",
+  "description": "Approximate quarterly averages, entered by hand.",
+  "unit": "percent",
+  "unit_kind": "percent",
+  "measure_kind": "rate",
+  "agg": "mean",
+  "freq": "quarterly",
+  "continuity": "discrete",
+  "seasonal_adjustment": "not_applicable",
+  "price_basis": "not_applicable",
+  "country": "USA",
+  "segment": "governance_politics",
+  "topics": [
+    "politics-sentiment"
+  ],
+  "source": {
+    "origin": {
+      "producer": "Gallup",
+      "dataset": "Presidential approval, quarterly averages",
+      "origin_id": null,
+      "url": null
+    },
+    "channel": {
+      "via": "hand_entered"
+    }
+  },
+  "refresh": "quarterly",
+  "status": "draft",
+  "migration": {
+    "v1_source": "Hand-entered: atlas/approval.yaml",
+    "change": "same",
+    "milestone": "M16",
+    "note": "The register proposes no display for Gallup's figures: read its terms, or choose a source with clear terms, before M16."
+  }
+}

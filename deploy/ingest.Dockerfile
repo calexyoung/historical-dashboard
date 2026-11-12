@@ -7,7 +7,7 @@
 #   docker run --rm -v STORE:/store -v PUBLIC:/public macro-atlas-ingest release --profile public
 #
 # What may enter the build context is the allowlist beside this file
-# (deploy/ingest.Dockerfile.dockerignore): the atlas package, the schema, the spot values and
+# (deploy/ingest.Dockerfile.dockerignore): the atlas package, the schema, the Catalog, the spot values and
 # the engine's source. No generated release, no store, none of v1's data files, and none of
 # v1's hand-entered tables. deploy/check-images.sh reads every layer for seeded values and runs
 # a whole release, Node step included, inside the image.
@@ -33,6 +33,7 @@ COPY pyproject.toml uv.lock ./
 RUN uv sync --locked --no-dev --no-install-project && node --version
 COPY atlas ./atlas
 COPY schema ./schema
+COPY catalog ./catalog
 COPY checks/spot.json ./checks/spot.json
 COPY packages/core/package.json ./packages/core/package.json
 COPY packages/core/bin ./packages/core/bin

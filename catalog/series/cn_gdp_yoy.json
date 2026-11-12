@@ -1,0 +1,34 @@
+{
+  "key": "cn_gdp_yoy",
+  "name": "China nominal GDP growth (y/y, US$)",
+  "unit": "percent change from a year earlier",
+  "unit_kind": "percent",
+  "measure_kind": "rate",
+  "agg": "none",
+  "freq": "annual",
+  "continuity": "discrete",
+  "seasonal_adjustment": "not_applicable",
+  "price_basis": "nominal",
+  "country": "CHN",
+  "segment": "us_in_the_world",
+  "topics": [
+    "asia-other"
+  ],
+  "refresh": "annual",
+  "max_lag": "P30M",
+  "status": "draft",
+  "recipe": {
+    "op": "pct_change",
+    "inputs": [
+      "cn_gdp"
+    ],
+    "order": "aggregate_then_compute",
+    "params": {
+      "lag": 1
+    }
+  },
+  "migration": {
+    "v1_source": "Computed: cn_gdp y/y",
+    "change": "same"
+  }
+}

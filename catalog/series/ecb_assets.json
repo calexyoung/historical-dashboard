@@ -1,0 +1,37 @@
+{
+  "key": "ecb_assets",
+  "name": "ECB balance sheet (€mn)",
+  "description": "Eurosystem total assets, weekly.",
+  "unit": "millions of euros",
+  "unit_kind": "currency",
+  "measure_kind": "stock",
+  "agg": "mean",
+  "freq": "weekly",
+  "continuity": "discrete",
+  "seasonal_adjustment": "not_applicable",
+  "price_basis": "nominal",
+  "country": "EA",
+  "segment": "us_in_the_world",
+  "topics": [
+    "europe"
+  ],
+  "source": {
+    "origin": {
+      "producer": "European Central Bank",
+      "dataset": "Weekly financial statement of the Eurosystem: total assets",
+      "origin_id": null,
+      "url": "https://data.ecb.europa.eu/"
+    },
+    "channel": {
+      "via": "direct"
+    }
+  },
+  "refresh": "weekly",
+  "max_lag": "P2M",
+  "status": "draft",
+  "migration": {
+    "v1_source": "FRED ECBASSETSW",
+    "change": "same",
+    "note": "The agency's identifier for this series is settled, with a captured fixture, by the milestone that builds the adapter."
+  }
+}

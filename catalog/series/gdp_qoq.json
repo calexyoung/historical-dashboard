@@ -1,0 +1,37 @@
+{
+  "key": "gdp_qoq",
+  "name": "US real GDP growth (annualized q/q)",
+  "description": "Quarterly.",
+  "unit": "percent change from the preceding quarter, annual rate",
+  "unit_kind": "percent",
+  "measure_kind": "rate",
+  "agg": "mean",
+  "freq": "quarterly",
+  "continuity": "discrete",
+  "seasonal_adjustment": "saar",
+  "price_basis": "real",
+  "country": "USA",
+  "segment": "economy_jobs",
+  "topics": [
+    "us-economy"
+  ],
+  "source": {
+    "origin": {
+      "producer": "U.S. Bureau of Economic Analysis",
+      "dataset": "National Income and Product Accounts, Table 1.1.1",
+      "origin_id": "A191RL",
+      "url": "https://www.bea.gov/data/gdp/gross-domestic-product"
+    },
+    "channel": {
+      "via": "direct"
+    }
+  },
+  "refresh": "quarterly",
+  "max_lag": "P7M",
+  "status": "draft",
+  "migration": {
+    "v1_source": "FRED A191RL1Q225SBEA",
+    "change": "same",
+    "milestone": "M15"
+  }
+}

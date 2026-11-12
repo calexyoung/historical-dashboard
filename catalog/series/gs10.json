@@ -1,0 +1,41 @@
+{
+  "key": "gs10",
+  "name": "US 10-year Treasury yield",
+  "unit": "percent",
+  "unit_kind": "percent",
+  "measure_kind": "rate",
+  "agg": "mean",
+  "freq": "business_daily",
+  "continuity": "discrete",
+  "seasonal_adjustment": "not_applicable",
+  "price_basis": "nominal",
+  "country": "USA",
+  "segment": "markets_money",
+  "topics": [
+    "rates-money"
+  ],
+  "source": {
+    "origin": {
+      "producer": "Board of Governors of the Federal Reserve System",
+      "dataset": "H.15 Selected Interest Rates",
+      "origin_id": "RIFLGFCY10_N.B",
+      "url": "https://www.federalreserve.gov/releases/h15/"
+    },
+    "channel": {
+      "via": "direct"
+    }
+  },
+  "refresh": "daily",
+  "max_lag": "P3M",
+  "range": [
+    0.0,
+    8.0
+  ],
+  "status": "draft",
+  "migration": {
+    "v1_source": "FRED GS10",
+    "change": "representation",
+    "note": "v1 showed the monthly average; the Board publishes the yield each business day, and the monthly figure is the mean of those days.",
+    "milestone": "M13"
+  }
+}

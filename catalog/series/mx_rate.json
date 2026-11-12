@@ -1,0 +1,38 @@
+{
+  "key": "mx_rate",
+  "name": "Mexico short-term interest rate",
+  "description": "Immediate interbank rate.",
+  "unit": "percent",
+  "unit_kind": "percent",
+  "measure_kind": "rate",
+  "agg": "mean",
+  "freq": "monthly",
+  "continuity": "discrete",
+  "seasonal_adjustment": "not_applicable",
+  "price_basis": "nominal",
+  "country": "MEX",
+  "segment": "us_in_the_world",
+  "topics": [
+    "asia-other"
+  ],
+  "source": {
+    "origin": {
+      "producer": "Organisation for Economic Co-operation and Development",
+      "dataset": "Monthly financial statistics: immediate interbank rate",
+      "origin_id": null,
+      "url": "https://data-explorer.oecd.org/"
+    },
+    "channel": {
+      "via": "direct"
+    }
+  },
+  "refresh": "monthly",
+  "max_lag": "P3M",
+  "status": "draft",
+  "migration": {
+    "v1_source": "FRED IRSTCI01MXM156N",
+    "change": "same",
+    "note": "The register has no proposal to allow OECD data until its terms are read. A central bank policy rate from the BIS (v2.2) is a different quantity and would take a new key.",
+    "milestone": "v2.2"
+  }
+}

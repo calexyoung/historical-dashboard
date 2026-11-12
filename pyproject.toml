@@ -24,11 +24,10 @@ dev = [
 ]
 
 [tool.setuptools]
-packages = ["atlas", "atlas.capture", "atlas.vintage"]
+packages = ["atlas", "atlas.capture", "atlas.vintage", "atlas.publish", "atlas.catalog"]
 
 [tool.setuptools.package-data]
 atlas = ["*.yaml"]
-"atlas.vintage" = ["*.json"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -36,5 +35,5 @@ markers = ["smoke: headless-browser test of dist/index.html (needs network for t
 
 [tool.ruff]
 # v2 code only; v1 modules are left as they are until cutover (ADR 0010).
-include = ["atlas/rights.py", "atlas/release.py", "atlas/period.py", "atlas/staging.py", "atlas/legacy.py", "atlas/capture/**/*.py", "atlas/vintage/**/*.py", "tests/v2/**/*.py", "fixtures/**/*.py", "deploy/**/*.py"]
+include = ["atlas/rights.py", "atlas/release.py", "atlas/period.py", "atlas/staging.py", "atlas/legacy.py", "atlas/capture/**/*.py", "atlas/vintage/**/*.py", "atlas/catalog/**/*.py", "scripts/migrate_catalog.py", "tests/v2/**/*.py", "fixtures/**/*.py", "deploy/**/*.py"]
 line-length = 100

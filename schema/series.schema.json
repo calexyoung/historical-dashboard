@@ -1,0 +1,686 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mydashboards.co/macro-atlas/schema/series.schema.json",
+  "title": "Series",
+  "description": "One entry of the Catalog (PLAN 5; ADR 0026): catalog/series/{key}.json. A stored Series names its Source (Origin and Channel); a Derived series names its Recipe and no Source, since its lineage is the Recipe's inputs. There is no Rights block and no Permission here: both are looked up in the rights register (schema/rights-register.json) for the entry's Origin, dataset and Channel whenever the Catalog is read, so nothing an entry says can grant anything. The definitions shared with the release contract (key, frequency, origin, channel, recipe) are copies of schema/release.schema.json's, kept equal by a test. Rules a schema cannot express are the layers of `python -m atlas check` (docs/method/catalog.md).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "key",
+    "name",
+    "unit",
+    "unit_kind",
+    "measure_kind",
+    "freq",
+    "continuity",
+    "agg",
+    "seasonal_adjustment",
+    "price_basis",
+    "country",
+    "segment",
+    "refresh",
+    "status"
+  ],
+  "properties": {
+    "key": {
+      "$ref": "#/$defs/key"
+    },
+    "aliases": {
+      "description": "Other keys that resolve to this Series. None may be another Series' key.",
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/key"
+      },
+      "uniqueItems": true
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "description": {
+      "type": "string"
+    },
+    "definition": {
+      "title": "SeriesDefinition",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "population": {
+          "type": "string"
+        },
+        "geography": {
+          "type": "string"
+        },
+        "denominator": {
+          "type": "string"
+        }
+      }
+    },
+    "unit": {
+      "description": "The unit in words, as shown to a reader.",
+      "type": "string",
+      "minLength": 1
+    },
+    "unit_kind": {
+      "enum": [
+        "percent",
+        "percentage_points",
+        "index",
+        "currency",
+        "count",
+        "ratio",
+        "physical",
+        "other"
+      ]
+    },
+    "measure_kind": {
+      "description": "Decides how values may be combined across Periods.",
+      "enum": [
+        "stock",
+        "flow",
+        "rate",
+        "index",
+        "annualized"
+      ]
+    },
+    "agg": {
+      "description": "How finer Periods combine into a coarser one. Declared, never inferred from measure_kind (PLAN 4.5).",
+      "enum": [
+        "mean",
+        "last",
+        "sum",
+        "none"
+      ]
+    },
+    "freq": {
+      "$ref": "#/$defs/frequency"
+    },
+    "continuity": {
+      "description": "discrete: each Observation describes its own Period only. held: a value stands from its Period until the next Observation (drawn as a step); a missing Observation ends the hold, and the last value stands until the Release's created date.",
+      "enum": [
+        "discrete",
+        "held"
+      ]
+    },
+    "seasonal_adjustment": {
+      "enum": [
+        "sa",
+        "nsa",
+        "saar",
+        "not_applicable"
+      ]
+    },
+    "price_basis": {
+      "enum": [
+        "nominal",
+        "real",
+        "not_applicable"
+      ]
+    },
+    "base_period": {
+      "description": "What an index equals 100 in, or the year of the prices a real figure is in.",
+      "type": "string",
+      "minLength": 1
+    },
+    "allowed_transforms": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "country": {
+      "description": "ISO 3166-1 alpha-3 (three capital letters; the schema checks the shape, not the list), or a group code: EA (euro area), EU, G20, WLD.",
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^[A-Z]{3}$"
+        },
+        {
+          "enum": [
+            "EA",
+            "EU",
+            "G20",
+            "WLD"
+          ]
+        }
+      ]
+    },
+    "segment": {
+      "enum": [
+        "economy_jobs",
+        "markets_money",
+        "infrastructure",
+        "governance_politics",
+        "disasters_health",
+        "us_in_the_world"
+      ]
+    },
+    "topics": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+      },
+      "uniqueItems": true
+    },
+    "source": {
+      "$ref": "#/$defs/seriesSource"
+    },
+    "fallback": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/fallback"
+      }
+    },
+    "refresh": {
+      "description": "How often the Origin publishes new or revised values. none: the Series has ended or has no source.",
+      "enum": [
+        "daily",
+        "weekly",
+        "monthly",
+        "quarterly",
+        "annual",
+        "irregular",
+        "none"
+      ]
+    },
+    "max_lag": {
+      "description": "How far the last Observation's period_end may trail the Release's created date before the Series is stale: a count of days, weeks, months or years, such as P45D or P4M.",
+      "type": "string",
+      "pattern": "^P[1-9][0-9]*[DWMY]$"
+    },
+    "range": {
+      "description": "Sanity range [low, high] for the writer's checks.",
+      "type": "array",
+      "prefixItems": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "number"
+        }
+      ],
+      "items": false,
+      "minItems": 2
+    },
+    "breaks": {
+      "description": "Periods at which the Series stops being comparable with what came before (a rebasing or change of method). Values from the named Period on are on the new basis. Each has a data_note Annotation.",
+      "type": "array",
+      "items": {
+        "title": "SeriesBreak",
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "period",
+          "note"
+        ],
+        "properties": {
+          "period": {
+            "$ref": "#/$defs/period"
+          },
+          "note": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "status": {
+      "description": "draft: declared, not yet in the pipeline. active: captured and recorded (a stored Series names its Endpoint) or computed (a Derived series). retired: no longer updated.",
+      "enum": [
+        "draft",
+        "active",
+        "retired"
+      ]
+    },
+    "recipe": {
+      "$ref": "#/$defs/recipe"
+    },
+    "next_release": {
+      "description": "The date the Origin has announced for its next publication, when known.",
+      "anyOf": [
+        {
+          "$ref": "#/$defs/date"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "migration": {
+      "$ref": "#/$defs/migration"
+    },
+    "earlier_metadata": {
+      "description": "Earlier versions of name, unit and seasonal_adjustment, oldest first, in the shape the vintage store replays (ADR 0022): the first is in force from the start (from: null), each later one from its own instant. A version that has been in force is never edited; when the declared metadata changes, the old version is moved here and metadata_from says when the entry's own took effect.",
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/metadataVersion"
+      }
+    },
+    "metadata_from": {
+      "description": "The instant the entry's own name, unit and seasonal_adjustment took effect. Present exactly when earlier_metadata is.",
+      "$ref": "#/$defs/datetime"
+    }
+  },
+  "oneOf": [
+    {
+      "title": "StoredSeries",
+      "required": [
+        "source"
+      ],
+      "not": {
+        "required": [
+          "recipe"
+        ]
+      }
+    },
+    {
+      "title": "DerivedSeries",
+      "required": [
+        "recipe"
+      ],
+      "not": {
+        "anyOf": [
+          {
+            "required": [
+              "source"
+            ]
+          },
+          {
+            "required": [
+              "fallback"
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "$defs": {
+    "key": {
+      "title": "SeriesKey",
+      "description": "A Series' permanent public key. Also a file name, so it is restricted to safe characters.",
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]{0,63}$"
+    },
+    "date": {
+      "title": "CalendarDate",
+      "description": "A calendar date, YYYY-MM-DD, in years 0001 to 9999. No time and no zone.",
+      "type": "string",
+      "format": "date",
+      "pattern": "^(?!0000)[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+    },
+    "datetime": {
+      "title": "Instant",
+      "description": "An instant in UTC, written exactly as YYYY-MM-DDTHH:MM:SS, an optional fraction of up to nine digits, then Z. No offsets, no leap seconds, no lower case.",
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^(?!0000)[0-9]{4}-[0-9]{2}-[0-9]{2}T([01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9](\\.[0-9]{1,9})?Z$"
+    },
+    "period": {
+      "title": "PeriodLabel",
+      "description": "The label of a Period: 2024 (annual), 2024-Q1, 2024-01, 2024-W03 (ISO week), 2024-01-15 (a day; also used by irregular series).",
+      "type": "string",
+      "pattern": "^(?!0000)[0-9]{4}(-Q[1-4]|-W[0-9]{2}|-[0-9]{2}(-[0-9]{2})?)?$"
+    },
+    "frequency": {
+      "title": "Frequency",
+      "description": "Native frequency. daily covers every calendar day; business_daily covers Monday to Friday (a holiday is an explicit missing Observation); irregular has no fixed cadence (for example one Observation per election).",
+      "enum": [
+        "daily",
+        "business_daily",
+        "weekly",
+        "monthly",
+        "quarterly",
+        "annual",
+        "irregular"
+      ]
+    },
+    "origin": {
+      "title": "Origin",
+      "description": "The organisation that produces a Series and the dataset and identifier it publishes it under.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "producer",
+        "dataset",
+        "origin_id",
+        "url"
+      ],
+      "properties": {
+        "producer": {
+          "type": "string",
+          "minLength": 1
+        },
+        "dataset": {
+          "type": "string",
+          "minLength": 1
+        },
+        "origin_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "url": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "channel": {
+      "title": "Channel",
+      "description": "The route by which Macro Atlas actually obtained the values: \"direct\" from the Origin, or an intermediary such as \"fred\". A Channel has terms of its own.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "via"
+      ],
+      "properties": {
+        "via": {
+          "type": "string",
+          "minLength": 1
+        },
+        "adapter": {
+          "type": "string"
+        },
+        "endpoint": {
+          "type": "string"
+        },
+        "auth": {
+          "enum": [
+            "none",
+            "api_key"
+          ]
+        }
+      }
+    },
+    "recipeOrder": {
+      "title": "RecipeOrder",
+      "description": "Whether inputs are brought to the output frequency before or after the arithmetic. Always stated; there is no default.",
+      "enum": [
+        "aggregate_then_compute",
+        "compute_then_aggregate"
+      ]
+    },
+    "recipe": {
+      "title": "Recipe",
+      "description": "The declared rule that produces a Derived series. inputs are ordered: ratio is inputs[0] / inputs[1] and difference is inputs[0] - inputs[1], each with exactly two inputs; sum and product take two or more; pct_change takes one input and params.lag, a whole number of Periods at the frequency the arithmetic is done at: the Derived series' own under aggregate_then_compute, the input's under compute_then_aggregate (docs/method/transforms.md). order is always stated. The output's unit is the entry's own unit. Only the engine in packages/core computes a Recipe (ADR 0003); other code may only check its structure.",
+      "oneOf": [
+        {
+          "title": "PairRecipe",
+          "description": "ratio is inputs[0] / inputs[1]; difference is inputs[0] - inputs[1].",
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "op",
+            "inputs",
+            "order"
+          ],
+          "properties": {
+            "op": {
+              "enum": [
+                "ratio",
+                "difference"
+              ]
+            },
+            "inputs": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/key"
+              },
+              "minItems": 2,
+              "maxItems": 2
+            },
+            "order": {
+              "$ref": "#/$defs/recipeOrder"
+            }
+          }
+        },
+        {
+          "title": "CombineRecipe",
+          "description": "sum and product of two or more inputs.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "op",
+            "inputs",
+            "order"
+          ],
+          "properties": {
+            "op": {
+              "enum": [
+                "sum",
+                "product"
+              ]
+            },
+            "inputs": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/key"
+              },
+              "minItems": 2
+            },
+            "order": {
+              "$ref": "#/$defs/recipeOrder"
+            }
+          }
+        },
+        {
+          "title": "PercentChangeRecipe",
+          "description": "Percent change of one input from params.lag Periods earlier, counted at the frequency the arithmetic is done at.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "op",
+            "inputs",
+            "order",
+            "params"
+          ],
+          "properties": {
+            "op": {
+              "const": "pct_change"
+            },
+            "inputs": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/key"
+              },
+              "minItems": 1,
+              "maxItems": 1
+            },
+            "order": {
+              "$ref": "#/$defs/recipeOrder"
+            },
+            "params": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "lag"
+              ],
+              "properties": {
+                "lag": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "seriesSource": {
+      "title": "SeriesSource",
+      "description": "Origin and Channel, never merged. The Channel is the one Macro Atlas uses or proposes to use; an Endpoint is named only once an adapter fetches it. Where no route is known, channel is null and no_channel says why: the Series stays in the Catalog and is withheld.",
+      "oneOf": [
+        {
+          "title": "SourcedSeries",
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "origin",
+            "channel"
+          ],
+          "properties": {
+            "origin": {
+              "$ref": "#/$defs/origin"
+            },
+            "channel": {
+              "$ref": "#/$defs/channel"
+            }
+          }
+        },
+        {
+          "title": "UnsourcedSeries",
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "origin",
+            "channel",
+            "no_channel"
+          ],
+          "properties": {
+            "origin": {
+              "$ref": "#/$defs/origin"
+            },
+            "channel": {
+              "type": "null"
+            },
+            "no_channel": {
+              "$ref": "#/$defs/noChannel"
+            }
+          }
+        }
+      ]
+    },
+    "fallback": {
+      "title": "FallbackSource",
+      "description": "Another Source the Series could be taken from. Listing one clears nothing: it is asked about at the rights gate like any other.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "origin",
+        "channel"
+      ],
+      "properties": {
+        "origin": {
+          "$ref": "#/$defs/origin"
+        },
+        "channel": {
+          "$ref": "#/$defs/channel"
+        },
+        "note": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "migration": {
+      "title": "MigrationNote",
+      "description": "Where a Series carried over from v1 came from there, and what is proposed for it. Information for the migration table (docs/v2/catalog-migration.md); it decides nothing.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "v1_source",
+        "change"
+      ],
+      "properties": {
+        "v1_source": {
+          "description": "v1's own source label, such as FRED CPIAUCSL.",
+          "type": "string",
+          "minLength": 1
+        },
+        "note": {
+          "type": "string",
+          "minLength": 1
+        },
+        "milestone": {
+          "description": "The milestone or release planned to build the adapter.",
+          "type": "string",
+          "pattern": "^(M[0-9]{1,2}|v2\\.[0-9])$"
+        },
+        "change": {
+          "description": "How the proposed Source's figure relates to the one v1 showed under this key. same: the same quantity. representation: the same quantity at another cadence, unit, scale or base. different: another quantity (a deliberate, recorded exception; otherwise a different quantity takes a new key).",
+          "enum": [
+            "same",
+            "representation",
+            "different"
+          ]
+        }
+      }
+    },
+    "metadataVersion": {
+      "title": "EarlierMetadata",
+      "description": "A version of the declared metadata that is no longer in force, with the instant it took effect (null: from the start).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "from",
+        "name",
+        "unit",
+        "seasonal_adjustment"
+      ],
+      "properties": {
+        "from": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/datetime"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "unit": {
+          "type": "string",
+          "minLength": 1
+        },
+        "seasonal_adjustment": {
+          "enum": [
+            "sa",
+            "nsa",
+            "saar",
+            "not_applicable"
+          ]
+        }
+      }
+    },
+    "noChannel": {
+      "title": "NoChannel",
+      "description": "Why a Series has no Channel. rights_restriction: the terms read forbid republication on every free channel found. no_route_established: no origin-agency route has been found or assessed yet. discontinued: the Origin no longer publishes it.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "reason"
+      ],
+      "properties": {
+        "kind": {
+          "enum": [
+            "rights_restriction",
+            "no_route_established",
+            "discontinued"
+          ]
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    }
+  },
+  "dependentRequired": {
+    "earlier_metadata": [
+      "metadata_from"
+    ],
+    "metadata_from": [
+      "earlier_metadata"
+    ]
+  }
+}

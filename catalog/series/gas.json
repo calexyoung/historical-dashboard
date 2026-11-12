@@ -1,0 +1,41 @@
+{
+  "key": "gas",
+  "name": "US retail gasoline, regular ($/gal)",
+  "description": "U.S. regular, all formulations, retail, weekly.",
+  "unit": "U.S. dollars per gallon",
+  "unit_kind": "currency",
+  "measure_kind": "rate",
+  "agg": "mean",
+  "freq": "weekly",
+  "continuity": "discrete",
+  "seasonal_adjustment": "not_applicable",
+  "price_basis": "nominal",
+  "country": "USA",
+  "segment": "markets_money",
+  "topics": [
+    "commodities-energy"
+  ],
+  "source": {
+    "origin": {
+      "producer": "U.S. Energy Information Administration",
+      "dataset": "Gasoline and Diesel Fuel Update",
+      "origin_id": "EMM_EPMR_PTE_NUS_DPG",
+      "url": "https://www.eia.gov/petroleum/gasdiesel/"
+    },
+    "channel": {
+      "via": "direct"
+    }
+  },
+  "refresh": "weekly",
+  "max_lag": "P1M",
+  "range": [
+    0.8,
+    6.0
+  ],
+  "status": "draft",
+  "migration": {
+    "v1_source": "FRED GASREGW",
+    "change": "same",
+    "milestone": "M15"
+  }
+}

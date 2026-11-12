@@ -1,0 +1,38 @@
+{
+  "key": "debt",
+  "name": "US federal debt ($mn)",
+  "description": "Quarterly.",
+  "unit": "U.S. dollars",
+  "unit_kind": "currency",
+  "measure_kind": "stock",
+  "agg": "last",
+  "freq": "business_daily",
+  "continuity": "discrete",
+  "seasonal_adjustment": "not_applicable",
+  "price_basis": "nominal",
+  "country": "USA",
+  "segment": "economy_jobs",
+  "topics": [
+    "us-economy"
+  ],
+  "source": {
+    "origin": {
+      "producer": "U.S. Department of the Treasury, Bureau of the Fiscal Service",
+      "dataset": "Debt to the Penny",
+      "origin_id": "tot_pub_debt_out_amt",
+      "url": "https://fiscaldata.treasury.gov/datasets/debt-to-the-penny/"
+    },
+    "channel": {
+      "via": "direct"
+    }
+  },
+  "refresh": "daily",
+  "max_lag": "P8M",
+  "status": "draft",
+  "migration": {
+    "v1_source": "FRED GFDEBTN",
+    "change": "representation",
+    "note": "v1 showed the quarter-end figure in millions of dollars; the Treasury publishes the same total each business day in dollars.",
+    "milestone": "M13"
+  }
+}

@@ -1,0 +1,40 @@
+{
+  "key": "saving",
+  "name": "US personal saving rate",
+  "unit": "percent",
+  "unit_kind": "percent",
+  "measure_kind": "rate",
+  "agg": "mean",
+  "freq": "monthly",
+  "continuity": "discrete",
+  "seasonal_adjustment": "saar",
+  "price_basis": "not_applicable",
+  "country": "USA",
+  "segment": "economy_jobs",
+  "topics": [
+    "us-economy"
+  ],
+  "source": {
+    "origin": {
+      "producer": "U.S. Bureau of Economic Analysis",
+      "dataset": "National Income and Product Accounts, Table 2.6",
+      "origin_id": "A072RC",
+      "url": "https://www.bea.gov/data/income-saving/personal-saving-rate"
+    },
+    "channel": {
+      "via": "direct"
+    }
+  },
+  "refresh": "monthly",
+  "max_lag": "P3M",
+  "range": [
+    0.0,
+    40.0
+  ],
+  "status": "draft",
+  "migration": {
+    "v1_source": "FRED PSAVERT",
+    "change": "same",
+    "milestone": "M15"
+  }
+}

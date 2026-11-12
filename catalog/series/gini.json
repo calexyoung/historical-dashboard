@@ -1,0 +1,37 @@
+{
+  "key": "gini",
+  "name": "US Gini index (World Bank)",
+  "description": "Annual.",
+  "unit": "index, 0 to 100",
+  "unit_kind": "index",
+  "measure_kind": "index",
+  "agg": "mean",
+  "freq": "annual",
+  "continuity": "discrete",
+  "seasonal_adjustment": "not_applicable",
+  "price_basis": "not_applicable",
+  "country": "USA",
+  "segment": "economy_jobs",
+  "topics": [
+    "us-economy"
+  ],
+  "source": {
+    "origin": {
+      "producer": "World Bank",
+      "dataset": "World Development Indicators",
+      "origin_id": "SI.POV.GINI",
+      "url": "https://data.worldbank.org/indicator/SI.POV.GINI?locations=US"
+    },
+    "channel": {
+      "via": "direct"
+    }
+  },
+  "refresh": "annual",
+  "max_lag": "P36M",
+  "status": "draft",
+  "migration": {
+    "v1_source": "FRED SIPOVGINIUSA",
+    "change": "same",
+    "milestone": "v2.2"
+  }
+}

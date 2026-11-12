@@ -1,0 +1,38 @@
+{
+  "key": "jp_cpi",
+  "name": "Japan CPI (index)",
+  "description": "Source series ends mid-2021. TODO: e-Stat (needs an appId) or a Statistics Bureau CSV; OECD also ends 2021-06.",
+  "unit": "index",
+  "unit_kind": "index",
+  "measure_kind": "index",
+  "agg": "mean",
+  "freq": "monthly",
+  "continuity": "discrete",
+  "seasonal_adjustment": "nsa",
+  "price_basis": "not_applicable",
+  "country": "JPN",
+  "segment": "us_in_the_world",
+  "topics": [
+    "asia-other"
+  ],
+  "source": {
+    "origin": {
+      "producer": "International Monetary Fund",
+      "dataset": "Consumer Price Index",
+      "origin_id": null,
+      "url": "https://data.imf.org/"
+    },
+    "channel": {
+      "via": "direct"
+    }
+  },
+  "refresh": "monthly",
+  "max_lag": "P3M",
+  "status": "draft",
+  "migration": {
+    "v1_source": "FRED JPNCPIALLMINMEI",
+    "change": "representation",
+    "note": "v1's series ends in June 2021. The IMF carries the national all-items index to date (research 02 matched it to e-Stat for 25 months); its base period may differ from v1's. The agency's identifier for this series is settled, with a captured fixture, by the milestone that builds the adapter.",
+    "milestone": "M14"
+  }
+}

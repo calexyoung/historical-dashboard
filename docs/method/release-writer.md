@@ -30,7 +30,7 @@ Both roots are git-ignored and outside the Docker build context.
 
 ## What a public Release publishes
 
-For each Series the series table (`atlas/vintage/series.json`, until M12's Catalog) names and
+For each Series the series table (read from the Catalog, `catalog/series`, since M12) names and
 the store holds, the writer decides one of three things.
 
 **Published.** The gate permits display of exactly what the store holds: its Origin, dataset
@@ -85,7 +85,8 @@ legacy converter writes them.
 
 Python never computes a Derived value (ADR 0003, ADR 0025). The series table may list Derived
 series under `derived`: a key, a frequency, a name, a unit, a Recipe over other entries of the
-table and a `catalog` block (`atlas/vintage/series.json`; the first is `cpi_yoy`). For each one
+table and a `catalog` block (in the Catalog, an active Series with a `recipe`; the first is
+`cpi_yoy`). For each one
 the export decides, before anything is computed:
 
 - it is **left out** when a stored Series it rests on is not in the store yet: there is

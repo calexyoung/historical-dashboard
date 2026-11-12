@@ -1,0 +1,39 @@
+{
+  "key": "cpi_yoy",
+  "name": "Consumer Price Index for All Urban Consumers: all items, change from a year earlier, not seasonally adjusted",
+  "unit": "percent change from a year earlier",
+  "unit_kind": "percent",
+  "measure_kind": "rate",
+  "agg": "none",
+  "freq": "monthly",
+  "continuity": "discrete",
+  "seasonal_adjustment": "nsa",
+  "price_basis": "not_applicable",
+  "country": "USA",
+  "segment": "economy_jobs",
+  "topics": [
+    "us-economy"
+  ],
+  "refresh": "monthly",
+  "max_lag": "P3M",
+  "range": [
+    -20,
+    25
+  ],
+  "status": "active",
+  "recipe": {
+    "op": "pct_change",
+    "inputs": [
+      "cpi_nsa"
+    ],
+    "order": "aggregate_then_compute",
+    "params": {
+      "lag": 12
+    }
+  },
+  "migration": {
+    "v1_source": "Computed: cpi y/y",
+    "change": "different",
+    "note": "v1 computed this from the seasonally adjusted index. Here it is the twelve-month change of the unadjusted index, the figure BLS publishes as the headline (ADR 0025, decision 2; open with Alex)."
+  }
+}

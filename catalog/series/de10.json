@@ -1,0 +1,36 @@
+{
+  "key": "de10",
+  "name": "Germany 10-year yield",
+  "unit": "percent",
+  "unit_kind": "percent",
+  "measure_kind": "rate",
+  "agg": "mean",
+  "freq": "monthly",
+  "continuity": "discrete",
+  "seasonal_adjustment": "not_applicable",
+  "price_basis": "nominal",
+  "country": "DEU",
+  "segment": "us_in_the_world",
+  "topics": [
+    "europe"
+  ],
+  "source": {
+    "origin": {
+      "producer": "Eurostat",
+      "dataset": "irt_lt_mcby_m (Maastricht criterion bond yields, monthly)",
+      "origin_id": "M.MCBY.DE",
+      "url": "https://ec.europa.eu/eurostat/databrowser/view/irt_lt_mcby_m/default/table"
+    },
+    "channel": {
+      "via": "direct"
+    }
+  },
+  "refresh": "monthly",
+  "max_lag": "P3M",
+  "status": "draft",
+  "migration": {
+    "v1_source": "FRED IRLTLT01DEM156N",
+    "change": "same",
+    "milestone": "v2.2"
+  }
+}

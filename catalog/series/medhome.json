@@ -1,0 +1,38 @@
+{
+  "key": "medhome",
+  "name": "US median home sale price ($)",
+  "description": "Median sales price of new houses sold.",
+  "unit": "U.S. dollars",
+  "unit_kind": "currency",
+  "measure_kind": "rate",
+  "agg": "mean",
+  "freq": "quarterly",
+  "continuity": "discrete",
+  "seasonal_adjustment": "nsa",
+  "price_basis": "nominal",
+  "country": "USA",
+  "segment": "economy_jobs",
+  "topics": [
+    "housing"
+  ],
+  "source": {
+    "origin": {
+      "producer": "U.S. Census Bureau",
+      "dataset": "New Residential Sales",
+      "origin_id": null,
+      "url": "https://www.census.gov/construction/nrs/"
+    },
+    "channel": {
+      "via": "direct"
+    }
+  },
+  "refresh": "quarterly",
+  "max_lag": "P7M",
+  "status": "draft",
+  "migration": {
+    "v1_source": "FRED MSPUS",
+    "change": "same",
+    "note": "The agency's identifier for this series is settled, with a captured fixture, by the milestone that builds the adapter.",
+    "milestone": "M16"
+  }
+}
