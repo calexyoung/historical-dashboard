@@ -1,6 +1,6 @@
 {
   "format": 1,
-  "about": "The statement M13 owes for every Series fetched from BLS, Treasury Fiscal Data and the Federal Reserve Board: how far its values may be from v1's over the Periods both hold, and why. scripts/v1-overlap.mjs compares a release built from a capture store with a release of v1's values (atlas legacy-release) against it. abs is in v1's unit: half a unit of the last decimal v1 kept (two for a figure in percent, three otherwise) unless why says more. factor brings the Origin's unit to v1's. exceptions are Periods further off than abs, each with what was found; they are counted, never hidden. different marks a Series that is another quantity than v1's by a recorded decision. v1: null says v1 had no such Series. A Period the engine marks partial (the month in progress) is not compared. The comparison is of figures fetched within days of each other: an Origin's later revision is a difference this file does not allow for. Nothing here is data.",
+  "about": "The statement of how far each Series read from its Origin may be from v1's over the Periods both hold, and why: M13's for BLS, Treasury Fiscal Data and the Federal Reserve Board, and M16's for the rest of v1's series that are live (the IMF's, the BEA's, the EIA's and the Census Bureau's). scripts/v1-overlap.mjs compares a release built from a capture store with a release of v1's values (atlas legacy-release) against it. abs is in v1's unit: half a unit of the last decimal v1 kept (two for a figure in percent, three otherwise) unless why says more; rel is a share of v1's figure. factor brings the Origin's unit to v1's. exceptions are Periods further off than the tolerance, each with what was found; they are counted, never hidden. different marks a Series that is another quantity than v1's by a recorded decision. v1: null says v1 had no such Series. A Period the engine marks partial (the month in progress) is not compared. The comparison is of figures fetched within days of each other: an Origin's later revision is a difference this file does not allow for. Nothing here is data.",
   "min_overlap": 100,
   "series": [
     {
@@ -186,6 +186,117 @@
       "why": "v1 kept two decimals of a figure percentage points, of FRED's monthly mean of the daily spread; here the engine takes the daily difference of the two yields and then the monthly mean"
     },
     {
+      "key": "jp_cpi",
+      "abs": 0.08,
+      "factor": 1.018,
+      "why": "The same index on another base: v1's (the OECD's, through FRED, ending June 2021) is on 2015 = 100 and the Fund's on 2020 = 100. Each is printed to one decimal on its own base, so their ratio is not one number: over the 258 months both hold it runs from 1.0173 to 1.0186. The Fund's figure is multiplied by 1.018 and may then be 0.08 of an index point (under a tenth of a percent) from v1's."
+    },
+    {
+      "key": "cn_cpi",
+      "abs": 0.005,
+      "factor": 1.1155,
+      "why": "The same index on another base: v1's (the OECD's) is on 2015 = 100 and the Fund's on 2020 = 100. v1's figure is 1.1155 times the Fund's throughout; after that factor the two are within 0.005 of an index point, which is the rounding of the factor."
+    },
+    {
+      "key": "tryusd",
+      "abs": 0.0005,
+      "rel": 0.035,
+      "why": "The month's average rate from another compiler: v1 read the OECD's figure through FRED and this is the Fund's. In 95 percent of the 321 months the two are within half a percent of each other; in months of sharp moves (2006, 2018, 2021, 2023) they are up to 3.5 percent apart, which is what two averages of one month's daily rates can differ by when the rate moves by a tenth within it. 3.5 percent of v1's figure is allowed."
+    },
+    {
+      "key": "jp_infl",
+      "abs": 0.14,
+      "why": "The twelve-month change of an index printed to one decimal, on two bases (jp_cpi). A rounding of 0.05 of an index point at each end of a year moves the change by up to a tenth of a percentage point; 0.14 is the most the two differ by in the 258 months both hold."
+    },
+    {
+      "key": "cn_infl",
+      "abs": 0.006,
+      "why": "v1 kept two decimals of a figure in percent, computed from the index on its 2015 base; here it is computed from the index on the Fund's base (cn_cpi). One month in 322 is 0.00501 away, a hair over half a unit of v1's last decimal."
+    },
+    {
+      "key": "gdp",
+      "abs": 0.0005,
+      "factor": 0.001,
+      "why": "v1 held billions of chained 2017 dollars to three decimals; the Bureau's API prints millions. Divided by a thousand, every quarter is v1's figure exactly."
+    },
+    {
+      "key": "gdp_qoq",
+      "abs": 0.005,
+      "why": "v1 kept two decimals of a figure in percent; the Bureau prints one"
+    },
+    {
+      "key": "gdp_yoy",
+      "abs": 0.005,
+      "why": "v1 kept two decimals of a figure in percent, computed from the level in billions; here the engine computes it from the level in millions"
+    },
+    {
+      "key": "profits",
+      "abs": 0.0005,
+      "factor": 0.001,
+      "why": "v1 held billions of dollars to three decimals; the Bureau's API prints millions. Divided by a thousand, every quarter is v1's figure exactly."
+    },
+    {
+      "key": "saving",
+      "abs": 0.005,
+      "why": "v1 kept two decimals of a figure in percent; the Bureau prints one"
+    },
+    {
+      "key": "brent",
+      "abs": 0.0005,
+      "why": "v1 kept three decimals of FRED's monthly figure, which is the Administration's; the Administration prints two. 321 of 322 months are equal.",
+      "exceptions": {
+        "2021-08": "v1's figure is $0.14 above the Administration's monthly average for August 2021. A daily price revised after FRED took the month would do it. Not traced further."
+      }
+    },
+    {
+      "key": "wti",
+      "abs": 0.0005,
+      "why": "v1 kept three decimals of FRED's monthly figure, which is the Administration's; the Administration prints two. 321 of 322 months are equal.",
+      "exceptions": {
+        "2021-08": "v1's figure is $0.03 above the Administration's monthly average for August 2021, the same month in which Brent differs. Not traced further."
+      }
+    },
+    {
+      "key": "natgas",
+      "abs": 0.0005,
+      "why": "v1 kept three decimals; the Administration prints two"
+    },
+    {
+      "key": "gas",
+      "abs": 0.0005,
+      "why": "v1 kept three decimals of the mean of the weekly prices dated in the month. A weekly Observation here is the ISO week of its Monday, and the engine files a week under the month its last day (a Sunday) falls in; for this comparison the weeks are filed by their Monday, as v1 filed them (the same difference of representation as fedassets, stated in docs/v2/v1-overlap.md).",
+      "reference_day_offset": 0
+    },
+    {
+      "key": "retail",
+      "abs": 0.0005,
+      "why": "v1 kept three decimals of a figure in whole millions of dollars"
+    },
+    {
+      "key": "houst",
+      "abs": 0.0005,
+      "why": "v1 kept three decimals of a figure in whole thousands of units"
+    },
+    {
+      "key": "trade",
+      "abs": 1.0,
+      "why": "v1 took the monthly balance from FRED (BOPGSTB); here it is the Census Bureau's own flat file of the FT-900 release, in whole millions of dollars. 259 of the 321 months are equal. In 50 months, all before 2017, the two differ by exactly $1 million: the balance is the difference of exports and imports, each rounded to a million, and can be rounded once or twice. $1 million is allowed. The twelve months of 2000 are further apart and are explained by name.",
+      "exceptions": {
+        "2000-01": "One of the twelve months of 2000, in which the two differ by $143 million to $1.16 billion (at most 4 percent of the month's balance) and by $4 million over the year: the year's total is the same and its division among the months is not, as after a revision of seasonal factors that one of the two carries and the other does not. Not traced further.",
+        "2000-02": "One of the twelve months of 2000, in which the two differ by $143 million to $1.16 billion (at most 4 percent of the month's balance) and by $4 million over the year: the year's total is the same and its division among the months is not, as after a revision of seasonal factors that one of the two carries and the other does not. Not traced further.",
+        "2000-03": "One of the twelve months of 2000, in which the two differ by $143 million to $1.16 billion (at most 4 percent of the month's balance) and by $4 million over the year: the year's total is the same and its division among the months is not, as after a revision of seasonal factors that one of the two carries and the other does not. Not traced further.",
+        "2000-04": "One of the twelve months of 2000, in which the two differ by $143 million to $1.16 billion (at most 4 percent of the month's balance) and by $4 million over the year: the year's total is the same and its division among the months is not, as after a revision of seasonal factors that one of the two carries and the other does not. Not traced further.",
+        "2000-05": "One of the twelve months of 2000, in which the two differ by $143 million to $1.16 billion (at most 4 percent of the month's balance) and by $4 million over the year: the year's total is the same and its division among the months is not, as after a revision of seasonal factors that one of the two carries and the other does not. Not traced further.",
+        "2000-06": "One of the twelve months of 2000, in which the two differ by $143 million to $1.16 billion (at most 4 percent of the month's balance) and by $4 million over the year: the year's total is the same and its division among the months is not, as after a revision of seasonal factors that one of the two carries and the other does not. Not traced further.",
+        "2000-07": "One of the twelve months of 2000, in which the two differ by $143 million to $1.16 billion (at most 4 percent of the month's balance) and by $4 million over the year: the year's total is the same and its division among the months is not, as after a revision of seasonal factors that one of the two carries and the other does not. Not traced further.",
+        "2000-08": "One of the twelve months of 2000, in which the two differ by $143 million to $1.16 billion (at most 4 percent of the month's balance) and by $4 million over the year: the year's total is the same and its division among the months is not, as after a revision of seasonal factors that one of the two carries and the other does not. Not traced further.",
+        "2000-09": "One of the twelve months of 2000, in which the two differ by $143 million to $1.16 billion (at most 4 percent of the month's balance) and by $4 million over the year: the year's total is the same and its division among the months is not, as after a revision of seasonal factors that one of the two carries and the other does not. Not traced further.",
+        "2000-10": "One of the twelve months of 2000, in which the two differ by $143 million to $1.16 billion (at most 4 percent of the month's balance) and by $4 million over the year: the year's total is the same and its division among the months is not, as after a revision of seasonal factors that one of the two carries and the other does not. Not traced further.",
+        "2000-11": "One of the twelve months of 2000, in which the two differ by $143 million to $1.16 billion (at most 4 percent of the month's balance) and by $4 million over the year: the year's total is the same and its division among the months is not, as after a revision of seasonal factors that one of the two carries and the other does not. Not traced further.",
+        "2000-12": "One of the twelve months of 2000, in which the two differ by $143 million to $1.16 billion (at most 4 percent of the month's balance) and by $4 million over the year: the year's total is the same and its division among the months is not, as after a revision of seasonal factors that one of the two carries and the other does not. Not traced further."
+      }
+    },
+    {
       "key": "cpi_nsa",
       "v1": null,
       "why": "Not in v1 (M8): what cpi_yoy is computed from."
@@ -204,6 +315,21 @@
       "key": "net_worth",
       "v1": null,
       "why": "Not in v1: new with the Board adapter (M13)."
+    },
+    {
+      "key": "construction_total",
+      "v1": null,
+      "why": "Not in v1 (M16): the headline of the Census Bureau's construction spending release."
+    },
+    {
+      "key": "construction_private",
+      "v1": null,
+      "why": "Not in v1 (M16)."
+    },
+    {
+      "key": "construction_public",
+      "v1": null,
+      "why": "Not in v1 (M16)."
     }
   ]
 }
