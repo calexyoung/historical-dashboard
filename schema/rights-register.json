@@ -1,8 +1,8 @@
 {
   "$schema": "./rights-register.schema.json",
   "format": 1,
-  "version": "2026-11-12.3",
-  "about": "The rights register (CONTEXT.md; PLAN 6 and 6.1; ADR 0006, ADR 0020): one row per Origin and per intermediary Channel, with the terms read, a proposal, and Alex's decision. This file is the single table. docs/v2/rights-register.md and packages/core/src/rights-register.generated.ts are generated from it (npm run gen); atlas/rights.py reads it. A row permits something on a public Surface only when its decision is signed by Alex. The builder proposes and never fills in a decision.",
+  "version": "2026-11-12.4",
+  "about": "The rights register (CONTEXT.md; PLAN 6 and 6.1; ADR 0006, ADR 0020): one row per Origin (or per set of an Origin's datasets; no two rows cover the same dataset) and per intermediary Channel, with the terms read, a proposal, and Alex's decision. This file is the single table. docs/v2/rights-register.md and packages/core/src/rights-register.generated.ts are generated from it (npm run gen); atlas/rights.py reads it. A row permits something on a public Surface only when its decision is signed by Alex. The builder proposes and never fills in a decision.",
   "cleared_intermediaries": [],
   "rows": [
     {
@@ -309,12 +309,19 @@
         "note": "U.S. federal works are not subject to copyright in the United States (17 U.S.C. 105). That is the basis proposed here; the pages read do not themselves state a licence. Cite the Bureau."
       },
       "open_questions": [
-        "The API terms of service were not read: the sign-up page asks for agreement to them and M15 did not fetch the document. Read them before signing, and record any required notice here.",
+        "The row was signed on 2026-11-12 with the API terms of service unread by the builder and with no read of them by Alex recorded: the sign-up page asks for agreement to them and M15 did not fetch the document. Read it and record any required notice here.",
         "Request limits, as the API's user guide gives them and M15 did not test: 100 requests a minute, 100 MB a minute, 30 errors a minute, and an hour's lock-out (HTTP 429) beyond them. The capture job makes six requests a run, about 17 MB, two runs a day.",
         "The API repeats the key it was asked with in every answer. The capture kit replaces every copy before anything is kept, so the bytes kept are the answer with that one change (ADR 0029). Confirm that keeping them so is acceptable.",
         "The monthly trade balance v1 showed is the FT-900 release, compiled with the Census Bureau, and is not in this API. The quarterly balance from the International Transactions Accounts is captured here under a new key; the monthly figure waits for the Census files (M16)."
       ],
-      "decision": null
+      "decision": {
+        "display": true,
+        "redistribute": true,
+        "store": true,
+        "ml_use": true,
+        "signed_by": "Alex",
+        "signed_on": "2026-11-12"
+      }
     },
     {
       "id": "census",
@@ -444,7 +451,14 @@
         "The flat files' README asks that products built on them name the Census Bureau and the originating program, and that the precision of values is not altered. The attribution above names the Bureau; the Catalog names the program as the dataset. Values are kept as printed.",
         "No rate limit was found stated for www.census.gov file downloads. The capture job asks for four files a run, one at a time, a second apart; none was refused on 2026-11-11."
       ],
-      "decision": null
+      "decision": {
+        "display": true,
+        "redistribute": true,
+        "store": true,
+        "ml_use": true,
+        "signed_by": "Alex",
+        "signed_on": "2026-11-12"
+      }
     },
     {
       "id": "treasury-fiscal-data",
@@ -1164,47 +1178,12 @@
       "origins": [
         "U.S. Energy Information Administration"
       ],
-      "datasets": "*",
-      "used_for": "Energy prices; generation and capacity. v2.0 headline (M15): four requests a run, with a free API key (EIA_API_KEY) kept outside the repository. Depth in v2.1.",
+      "datasets": [
+        "Gasoline and Diesel Fuel Update",
+        "Electric Power Operations (Form EIA-923)"
+      ],
+      "used_for": "The retail price of gasoline; electricity generation. v2.0 headline (M15): two requests a run, with a free API key (EIA_API_KEY) kept outside the repository. Depth in v2.1. The row covers the two datasets listed and no other: the spot prices of crude oil and natural gas are on the eia-spot-prices row, and any other dataset of the Administration needs a row before it is used.",
       "capture": [
-        {
-          "id": "eia-petroleum-spot",
-          "adapter": "eia",
-          "datasets": [
-            "Petroleum and Other Liquids: Spot Prices"
-          ],
-          "params": {
-            "route": "petroleum/pri/spt",
-            "frequency": "monthly",
-            "series": [
-              "RBRTE",
-              "RWTC"
-            ],
-            "units": {
-              "RBRTE": "$/BBL",
-              "RWTC": "$/BBL"
-            }
-          },
-          "note": "Spot prices of West Texas Intermediate at Cushing and of Brent, the month's average as the Administration computes it, every month in one request (about 0.3 MB on 2026-11-11)."
-        },
-        {
-          "id": "eia-natgas-spot",
-          "adapter": "eia",
-          "datasets": [
-            "Natural Gas Spot and Futures Prices"
-          ],
-          "params": {
-            "route": "natural-gas/pri/fut",
-            "frequency": "monthly",
-            "series": [
-              "RNGWHHD"
-            ],
-            "units": {
-              "RNGWHHD": "$/MMBTU"
-            }
-          },
-          "note": "The Henry Hub natural gas spot price, the month's average, every month in one request (about 0.1 MB on 2026-11-11)."
-        },
         {
           "id": "eia-gasoline-retail",
           "adapter": "eia",
@@ -1270,8 +1249,93 @@
         "note": "Public domain by the Administration's own statement. The acknowledgement carries the publication date."
       },
       "open_questions": [
-        "API rate limits were not found stated and were not tested. The capture job makes four requests a run, one at a time, a second apart, two runs a day; none was refused on 2026-11-11.",
-        "The spot prices of crude oil and natural gas are published by the Administration with a commercial provider named as their source on its pages. Whether the statement that the Administration's data are public domain covers them is for Alex to weigh before signing; if not, wti, brent and natgas need a decision of their own."
+        "API rate limits were not found stated and were not tested. The capture job makes two requests a run under this row, one at a time, a second apart, two runs a day (four a run with the two of the eia-spot-prices row, which share the host and the key, when that row is signed); none was refused on 2026-11-11."
+      ],
+      "decision": {
+        "display": true,
+        "redistribute": true,
+        "store": true,
+        "ml_use": true,
+        "signed_by": "Alex",
+        "signed_on": "2026-11-12"
+      }
+    },
+    {
+      "id": "eia-spot-prices",
+      "kind": "origin",
+      "name": "Energy Information Administration: spot prices credited to a commercial provider",
+      "origins": [
+        "U.S. Energy Information Administration"
+      ],
+      "datasets": [
+        "Petroleum and Other Liquids: Spot Prices",
+        "Natural Gas Spot and Futures Prices"
+      ],
+      "used_for": "Spot prices of crude oil (West Texas Intermediate, Brent) and of natural gas (Henry Hub). v2.0 headline (M15): two requests a run, with the same free API key (EIA_API_KEY) as the eia row. Held back from that row when Alex signed it (2026-11-12).",
+      "capture": [
+        {
+          "id": "eia-petroleum-spot",
+          "adapter": "eia",
+          "datasets": [
+            "Petroleum and Other Liquids: Spot Prices"
+          ],
+          "params": {
+            "route": "petroleum/pri/spt",
+            "frequency": "monthly",
+            "series": [
+              "RBRTE",
+              "RWTC"
+            ],
+            "units": {
+              "RBRTE": "$/BBL",
+              "RWTC": "$/BBL"
+            }
+          },
+          "note": "Spot prices of West Texas Intermediate at Cushing and of Brent, the month's average as the Administration computes it, every month in one request (about 0.3 MB on 2026-11-11)."
+        },
+        {
+          "id": "eia-natgas-spot",
+          "adapter": "eia",
+          "datasets": [
+            "Natural Gas Spot and Futures Prices"
+          ],
+          "params": {
+            "route": "natural-gas/pri/fut",
+            "frequency": "monthly",
+            "series": [
+              "RNGWHHD"
+            ],
+            "units": {
+              "RNGWHHD": "$/MMBTU"
+            }
+          },
+          "note": "The Henry Hub natural gas spot price, the month's average, every month in one request (about 0.1 MB on 2026-11-11)."
+        }
+      ],
+      "terms": [
+        {
+          "url": "https://www.eia.gov/about/copyrights_reuse.php",
+          "read_on": "2026-11-11",
+          "how": "page",
+          "quotes": [
+            "U.S. government publications are in the public domain and are not subject to copyright protection.",
+            "You may use and/or distribute any of our data, files, databases, reports, graphs, charts, and other information products",
+            "you should use an acknowledgment, which includes the publication date"
+          ]
+        }
+      ],
+      "licence_class": "unknown",
+      "attribution": "Source: U.S. Energy Information Administration (with the publication date).",
+      "proposal": {
+        "display": false,
+        "redistribute": false,
+        "store": false,
+        "ml_use": false,
+        "note": "Hold. The Administration's pages name a commercial provider as the source of these prices, and that provider's terms have not been read. Nothing is proposed until they are; the Administration's own statement, quoted above, is not relied on for figures it credits to someone else."
+      },
+      "open_questions": [
+        "The Administration publishes these spot prices with a commercial provider named as their source on its pages. The provider and its terms must be found and read before this row is signed, with the page and the date recorded here, and any notice the provider requires. Whether the Administration's statement that its data are public domain covers them is for Alex to weigh then. Until this row is signed, wti, brent and natgas are withheld on every public Surface and their two endpoints are not fetched.",
+        "API rate limits were not found stated and were not tested. The capture job would make two requests a run under this row, one at a time, a second apart, two runs a day, with the same host and key as the eia row; none was refused on 2026-11-11."
       ],
       "decision": null
     },

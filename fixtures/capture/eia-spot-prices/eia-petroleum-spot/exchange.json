@@ -1,16 +1,16 @@
 {
   "format": 1,
-  "source": "eia",
-  "endpoint": "eia-natgas-spot",
+  "source": "eia-spot-prices",
+  "endpoint": "eia-petroleum-spot",
   "recorded_at": "2026-11-11T15:50:00Z",
   "provenance": {
     "synthetic": true,
     "transport": "synthetic",
     "origin": "U.S. Energy Information Administration",
     "datasets": [
-      "Natural Gas Spot and Futures Prices"
+      "Petroleum and Other Liquids: Spot Prices"
     ],
-    "retrieved_at": "2026-11-11T15:50:30Z",
+    "retrieved_at": "2026-11-11T15:50:31Z",
     "capture_id": null,
     "note": "Invented values in the shape of the source's answer of 2026-11-11. Not a measurement of anything and not a capture: written by fixtures/capture/make_fixtures.py."
   },
@@ -18,7 +18,7 @@
     {
       "request": {
         "method": "GET",
-        "url": "https://api.eia.gov/v2/natural-gas/pri/fut/data/?frequency=monthly&data%5B0%5D=value&facets%5Bseries%5D%5B%5D=RNGWHHD&sort%5B0%5D%5Bcolumn%5D=period&sort%5B0%5D%5Bdirection%5D=asc&sort%5B1%5D%5Bcolumn%5D=series&sort%5B1%5D%5Bdirection%5D=asc&offset=0&length=5000",
+        "url": "https://api.eia.gov/v2/petroleum/pri/spt/data/?frequency=monthly&data%5B0%5D=value&facets%5Bseries%5D%5B%5D=RBRTE&facets%5Bseries%5D%5B%5D=RWTC&sort%5B0%5D%5Bcolumn%5D=period&sort%5B0%5D%5Bdirection%5D=asc&sort%5B1%5D%5Bcolumn%5D=series&sort%5B1%5D%5Bdirection%5D=asc&offset=0&length=5000",
         "body": null
       },
       "status": 200,
@@ -29,20 +29,20 @@
         ],
         [
           "Date",
-          "Wed, 11 Nov 2026 15:50:30 GMT"
+          "Wed, 11 Nov 2026 15:50:31 GMT"
         ],
         [
           "Content-Length",
-          "25009"
+          "47071"
         ],
         [
           "Set-Cookie",
           "(not kept)"
         ]
       ],
-      "received_at": "2026-11-11T15:50:30Z",
+      "received_at": "2026-11-11T15:50:31Z",
       "body_file": "part-1.json",
-      "sha256": "a27af425526fa4f010ae614e48210799ed3753dccc5f392717d2d5df8241f9e9"
+      "sha256": "947f4e65f01580dd2b01decd56c41ccd950e995b23ce3640cbc433d317b3a876"
     }
   ]
 }

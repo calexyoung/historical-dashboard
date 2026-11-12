@@ -38,7 +38,7 @@
   "migration": {
     "v1_source": "FRED MCOILWTICO",
     "change": "same",
-    "note": "The EIA publishes spot prices it takes from a commercial provider; whether the EIA row covers them is a question for the EIA row of the register.",
+    "note": "The EIA publishes spot prices it takes from a commercial provider; whether the EIA's terms cover them is a question for the eia-spot-prices row of the register.",
     "milestone": "M15"
   }
 }

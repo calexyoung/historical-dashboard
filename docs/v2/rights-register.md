@@ -2,7 +2,7 @@
 
 # Rights register
 
-Version `2026-11-12.3`. 3 of 31 rows signed. Intermediary Channels cleared: none.
+Version `2026-11-12.4`. 6 of 32 rows signed. Intermediary Channels cleared: none.
 
 One row per Origin and per intermediary Channel: the terms that were read, the sentences that
 matter quoted, a proposal, and Alex's decision (CONTEXT.md, Rights register; PLAN 6 and 6.1;
@@ -74,11 +74,12 @@ with that date in `cleared_intermediaries`.
 | Row | Kind | Licence class | Terms read | Proposed | Decision |
 |---|---|---|---|---|---|
 | `bls` Bureau of Labor Statistics | origin | public domain | in part | all four | all four |
-| `bea` Bureau of Economic Analysis | origin | public domain | yes | all four | not decided |
-| `census` Census Bureau | origin | public domain | yes | all four | not decided |
+| `bea` Bureau of Economic Analysis | origin | public domain | yes | all four | all four |
+| `census` Census Bureau | origin | public domain | yes | all four | all four |
 | `treasury-fiscal-data` Treasury Fiscal Data | origin | public domain | yes | all four | all four |
 | `fed-board` Federal Reserve Board | origin | public domain | yes | all four | all four |
-| `eia` Energy Information Administration | origin | public domain | yes | all four | not decided |
+| `eia` Energy Information Administration | origin | public domain | yes | all four | all four |
+| `eia-spot-prices` Energy Information Administration: spot prices credited to a commercial provider | origin | unknown | yes | nothing | not decided |
 | `fred` FRED (Federal Reserve Bank of St. Louis), as a channel | channel | permission required | in part | nothing | not decided |
 | `alfred` ALFRED (Federal Reserve Bank of St. Louis), as a channel | channel | unknown | no | nothing | not decided |
 | `yahoo` Yahoo Finance, as a channel | channel | permission required | yes | nothing | not decided |
@@ -168,12 +169,12 @@ Proposal: allow **all four**. U.S. federal works are not subject to copyright in
 
 Open questions:
 
-- The API terms of service were not read: the sign-up page asks for agreement to them and M15 did not fetch the document. Read them before signing, and record any required notice here.
+- The row was signed on 2026-11-12 with the API terms of service unread by the builder and with no read of them by Alex recorded: the sign-up page asks for agreement to them and M15 did not fetch the document. Read it and record any required notice here.
 - Request limits, as the API's user guide gives them and M15 did not test: 100 requests a minute, 100 MB a minute, 30 errors a minute, and an hour's lock-out (HTTP 429) beyond them. The capture job makes six requests a run, about 17 MB, two runs a day.
 - The API repeats the key it was asked with in every answer. The capture kit replaces every copy before anything is kept, so the bytes kept are the answer with that one change (ADR 0029). Confirm that keeping them so is acceptable.
 - The monthly trade balance v1 showed is the FT-900 release, compiled with the Census Bureau, and is not in this API. The quarterly balance from the International Transactions Accounts is captured here under a new key; the monthly figure waits for the Census files (M16).
 
-Decision: **not decided**.
+Decision: allow **all four**. Signed by Alex on 2026-11-12.
 
 ### Census Bureau
 
@@ -208,7 +209,7 @@ Open questions:
 - The flat files' README asks that products built on them name the Census Bureau and the originating program, and that the precision of values is not altered. The attribution above names the Bureau; the Catalog names the program as the dataset. Values are kept as printed.
 - No rate limit was found stated for www.census.gov file downloads. The capture job asks for four files a run, one at a time, a second apart; none was refused on 2026-11-11.
 
-Decision: **not decided**.
+Decision: allow **all four**. Signed by Alex on 2026-11-12.
 
 ### Treasury Fiscal Data
 
@@ -272,10 +273,39 @@ Decision: allow **all four**. Signed by Alex on 2026-11-12.
 
 ### Energy Information Administration
 
-Row `eia`. Energy prices; generation and capacity. v2.0 headline (M15): four requests a run, with a free API key (EIA_API_KEY) kept outside the repository. Depth in v2.1.
+Row `eia`. The retail price of gasoline; electricity generation. v2.0 headline (M15): two requests a run, with a free API key (EIA_API_KEY) kept outside the repository. Depth in v2.1. The row covers the two datasets listed and no other: the spot prices of crude oil and natural gas are on the eia-spot-prices row, and any other dataset of the Administration needs a row before it is used.
 
-- Origin, as a Catalog entry names it: "U.S. Energy Information Administration"; all datasets.
+- Origin, as a Catalog entry names it: "U.S. Energy Information Administration"; "Gasoline and Diesel Fuel Update", "Electric Power Operations (Form EIA-923)".
 - Licence class: public domain.
+- Attribution: Source: U.S. Energy Information Administration (with the publication date).
+
+Terms: <https://www.eia.gov/about/copyrights_reuse.php> (read on 2026-11-11, from the page's own text).
+
+> U.S. government publications are in the public domain and are not subject to copyright protection.
+
+> You may use and/or distribute any of our data, files, databases, reports, graphs, charts, and other information products
+
+> you should use an acknowledgment, which includes the publication date
+
+Capture endpoints (fetched by `atlas capture` only once this row is signed and allows store):
+
+- `eia-gasoline-retail`, the `eia` adapter, for "Gasoline and Diesel Fuel Update". U.S. regular gasoline, all formulations, retail, weekly (dated Monday), every week in one request (about 0.6 MB on 2026-11-11). Six weeks of December 1990 and January 1991 are listed with no number. Prices under a dollar are printed without a zero before the point.
+- `eia-generation-us`, the `eia` adapter, for "Electric Power Operations (Form EIA-923)". Net generation of electricity, all fuels, all sectors, United States, monthly from 2001, in one request (about 0.1 MB on 2026-11-11). The rows have no series id; the fuel type names the series, with location and sector held.
+
+Proposal: allow **all four**. Public domain by the Administration's own statement. The acknowledgement carries the publication date.
+
+Open questions:
+
+- API rate limits were not found stated and were not tested. The capture job makes two requests a run under this row, one at a time, a second apart, two runs a day (four a run with the two of the eia-spot-prices row, which share the host and the key, when that row is signed); none was refused on 2026-11-11.
+
+Decision: allow **all four**. Signed by Alex on 2026-11-12.
+
+### Energy Information Administration: spot prices credited to a commercial provider
+
+Row `eia-spot-prices`. Spot prices of crude oil (West Texas Intermediate, Brent) and of natural gas (Henry Hub). v2.0 headline (M15): two requests a run, with the same free API key (EIA_API_KEY) as the eia row. Held back from that row when Alex signed it (2026-11-12).
+
+- Origin, as a Catalog entry names it: "U.S. Energy Information Administration"; "Petroleum and Other Liquids: Spot Prices", "Natural Gas Spot and Futures Prices".
+- Licence class: unknown.
 - Attribution: Source: U.S. Energy Information Administration (with the publication date).
 
 Terms: <https://www.eia.gov/about/copyrights_reuse.php> (read on 2026-11-11, from the page's own text).
@@ -290,15 +320,13 @@ Capture endpoints (fetched by `atlas capture` only once this row is signed and a
 
 - `eia-petroleum-spot`, the `eia` adapter, for "Petroleum and Other Liquids: Spot Prices". Spot prices of West Texas Intermediate at Cushing and of Brent, the month's average as the Administration computes it, every month in one request (about 0.3 MB on 2026-11-11).
 - `eia-natgas-spot`, the `eia` adapter, for "Natural Gas Spot and Futures Prices". The Henry Hub natural gas spot price, the month's average, every month in one request (about 0.1 MB on 2026-11-11).
-- `eia-gasoline-retail`, the `eia` adapter, for "Gasoline and Diesel Fuel Update". U.S. regular gasoline, all formulations, retail, weekly (dated Monday), every week in one request (about 0.6 MB on 2026-11-11). Six weeks of December 1990 and January 1991 are listed with no number. Prices under a dollar are printed without a zero before the point.
-- `eia-generation-us`, the `eia` adapter, for "Electric Power Operations (Form EIA-923)". Net generation of electricity, all fuels, all sectors, United States, monthly from 2001, in one request (about 0.1 MB on 2026-11-11). The rows have no series id; the fuel type names the series, with location and sector held.
 
-Proposal: allow **all four**. Public domain by the Administration's own statement. The acknowledgement carries the publication date.
+Proposal: allow **nothing**. Hold. The Administration's pages name a commercial provider as the source of these prices, and that provider's terms have not been read. Nothing is proposed until they are; the Administration's own statement, quoted above, is not relied on for figures it credits to someone else.
 
 Open questions:
 
-- API rate limits were not found stated and were not tested. The capture job makes four requests a run, one at a time, a second apart, two runs a day; none was refused on 2026-11-11.
-- The spot prices of crude oil and natural gas are published by the Administration with a commercial provider named as their source on its pages. Whether the statement that the Administration's data are public domain covers them is for Alex to weigh before signing; if not, wti, brent and natgas need a decision of their own.
+- The Administration publishes these spot prices with a commercial provider named as their source on its pages. The provider and its terms must be found and read before this row is signed, with the page and the date recorded here, and any notice the provider requires. Whether the Administration's statement that its data are public domain covers them is for Alex to weigh then. Until this row is signed, wti, brent and natgas are withheld on every public Surface and their two endpoints are not fetched.
+- API rate limits were not found stated and were not tested. The capture job would make two requests a run under this row, one at a time, a second apart, two runs a day, with the same host and key as the eia row; none was refused on 2026-11-11.
 
 Decision: **not decided**.
 

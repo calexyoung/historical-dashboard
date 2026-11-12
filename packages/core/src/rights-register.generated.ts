@@ -3,7 +3,7 @@
 
 export const RIGHTS_REGISTER: unknown = {
   "format": 1,
-  "version": "2026-11-12.3",
+  "version": "2026-11-12.4",
   "cleared_intermediaries": [],
   "rows": [
     {
@@ -29,7 +29,14 @@ export const RIGHTS_REGISTER: unknown = {
         "U.S. Bureau of Economic Analysis"
       ],
       "datasets": "*",
-      "decision": null
+      "decision": {
+        "display": true,
+        "redistribute": true,
+        "store": true,
+        "ml_use": true,
+        "signed_by": "Alex",
+        "signed_on": "2026-11-12"
+      }
     },
     {
       "id": "census",
@@ -38,7 +45,14 @@ export const RIGHTS_REGISTER: unknown = {
         "U.S. Census Bureau"
       ],
       "datasets": "*",
-      "decision": null
+      "decision": {
+        "display": true,
+        "redistribute": true,
+        "store": true,
+        "ml_use": true,
+        "signed_by": "Alex",
+        "signed_on": "2026-11-12"
+      }
     },
     {
       "id": "treasury-fiscal-data",
@@ -78,7 +92,29 @@ export const RIGHTS_REGISTER: unknown = {
       "origins": [
         "U.S. Energy Information Administration"
       ],
-      "datasets": "*",
+      "datasets": [
+        "Gasoline and Diesel Fuel Update",
+        "Electric Power Operations (Form EIA-923)"
+      ],
+      "decision": {
+        "display": true,
+        "redistribute": true,
+        "store": true,
+        "ml_use": true,
+        "signed_by": "Alex",
+        "signed_on": "2026-11-12"
+      }
+    },
+    {
+      "id": "eia-spot-prices",
+      "kind": "origin",
+      "origins": [
+        "U.S. Energy Information Administration"
+      ],
+      "datasets": [
+        "Petroleum and Other Liquids: Spot Prices",
+        "Natural Gas Spot and Futures Prices"
+      ],
       "decision": null
     },
     {

@@ -16,8 +16,8 @@ fixture by the milestone that builds the adapter.
 
 | Proposal | v1 series | Meaning |
 |---|---|---|
-| re-source from an Origin | 71 | An Origin publishes it over a direct Channel (or it is entered by hand from one) and the register proposes to allow that Origin's data to be shown. |
-| needs D2 | 22 | The route depends on a decision the register does not propose a yes to: an Origin with no row yet, a row whose proposal is no display, or an intermediary Channel. |
+| re-source from an Origin | 68 | An Origin publishes it over a direct Channel (or it is entered by hand from one) and the register proposes to allow that Origin's data to be shown. |
+| needs D2 | 25 | The route depends on a decision the register does not propose a yes to: an Origin with no row yet, a row whose proposal is no display, or an intermediary Channel. |
 | withheld | 33 | No route is known: a rights restriction, no route established yet, or discontinued. The Series stays in the Catalog by name. |
 
 62 Series were never in v1: `ar_cpi`, `ar_fx`, `ar_infl`, `au_cpi`, `au_fx`, `au_infl`, `br_cpi`, `br_fx`, `br_infl`, `ca_cpi`, `ca_fx`, `ca_infl`, `cn_fx`, `construction_private`, `construction_public`, `construction_total`, `cpi_nsa`, `de_cpi`, `de_infl`, `elec_gen`, `ez_fx`, `fr_cpi`, `fr_infl`, `gdp_nominal`, `id_cpi`, `id_fx`, `id_infl`, `in_cpi`, `in_fx`, `in_infl`, `it_cpi`, `it_infl`, `jp_fx`, `kr_cpi`, `kr_fx`, `kr_infl`, `mx_cpi`, `mx_fx`, `mx_infl`, `net_worth`, `outlays`, `pce`, `personal_income`, `real_dpi`, `receipts`, `ru_cpi`, `ru_fx`, `ru_infl`, `sa_cpi`, `sa_fx`, `sa_infl`, `tr_cpi`, `tr_infl`, `trade_q`, `uk_cpi_imf`, `uk_fx`, `uk_infl_imf`, `us_cpi`, `us_infl`, `za_cpi`, `za_fx`, `za_infl`. `cpi_nsa` (M8) is what `cpi_yoy` is computed from (ADR 0025); the others arrived with the adapter that reads them (M13, ADR 0027; the G20 consumer price, inflation and exchange-rate Series with the IMF adapter, M14, ADR 0028; the BEA's and the EIA's with theirs, M15, ADR 0029; the three construction totals with the Census readers, M16, ADR 0030). 188 Series in all.
@@ -90,7 +90,7 @@ Each needs a row, with its terms read, before anything can be decided for the Se
 | `ar_fx` | USD/ARS (monthly average) | not in v1 | International Monetary Fund: Exchange Rates (`ARG.XDC_USD.PA_RT.M`) | re-source from International Monetary Fund | 3 open questions on the register row |
 | `au_fx` | USD/AUD (monthly average) | not in v1 | International Monetary Fund: Exchange Rates (`AUS.XDC_USD.PA_RT.M`) | re-source from International Monetary Fund | 3 open questions on the register row |
 | `br_fx` | USD/BRL (monthly average) | not in v1 | International Monetary Fund: Exchange Rates (`BRA.XDC_USD.PA_RT.M`) | re-source from International Monetary Fund | 3 open questions on the register row |
-| `brent` | Crude oil, Brent ($/bbl) | FRED MCOILBRENTEU | U.S. Energy Information Administration: Petroleum and Other Liquids: Spot Prices (`RBRTE`) | re-source from Energy Information Administration | 2 open questions on the register row |
+| `brent` | Crude oil, Brent ($/bbl) | FRED MCOILBRENTEU | U.S. Energy Information Administration: Petroleum and Other Liquids: Spot Prices (`RBRTE`) | needs D2: the register proposes no display for Energy Information Administration: spot prices credited to a commercial provider (its terms are not read) | 2 open questions on the register row |
 | `brl` | USD/BRL | FRED DEXBZUS | Board of Governors of the Federal Reserve System: H.10 Foreign Exchange Rates (`RXI_N.B.BZ`) | re-source from Federal Reserve Board | 1 open question on the register row |
 | `btc` | Bitcoin ($) | Yahoo BTC-USD | No single Origin (exchange prices): Bitcoin in U.S. dollars (`BTC-USD`); no Channel | withheld (no route established): An exchange-traded price. No origin-agency route has been found, and v1's channel (Yahoo) is proposed for no display. | — |
 | `ca_fx` | USD/CAD (monthly average) | not in v1 | International Monetary Fund: Exchange Rates (`CAN.XDC_USD.PA_RT.M`) | re-source from International Monetary Fund | 3 open questions on the register row |
@@ -109,7 +109,7 @@ Each needs a row, with its terms read, before anything can be decided for the Se
 | `fedfunds` | Fed funds rate | FRED FEDFUNDS | Board of Governors of the Federal Reserve System: H.15 Selected Interest Rates (`RIFSPFF_N.M`) | re-source from Federal Reserve Board | 1 open question on the register row |
 | `food` | Global food price index (IMF) | FRED PFOODINDEXM | International Monetary Fund: Primary Commodity Price System | re-source from International Monetary Fund | adapter not built (planned for v2.2); identifier not settled; 3 open questions on the register row |
 | `food_yoy` | Global food price inflation (y/y) | Computed: food y/y | Recipe: pct_change of `food`, 12 Periods earlier | re-source from International Monetary Fund (computed from food) | food: adapter not built (planned for v2.2); food: identifier not settled; food: 3 open questions on the register row |
-| `gas` | US retail gasoline, regular ($/gal) | FRED GASREGW | U.S. Energy Information Administration: Gasoline and Diesel Fuel Update (`EMM_EPMR_PTE_NUS_DPG`) | re-source from Energy Information Administration | 2 open questions on the register row |
+| `gas` | US retail gasoline, regular ($/gal) | FRED GASREGW | U.S. Energy Information Administration: Gasoline and Diesel Fuel Update (`EMM_EPMR_PTE_NUS_DPG`) | re-source from Energy Information Administration | 1 open question on the register row |
 | `gbpusd` | GBP/USD | FRED DEXUSUK | Board of Governors of the Federal Reserve System: H.10 Foreign Exchange Rates (`RXI$US_N.B.UK`) | re-source from Federal Reserve Board | 1 open question on the register row |
 | `gold` | Gold ($/oz) | Yahoo GC=F | CME Group (COMEX): Gold futures, front contract (`GC`); no Channel | withheld (no route established): An exchange-traded price. No origin-agency route has been found, and v1's channel (Yahoo) is proposed for no display. | — |
 | `gold_eur` | Gold in euros (€/oz) | Computed: gold / eurusd | Recipe: ratio of `gold`, `eurusd` | withheld: it is computed from gold (An exchange-traded price. No origin-agency route has been found, and v1's channel (Yahoo) is proposed for no display) | eurusd: 1 open question on the register row |
@@ -127,7 +127,7 @@ Each needs a row, with its terms read, before anything can be decided for the Se
 | `mx_fx` | USD/MXN (monthly average) | not in v1 | International Monetary Fund: Exchange Rates (`MEX.XDC_USD.PA_RT.M`) | re-source from International Monetary Fund | 3 open questions on the register row |
 | `mxn` | USD/MXN | FRED DEXMXUS | Board of Governors of the Federal Reserve System: H.10 Foreign Exchange Rates (`RXI_N.B.MX`) | re-source from Federal Reserve Board | 1 open question on the register row |
 | `nasdaq` | Nasdaq Composite | Yahoo ^IXIC | Nasdaq: Nasdaq Composite (`COMP`); no Channel | withheld (rights restriction): Index levels are licensed by their owner on every free channel found; the register's Yahoo row proposes no display (PLAN D5). | — |
-| `natgas` | Natural gas, Henry Hub ($/MMBtu) | FRED MHHNGSP | U.S. Energy Information Administration: Natural Gas Spot and Futures Prices (`RNGWHHD`) | re-source from Energy Information Administration | 2 open questions on the register row |
+| `natgas` | Natural gas, Henry Hub ($/MMBtu) | FRED MHHNGSP | U.S. Energy Information Administration: Natural Gas Spot and Futures Prices (`RNGWHHD`) | needs D2: the register proposes no display for Energy Information Administration: spot prices credited to a commercial provider (its terms are not read) | 2 open questions on the register row |
 | `ndx` | Nasdaq-100 | FRED NASDAQ100 | Nasdaq: Nasdaq-100 (`NDX`); no Channel | withheld (rights restriction): Index levels are licensed by their owner on every free channel found; the register's Yahoo row proposes no display (PLAN D5). | — |
 | `ru_fx` | USD/RUB (monthly average) | not in v1 | International Monetary Fund: Exchange Rates (`RUS.XDC_USD.PA_RT.M`) | re-source from International Monetary Fund | 3 open questions on the register row |
 | `rut` | Russell 2000 | Yahoo ^RUT | FTSE Russell: Russell 2000 (`RUT`); no Channel | withheld (rights restriction): Index levels are licensed by their owner on every free channel found; the register's Yahoo row proposes no display (PLAN D5). | — |
@@ -142,7 +142,7 @@ Each needs a row, with its terms read, before anything can be decided for the Se
 | `uk_fx` | USD/GBP (monthly average) | not in v1 | International Monetary Fund: Exchange Rates (`GBR.XDC_USD.PA_RT.M`) | re-source from International Monetary Fund | 3 open questions on the register row |
 | `usd_broad` | US dollar, broad trade-weighted | FRED DTWEXBGS | Board of Governors of the Federal Reserve System: H.10 Foreign Exchange Rates (`JRXWTFB_N.B`) | re-source from Federal Reserve Board | 1 open question on the register row |
 | `vix` | VIX (volatility) | Yahoo ^VIX | Cboe Global Markets: Cboe Volatility Index (`VIX`); no Channel | withheld (rights restriction): Index levels are licensed by their owner on every free channel found; the register's Yahoo row proposes no display (PLAN D5). | — |
-| `wti` | Crude oil, WTI ($/bbl) | FRED MCOILWTICO | U.S. Energy Information Administration: Petroleum and Other Liquids: Spot Prices (`RWTC`) | re-source from Energy Information Administration | 2 open questions on the register row |
+| `wti` | Crude oil, WTI ($/bbl) | FRED MCOILWTICO | U.S. Energy Information Administration: Petroleum and Other Liquids: Spot Prices (`RWTC`) | needs D2: the register proposes no display for Energy Information Administration: spot prices credited to a commercial provider (its terms are not read) | 2 open questions on the register row |
 | `xle` | Energy sector (XLE) | Yahoo XLE | State Street Global Advisors: Energy Select Sector SPDR Fund (`XLE`); no Channel | withheld (no route established): An exchange-traded price. No origin-agency route has been found, and v1's channel (Yahoo) is proposed for no display. | — |
 | `xlf` | Financials sector (XLF) | Yahoo XLF | State Street Global Advisors: Financial Select Sector SPDR Fund (`XLF`); no Channel | withheld (no route established): An exchange-traded price. No origin-agency route has been found, and v1's channel (Yahoo) is proposed for no display. | — |
 | `xlk` | Technology sector (XLK) | Yahoo XLK | State Street Global Advisors: Technology Select Sector SPDR Fund (`XLK`); no Channel | withheld (no route established): An exchange-traded price. No origin-agency route has been found, and v1's channel (Yahoo) is proposed for no display. | — |
@@ -155,7 +155,7 @@ Each needs a row, with its terms read, before anything can be decided for the Se
 | `construction_private` | US construction spending, private | not in v1 | U.S. Census Bureau: Value of Construction Put in Place (`Total Private Construction2`) | re-source from Census Bureau | 3 open questions on the register row |
 | `construction_public` | US construction spending, public | not in v1 | U.S. Census Bureau: Value of Construction Put in Place (`Total Public Construction3`) | re-source from Census Bureau | 3 open questions on the register row |
 | `construction_total` | US construction spending, total | not in v1 | U.S. Census Bureau: Value of Construction Put in Place (`Total Construction1`) | re-source from Census Bureau | 3 open questions on the register row |
-| `elec_gen` | US net electricity generation, all fuels | not in v1 | U.S. Energy Information Administration: Electric Power Operations (Form EIA-923) (`ALL`) | re-source from Energy Information Administration | 2 open questions on the register row |
+| `elec_gen` | US net electricity generation, all fuels | not in v1 | U.S. Energy Information Administration: Electric Power Operations (Form EIA-923) (`ALL`) | re-source from Energy Information Administration | 1 open question on the register row |
 
 ### Governance & politics
 
@@ -254,7 +254,7 @@ Each needs a row, with its terms read, before anything can be decided for the Se
 - `approval`: The register proposes no display for Gallup's figures and its terms are not read. The hand-entered file format and its adapter exist (M16); no value is entered until Alex has decided a row for the source of the figures.
 - `boe`: The register has no proposal to allow OECD data until its terms are read. A central bank policy rate from the BIS (v2.2) is a different quantity and would take a new key.
 - `br_rate`: The register has no proposal to allow OECD data until its terms are read. A central bank policy rate from the BIS (v2.2) is a different quantity and would take a new key.
-- `brent`: The EIA publishes spot prices it takes from a commercial provider; whether the EIA row covers them is a question for the EIA row of the register.
+- `brent`: The EIA publishes spot prices it takes from a commercial provider; whether the EIA's terms cover them is a question for the eia-spot-prices row of the register.
 - `brl`: The identifier is the Data Download Program's, as its file printed it on 2026-11-11.
 - `cad`: The identifier is the Data Download Program's, as its file printed it on 2026-11-11.
 - `claims`: The agency's identifier for this series is settled, with a captured fixture, by the milestone that builds the adapter.
@@ -288,7 +288,7 @@ Each needs a row, with its terms read, before anything can be decided for the Se
 - `mortgage`: The agency's identifier for this series is settled, with a captured fixture, by the milestone that builds the adapter.
 - `mx_rate`: The register has no proposal to allow OECD data until its terms are read. A central bank policy rate from the BIS (v2.2) is a different quantity and would take a new key.
 - `mxn`: The identifier is the Data Download Program's, as its file printed it on 2026-11-11.
-- `natgas`: The EIA publishes spot prices it takes from a commercial provider; whether the EIA row covers them is a question for the EIA row of the register.
+- `natgas`: The EIA publishes spot prices it takes from a commercial provider; whether the EIA's terms cover them is a question for the eia-spot-prices row of the register.
 - `pres_margin`: v1's votes were read from Wikipedia. The register's Wikipedia row says to enter them from the official record instead, each with its citation. The hand-entered file format and its adapter exist (M16) and the register has a proposed row for the Federal Election Commission; no value is entered until Alex has decided that row.
 - `profits`: v1 showed billions of dollars; the Bureau's API gives the same figures in millions.
 - `retail`: The same figure v1 took from FRED (RSAFS), read from the Bureau's own flat file of the advance monthly retail report.
@@ -299,4 +299,4 @@ Each needs a row, with its terms read, before anything can be decided for the Se
 - `usd_broad`: The identifier is the Data Download Program's, as its file printed it on 2026-11-11.
 - `usepu`: The agency's identifier for this series is settled, with a captured fixture, by the milestone that builds the adapter.
 - `usrec`: v1 took a monthly 0/1 indicator from FRED, which computes it from the NBER's dates. The dates themselves are entered by hand, each with its citation, when recessions become an Annotation layer.
-- `wti`: The EIA publishes spot prices it takes from a commercial provider; whether the EIA row covers them is a question for the EIA row of the register.
+- `wti`: The EIA publishes spot prices it takes from a commercial provider; whether the EIA's terms cover them is a question for the eia-spot-prices row of the register.

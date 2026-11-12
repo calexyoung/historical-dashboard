@@ -141,7 +141,9 @@ def test_add_series_writes_a_draft_that_passes_the_check_and_commits_nothing(tmp
     assert "rights" not in entry and "refresh" in entry
     assert check(directory).ok
     assert "draft" in out and "python -m atlas check" in out
-    assert "Census Bureau" in out and "not signed" in out  # what the register says, looked up
+    # What the register says of that row today, looked up: signed or not, whichever it is.
+    census = next(row for row in load_register()["rows"] if row["id"] == "census")
+    assert f"register row census (Census Bureau), public_domain, {'signed' if census['decision'] else 'not signed'}." in out
     assert subprocess.run(["git", "status", "--porcelain"], cwd=ROOT, capture_output=True, text=True, check=True).stdout == before
 
 
