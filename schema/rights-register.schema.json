@@ -86,6 +86,12 @@
         },
         "quotes": { "type": "array", "items": { "type": "string", "minLength": 1 } },
         "note": { "type": "string" }
+      },
+      "if": { "properties": { "how": { "const": "attested" } }, "required": ["how"] },
+      "then": {
+        "description": "An attested read carries no quotation; the note is the reader's report and must be present.",
+        "required": ["note"],
+        "properties": { "quotes": { "maxItems": 0 }, "note": { "minLength": 1 } }
       }
     },
     "licenceClass": { "enum": ["public_domain", "cc_by", "citation_required", "permission_required", "no_redistribution", "unknown"] },
