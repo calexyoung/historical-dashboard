@@ -25,7 +25,46 @@ Differences are in v1's unit. "Tolerance" is half a unit of the last decimal v1 
 decimals for a figure in percent, three otherwise) unless the statement says more. The month
 in progress, which the engine marks partial, is not compared.
 
-{table}
+| Series | Periods compared | Largest difference | At | Tolerance | Beyond it | Explained by name | One side only | Verdict |
+|---|---|---|---|---|---|---|---|---|
+| `cpi` | 321 | 0 | — | 0.0005 | 0 | 0 | 0 | matches |
+| `unrate` | 321 | 0 | — | 0.005 | 0 | 0 | 0 | matches |
+| `payems` | 322 | 0 | — | 0.0005 | 0 | 0 | 0 | matches |
+| `civpart` | 321 | 0 | — | 0.005 | 0 | 0 | 0 | matches |
+| `corecpi` | 321 | 0 | — | 0.0005 | 0 | 0 | 0 | matches |
+| `rent_cpi` | 321 | 0 | — | 0.0005 | 0 | 0 | 0 | matches |
+| `wages` | 322 | 0 | — | 0.0005 | 0 | 0 | 0 | matches |
+| `eggs` | 321 | 0 | — | 0.0005 | 0 | 0 | 0 | matches |
+| `labor_share` | 107 | 0 | — | 0.0005 | 0 | 0 | 0 | matches |
+| `real_wages` | 106 | 0 | — | 0.0005 | 0 | 0 | 0 | matches |
+| `debt` | 106 | 3.53 | 2013-Q3 | 5 | 0 | 7 | 0 | matches |
+| `gs10` | 322 | 0.00500 | 2005-11 | 0.005 | 0 | 0 | 0 | matches |
+| `gs2` | 322 | 0.00500 | 2020-06 | 0.005 | 0 | 0 | 0 | matches |
+| `fedfunds` | 322 | 0 | — | 0.005 | 0 | 0 | 0 | matches |
+| `eurusd` | 322 | 0.000500 | 2011-07 | 0.0005 | 0 | 0 | 0 | matches |
+| `gbpusd` | 322 | 0.000500 | 2001-05 | 0.0005 | 0 | 0 | 0 | matches |
+| `brl` | 322 | 0.000500 | 2000-02 | 0.0005 | 0 | 0 | 0 | matches |
+| `cad` | 322 | 0.000500 | 2011-09 | 0.0005 | 0 | 0 | 0 | matches |
+| `cny` | 322 | 0.000500 | 2015-10 | 0.0005 | 0 | 0 | 0 | matches |
+| `inr` | 322 | 0.000500 | 2012-01 | 0.0005 | 0 | 0 | 0 | matches |
+| `jpy` | 322 | 0.000500 | 2016-02 | 0.0005 | 0 | 0 | 0 | matches |
+| `mxn` | 322 | 0.000500 | 2001-05 | 0.0005 | 0 | 0 | 0 | matches |
+| `usd_broad` | 250 | 0.000500 | 2012-02 | 0.0005 | 0 | 0 | 0 | matches |
+| `fedassets` | 288 | 0 | — | 0.0005 | 0 | 0 | 0 | matches |
+| `m2` | 321 | 0 | — | 0.0005 | 0 | 0 | 0 | matches |
+| `credit` | 321 | 0 | — | 0.0005 | 0 | 0 | 0 | matches |
+| `indpro` | 321 | 0.000500 | 2000-12 | 0.0005 | 0 | 0 | 0 | matches |
+| `delinq` | 106 | 0 | — | 0.005 | 0 | 0 | 0 | matches |
+| `cpi_yoy` | 320 | 0.261 | 2009-05 | 0.5 | 0 | 0 | 0 | different by design |
+| `corecpi_yoy` | 320 | 0.00500 | 2022-10 | 0.005 | 0 | 0 | 0 | matches |
+| `rent_yoy` | 320 | 0.00498 | 2009-04 | 0.005 | 0 | 0 | 0 | matches |
+| `wages_yoy` | 322 | 0.00499 | 2007-12 | 0.005 | 0 | 0 | 0 | matches |
+| `m2_yoy` | 321 | 0.00499 | 2017-07 | 0.005 | 0 | 0 | 0 | matches |
+| `t10y2y` | 322 | 0.00500 | 2015-06 | 0.005 | 0 | 0 | 0 | matches |
+| `cpi_nsa` | — | — | — | — | — | — | — | no v1 counterpart |
+| `receipts` | — | — | — | — | — | — | — | no v1 counterpart |
+| `outlays` | — | — | — | — | — | — | — | no v1 counterpart |
+| `net_worth` | — | — | — | — | — | — | — | no v1 counterpart |
 
 ## What the differences are
 
