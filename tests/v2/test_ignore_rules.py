@@ -107,7 +107,8 @@ V1_TABLES = ["atlas/approval.yaml", "atlas/catalog.yaml", "atlas/events.yaml", "
 @pytest.mark.parametrize("path", GENERATED + V1_DATA + V1_TABLES + COMMITTED[:3] + [
     ".git/config", "fixtures/vintage/three-fetch/1-initial/exchange.json", "somewhere-new/atlas.json",
     "tests/v2/test_rights.py", "site/package.json", "node_modules/x/index.js", ".env",
-    "packages/core/src/recipe.test.ts", "checks/v1-links.json", "docs/v2/PLAN.md"])
+    "packages/core/src/recipe.test.ts", "checks/v1-links.json", "docs/v2/PLAN.md", "notes/alex/a-note.md",
+    "content/.DS_Store", "content/events/.DS_Store"])
 def test_the_ingest_context_excludes_releases_v1_data_fixtures_and_everything_unnamed(path):
     assert docker_excludes(path, INGEST_IGNORE)
 
@@ -118,12 +119,15 @@ def test_the_ingest_context_is_the_writer_the_engine_and_what_they_read():
     ).stdout.splitlines()
     in_context = [p for p in tracked if not docker_excludes(p, INGEST_IGNORE)]
     # catalog/coverage (M14) declares which Series fills which cell of a matrix; it holds no value.
-    allowed = ("atlas/", "schema/", "catalog/series/", "catalog/coverage/", "packages/core/src/", "packages/core/bin/")
+    # content/ (M26): the Events, Claims, committed locks and Topics a Release is compiled from.
+    allowed = ("atlas/", "schema/", "catalog/series/", "catalog/coverage/", "packages/core/src/", "packages/core/bin/",
+               "content/")
     single = {"pyproject.toml", "uv.lock", "checks/spot.json", "packages/core/package.json"}
     assert [p for p in in_context if not p.startswith(allowed) and p not in single] == []
     assert [p for p in in_context if p.endswith((".yaml", ".yml", ".csv", ".parquet", ".test.ts"))] == []
     for needed in ("atlas/publish/engine.py", "catalog/series/cpi.json", "schema/rights-register.json",
-                   "packages/core/bin/atlas-core.mjs", "packages/core/src/cli/verify.ts", "checks/spot.json", "uv.lock"):
+                   "packages/core/bin/atlas-core.mjs", "packages/core/src/cli/verify.ts", "checks/spot.json", "uv.lock",
+                   "content/topics/inflation.md", "content/highlights.json"):
         assert needed in in_context, needed
 
 
