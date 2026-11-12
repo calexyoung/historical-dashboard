@@ -202,9 +202,11 @@ describe("/docs/rights", () => {
     expect(view.signed).toBe(RIGHTS_ROWS.rows.filter((row) => row.decision !== null).length);
     const bls = view.origins.find((row) => row.id === "bls")!;
     expect(bls).toMatchObject({ name: "Bureau of Labor Statistics", licence: "Public domain", decided: "All four", effect: "Its values may be shown and handed out as files." });
-    const bea = view.origins.find((row) => row.id === "bea")!;
-    expect(bea).toMatchObject({ decided: "Not decided", signed: null });
-    expect(bea.effect).toContain("nothing from it is shown");
+    // Whichever Origin is still undecided: the rows Alex has signed change, the wording does not.
+    const open = RIGHTS_ROWS.rows.find((row) => row.kind === "origin" && row.decision === null)!;
+    const undecided = view.origins.find((row) => row.id === open.id)!;
+    expect(undecided).toMatchObject({ decided: "Not decided", signed: null });
+    expect(undecided.effect).toContain("nothing from it is shown");
     expect(view.channels.map((row) => row.id)).toEqual(["fred", "alfred", "yahoo"]);
     expect(view.channels.every((row) => row.signed === null)).toBe(true);
   });

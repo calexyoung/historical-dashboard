@@ -13,7 +13,7 @@ export type RightsRow = {
 };
 
 export const RIGHTS_ROWS: { version: string; cleared: string[]; rows: RightsRow[] } = {
- "version": "2026-11-12.3",
+ "version": "2026-11-12.4",
  "cleared": [],
  "rows": [
   {
@@ -72,7 +72,13 @@ export const RIGHTS_ROWS: { version: string; cleared: string[]; rows: RightsRow[
     "store": true,
     "ml_use": true
    },
-   "decision": null
+   "decision": {
+    "display": true,
+    "redistribute": true,
+    "store": true,
+    "ml_use": true,
+    "signed_on": "2026-11-12"
+   }
   },
   {
    "id": "census",
@@ -98,7 +104,13 @@ export const RIGHTS_ROWS: { version: string; cleared: string[]; rows: RightsRow[
     "store": true,
     "ml_use": true
    },
-   "decision": null
+   "decision": {
+    "display": true,
+    "redistribute": true,
+    "store": true,
+    "ml_use": true,
+    "signed_on": "2026-11-12"
+   }
   },
   {
    "id": "treasury-fiscal-data",
@@ -177,6 +189,33 @@ export const RIGHTS_ROWS: { version: string; cleared: string[]; rows: RightsRow[
     "redistribute": true,
     "store": true,
     "ml_use": true
+   },
+   "decision": {
+    "display": true,
+    "redistribute": true,
+    "store": true,
+    "ml_use": true,
+    "signed_on": "2026-11-12"
+   }
+  },
+  {
+   "id": "eia-spot-prices",
+   "kind": "origin",
+   "name": "Energy Information Administration: spot prices credited to a commercial provider",
+   "licence_class": "unknown",
+   "attribution": "Source: U.S. Energy Information Administration (with the publication date).",
+   "terms": [
+    {
+     "url": "https://www.eia.gov/about/copyrights_reuse.php",
+     "read_on": "2026-11-11",
+     "how": "page"
+    }
+   ],
+   "proposal": {
+    "display": false,
+    "redistribute": false,
+    "store": false,
+    "ml_use": false
    },
    "decision": null
   },
