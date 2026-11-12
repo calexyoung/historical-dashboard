@@ -105,11 +105,20 @@ class FixtureAdapter:
     version = 1
 
     def problem(self, params: dict) -> str | None:
+        key = params.get("key")
+        if key is not None and not (isinstance(key, dict) and set(key) == {"parameter", "name"}
+                                    and all(isinstance(v, str) and v for v in key.values())):
+            return "its key does not name a query parameter and a key"
         return None if isinstance(params.get("url"), str) else "it names no url"
+
+    def key(self, params: dict) -> tuple[str, str] | None:
+        """A made-up source may want a made-up key, so the kit's handling of keys can be tested."""
+        key = params.get("key")
+        return (key["parameter"], key["name"]) if key else None
 
     def fetch(self, endpoint: Endpoint, fetch: Fetch) -> Evidence:
         scope = {"url": endpoint.params["url"]}
-        return self.examine(scope, [fetch.get(endpoint.params["url"]).body])
+        return self.examine(scope, [fetch.get(endpoint.params["url"], key=self.key(endpoint.params)).body])
 
     def examine(self, scope: dict, bodies: list[bytes]) -> Evidence:
         whole = bodies[0].endswith(b"# end\n")
@@ -1126,6 +1135,13 @@ def _is_day(text: str) -> bool:
 ADAPTERS = {adapter.name: adapter for adapter in
             (FixtureAdapter(), BlsAdapter(), TreasuryFiscalDataAdapter(), FedBoardAdapter(),
              ImfSdmxAdapter())}
+
+
+def key_of(endpoint: Endpoint) -> tuple[str, str] | None:
+    """(query parameter, name of the key) when the endpoint's source wants an API key, else
+    None. The name is that of an environment variable; the key is never in the register."""
+    wants = getattr(ADAPTERS[endpoint.adapter], "key", None)
+    return wants(endpoint.params) if wants else None
 
 
 def capture(endpoint: Endpoint, fetch: Fetch) -> RawCapture:

@@ -276,8 +276,9 @@ class Fetch:
         return part.response
 
     def get(self, url: str, headers: Iterable[tuple[str, str]] = (),
-            again: Callable[[Response], str | None] | None = None) -> Response:
-        return self.send(Request("GET", url, tuple(headers)), again)
+            again: Callable[[Response], str | None] | None = None,
+            key: tuple[str, str] | None = None) -> Response:
+        return self.send(Request("GET", url, tuple(headers), key=key), again)
 
 
 def redact(text: str, secrets: Iterable[str]) -> str:

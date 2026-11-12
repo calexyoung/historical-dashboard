@@ -55,7 +55,10 @@ def write_exchange(out: Path, source: str, endpoint: str, parts: list[dict], *,
         (directory / name).write_bytes(part["body"])
         listed.append({"request": part["request"], "status": part["status"],
                        "headers": part["headers"], "received_at": part["received_at"],
-                       "body_file": name, "sha256": hashlib.sha256(part["body"]).hexdigest()})
+                       "body_file": name, "sha256": hashlib.sha256(part["body"]).hexdigest(),
+                       # Said of bytes a source served with the key it was asked with in them:
+                       # the copies were replaced before anything was kept (ADR 0029).
+                       **({"key_removed": part["key_removed"]} if part.get("key_removed") else {})})
     record = {"format": EXCHANGE_FORMAT, "source": source, "endpoint": endpoint,
               "recorded_at": S.stamp(recorded_at), "provenance": provenance, "exchanges": listed}
     (directory / "exchange.json").write_text(
@@ -128,6 +131,7 @@ def load_capture(store: Path, line: dict) -> RawCapture:
             Response(part["status"], part["headers"], S.read_blob(Path(store), part["blob"]),
                      S.unstamp(part["received_at"])),
             list(part.get("retried_after", [])),
+            int(part.get("key_removed", 0)),
         ))
     return RawCapture(line["endpoint"], line["adapter"]["name"], parts,
                       Evidence(**line["evidence"]), S.unstamp(line["retrieved_at"]))
@@ -164,7 +168,8 @@ def export_exchanges(store: Path, out: Path, table: object, *, note: str) -> lis
                               "body": None if part.request.body is None
                               else part.request.body.decode("utf-8")},
                   "status": part.response.status, "headers": part.response.headers,
-                  "received_at": S.stamp(part.response.received_at), "body": part.response.body}
+                  "received_at": S.stamp(part.response.received_at), "body": part.response.body,
+                  "key_removed": part.key_removed}
                  for part in capture.parts]
         synthetic = line.get("real_bytes", True) is False
         write_exchange(out, line["source"], endpoint, parts,

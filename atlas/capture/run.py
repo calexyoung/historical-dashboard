@@ -10,14 +10,14 @@ logged and the others are still fetched, and the run ends non-zero.
 from __future__ import annotations
 
 import secrets as _secrets
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
 
 from ..rights import DIRECT, GRANTS, RightsGate
 from . import store as S
-from .adapters import ADAPTERS, Endpoint, capture
-from .http import CaptureError, Fetch, Part, Session, Transport, redact
+from .adapters import ADAPTERS, Endpoint, capture, key_of
+from .http import CaptureError, Fetch, Part, Session, Transport, redact, usable_key
 
 _ENDPOINT_FIELDS = {"id", "adapter", "datasets", "channel", "params", "note"}
 
@@ -97,6 +97,10 @@ def refusals(table: object, endpoints: Iterable[Endpoint]) -> dict[str, str]:
     return refused
 
 
+class _NoKey(Exception):
+    pass
+
+
 @dataclass
 class RunResult:
     exit_code: int
@@ -123,7 +127,7 @@ def select(table: object, only: Iterable[str] | None) -> list[Endpoint]:
 def _part_record(store: Path, source: str, part: Part, hide: Callable[[str], str]) -> dict:
     digest, blob = S.write_blob(store, source, part.response.received_at, part.response.body)
     request = part.request
-    return {
+    record = {
         "request": {
             "method": request.method,
             "url": hide(request.url),
@@ -141,6 +145,11 @@ def _part_record(store: Path, source: str, part: Part, hide: Callable[[str], str
         "blob": blob,
         "retried_after": [hide(reason) for reason in part.tries],
     }
+    if part.key_removed:
+        # The source repeated the key it was asked with. The bytes kept, and their hash and
+        # length, are the answer with each copy replaced; every other byte is as served.
+        record["key_removed"] = part.key_removed
+    return record
 
 
 def _hidden(value, hide: Callable[[str], str]):
@@ -165,11 +174,14 @@ def run_capture(
     secrets: Iterable[str] = (),
     sleep: Callable[[float], None] | None = None,
     user_agent: str | None = None,
+    keys: Mapping[str, str] | None = None,
 ) -> RunResult:
     """One capture run into ``store``. Returns what happened; raises nothing for a refusal, a
-    failed source or a locked store, all of which are results."""
+    failed source or a locked store, all of which are results. ``keys`` are the API keys the
+    run has, by name; they are sent only by a live transport and written nowhere."""
     store = Path(store)
-    hidden = [s for s in secrets if s]
+    keys = dict(keys or {})
+    hidden = [s for s in [*secrets, *keys.values()] if s]
 
     def hide(text: str) -> str:
         return redact(text, hidden)
@@ -189,12 +201,12 @@ def run_capture(
     store.mkdir(parents=True, exist_ok=True)
     try:
         with S.locked(store):
-            return _run(store, table, endpoints, transport, register_sha256, hide, sleep, user_agent)
+            return _run(store, table, endpoints, transport, register_sha256, hide, sleep, user_agent, keys)
     except S.StoreLocked as error:
         return RunResult(1, [f"REFUSED: {error} ({store / 'LOCK'}). Nothing was fetched."])
 
 
-def _run(store, table, endpoints, transport, register_sha256, hide, sleep, user_agent) -> RunResult:
+def _run(store, table, endpoints, transport, register_sha256, hide, sleep, user_agent, keys) -> RunResult:
     result = RunResult(0)
     started = transport.now()
     runs = S.read_runs(store, result.lines)
@@ -227,7 +239,8 @@ def _run(store, table, endpoints, transport, register_sha256, hide, sleep, user_
     options = {} if sleep is None else {"sleep": sleep}
     if user_agent:
         options["user_agent"] = user_agent
-    session = Session(transport, **options)
+    live = transport.kind == "live"
+    session = Session(transport, keys=keys, **options)
     rows = {row["id"]: row for row in table["rows"]}
     for endpoint in endpoints:
         fetch = Fetch(session)
@@ -247,8 +260,25 @@ def _run(store, table, endpoints, transport, register_sha256, hide, sleep, user_
             "real_bytes": bool(getattr(transport, "real", True)),
             "started_at": S.stamp(transport.now()),
         }
+        wanted = key_of(endpoint)
+        if wanted is not None:
+            record["key"] = wanted[1]  # its name; the key itself is written nowhere
+        lacking = None
+        if wanted is not None and live:
+            if not keys.get(wanted[1]):
+                lacking = f"{wanted[1]} is not set"
+            elif not usable_key(keys[wanted[1]]):
+                lacking = f"{wanted[1]} is not a key of the expected shape"
         try:
+            if lacking:
+                raise _NoKey(lacking)
             raw = capture(endpoint, fetch)
+        except _NoKey:
+            # The source is not asked and the run goes on. What was kept before stands: the
+            # endpoint is stale, and says when it was last fetched (PLAN M15).
+            record.update(outcome="no_key", retrieved_at=None, evidence=None, error=lacking)
+            last = S.last_captured(fetches, endpoint.id)
+            result.lines.append(f"STALE {endpoint.id}: {S.stale_phrase(last)} ({lacking}; nothing was asked)")
         except CaptureError as error:
             record.update(outcome="failed", retrieved_at=None, evidence=None, error=hide(str(error)))
             result.lines.append(f"FAILED {endpoint.id}: {hide(str(error))}")

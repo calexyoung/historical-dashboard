@@ -176,3 +176,15 @@ def missed_days(runs: list[dict], fetches: list[dict], endpoints: list[str], now
         if days:
             missed[endpoint] = days
     return missed
+
+
+def last_captured(fetches: list[dict], endpoint: str) -> str | None:
+    """When ``endpoint`` was last captured whole, or None."""
+    times = [line["retrieved_at"] for line in fetches
+             if line.get("endpoint") == endpoint and line.get("outcome") == "captured"]
+    return max(times) if times else None
+
+
+def stale_phrase(last: str | None) -> str:
+    """How a source that was not asked is described: by what is still held from it."""
+    return f"stale, last fetched {last}" if last else "stale, never fetched"
