@@ -69,6 +69,9 @@ export type ExplorerState = {
   notes: string[];
 };
 
+/** A view as an address carries it: everything but the notes on what could not be read. */
+export type ExplorerAddress = Omit<ExplorerState, "notes" | "pinUnread">;
+
 const KEY = /^[a-z][a-z0-9_]{0,63}$/;
 const MONTH = /^\d{4}-(0[1-9]|1[0-2])$/;
 const LAYER = /^(rec|pol|(ev|gov)(\.[a-z0-9_]{1,40})?)$/;
@@ -223,7 +226,7 @@ export function parseExplorerParams(input: URLSearchParams | Record<string, stri
  * The view as a query string, without the "?". Every value is made of characters that need no
  * escaping (keys, months, dates, tokens), so the address stays readable.
  */
-export function explorerQuery(state: Omit<ExplorerState, "notes" | "asOf" | "freq" | "pin" | "pinUnread"> & Partial<Pick<ExplorerState, "asOf" | "freq" | "pin">>): string {
+export function explorerQuery(state: ExplorerAddress): string {
   const parts: string[] = [];
   if (state.series !== null) parts.push(`s=${state.series.join(",")}`);
   if (state.mode !== null) parts.push(`mode=${state.mode}`);
@@ -308,6 +311,9 @@ export function v1HashToQuery(hash: string): string | null {
     mode,
     from,
     to,
+    asOf: null,
+    freq: null,
+    pin: null,
     layers,
     at: null,
     event: null,

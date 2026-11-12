@@ -636,15 +636,20 @@ describe("M18: as of a date", () => {
   });
 
   it("claims the weakest Basis among what is drawn", () => {
+    // In June the Origin's own record covers the quarterly series; Macro Atlas had not yet fetched the monthly one.
+    const june = view("s=fx_price_index,fx_output_quarterly&as_of=2025-06-01");
+    expect(june.selection.map((s) => [s.state, s.basis])).toEqual([["not_drawn", "unavailable"], ["drawn", "provider"]]);
+    expect(june.asOf!.basis).toBe("provider");
+    // On 13 December a day had gone unseen: that is the weaker Basis, and the one claimed.
     const v = view("s=fx_price_index,fx_output_quarterly&as_of=2025-12-13");
-    expect(v.selection.map((s) => s.basis)).toEqual(["uncertain", "provider"]);
+    expect(v.selection.map((s) => s.basis)).toEqual(["uncertain", "uncertain"]);
     expect(v.asOf!.basis).toBe("uncertain");
   });
 
   it("an unavailable answer is never filled with today's figure: the series is named, with the reason, and has no value", () => {
     const v = view("s=fx_price_index&as_of=2025-01-01&cmp=2024-01&from=2025-01&to=2025-06");
     expect(v.selection[0]).toMatchObject({ state: "not_drawn", basis: "unavailable" });
-    expect(v.selection[0]!.reason).toMatch(/held nothing|no coverage|not know/i);
+    expect(v.selection[0]!.reason).toMatch(/before Macro Atlas first fetched/);
     expect(v.figure).toBeNull();
     expect(v.runs).toEqual([]);
     expect(v.readout.series[0]!.rows).toEqual([]);
@@ -708,7 +713,10 @@ describe("M18: a series the release does not hold, a gate handed in, a pin", () 
     expect(v.absent).toEqual([expect.objectContaining({ key: "spx", name: "S&P 500" })]);
     expect(v.absent[0]!.reason).toMatch(/licensed/);
     expect(v.notes.join(" ")).toContain("no_such_series");
-    expect(v.resolved.series).toEqual(["fx_price_index"]);
+    // It stays in every address of the view, so it is named again wherever the reader goes; it can be removed.
+    expect(v.resolved.series).toEqual(["fx_price_index", "spx"]);
+    expect(v.selection[0]!.removeQuery).toBe("s=spx");
+    expect(v.absent[0]!.removeQuery).toBe("s=fx_price_index");
   });
 
   it("asks the gate it is handed (a test's own register), for values and for the picker", () => {

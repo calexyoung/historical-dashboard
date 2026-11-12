@@ -60,7 +60,19 @@ export type Relationships = {
   guard: string[];
 };
 
-export type RelationshipInput = { entry: CatalogEntry; /** The whole Series, through Query; null when it may not be shown. */ observations: readonly TransformObservation[] | null; reason: string | null };
+export type RelationshipInput = {
+  entry: CatalogEntry;
+  /** The whole Series, through Query; null when it may not be shown. */
+  observations: readonly TransformObservation[] | null;
+  reason: string | null;
+  /**
+   * A Series finer than monthly (daily, weekly): the whole Series as Query combined it to each
+   * frequency a pair can be compared at, or why it could not be. It then takes part at monthly
+   * or slower, combined once from its own Periods by its own declared rule (ADR 0032).
+   */
+  at?: Partial<Record<"monthly" | "quarterly" | "annual", readonly TransformObservation[] | string>>;
+};
+const RUNGS = ["monthly", "quarterly", "annual"] as const;
 
 const MONTHS_PER: Partial<Record<Frequency, number>> = { monthly: 1, quarterly: 3, annual: 12 };
 const UNIT_WORD: Partial<Record<Frequency, [one: string, many: string]>> = { monthly: ["month", "months"], quarterly: ["quarter", "quarters"], annual: ["year", "years"] };
@@ -102,10 +114,27 @@ export function relationshipsFor(
   if (able.length < 2) return { empty: "Select at least two series to see how they moved together.", basis, series, left_out, matrix: [], pair: null, guard };
 
   const stats = able.map(statsSeries);
+  const rung = (i: RelationshipInput): number => (i.at ? 0 : RUNGS.indexOf(i.entry.freq as (typeof RUNGS)[number]));
+  /** A Series as the engine's pair frame takes it: one finer than monthly, as Query combined it to the pair's frequency. */
+  const statsAt = (index: number, target: (typeof RUNGS)[number] | undefined): StatsSeries | string => {
+    const input = able[index]!;
+    if (!input.at || target === undefined) return stats[index]!;
+    const combined = input.at[target];
+    if (combined === undefined) return `the series was not combined to ${target} periods`;
+    if (typeof combined === "string") return combined.replace(/\.$/, "").replace(/^./, (c) => c.toLowerCase());
+    const native = input.entry.freq;
+    const breaks = (input.entry.breaks ?? []).map((b) => labelStart(native, b.period)?.period_start).filter((d): d is string => d !== undefined);
+    return { freq: target, continuity: input.entry.continuity, observations: combined, agg: input.entry.agg, breaks };
+  };
   const frames = new Map<string, PairFrame>();
   const frameOf = (a: number, b: number): PairFrame => {
     const id = `${a}:${b}`;
-    if (!frames.has(id)) frames.set(id, pairFrame(stats[a]!, stats[b]!, basis, { from: window.from, to: window.to }));
+    if (!frames.has(id)) {
+      const target = RUNGS[Math.max(rung(able[a]!), rung(able[b]!))];
+      const [x, y] = [statsAt(a, target), statsAt(b, target)];
+      const failed = typeof x === "string" ? x : typeof y === "string" ? y : null;
+      frames.set(id, failed !== null || typeof x === "string" || typeof y === "string" ? { ok: false, reason: "no_aggregation", message: failed! } : pairFrame(x, y, basis, { from: window.from, to: window.to }));
+    }
     return frames.get(id)!;
   };
   const many = (freq: Frequency, n: number): string => `${n} ${UNIT_WORD[freq]![n === 1 ? 0 : 1]}`;
@@ -165,7 +194,7 @@ export function relationshipsFor(
   const c = pearson(frame.x, frame.y, { lag: state.lag });
   const words = (i: number) => periodWords(freq, frame.periods[i]!, "short");
   const basisWords = basis === "chg" ? `percent change from the ${one} before` : "levels";
-  const combined = [ex, ey].filter((e) => e.freq !== freq).map((e) => `${e.name} is ${e.freq}, ${COMBINED[e.agg ?? ""] ?? "combined over"} each ${one}`);
+  const combined = [ex, ey].filter((e) => e.freq !== freq).map((e) => `${e.name} is ${e.freq.replace("_", " ")}, ${COMBINED[e.agg ?? ""] ?? "combined over"} each ${one}`);
   const offAxis = frame.periods.length - Math.abs(state.lag);
   const facts = [
     `Compared on ${basisWords}, ${freq}${combined.length > 0 ? ` (${list(combined)})` : ""}.`,
