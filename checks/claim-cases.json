@@ -1,0 +1,61 @@
+{
+  "about": "Shared table for Claim Readings (docs/method/claims.md). Invented values; every expected figure is worked out by hand from the six values below (100, 102, 101, 105, 110, 108 for January to June 2024), not by the engine. window_sensitivity: one Reading, its declared window and two alternatives. refused / accepted: Reading shapes that the engine (packages/core/src/claim.ts, readingProblem) and atlas check (atlas/content/claims.py, reading_problems) must both refuse or both accept. Run by packages/core/src/claim.test.ts and tests/v2/test_content_claims.py.",
+  "series": { "key": "fx_level", "freq": "monthly", "first": "2024-01", "values": [100, 102, 101, 105, 110, 108] },
+  "window_sensitivity": {
+    "reading": {
+      "id": "r1", "series": "fx_level", "transform": "lin", "measure": "change",
+      "window": { "from": "2024-01-01", "to": "2024-06-30" },
+      "alternative_windows": [
+        { "from": "2024-02-01", "to": "2024-05-31" },
+        { "from": "2024-03-01", "to": "2024-06-30" }
+      ]
+    },
+    "expect": {
+      "figures": [
+        { "name": "start", "value": 100, "period": "2024-01" },
+        { "name": "end", "value": 108, "period": "2024-06" },
+        { "name": "change", "value": 8 },
+        { "name": "pct_change", "value": 8 }
+      ],
+      "window_sensitivity": [
+        { "from": "2024-02-01", "to": "2024-05-31", "figures": [
+          { "name": "start", "value": 102, "period": "2024-02" },
+          { "name": "end", "value": 110, "period": "2024-05" },
+          { "name": "change", "value": 8 },
+          { "name": "pct_change", "value": 7.8431372549 }
+        ] },
+        { "from": "2024-03-01", "to": "2024-06-30", "figures": [
+          { "name": "start", "value": 101, "period": "2024-03" },
+          { "name": "end", "value": 108, "period": "2024-06" },
+          { "name": "change", "value": 7 },
+          { "name": "pct_change", "value": 6.9306930693 }
+        ] }
+      ]
+    }
+  },
+  "accepted": [
+    { "id": "a", "series": "fx_level", "transform": "lin", "measure": "value_at", "period": "2024-04" },
+    { "id": "b", "series": "fx_level", "transform": "pch", "measure": "extreme", "which": "max", "window": { "from": "2024-01-01", "to": "2024-06-30" } },
+    { "id": "c", "series": "fx_level", "transform": "rebase", "measure": "rank", "order": "highest", "period": "2024-04", "window": { "from": "2024-01-01", "to": "2024-06-30" }, "alternative_windows": [{ "from": "2024-02-01", "to": "2024-06-30" }] },
+    { "id": "d", "series": "fx_level", "freq": "quarterly", "transform": "lin", "measure": "difference", "periods": ["2024-Q1", "2024-Q2"] }
+  ],
+  "refused": [
+    { "why": "a measure the list does not have", "reading": { "id": "a", "series": "fx_level", "transform": "lin", "measure": "is_true", "period": "2024-04" } },
+    { "why": "a transform the allowlist does not have", "reading": { "id": "a", "series": "fx_level", "transform": "smooth", "measure": "value_at", "period": "2024-04" } },
+    { "why": "value_at without its period", "reading": { "id": "a", "series": "fx_level", "transform": "lin", "measure": "value_at" } },
+    { "why": "value_at with a window it does not use", "reading": { "id": "a", "series": "fx_level", "transform": "lin", "measure": "value_at", "period": "2024-04", "window": { "from": "2024-01-01", "to": "2024-06-30" } } },
+    { "why": "alternative windows on a measure with no window", "reading": { "id": "a", "series": "fx_level", "transform": "lin", "measure": "value_at", "period": "2024-04", "alternative_windows": [{ "from": "2024-01-01", "to": "2024-06-30" }] } },
+    { "why": "a transform that depends on a window, on a measure with none", "reading": { "id": "a", "series": "fx_level", "transform": "rebase", "measure": "value_at", "period": "2024-04" } },
+    { "why": "change without its window", "reading": { "id": "a", "series": "fx_level", "transform": "lin", "measure": "change" } },
+    { "why": "a window that ends before it starts", "reading": { "id": "a", "series": "fx_level", "transform": "lin", "measure": "change", "window": { "from": "2024-06-30", "to": "2024-01-01" } } },
+    { "why": "a window with a day the calendar does not have", "reading": { "id": "a", "series": "fx_level", "transform": "lin", "measure": "change", "window": { "from": "2024-02-30", "to": "2024-06-30" } } },
+    { "why": "an alternative window that repeats the declared one", "reading": { "id": "a", "series": "fx_level", "transform": "lin", "measure": "change", "window": { "from": "2024-01-01", "to": "2024-06-30" }, "alternative_windows": [{ "from": "2024-01-01", "to": "2024-06-30" }] } },
+    { "why": "extreme without saying which", "reading": { "id": "a", "series": "fx_level", "transform": "lin", "measure": "extreme", "window": { "from": "2024-01-01", "to": "2024-06-30" } } },
+    { "why": "rank without its order", "reading": { "id": "a", "series": "fx_level", "transform": "lin", "measure": "rank", "period": "2024-04", "window": { "from": "2024-01-01", "to": "2024-06-30" } } },
+    { "why": "rank of a period outside its window", "reading": { "id": "a", "series": "fx_level", "transform": "lin", "measure": "rank", "order": "highest", "period": "2025-04", "window": { "from": "2024-01-01", "to": "2024-06-30" } } },
+    { "why": "difference of one period", "reading": { "id": "a", "series": "fx_level", "transform": "lin", "measure": "difference", "periods": ["2024-01"] } },
+    { "why": "difference of a period and itself", "reading": { "id": "a", "series": "fx_level", "transform": "lin", "measure": "difference", "periods": ["2024-01", "2024-01"] } },
+    { "why": "a period label that is not of the frequency", "reading": { "id": "a", "series": "fx_level", "transform": "lin", "measure": "value_at", "period": "2024-Q2" } },
+    { "why": "a field that could hold a finding", "reading": { "id": "a", "series": "fx_level", "transform": "lin", "measure": "value_at", "period": "2024-04", "verdict": "accurate" } }
+  ]
+}
