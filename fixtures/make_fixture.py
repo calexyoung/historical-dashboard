@@ -362,22 +362,12 @@ ARCHIVED = {**CITATION, "archive_url": "https://example.org/archive/2026/fixture
 NOT_ARCHIVED = {"name": "Fixture harbour board (synthetic)", "url": "https://example.org/fixture-harbour",
                 "no_archive": "The fixture harbour board's pages cannot be archived (synthetic reason)."}
 
-# Events (0.3.0, M19): four, one of each way an Event is dated. All invented. Written out by
-# hand, each beside the Annotation it is drawn as, independently of atlas/content.
+# Events (0.3.0, M19): one, invented, with everything an Event may carry but an end. Written
+# out by hand beside the Annotation it is drawn as, independently of atlas/content. (One only:
+# the Explorer's tests from M4 count this Release's Events. The other ways an Event is dated
+# are in the tests that need them.)
 EVENTS = {
     "events": [
-        {
-            "id": "2023-fixture-bridge-programme",
-            "date": "2023",
-            "date_precision": "year",
-            "title": "Fixture bridge programme begins",
-            "category": "infrastructure",
-            "status": "public",
-            "topics": [],
-            "related_series": [],
-            "sources": [ARCHIVED],
-            "description": "",
-        },
         {
             "id": "2024-09-18-fixture-rate-decision",
             "date": "2024-09-18",
@@ -387,35 +377,10 @@ EVENTS = {
             "status": "public",
             "topics": ["inflation"],
             "related_series": ["fx_price_index", "fx_exchange_index", "fx_not_in_this_release"],
+            "magnitude": {"value": 0.5, "unit": "percentage points (invented)", "source": NOT_ARCHIVED},
             "sources": [ARCHIVED, NOT_ARCHIVED],
             "description": "The fixture central bank announced a new policy rate on 18 September 2024.\n\n"
                            "The announcement was published in the fixture gazette the same day.",
-        },
-        {
-            "id": "2025-03-fixture-statute",
-            "date": "2025-03",
-            "date_precision": "month",
-            "title": "Fixture statute takes effect",
-            "category": "legislation",
-            "status": "public",
-            "topics": [],
-            "related_series": [],
-            "sources": [ARCHIVED],
-            "description": "",
-        },
-        {
-            "id": "2025-08-04-fixture-storm",
-            "date": "2025-08-04",
-            "end": "2025-08-09",
-            "date_precision": "day",
-            "title": "Fixture storm crosses the fixture coast",
-            "category": "disaster",
-            "status": "public",
-            "topics": [],
-            "related_series": ["fx_payrolls_break"],
-            "magnitude": {"value": 12, "unit": "fixture districts under a warning", "source": NOT_ARCHIVED},
-            "sources": [ARCHIVED],
-            "description": "A storm crossed the fixture coast between 4 and 9 August 2025.",
         },
     ]
 }
@@ -434,10 +399,7 @@ def _event_annotation(event_id: str, anchor: dict) -> dict:
 
 ANNOTATIONS = {
     "annotations": [
-        _event_annotation("2023-fixture-bridge-programme", {"type": "period", "period": "2023"}),
         _event_annotation("2024-09-18-fixture-rate-decision", {"type": "date", "date": "2024-09-18"}),
-        _event_annotation("2025-03-fixture-statute", {"type": "period", "period": "2025-03"}),
-        _event_annotation("2025-08-04-fixture-storm", {"type": "span", "start": "2025-08-04", "end": "2025-08-09"}),
         {
             "id": "recession-2022-fixture",
             "kind": "recession",
