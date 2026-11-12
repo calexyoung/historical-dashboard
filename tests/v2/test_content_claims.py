@@ -308,6 +308,22 @@ def test_add_claim_writes_a_draft_that_passes_atlas_check(tmp_path, capsys):
     assert report.ok, C.render(report)
 
 
+def test_add_claim_dates_the_check_by_new_york_not_by_the_machine(tmp_path):
+    from argparse import Namespace
+    from datetime import UTC, datetime
+
+    from atlas.content import add as X
+
+    args = Namespace(said_on="2031-03-04", title="An evening claim", name="A", role="B", party="none", venue="C",
+                     quote="Q.", said_at=None, source=TWO[1::8], source_kind=["recording", "transcript"],
+                     archive_url=[ARCHIVE + "a", ARCHIVE + "b"], locator=["x", "y"], selection_note="Kept as a test.",
+                     checked_on=None, not_measured=None, topic=None, series=None, measure=None, content=str(tmp_path / "content"))
+    # 01:30 UTC on the 6th is the evening of the 5th in New York.
+    X.add_claim(args, load_catalog(), now=datetime(2031, 3, 6, 1, 30, tzinfo=UTC))
+    (record,), _ = K.load_claims(tmp_path / "content" / "claims")
+    assert record["checked_on"] == "2031-03-05"
+
+
 def test_add_claim_needs_two_archived_sources(tmp_path, capsys):
     content = tmp_path / "content"
     status, said = add(capsys, content, sources=TWO[:8])

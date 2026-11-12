@@ -47,9 +47,13 @@ from ..vintage.store import VintageStore
 from . import engine
 from . import root as R
 from . import saved as saved_queries
-from .export import AGE_NOTE, Built, ExportError, add_content, add_derived, add_latest, build, dump, lag_limit
+from .export import AGE_NOTE, Built, ContentRefused, ExportError, add_content, add_derived, add_latest, build, dump, lag_limit
 
 REJECTED, RETIRED = "rejected", "retired"
+#: What a root's STATUS.json says when the content could not be compiled. The reason itself
+#: may name a draft, so it is printed for the person running the command and written nowhere
+#: in the root (PLAN 4.3: a public root holds nothing that is not published).
+CONTENT_REFUSED = "REFUSED: the content cannot be compiled; the command's own output says why (python -m atlas check)"
 
 
 @dataclass
@@ -80,6 +84,9 @@ class _Run:
     register: dict
     now: datetime
     lines: list[str] = field(default_factory=list)
+    #: What STATUS.json says instead of the first refusal line, when that line may name
+    #: something that is not published (a draft's id or words).
+    status_reason: str | None = None
 
     @property
     def started(self) -> str:
@@ -104,8 +111,8 @@ class _Run:
             R.write_status(self.root, started=self.started, finished=S.stamp(_clock(None)),
                            outcome=outcome, release_id=release_id, profile=self.profile,
                            command=self.command, failed_checks=failed,
-                           reason=next((line for line in self.lines if line.startswith(
-                               ("REFUSED", "FAILED", "REJECTED"))), None) if exit_code else None)
+                           reason=(self.status_reason or next((line for line in self.lines if line.startswith(
+                               ("REFUSED", "FAILED", "REJECTED"))), None)) if exit_code else None)
         except OSError as error:
             self.lines.append(f"WARNING: the run's record could not be written ({error}); "
                               f"CURRENT names {R.current(self.root)}")
@@ -479,6 +486,10 @@ def _release(run: _Run, series, legacy, legacy_repo, reuse_data, keep, write, sp
                 "every Series the store holds is withheld" if built.withheld
                 else f"{run.store} holds no Series the series table names"))
         outcome, release_id, failed = _publish(run, built, write, spot)
+    except ContentRefused as refusal:
+        run.lines.append(f"REFUSED: {refusal}")
+        run.status_reason = CONTENT_REFUSED
+        return run.finish("refused", 1)
     except (_Refusal, ExportError, SeriesTableError, R.RootRefused) as refusal:
         run.lines.append(f"REFUSED: {refusal}")
         return run.finish("refused", 1)
@@ -687,9 +698,11 @@ def _withdraw(run: _Run, key: str, reason: str, write, content=None, manual=None
         text = f"withdrawn on {record[key]['withdrawn_at'][:10]}: {record[key]['reason']}"
         try:
             outcome, replacement, _failed = _publish(run, _reuse(run, None, {key: text}, content=content, manual=manual), write)
-        except (_Refusal, ExportError, PromotionRefused, OSError) as error:
+        except (_Refusal, ExportError, ContentRefused, PromotionRefused, OSError) as error:
             shutil.rmtree(run.root / STAGING, ignore_errors=True)
             outcome = "failed"
+            if isinstance(error, ContentRefused):
+                run.status_reason = CONTENT_REFUSED
             run.lines.append(f"FAILED: no replacement release could be written ({error})")
         if outcome == "promoted":
             run.lines.append(f"PROMOTED {replacement}: the current release, without {key}")

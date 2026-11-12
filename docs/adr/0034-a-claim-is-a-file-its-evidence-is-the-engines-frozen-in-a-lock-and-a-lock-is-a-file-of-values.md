@@ -97,7 +97,8 @@ left open. The contract for a person who records a Claim is `docs/method/claims.
     withdrawn") or `not_carried` (the legacy converter, which runs no engine step).
     `evidence/latest.json`: present exactly when a lock has a latest row. Both validators hold
     the three to each other (`duplicate_claim_id`, `claim_lock`, `claim_evidence`) and refuse a
-    draft Claim, a public Claim without a lock, and a local lock in a public-profile Release.
+    draft Claim, a public Claim without a lock, a local lock in a public-profile Release, and a
+    Claim whose frozen fields are not what its newest lock in the Release holds.
     0.1.0 to 0.3.0 Releases still open.
 15. **The latest row and the drift report are the Node step's, at every release** (PLAN 4.4
     step 4), also on `--reuse-data` and on the Release a withdrawal promotes. For the newest
@@ -116,7 +117,10 @@ left open. The contract for a person who records a Claim is `docs/method/claims.
     Transform, aggregation, Recipe or as-of rule changed.
 18. **`atlas add claim` writes a draft or nothing**: the record with two archived sources and
     at most one Reading (more are an edit to the file). It has no option for a status or a
-    finding.
+    finding. `checked_on` defaults to today in New York, as `compute` reads it.
+19. **A build that fails over content says so in the root without the words.** The reason a
+    Claim or an Event cannot be compiled may name a draft, so it is printed for the person
+    running the command, and `STATUS.json` says only that the content could not be compiled.
 
 ## Considered and not done
 

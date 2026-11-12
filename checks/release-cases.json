@@ -367,6 +367,10 @@
     {"name": "the latest rows are the lock's readings, in order", "steps": [{"op": "set", "file": "evidence/latest.json", "path": ["claims", 0, "readings"], "value": []}], "expect": ["claim_evidence"]},
     {"name": "the latest rows name each Claim once", "steps": [{"op": "set", "file": "evidence/latest.json", "path": ["claims"], "value": [null, null]}], "expect": ["schema"]},
     {"name": "a file under locks/ that is not named as a lock is refused", "steps": [{"op": "copy_file", "from": "locks/2025-12-11-a-fixture-official-on-fixture-prices.v1.lock.json", "to": "locks/notes.json"}], "expect": ["unknown_file"]},
-    {"name": "a local-profile release may hold a draft Claim", "steps": [{"op": "set", "file": "manifest.json", "path": ["profile"], "value": "local"}, {"op": "set", "file": "content/claims.json", "path": ["claims", 0, "status"], "value": "draft"}], "expect": []}
+    {"name": "a local-profile release may hold a draft Claim", "steps": [{"op": "set", "file": "manifest.json", "path": ["profile"], "value": "local"}, {"op": "set", "file": "content/claims.json", "path": ["claims", 0, "status"], "value": "draft"}], "expect": []},
+    {"name": "a Claim's quote is the one its newest lock froze", "steps": [{"op": "set", "file": "content/claims.json", "path": ["claims", 0, "quote"], "value": "Other words."}], "expect": ["claim_lock"]},
+    {"name": "a Claim's sources are the ones its newest lock froze", "steps": [{"op": "set", "file": "content/claims.json", "path": ["claims", 0, "sources", 0, "locator"], "value": "at 13:05"}], "expect": ["claim_lock"]},
+    {"name": "a Claim's Readings are the ones its newest lock froze", "steps": [{"op": "set", "file": "content/claims.json", "path": ["claims", 0, "readings", 0, "period"], "value": "2025-10"}], "expect": ["claim_lock"]},
+    {"name": "a Claim's status, topics and correction log are not frozen", "steps": [{"op": "set", "file": "content/claims.json", "path": ["claims", 0, "topics"], "value": ["prices"]}, {"op": "set", "file": "content/claims.json", "path": ["claims", 0, "corrections"], "value": []}], "expect": []}
   ]
 }

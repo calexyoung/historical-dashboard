@@ -71,6 +71,12 @@ _EXACT_INTEGER = 2 ** 53
 AGE_NOTE = ", past its limit of "
 
 
+class ContentRefused(Exception):
+    """The content cannot be compiled. Its words may name a draft (an id, a file, a term of
+    its text), so they are for the person running the command and never for a file of a
+    public root."""
+
+
 class ExportError(Exception):
     """Nothing can be released from this store as it stands."""
 
@@ -604,7 +610,7 @@ def add_content(built: Built, *, profile: str, gate: RightsGate, content: Path |
                                    legacy_annotations=layers if profile == "local" else None,
                                    local_locks=local_locks, withdrawn=withdrawn)
     except ContentError as error:
-        raise ExportError(f"the content cannot be compiled: {error}") from None
+        raise ContentRefused(f"the content cannot be compiled: {error}") from None
     built.files.update(compiled.files)
     built.report.extend(compiled.report)
     built.latest_for = compiled.latest_for
@@ -616,6 +622,8 @@ def add_latest(built: Built, outcome: engine.Outcome) -> None:
         return
     built.files[LATEST] = outcome.latest
     built.latest_for = []
+    # The engine computed something in this Release: its version is the Release's.
+    built.semantics_version = outcome.semantics_version
     if outcome.drift:
         built.drift = outcome.drift
         built.report.append({"check": "claims: drift", "outcome": "warn",

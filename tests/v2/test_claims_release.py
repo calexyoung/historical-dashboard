@@ -287,6 +287,38 @@ def test_editing_a_locked_reading_fails_the_release(world):
     assert current(world["tmp"] / "public") == before
 
 
+def test_a_failed_build_leaves_nothing_of_a_draft_in_the_public_root(world):
+    assert compute(world).exit_code == 0
+    moved = record()
+    moved["readings"] = [{**JOBS, "period": "2026-02"}, RATIO, RISE]
+    write_claim(world["content"], moved)
+    refused = publish(world, "public", reuse_data=True, now=CHECKED)
+    assert refused.exit_code == 1 and ID in " ".join(refused.lines)         # the person running it is told which
+    status = read_json(world["tmp"] / "public" / "STATUS.json")
+    assert status["outcome"] == "refused" and "content cannot be compiled" in status["reason"]
+    everything = all_bytes(world["tmp"] / "public")
+    for seed in (ID.encode(), b"invented jobs in January", b"jobs-in-january"):
+        assert seed not in everything
+
+
+def test_a_release_whose_only_engine_work_is_a_claim_says_the_engines_version_and_what_it_cannot_measure(world):
+    assert compute(world, "local").exit_code == 0
+    # The next Release is written from a table with no Recipe: nothing to materialise, and the
+    # ratio the Claim reads is no longer in it.
+    world["series"] = MAKE.ROOT / "fixtures" / "vintage" / "series.json"
+    result = publish(world, "local", now=CHECKED)
+    assert result.exit_code == 0, result.lines
+    assert validate_release(directory(world, "local")) == []
+    manifest = read_json(directory(world, "local") / "manifest.json")
+    assert {row["kind"] for row in manifest["series"].values()} == {"stored"}
+    assert manifest["semantics_version"] == "0.7.0"
+    (entry,) = read_json(directory(world, "local") / "evidence" / "latest.json")["claims"]
+    jobs, ratio, _rise = entry["readings"]
+    assert jobs["drift"] == [] and ratio["latest"] is None and ratio["refused"]["reason"] == "unknown_series"
+    assert [(d["kind"], d["field"], d["now"]) for d in ratio["drift"]] == [
+        ("latest_differs", "availability", "unknown_series"), ("then_differs", "availability", "unknown_series")]
+
+
 def test_editing_a_number_in_a_lock_fails_the_release(world):
     assert compute(world).exit_code == 0
     before = current(world["tmp"] / "public")

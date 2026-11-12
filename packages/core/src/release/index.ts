@@ -77,6 +77,18 @@ const CLAIMS = "content/claims.json";
 const LATEST = "evidence/latest.json";
 /** The versions that have no Claims, locks or latest Evidence rows; from 0.4.0 (M20) a Release must have content/claims.json. */
 const BEFORE_CLAIMS: readonly unknown[] = ["0.1.0", "0.2.0", "0.3.0"];
+/** The fields of a Claim its lock freezes (atlas/content/claims.py, RECORD_FIELDS). */
+const CLAIM_RECORD = ["claimant", "said_on", "said_at", "venue", "sources", "quote", "readings", "readings_not_measured", "selection_note", "checked_on"] as const;
+/** Compared as values, whatever order a writer put an object's names in (as Python's == does). */
+function sameValue(a: unknown, b: unknown): boolean {
+  const sorted = (value: unknown): unknown =>
+    Array.isArray(value)
+      ? value.map(sorted)
+      : value !== null && typeof value === "object"
+        ? Object.fromEntries(Object.entries(value).sort(([x], [y]) => (x < y ? -1 : 1)).map(([k, v]) => [k, sorted(v)]))
+        : value;
+  return JSON.stringify(sorted(a)) === JSON.stringify(sorted(b));
+}
 const LOCK_FILE = /^locks\/([0-9]{4}-[0-9]{2}-[0-9]{2}-[a-z0-9]+(?:-[a-z0-9]+)*\.v[1-9][0-9]{0,3})\.lock\.json$/;
 const REQUIRED_FILES = [MANIFEST, CATALOG, ANNOTATIONS] as const;
 /** The versions that have no content/events.json; from 0.3.0 (M19) a Release must have it. */
@@ -325,7 +337,12 @@ function claimRules(bundle: Release, files: ReleaseFiles, lockPaths: Map<string,
     if (row.state !== "in_release" || row.sha256 !== sha256(files[path]!)) add("claim_lock", path, "it is not the file the Claim lists (state and sha256)");
     if (row.record_sha256 !== lock.record_sha256) add("claim_lock", path, "its record_sha256 is not the one the Claim lists");
     if (isPublic && lock.release.profile !== "public") add("claim_lock", path, "it was computed on a local-profile Release, which is never public");
-    if (lock.version === claim.locks.length) need.set(claim.id, lock.version);
+    if (lock.version === claim.locks.length) {
+      need.set(claim.id, lock.version);
+      // The statement shown is the one the evidence was frozen for.
+      const changed = CLAIM_RECORD.filter((name) => !sameValue(claim[name], lock.record[name]));
+      if (changed.length > 0) add("claim_lock", CLAIMS, `${claim.id}: its ${changed.join(", ")} is not what its newest lock froze`);
+    }
   }
   const missing = (ids: string[]): void => {
     for (const id of ids.sort()) add("claim_evidence", LATEST, `${id} v${need.get(id)} is in the release and has no latest row`);

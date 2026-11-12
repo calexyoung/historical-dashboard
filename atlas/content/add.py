@@ -12,7 +12,7 @@ command does not look one up and does not make a reason up.
 from __future__ import annotations
 
 import re
-from datetime import date
+from datetime import UTC, date, datetime
 from pathlib import Path
 
 from . import claims as K
@@ -102,7 +102,7 @@ def add_note(args, series: set[str] | None) -> tuple[Path, list[str]]:
                   "next: python -m atlas check"]
 
 
-def add_claim(args, series: dict[str, dict]) -> tuple[Path, list[str]]:
+def add_claim(args, series: dict[str, dict], now: datetime | None = None) -> tuple[Path, list[str]]:
     """Write the draft Claim the options describe: the record, and at most one Reading (more
     are an edit to the file). ``series`` is the Catalog. A Claim is written as a draft with
     two archived records of the statement or not at all; no option makes one public and none
@@ -153,7 +153,8 @@ def add_claim(args, series: dict[str, dict]) -> tuple[Path, list[str]]:
                     for url, kind, archive, locator in zip(sources, kinds, archives, locators, strict=True)],
         "readings": readings, "readings_not_measured": [text.strip() for text in args.not_measured or []],
         "selection_note": args.selection_note.strip(),
-        "checked_on": args.checked_on or date.today().isoformat(),
+        # The day in New York, as compute holds it: a machine on UTC is a day ahead in the evening.
+        "checked_on": args.checked_on or K.new_york_day(now or datetime.now(UTC)),
         "corrections": [], "topics": list(args.topic or []), "status": "draft", "quote": args.quote.strip(),
     }
     text = K.serialise(claim)

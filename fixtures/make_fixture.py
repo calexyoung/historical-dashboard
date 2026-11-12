@@ -635,7 +635,7 @@ def canonical(obj) -> bytes:
 
 def claims_file() -> tuple[dict, bytes | None, bytes | None]:
     """content/claims.json, and the bytes of the lock and of the latest rows when the files
-    beside this script exist (they do not while make_claim.py is writing them)."""
+    beside this script exist (they do not before make_claim.py has first written them)."""
     lock_path, latest_path = CLAIMS_DIR / "locks" / LOCK_NAME, CLAIMS_DIR / "latest.json"
     lock = lock_path.read_bytes() if lock_path.exists() else None
     latest = latest_path.read_bytes() if latest_path.exists() and lock is not None else None
@@ -652,8 +652,10 @@ def dump(obj) -> bytes:
     return (json.dumps(obj, indent=2, ensure_ascii=False) + "\n").encode("utf-8")
 
 
-def build(root: Path) -> Path:
-    """Write the fixture in PUBLIC layout under root: releases/{id}/ and CURRENT."""
+def build(root: Path, claims: bool = True) -> Path:
+    """Write the fixture in PUBLIC layout under root: releases/{id}/ and CURRENT. ``claims``
+    False leaves the Claim out: the data files alone, which is what make_claim.py computes
+    the Claim's lock from."""
     release = root / "releases" / RELEASE_ID
     if release.exists():
         shutil.rmtree(release)
@@ -701,8 +703,8 @@ def build(root: Path) -> Path:
     (release / "catalog.json").write_bytes(dump(CATALOG))
     (release / "content" / "annotations.json").write_bytes(dump(ANNOTATIONS))
     (release / "content" / "events.json").write_bytes(dump(EVENTS))
-    claims, lock, latest = claims_file()
-    (release / "content" / "claims.json").write_bytes(dump(claims))
+    listed, lock, latest = claims_file() if claims else ({"claims": []}, None, None)
+    (release / "content" / "claims.json").write_bytes(dump(listed))
     if lock is not None:
         (release / "locks").mkdir()
         (release / "locks" / LOCK_NAME).write_bytes(lock)

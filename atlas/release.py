@@ -37,6 +37,9 @@ SCHEMA_VERSIONS = ("0.1.0", "0.2.0", "0.3.0", SCHEMA_VERSION)
 _BEFORE_EVENTS = ("0.1.0", "0.2.0")
 #: The versions that have no Claims, locks or latest Evidence rows.
 _BEFORE_CLAIMS = ("0.1.0", "0.2.0", "0.3.0")
+#: The fields of a Claim its lock freezes (atlas/content/claims.py, RECORD_FIELDS).
+_CLAIM_RECORD = ("claimant", "said_on", "said_at", "venue", "sources", "quote", "readings",
+                 "readings_not_measured", "selection_note", "checked_on")
 
 MANIFEST = "manifest.json"
 CATALOG = "catalog.json"
@@ -433,6 +436,10 @@ def _claim_rules(bundle: dict, files: Mapping[str, bytes], lock_paths: dict[str,
             add("claim_lock", path, "it was computed on a local-profile Release, which is never public")
         if lock["version"] == len(claim["locks"]):
             need[claim["id"]] = lock["version"]
+            # The statement shown is the one the evidence was frozen for.
+            changed = [name for name in _CLAIM_RECORD if claim.get(name) != lock["record"].get(name)]
+            if changed:
+                add("claim_lock", CLAIMS, f"{claim['id']}: its {', '.join(changed)} is not what its newest lock froze")
     held = bundle.get("latest")
     if held is None:
         for claim_id, version in sorted(need.items()):

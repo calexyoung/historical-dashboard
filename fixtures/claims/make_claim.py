@@ -38,16 +38,8 @@ def documents() -> tuple[bytes, bytes]:
     make = fixture_module()
     claim = make.CLAIM
     with tempfile.TemporaryDirectory() as work:
-        # The fixture's data files alone: what the engine reads.
-        for path in (HERE / "locks" / make.LOCK_NAME, HERE / "latest.json"):
-            if path.exists():
-                path.rename(Path(work) / path.name)
-        try:
-            release = make.build(Path(work) / "root")
-        finally:
-            for name, target in ((make.LOCK_NAME, HERE / "locks" / make.LOCK_NAME), ("latest.json", HERE / "latest.json")):
-                if (Path(work) / name).exists():
-                    (Path(work) / name).rename(target)
+        # The fixture's data files alone: what the engine reads. Nothing here is moved or changed.
+        release = make.build(Path(work) / "root", claims=False)
         spec = {name: claim[name] for name in ("said_on", "said_at", "checked_on", "readings") if name in claim}
         answer = engine.claim_evidence(release, make.RELEASE_ID, spec)
         if not answer["ok"]:
