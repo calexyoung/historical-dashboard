@@ -42,8 +42,10 @@ STORED = {
     "eia": ["brent", "elec_gen", "gas", "natgas", "wti"],
 }
 DERIVED = ["gdp_yoy"]
-#: Invented keys of the two agencies' shapes. They open nothing.
-SEEDED = {"BEA_API_KEY": "0F1E2D3C-4B5A-6978-8796-A5B4C3D2E1F0", "EIA_API_KEY": "s33dedKeyThatOpensNothing0123456789abcdEF"}
+#: Invented keys of the two agencies' shapes, spelt out of plain words so that nothing here
+#: looks like a secret to a scanner. They open nothing.
+SEEDED = {"BEA_API_KEY": "-".join(["INVENTED", "0000", "0000", "0000", "NOTAREALKEY0"]),
+          "EIA_API_KEY": ("invented" * 5).title()}
 
 
 class Agencies:
