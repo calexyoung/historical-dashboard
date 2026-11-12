@@ -93,8 +93,10 @@ def canonical(address: str) -> tuple[str, str | None]:
     series = said["s"].split(",")
     if len(set(series)) != len(series) or len(series) > MAX_SERIES:
         raise NotSaved(f"s: at most {MAX_SERIES} series, each once")
-    if said["from"] > said["to"] or said["from"].startswith("0000"):
+    if said["from"] > said["to"]:
         raise NotSaved("the window ends before it starts")
+    if any(said.get(name, "1").startswith("0000") for name in ("from", "to", "cmp")):
+        raise NotSaved("a month in year 0000 is not a month")
     layers = said["layers"].split(",")
     if len(set(layers)) != len(layers):
         raise NotSaved("layers: a layer is named twice")

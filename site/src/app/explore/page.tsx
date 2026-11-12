@@ -146,7 +146,8 @@ export default async function ExplorePage({ searchParams }: PageProps<"/explore"
           <SeriesPicker
             action={here}
             groups={view.picker}
-            selected={view.selection.map((x) => x.key)}
+            selected={resolved.series!}
+            kept={view.absent.map((a) => a.key)}
             max={MAX_SERIES}
             hidden={pickerHidden}
             initialOpen={state.pick}

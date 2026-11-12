@@ -741,3 +741,27 @@ describe("M18: a series the release does not hold, a gate handed in, a pin", () 
     expect(view("s=fx_price_index&mode=chg").figure!.plots[0]!.unitLine).toMatch(/change from the period before/i);
   });
 });
+
+describe("M18: found in review", () => {
+  it("a common frequency for the chart does not change what two series are compared at", () => {
+    const own = view("s=fx_price_index,fx_output_quarterly&basis=lvl&from=2023-01&to=2025-12").relationships.pair!;
+    const common = view("s=fx_price_index,fx_output_quarterly&basis=lvl&from=2023-01&to=2025-12&freq=quarterly").relationships.pair!;
+    expect(own.facts.join(" ")).toMatch(/[1-9]\d* of \d+ quarters have a value for both/);
+    expect(common.answer).toEqual(own.answer);
+    expect(common.facts).toEqual(own.facts);
+  });
+
+  it("the snapshot of an as-of view computes nothing across periods still held under earlier metadata", () => {
+    const v = view("s=fx_poverty_rate_annual&as_of=2025-12-13");
+    expect(Number(v.snapshot[0]!.first!.period)).toBeGreaterThanOrEqual(2016);
+    // The chart still shows them: they are values, only not ones to subtract from.
+    expect(v.runs[0]!.rows.find((r) => r.period === "2012")!.value).not.toBeNull();
+    expect(v.notes.join(" ")).toMatch(/left out of whatever is computed across periods/);
+  });
+
+  it("a view whose only drawn run is the second range claims that run's Basis", () => {
+    const v = view("s=fx_price_index&from=2026-01&to=2026-10&cmp=2025-01&as_of=2025-12-10");
+    expect(v.selection[0]!.compared).toMatchObject({ drawn: true });
+    expect(v.asOf!.basis).toBe("atlas_observed");
+  });
+});

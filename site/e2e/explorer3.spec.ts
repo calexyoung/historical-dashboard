@@ -103,6 +103,18 @@ test.describe("a series the release does not hold", () => {
   });
 });
 
+test.describe("the picker and a series the release does not hold", () => {
+  test("choosing another series keeps the named one in the address, and it counts toward the eight", async ({ page, atlas }) => {
+    await page.goto(atlas.url("/explore?s=fx_price_index,spx"));
+    await page.getByRole("link", { name: /Choose series/ }).click();
+    const sheet = page.locator("dialog#series-picker");
+    await expect(sheet).toContainText("2 of 8 selected");
+    await sheet.getByLabel("Fixture output", { exact: false }).check();
+    await expect.poll(() => search(page).get("s")).toBe("fx_price_index,spx,fx_output_quarterly");
+    await expect(page.locator("[data-absent=spx]")).toBeVisible();
+  });
+});
+
 test.describe("with JavaScript off", () => {
   test.use({ javaScriptEnabled: false });
 
@@ -115,6 +127,15 @@ test.describe("with JavaScript off", () => {
     expect([params.get("as_of"), params.get("freq"), params.get("pin")]).toEqual(["2025-12-10", "quarterly", FIXTURE_ID]);
     await expect(page.locator("[data-as-of]")).toHaveAttribute("data-as-of", "atlas_observed");
     await expect(page.locator("[data-pinned]")).toBeVisible();
+  });
+
+  test("the picker's plain form carries a series the release does not hold", async ({ page, atlas }) => {
+    await page.goto(atlas.url("/explore?s=fx_price_index,spx&pick=1"));
+    await page.locator("dialog#series-picker").getByRole("button", { name: "Show these series" }).click();
+    // A plain form sends the field once per box; the page reads them as one list.
+    expect(search(page).getAll("s").flatMap((v) => v.split(",")).filter(Boolean).sort()).toEqual(["fx_price_index", "spx"]);
+    await expect(page.locator("[data-absent=spx]")).toBeVisible();
+    await expect(page.locator("[data-selected=fx_price_index]")).toBeVisible();
   });
 });
 

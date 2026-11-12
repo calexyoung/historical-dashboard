@@ -290,7 +290,12 @@ export function explorerView(release: OpenedRelease, surface: Surface, state: Ex
     const [own, to] = [COARSENESS[e.freq], state.freq === null ? undefined : COARSENESS[state.freq]];
     return own !== undefined && to !== undefined && own < to ? (state.freq as Frequency) : undefined;
   };
-  const request = (e: CatalogEntry, transform: ExplorerMode, range: { from?: string; to?: string }, freq = brought(e)) => ({
+  /** `freq`: a frequency to bring the Series to; null for its own; left out, the common one asked for where the Series is finer. */
+  const request = (e: CatalogEntry, transform: ExplorerMode, range: { from?: string; to?: string }, at?: Frequency | null) => {
+    const freq = at === undefined ? brought(e) : (at ?? undefined);
+    return requestOf(e, transform, range, freq);
+  };
+  const requestOf = (e: CatalogEntry, transform: ExplorerMode, range: { from?: string; to?: string }, freq: Frequency | undefined) => ({
     series: [e.key],
     transform,
     permission: "display",
@@ -314,7 +319,7 @@ export function explorerView(release: OpenedRelease, surface: Surface, state: Ex
     // An as-of question with no answer is never filled with today's figure (ADR 0005).
     if (own.vintage?.basis === "unavailable") return { ...said, raw: [], drawn: null, failure: null, reason: `Nothing is shown as of then: ${unavailableWords(own.vintage.reason)}.` };
     if (!own.result.ok) return { ...said, raw: [], drawn: null, failure: null, reason: `${sentence(own.result.message)}.` };
-    const raw = own.result.observations;
+    let raw = own.result.observations;
     if (mode === "lin") return { ...said, raw, drawn: raw, failure: null, reason: null };
     const answer = ask(mode);
     if (!answer.ok) return { ...said, raw, drawn: null, failure: null, reason: answer.message };
@@ -323,6 +328,16 @@ export function explorerView(release: OpenedRelease, surface: Surface, state: Ex
     // The values as drawn may look further back than the Series' own in the window: theirs is the Basis claimed.
     const vintage = shownAs.vintage ?? own.vintage;
     if (!shownAs.result.ok) return { ...said, vintage, raw, drawn: null, failure: null, reason: shownAs.result.reason === "not_offered" ? notOffered(mode) : `${sentence(shownAs.result.message)}.` };
+    // A Transform may answer at a slower frequency than the Series' own (a year-over-year change
+    // of a daily Series is taken on months). The Series' own values are then asked for at that
+    // frequency too, so every row has both, and the Series is named at the frequency it is drawn at.
+    if (shownAs.answered_freq !== said.freq) {
+      const again = query(release, surface, request(e, "lin", range, shownAs.answered_freq as Frequency), { maxRows: rowsLeft, gate });
+      if (!again.ok || !again.series[0]!.result.ok) return { ...said, vintage, raw, drawn: null, failure: null, reason: again.ok ? "Shown this way, this series has no values of its own at the frequency it is drawn at." : again.message };
+      rowsLeft -= again.rows;
+      raw = again.series[0]!.result.observations;
+      Object.assign(said, { freq: shownAs.answered_freq, combined: shownAs.aggregated ?? again.series[0]!.aggregated });
+    }
     return { ...said, vintage, raw, drawn: shownAs.result.observations, failure: null, reason: null };
   };
   type Got = Asked & { entry: CatalogEntry; unit: string; freq: CatalogEntry["freq"] };
@@ -339,7 +354,7 @@ export function explorerView(release: OpenedRelease, surface: Surface, state: Ex
     const others = g.vintage?.metadata?.other_metadata_periods ?? [];
     if (others.length > 0) {
       const named = others.length > 6 ? `${others.slice(0, 6).join(", ")} and ${others.length - 6} more` : list(others);
-      notes.push(`${g.entry.name}: as of then, ${named} ${others.length === 1 ? "was" : "were"} still held under an earlier unit or definition${(g.vintage?.left_out_periods.length ?? 0) > 0 ? " and are left out of what is computed" : ""}.`);
+      notes.push(`${g.entry.name}: as of then, ${named} ${others.length === 1 ? "was" : "were"} still held under an earlier unit or definition. ${others.length === 1 ? "It is" : "They are"} left out of whatever is computed across periods: a change, the snapshot, the relationships.`);
     }
     if (g.vintage?.metadata?.differs_from_current) notes.push(`${g.entry.name}: the unit recorded then was “${g.vintage.metadata.unit}”. It has changed since.`);
   }
@@ -750,6 +765,11 @@ export function explorerView(release: OpenedRelease, surface: Surface, state: Ex
     const latest = latestValue(release, surface, e.key, gate);
     return latest.ok && latest.latest ? periodWords(e.freq, { period: latest.latest.period, period_start: labelStart(e.freq, latest.latest.period)?.period_start ?? latest.latest.period_end }, "short") : null;
   };
+  /** Values that may be set beside one another: a Period still held under earlier metadata has none (as a Recipe treats it). */
+  const comparable = (observations: TransformedObservation[], vintage: VintageInfo | null): TransformedObservation[] => {
+    const others = new Set(vintage?.metadata?.other_metadata_periods ?? []);
+    return others.size === 0 ? observations : observations.map((o) => (others.has(o.period) ? { ...o, value: null, status: "missing" } : o));
+  };
   const snapshot = snapshotRows(
     got.map((g, i) => ({
       key: g.entry.key,
@@ -758,7 +778,7 @@ export function explorerView(release: OpenedRelease, surface: Surface, state: Ex
       unitKind: g.entry.unit_kind,
       freq: g.freq,
       source: sourceWords(g.entry),
-      observations: g.failure ? null : g.raw,
+      observations: g.failure ? null : comparable(g.raw, g.vintage),
       latest: g.failure ? null : latestWords(g.entry),
       absent: g.failure ? `${selection[i]!.state === "withheld" ? "Withheld" : "Not shown here"}: ${g.reason}` : null,
     })),
@@ -771,21 +791,25 @@ export function explorerView(release: OpenedRelease, surface: Surface, state: Ex
   const whole: RelationshipInput[] = got.map((g) => {
     if (g.failure) return { entry: g.entry, observations: null, reason: g.reason };
     if (got.length < 2 || start === null || end === null) return { entry: g.entry, observations: [], reason: null };
-    const everything = (freq?: Frequency): TransformedObservation[] | string => {
+    // At the Series' own frequency unless one is named: the pair frame combines months and
+    // quarters itself, whatever common frequency the chart was asked for.
+    const everything = (freq: Frequency | null): TransformedObservation[] | string => {
       const all = query(release, surface, request(g.entry, "lin", {}, freq), { maxRows: rowsLeft, gate });
       if (!all.ok) return all.message;
       rowsLeft -= all.rows;
       const answer = all.series[0]!;
       if (answer.vintage?.basis === "unavailable") return `Nothing is known of it as of then: ${unavailableWords(answer.vintage.reason)}.`;
-      return answer.result.ok ? answer.result.observations : `${sentence(answer.result.message)}.`;
+      return answer.result.ok ? comparable(answer.result.observations, answer.vintage) : `${sentence(answer.result.message)}.`;
     };
+    // Named by the unit in force at the Cutoff, as the chart names it.
+    const entry = { ...g.entry, unit: g.unit };
     if (fine(g.entry)) {
       const at: NonNullable<RelationshipInput["at"]> = {};
       for (const rung of RUNGS.slice(0, slowest + 1)) at[rung] = everything(rung);
-      return { entry: g.entry, observations: [], reason: null, at };
+      return { entry, observations: [], reason: null, at };
     }
-    const all = everything(undefined);
-    return typeof all === "string" ? { entry: g.entry, observations: null, reason: all } : { entry: g.entry, observations: all, reason: null };
+    const all = everything(null);
+    return typeof all === "string" ? { entry, observations: null, reason: all } : { entry, observations: all, reason: null };
   });
   const windowWords = start !== null && end !== null ? `${stopWords(monthStart(start.slice(0, 7)))} to ${stopWords(monthStart(end.slice(0, 7)))}` : "";
   const relationships = relationshipsFor(whole, { from: start ?? "0001-01-01", to: end ?? "9999-12-31", words: windowWords }, state, queryWith);
@@ -797,7 +821,7 @@ export function explorerView(release: OpenedRelease, surface: Surface, state: Ex
     modes,
     selection,
     absent,
-    asOf: asOf === null ? null : { date: asOf, words: asOfWords(asOf), basis: weakestBasis(selection.filter((x) => x.state === "drawn").flatMap((x) => (x.basis ? [x.basis] : []))) ?? "unavailable", offQuery: queryWith({ asOf: null }) },
+    asOf: asOf === null ? null : { date: asOf, words: asOfWords(asOf), basis: weakestBasis(selection.filter((x) => x.state === "drawn" || x.compared?.drawn).flatMap((x) => (x.basis ? [x.basis] : []))) ?? "unavailable", offQuery: queryWith({ asOf: null }) },
     common: state.freq === null ? null : { freq: state.freq, offQuery: queryWith({ freq: null }) },
     notes,
     window: {

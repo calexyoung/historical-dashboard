@@ -33,6 +33,16 @@
     "s=unrate&mode=lin&from=2019-06&to=2022-06&layers=none&utm_source=x",
     "s=unrate,unrate&mode=lin&from=2019-06&to=2022-06&layers=none",
     "s=a,b,c,d,e,f,g,h,i&mode=lin&from=2019-06&to=2022-06&layers=none",
-    "s=unrate&mode=lin&from=2019-06&to=2022-06&layers=none&table=1"
+    "s=unrate&mode=lin&from=2019-06&to=2022-06&layers=none&table=1",
+    "s=unrate&mode=lin&from=2019-06&to=2022-06&layers=none&cmp=0000-01",
+    "s=unrate&mode=lin&from=0000-01&to=2022-06&layers=none",
+    "s=unrate&mode=lin&from=2019-06&to=2022-06&layers=none&at=0000-01-01",
+    "s=unrate&mode=lin&from=2019-06&to=2022-06&layers=none&lag=-0",
+    "s=unrate&mode=lin&from=2019-06&to=2022-06&layers=none&event=",
+    "s=unrate&mode=lin&from=2019-06&to=2022-06&layers=none&as_of=2026-03-10T24:00:00Z",
+    "s=unrate&mode=lin&from=2019-06&to=2022-06&layers=rec,rec",
+    "s=unrate&mode=lin&from=2019-06&to=2022-06&layers=none,rec",
+    "s=unrate&mode=lin&from=2019-06&to=2022-06&layers=none&sx=unrate&sy=Unrate",
+    "s=unrate&mode=lin&from=2019-06&to=2022-06&layers=none%20"
   ]
 }

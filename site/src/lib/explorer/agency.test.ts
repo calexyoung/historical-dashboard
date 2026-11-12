@@ -161,6 +161,18 @@ describe("native frequency", () => {
     expect(v.relationships.pair!.facts.join(" ")).toMatch(/quarterly/);
   });
 
+  it("a change on the year of a weekly series is taken on months, and every row then has the series' own monthly value beside it", () => {
+    const v = view("s=gas&mode=pc1");
+    expect(v.selection[0]).toMatchObject({ state: "drawn", freq: "monthly", combined: { from: "weekly", to: "monthly", method: "mean" } });
+    const rows = v.runs[0]!.rows;
+    expect(v.runs[0]!.freq).toBe("monthly");
+    expect(rows.every((r) => /^\d{4}-\d{2}$/.test(r.period))).toBe(true);
+    const drawn = rows.filter((r) => r.shown !== null);
+    expect(drawn.length).toBeGreaterThan(3);
+    expect(drawn.every((r) => r.value !== null)).toBe(true);
+    expect(v.readout.series[0]!.freq).toBe("monthly");
+  });
+
   it("answers as of a date from the release's own history", () => {
     const v = view("s=unrate&as_of=2026-11-12");
     expect(v.selection[0]!.basis).toMatch(/atlas_observed|uncertain/);
