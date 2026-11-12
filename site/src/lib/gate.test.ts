@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CURRENT_HEADER, gate, RELEASE_HEADER, REFRESH_FAILED_HEADER, TWIN_HEADER } from "./gate";
+import { CURRENT_HEADER, FIRST_VISIT_HEADER, gate, RELEASE_HEADER, REFRESH_FAILED_HEADER, SEEN_COOKIE, TWIN_HEADER } from "./gate";
 import type { Opened, OpenedRelease, ReleaseReader } from "./release/reader";
 
 const release = { id: "20260201T000000Z-aaaaaaa" } as OpenedRelease;
@@ -253,5 +253,46 @@ describe("gate: a pinned view (M18)", () => {
     const reader = readerWith({ ok: true, release, refreshFailed }, { ok: true, release: pinnedRelease, refreshFailed: null });
     const decision = await gate({ ...config, surface: "local", reader }, { ...explore, host: "localhost:3000" });
     expect(decision.action === "forward" && decision.requestHeaders[REFRESH_FAILED_HEADER]).toBeNull();
+  });
+});
+
+describe("gate: a reader's first visit to the Overview (PLAN section 8; ADR 0036)", () => {
+  const overview = { host: "mydashboards.co", pathname: "/", method: "GET" };
+  const config = { ...base, reader: readerOf(good), basePath: "/macro-atlas" };
+  const forwarded = async (over: Partial<Parameters<typeof gate>[1]> = {}, more: Partial<typeof config> = {}) => {
+    const decision = await gate({ ...config, ...more }, { ...overview, ...over });
+    if (decision.action !== "forward") throw new Error("expected the request to be forwarded");
+    return decision;
+  };
+
+  it("tells the page it is a first visit, from the request itself, and remembers the visit", async () => {
+    const decision = await forwarded();
+    expect(decision.requestHeaders[FIRST_VISIT_HEADER]).toBe("1");
+    expect(decision.responseHeaders["set-cookie"]).toBe(`${SEEN_COOKIE}=1; Path=/macro-atlas; Max-Age=31536000; SameSite=Lax; HttpOnly`);
+  });
+
+  it("says nothing on a later visit, and removes what a client sent in the header's name", async () => {
+    const decision = await forwarded({ cookie: `atlas-theme=dark; ${SEEN_COOKIE}=1` });
+    expect(decision.requestHeaders[FIRST_VISIT_HEADER]).toBeNull();
+    expect(decision.responseHeaders["set-cookie"]).toBeUndefined();
+  });
+
+  it("is about the Overview only, and only a reader's own GET: not a prefetch, a HEAD or another page", async () => {
+    for (const over of [{ pathname: "/highlights" }, { pathname: "/explore" }, { method: "HEAD" }, { method: "POST" }, { prefetch: true }]) {
+      const decision = await forwarded(over);
+      expect(decision.requestHeaders[FIRST_VISIT_HEADER]).toBeNull();
+      expect(decision.responseHeaders["set-cookie"]).toBeUndefined();
+    }
+  });
+
+  it("marks the cookie Secure where the reader came over HTTPS, and keeps it to its own base path", async () => {
+    const decision = await forwarded({ secure: true }, { basePath: "/macro-atlas-staging" });
+    expect(decision.responseHeaders["set-cookie"]).toBe(`${SEEN_COOKIE}=1; Path=/macro-atlas-staging; Max-Age=31536000; SameSite=Lax; HttpOnly; Secure`);
+  });
+
+  it("sets nothing when there is no Release to serve", async () => {
+    const decision = await gate({ ...config, reader: readerOf(refused) }, overview);
+    expect(decision).toMatchObject({ action: "respond", status: 503 });
+    if (decision.action === "respond") expect(decision.headers["set-cookie"]).toBeUndefined();
   });
 });

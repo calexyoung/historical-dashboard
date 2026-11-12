@@ -1,4 +1,4 @@
-import { mkdirSync, renameSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, renameSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { createReleaseReader, refusal } from "./reader";
@@ -19,6 +19,27 @@ describe("ReleaseReader.current: the promoted Release, validated on open", () =>
     expect(opened.release.series.fx_price_index?.observations.length).toBeGreaterThan(0);
     expect(opened.release.derived.fx_price_index_yoy).toBeDefined();
     expect(opened.refreshFailed).toBeNull();
+  });
+
+  it("opens the headline Series and the search index with the Release (0.5.0, M22)", async () => {
+    const opened = await createReleaseReader({ root: FIXTURE_ROOT, surface: "local" }).current();
+    if (!opened.ok) throw new Error(opened.reason);
+    expect(opened.release.highlights.segments.map((row) => row.segment)).toEqual(["economy_jobs", "markets_money", "infrastructure", "governance_politics", "disasters_health", "us_in_the_world"]);
+    expect(opened.release.highlights.segments[0]!.series[0]).toBe("fx_price_index");
+    expect(opened.release.search.entries.map((e) => e.kind)).toEqual([...Array<string>(8).fill("series"), "event", "claim"]);
+  });
+
+  it("refuses a Release whose search index is not the projection of its own files", async () => {
+    const root = tempRoot();
+    const dir = addRelease(root, { id: A });
+    const path = join(dir, "search.json");
+    const index = JSON.parse(readFileSync(path, "utf8")) as { entries: { text: string }[] };
+    index.entries[5]!.text = "Its latest value is 4417.";
+    writeFileSync(path, JSON.stringify(index));
+    promote(root, A);
+    const opened = await createReleaseReader({ root, surface: "local" }).current();
+    expect(opened).toMatchObject({ ok: false, kind: "invalid" });
+    if (!opened.ok) expect(opened.reason).toContain("search.json");
   });
 
   it("follows CURRENT when it is rewritten, with no restart", async () => {

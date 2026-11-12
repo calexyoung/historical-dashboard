@@ -59,6 +59,13 @@ describe("changeOver", () => {
     expect(answer.changes[0]).toMatchObject({ change: 4, pct_change: null, pct_empty: "start_not_positive" });
   });
 
+  it("gives no percent change that is not a finite number", () => {
+    // 100 * (1.7e308 - 1e-300) overflows though both values and their difference are finite.
+    const answer = changeOver(monthly("2024-01", [1e-300, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1.7e308]), [1]);
+    if (!answer.ok) throw new Error(answer.reason);
+    expect(answer.changes[0]).toMatchObject({ change: 1.7e308, pct_change: null, pct_empty: "not_finite" });
+  });
+
   it("compares nothing with a partial Period, on either side", () => {
     const latestPartial = changeOver(monthly("2024-01", Array.from({ length: 13 }, () => 5), { "2025-01": "partial" }), [1]);
     if (!latestPartial.ok) throw new Error(latestPartial.reason);

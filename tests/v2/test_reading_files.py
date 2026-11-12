@@ -147,7 +147,7 @@ def test_the_legacy_converter_writes_both_files_from_the_repositorys_declaration
     index = json.loads(files["search.json"])["entries"]
     assert len(index) == len(catalog) + len(json.loads(files["content/events.json"])["events"]) + len(
         json.loads(files["content/claims.json"])["claims"])
-    # Words only: no entry has a field that could carry a number.
+    # Only the fields the contract names: none is made from an Observation.
     assert all(set(entry) <= {"kind", "id", "title", "text", "keywords", "withheld"} for entry in index)
 
 
