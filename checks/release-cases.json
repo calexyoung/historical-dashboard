@@ -236,7 +236,7 @@
       "expect": ["recipe_cycle"] },
     { "name": "a derived series cannot be shown when one of its inputs is withheld",
       "steps": [{ "op": "set", "file": "catalog.json", "path": ["series", 4, "recipe", "inputs"], "value": ["fx_exchange_index"] }],
-      "expect": ["withheld_input"] },
+      "expect": ["withheld_input", "ml_use"] },
 
     { "name": "annotation ids are unique",
       "steps": [{ "op": "set", "file": "content/annotations.json", "path": ["annotations", 2, "id"], "value": "recession-2022-fixture" }],
@@ -428,6 +428,20 @@
     {"name": "a bulk file's licence is the one its name says", "steps": [{"op": "set", "file": "downloads/datapackage.json", "path": ["resources", 3, "licence"], "value": "cc_by"}], "expect": ["bulk_files"]},
     {"name": "a datapackage names a file once", "steps": [{"op": "set", "file": "downloads/datapackage.json", "path": ["resources", 1, "path"], "value": "observations.parquet"}], "expect": ["bulk_files"]},
     {"name": "a datapackage is a Frictionless v2 descriptor", "steps": [{"op": "set", "file": "downloads/datapackage.json", "path": ["$schema"], "value": "https://example.org/other.json"}], "expect": ["schema"]},
-    {"name": "a datapackage that is not JSON", "steps": [{"op": "raw", "file": "downloads/datapackage.json", "text": "{"}], "expect": ["invalid_json"]}
+    {"name": "a datapackage that is not JSON", "steps": [{"op": "raw", "file": "downloads/datapackage.json", "text": "{"}], "expect": ["invalid_json"]},
+    {"name": "0.8.0: every catalog entry's rights say ml_use", "steps": [{"op": "delete", "file": "catalog.json", "path": ["series", 0, "rights", "ml_use"]}], "expect": ["ml_use"]},
+    {"name": "ml_use is true or false", "steps": [{"op": "set", "file": "catalog.json", "path": ["series", 0, "rights", "ml_use"], "value": "no"}], "expect": ["schema"]},
+    {"name": "0.7.0: a release written before ml_use need not say it", "steps": [{"op": "set", "file": "manifest.json", "path": ["schema_version"], "value": "0.7.0"}, {"op": "delete", "file": "catalog.json", "path": ["series", 0, "rights", "ml_use"]}, {"op": "remove_bulk"}], "expect": []},
+    {"name": "ml_use_reserved_by names somebody only where ml_use is false", "steps": [{"op": "set", "file": "catalog.json", "path": ["series", 0, "rights", "ml_use_reserved_by"], "value": ["Macro Atlas project"]}], "expect": ["ml_use"]},
+    {"name": "ml_use_reserved_by is never an empty list", "steps": [{"op": "set", "file": "catalog.json", "path": ["series", 2, "rights", "ml_use_reserved_by"], "value": []}], "expect": ["schema"]},
+    {"name": "ml_use false with nobody named is rights that are not settled", "steps": [{"op": "delete", "file": "catalog.json", "path": ["series", 2, "rights", "ml_use_reserved_by"]}], "expect": []},
+    {"name": "a derived series is not for ML use when what it is computed from is not", "steps": [{"op": "set", "file": "catalog.json", "path": ["series", 0, "rights", "ml_use"], "value": false}, {"op": "remove_bulk"}], "expect": ["ml_use"]},
+    {"name": "a derived series names everybody its inputs name as reserving ML use", "steps": [{"op": "set", "file": "catalog.json", "path": ["series", 0, "rights", "ml_use"], "value": false}, {"op": "set", "file": "catalog.json", "path": ["series", 0, "rights", "ml_use_reserved_by"], "value": ["Fixture Bureau"]}, {"op": "set", "file": "catalog.json", "path": ["series", 4, "rights", "ml_use"], "value": false}, {"op": "remove_bulk"}], "expect": ["ml_use"]},
+    {"name": "a derived series may be stricter than what it is computed from", "steps": [{"op": "set", "file": "catalog.json", "path": ["series", 4, "rights", "ml_use"], "value": false}, {"op": "remove_bulk"}], "expect": []},
+    {"name": "0.8.0: a bulk file says ml_use", "steps": [{"op": "delete", "file": "downloads/datapackage.json", "path": ["resources", 3, "ml_use"]}], "expect": ["bulk_files"]},
+    {"name": "a bulk file's ml_use_reserved leaves out no series the catalog marks false", "steps": [{"op": "set", "file": "downloads/datapackage.json", "path": ["resources", 6, "ml_use_reserved"], "value": []}, {"op": "set", "file": "downloads/datapackage.json", "path": ["resources", 6, "ml_use"], "value": true}], "expect": ["bulk_files"]},
+    {"name": "a bulk file's ml_use is true only when it reserves nothing", "steps": [{"op": "set", "file": "downloads/datapackage.json", "path": ["resources", 6, "ml_use"], "value": true}], "expect": ["bulk_files"]},
+    {"name": "a bulk file's ml_use_reserved lists only series the file holds", "steps": [{"op": "set", "file": "downloads/datapackage.json", "path": ["resources", 3, "ml_use_reserved"], "value": [{"key": "fx_poverty_rate_annual", "note": "Not for use in training machine-learning models: its rights are not settled"}]}, {"op": "set", "file": "downloads/datapackage.json", "path": ["resources", 3, "ml_use"], "value": false}], "expect": ["bulk_files"]},
+    {"name": "a bulk file may reserve more than the catalog does (a history under other terms)", "steps": [{"op": "set", "file": "downloads/datapackage.json", "path": ["resources", 10, "ml_use_reserved"], "value": [{"key": "fx_price_index", "note": "Not for use in training machine-learning models: the rights of its history are not settled"}]}, {"op": "set", "file": "downloads/datapackage.json", "path": ["resources", 10, "ml_use"], "value": false}], "expect": []}
   ]
 }

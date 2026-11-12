@@ -33,7 +33,7 @@ from dataclasses import dataclass, field
 from datetime import date
 
 from ..release import CATALOG, LEGACY, MANIFEST
-from ..rights import RightsGate
+from ..rights import ML_USE_LEAD, RightsGate, ml_use_note
 from .export import RIGHTS_ORDER, dump, history_lineages, lineage
 
 FOLDER = "downloads"
@@ -43,11 +43,12 @@ SURFACE = "production"
 CHECK = "bulk files"
 
 OBSERVATION_COLUMNS = ("key", "period", "period_start", "period_end", "value", "status", "frequency",
-                       "kind", "unit", "licence")
+                       "kind", "unit", "licence", "ml_use")
 VINTAGE_COLUMNS = ("key", "period", "period_start", "period_end", "value", "status", "deleted",
                    "recorded_from", "recorded_to", "provider_from", "provider_to", "provider_precision",
-                   "channel", "origin", "unit", "licence")
-_TYPES = {"period_start": "date", "period_end": "date", "value": "number", "deleted": "boolean"}
+                   "channel", "origin", "unit", "licence", "ml_use")
+_TYPES = {"period_start": "date", "period_end": "date", "value": "number", "deleted": "boolean",
+          "ml_use": "boolean"}
 _ABOUT = {
     "key": "The Series' permanent key.",
     "period": "The Period's label; its shape follows the Series' native frequency.",
@@ -59,6 +60,8 @@ _ABOUT = {
     "kind": "stored (as the Origin published it) or derived (computed by a Recipe).",
     "unit": "The unit of the value.",
     "licence": "The licence class of the rights register row the value is under.",
+    "ml_use": ("False where the value is not for use in training machine-learning models: its source's terms "
+               "reserve that, or its rights are not settled. The datapackage says which, Series by Series."),
     "deleted": "True when the Origin stopped listing the Period: the version records that it was gone.",
     "recorded_from": "When Macro Atlas first held this version (UTC).",
     "recorded_to": "When Macro Atlas stopped holding it (UTC); empty for the version held now.",
@@ -103,7 +106,8 @@ class Bulk:
             "description": ("Every Series of this Release that may be redistributed, at its native frequency "
                             "and not rounded: the Observations as one long table in three formats, and every "
                             "version held of each Period. The same rows are also given by licence class. "
-                            "A Series that may be shown but not handed out, and a Withheld Series, are in no file."),
+                            "A Series that may be shown but not handed out, and a Withheld Series, are in no file."
+                            + self._ml_use_words()),
             "release_id": release_id, "created": created, "version": release_id,
             "rights_register": {"version": register.get("version"), "sha256": register.get("sha256")},
             "licenses": _licenses([lic for r in self.resources if "licence" not in r for lic in r["licenses"]]),
@@ -111,6 +115,11 @@ class Bulk:
             "left_out": self.left_out, "without_history": self.without_history,
             "resources": self.resources,
         })
+
+
+    def _ml_use_words(self) -> str:
+        """What the package says, in words, of the Series that are not for model training."""
+        return _ml_use_words([row for resource in self.resources for row in resource["ml_use_reserved"]])
 
 
 def _class_order(name: str) -> int:
@@ -162,6 +171,15 @@ def _history_refusal(history: dict, gate: RightsGate) -> str | None:
     return None if decision.allowed else decision.reason
 
 
+def history_ml_use(history: dict, gate: RightsGate) -> bool:
+    """Whether everything a Series' history came through allows model training: a version
+    fetched through other terms than today's is under those terms (ADR 0041)."""
+    try:
+        return gate.ml_use(history_lineages(history))["ml_use"]
+    except (ValueError, KeyError, TypeError, AttributeError):
+        return False
+
+
 def _number(value) -> float | None:
     return None if value is None else float(value)
 
@@ -175,13 +193,17 @@ def _observation_rows(files: dict[str, bytes], catalog: dict[str, dict], keys: l
             rows.append({"key": key, "period": o["period"], "period_start": o["period_start"],
                          "period_end": o["period_end"], "value": _number(o["value"]), "status": o["status"],
                          "frequency": document["freq"], "kind": "derived" if folder == "derived" else "stored",
-                         "unit": entry.get("unit"), "licence": entry["rights"]["status"]})
+                         "unit": entry.get("unit"), "licence": entry["rights"]["status"],
+                         "ml_use": entry["rights"].get("ml_use") is True})
     return rows
 
 
-def _vintage_rows(key: str, history: dict, entry: dict) -> list[dict]:
+def _vintage_rows(key: str, history: dict, entry: dict, gate: RightsGate) -> list[dict]:
     """One row per version, each under the metadata recorded with it: the unit, the Origin and
-    the licence class a version carries are those of its own day, not today's."""
+    the licence class a version carries are those of its own day, not today's. ``ml_use`` is
+    one answer for the whole history, the most restrictive: the Series' own today, and the
+    gate's for every Origin, dataset and Channel the history came through."""
+    ml_use = entry["rights"].get("ml_use") is True and history_ml_use(history, gate)
     lines = {line["hash"]: line["metadata"] for line in history["metadata"]}
     rows = []
     for index, v in enumerate(history["rows"]):
@@ -195,7 +217,8 @@ def _vintage_rows(key: str, history: dict, entry: dict) -> list[dict]:
                      "channel": v["channel"],
                      "origin": ((metadata.get("source") or {}).get("origin") or {}).get("producer"),
                      "unit": metadata.get("unit"),
-                     "licence": rights.get("licence_class") or entry["rights"]["status"], "_n": index,
+                     "licence": rights.get("licence_class") or entry["rights"]["status"],
+                     "ml_use": ml_use, "_n": index,
                      # Not a column: what the datapackage says of the file the row is in.
                      "_attribution": (rights.get("attribution") if rights.get("licence_class")
                                       else entry["rights"].get("attribution"))})
@@ -332,6 +355,14 @@ def _resource(path: str, data: bytes, table: str, extension: str, rows: list[dic
         sources = _licenses([{"title": e["rights"]["owner"], **({"path": e["rights"]["terms_url"]}
                               if e["rights"].get("terms_url") else {})} for e in entries])
         attributions = sorted({e["rights"]["attribution"] for e in entries if e["rights"].get("attribution")})
+    reserved = []
+    for e in entries:
+        if all(row["ml_use"] for row in rows if row["key"] == e["key"]):
+            continue
+        # A Series whose own Rights allow it and whose history does not: nobody's signed row
+        # is known to reserve it here, so it is said as rights that are not settled.
+        note = ml_use_note(e["rights"]) or f"{ML_USE_LEAD}: the rights of its history are not settled"
+        reserved.append({"key": e["key"], "note": note})
     what = "every version held of each Period" if table == "vintages" else "the Observations, one a row"
     whose = "" if not licence else (f", for the versions recorded under the licence class {licence}" if table == "vintages"
                                     else f", for the Series whose licence class is {licence}")
@@ -339,7 +370,8 @@ def _resource(path: str, data: bytes, table: str, extension: str, rows: list[dic
         "name": path.replace(".", "-").replace("_", "-"), "path": path, "type": "table",
         "title": f"{'Versions' if table == 'vintages' else 'Observations'}"
                  f"{f' ({_CLASS_WORDS.get(licence, licence)})' if licence else ''}, {extension}",
-        "description": f"{what[0].upper()}{what[1:]}{whose}.",
+        "description": f"{what[0].upper()}{what[1:]}{whose}." + _ml_use_words(reserved),
+        "ml_use": not reserved, "ml_use_reserved": reserved,
         **_FORMATS[extension], "bytes": len(data), "hash": "sha256:" + hashlib.sha256(data).hexdigest(),
         "rows": len(rows), "series": sorted({row["key"] for row in rows}),
         **({"licence": licence} if licence else {}), "licences": classes,
@@ -347,6 +379,18 @@ def _resource(path: str, data: bytes, table: str, extension: str, rows: list[dic
         "schema": {"fields": [{"name": name, "type": _TYPES.get(name, "string"), "description": _ABOUT[name]}
                               for name in columns]},
     }
+
+
+def _ml_use_words(reserved: list[dict]) -> str:
+    """The Series that are not for model training, in words: each sentence once, with the
+    Series it is said of. Nothing when there is none."""
+    notes: dict[str, list[str]] = {}
+    for row in reserved:
+        keys = notes.setdefault(row["note"], [])
+        if row["key"] not in keys:
+            keys.append(row["key"])
+    return "".join(f" {note} (said of {', '.join(sorted(keys))}; their rows are marked false in the ml_use column)."
+                   for note, keys in sorted(notes.items()))
 
 
 def build(files: dict[str, bytes], gate: RightsGate) -> Bulk:
@@ -380,7 +424,7 @@ def build(files: dict[str, bytes], gate: RightsGate) -> Bulk:
         history = json.loads(files[path])
         reason = _history_refusal(history, gate)
         if reason is None:
-            versions.extend(_vintage_rows(key, history, catalog[key]))
+            versions.extend(_vintage_rows(key, history, catalog[key], gate))
         else:
             bulk.without_history.append({"key": key, "reason": reason})
 
@@ -474,7 +518,7 @@ def problems(files: dict[str, bytes], gate: RightsGate) -> list[str]:
     for key in keys:
         path = f"vintages/{key}.json"
         if path in files and _history_refusal(json.loads(files[path]), gate) is None:
-            versions.extend(_vintage_rows(key, json.loads(files[path]), catalog[key]))
+            versions.extend(_vintage_rows(key, json.loads(files[path]), catalog[key], gate))
     expected["vintages"] = [tuple(row[c] for c in VINTAGE_COLUMNS) for row in versions]
     for table in ("observations", "vintages"):
         if expected[table] and f"{table}.parquet" not in tables:
@@ -482,7 +526,9 @@ def problems(files: dict[str, bytes], gate: RightsGate) -> list[str]:
     for name, rows in sorted(tables.items()):
         parts = name.split(".")
         table, licence = parts[0], parts[1] if parts[1] in RIGHTS_ORDER else None
-        want = [row for row in expected[table] if licence is None or row[-1] == licence]
+        columns = VINTAGE_COLUMNS if table == "vintages" else OBSERVATION_COLUMNS
+        at = columns.index("licence")
+        want = [row for row in expected[table] if licence is None or row[at] == licence]
         if rows != want:
             found.append(f"{name}: its rows are not the Release's own ({len(rows)} rows, {len(want)} expected"
                          f"{'' if len(rows) != len(want) else ', a value differs'})")
@@ -507,8 +553,18 @@ def problems(files: dict[str, bytes], gate: RightsGate) -> list[str]:
             found.append(f"{name}: the datapackage's list of its Series is not the keys of its rows")
         if resource.get("rows") != len(rows):
             found.append(f"{name}: the datapackage's count of its rows is not the file's")
-        if sorted(resource.get("licences") or []) != sorted({row[-1] for row in rows}):
+        columns = VINTAGE_COLUMNS if name.startswith("vintages") else OBSERVATION_COLUMNS
+        if sorted(resource.get("licences") or []) != sorted({row[columns.index("licence")] for row in rows}):
             found.append(f"{name}: the datapackage's licence classes are not those of its rows")
+        # What the package says of model training against the rows' own column (ADR 0041).
+        not_for_ml = sorted({row[0] for row in rows if row[columns.index("ml_use")] is not True})
+        said = resource.get("ml_use_reserved")
+        if not isinstance(said, list) or sorted(r.get("key") for r in said) != not_for_ml:
+            found.append(f"{name}: the datapackage's ml_use_reserved is not the Series its rows mark false")
+        elif resource.get("ml_use") is not (not not_for_ml):
+            found.append(f"{name}: the datapackage's ml_use is not what its rows say")
+        elif any(not isinstance(r.get("note"), str) or not r["note"].startswith(ML_USE_LEAD) for r in said):
+            found.append(f"{name}: an entry of ml_use_reserved does not say so in words")
     for name in sorted(set(resources) - set(tables)):
         found.append(f"{name}: the datapackage names it and it is not there")
     return found

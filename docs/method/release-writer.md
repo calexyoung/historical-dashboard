@@ -122,6 +122,13 @@ gate permits **redistribute** for its whole lineage; one that may only be shown 
 and left out, and the check `bulk files` warns and names it. They are made from the Release's
 own files on every path (a reuse and a withdrawal too), and the release id covers them.
 
+**ML use** (ADR 0041; contract 0.8.0). Every Catalog entry's Rights state `ml_use`: the gate's
+answer, for the production Surface, to whether the values may be described as usable for
+training machine-learning models, with `ml_use_reserved_by` naming each signed row that says
+no. A Derived series takes the most restrictive answer of the stored Series it rests on. A
+reuse and a withdrawal carry the Catalog over and state `ml_use` afresh from the register as it
+reads that day. The bulk tables carry it as a column, and the datapackage says it of each file.
+
 A local Release has no bulk files, and carries v1's Derived series as the legacy converter
 writes them.
 

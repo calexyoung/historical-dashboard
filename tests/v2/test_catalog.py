@@ -85,7 +85,8 @@ def test_the_rights_of_a_stored_series_are_what_the_register_says_of_its_origin(
     unknown = stored(source={"origin": {"producer": "Nobody Known", "dataset": "x", "origin_id": None,
                                         "url": None}, "channel": {"via": "direct"}})
     assert rights_block(unknown, entries, table, gate) == {
-        "owner": "Nobody Known", "terms_url": None, "status": "unknown", "attribution": None, "reviewed": None}
+        "owner": "Nobody Known", "terms_url": None, "status": "unknown", "attribution": None, "reviewed": None,
+        "ml_use": False}
 
 
 def test_the_rights_of_a_derived_series_are_the_most_restrictive_of_what_it_rests_on():

@@ -41,7 +41,8 @@
         "terms_url": null,
         "status": "public_domain",
         "attribution": "Synthetic test data, Macro Atlas project",
-        "reviewed": "2026-01-01"
+        "reviewed": "2026-01-01",
+        "ml_use": true
       },
       "status": "active",
       "max_lag": "P2M"
@@ -82,7 +83,8 @@
         "terms_url": null,
         "status": "public_domain",
         "attribution": "Synthetic test data, Macro Atlas project",
-        "reviewed": "2026-01-01"
+        "reviewed": "2026-01-01",
+        "ml_use": true
       },
       "status": "active",
       "max_lag": "P6M"
@@ -127,7 +129,11 @@
         "terms_url": null,
         "status": "citation_required",
         "attribution": "Synthetic test data, Macro Atlas project",
-        "reviewed": "2026-01-01"
+        "reviewed": "2026-01-01",
+        "ml_use": false,
+        "ml_use_reserved_by": [
+          "Macro Atlas project"
+        ]
       },
       "status": "active",
       "max_lag": "P2Y"
@@ -166,7 +172,8 @@
         "terms_url": null,
         "status": "public_domain",
         "attribution": "Synthetic test data, Macro Atlas project",
-        "reviewed": "2026-01-01"
+        "reviewed": "2026-01-01",
+        "ml_use": true
       },
       "status": "active"
     },
@@ -208,7 +215,8 @@
         "terms_url": null,
         "status": "public_domain",
         "attribution": "Synthetic test data, Macro Atlas project",
-        "reviewed": "2026-01-01"
+        "reviewed": "2026-01-01",
+        "ml_use": true
       },
       "status": "active",
       "recipe": {
@@ -256,7 +264,11 @@
         "terms_url": null,
         "status": "no_redistribution",
         "attribution": "Synthetic test data, Macro Atlas project",
-        "reviewed": "2026-01-01"
+        "reviewed": "2026-01-01",
+        "ml_use": false,
+        "ml_use_reserved_by": [
+          "Fixture Exchange Ltd (synthetic)"
+        ]
       },
       "status": "active"
     },
@@ -295,7 +307,8 @@
         "terms_url": null,
         "status": "public_domain",
         "attribution": "Synthetic test data, Macro Atlas project",
-        "reviewed": "2026-01-01"
+        "reviewed": "2026-01-01",
+        "ml_use": true
       },
       "status": "active",
       "max_lag": "P2M",
@@ -341,7 +354,8 @@
         "terms_url": null,
         "status": "public_domain",
         "attribution": "Synthetic test data, Macro Atlas project",
-        "reviewed": "2026-01-01"
+        "reviewed": "2026-01-01",
+        "ml_use": true
       },
       "status": "active",
       "max_lag": "P3M"
@@ -380,7 +394,8 @@
         "terms_url": null,
         "status": "public_domain",
         "attribution": "Synthetic test data, Macro Atlas project",
-        "reviewed": "2026-01-01"
+        "reviewed": "2026-01-01",
+        "ml_use": true
       },
       "status": "active",
       "max_lag": "P3M"
@@ -419,7 +434,8 @@
         "terms_url": null,
         "status": "public_domain",
         "attribution": "Synthetic test data, Macro Atlas project",
-        "reviewed": "2026-01-01"
+        "reviewed": "2026-01-01",
+        "ml_use": true
       },
       "status": "active",
       "max_lag": "P3M"
@@ -458,7 +474,8 @@
         "terms_url": null,
         "status": "public_domain",
         "attribution": "Synthetic test data, Macro Atlas project",
-        "reviewed": "2026-01-01"
+        "reviewed": "2026-01-01",
+        "ml_use": true
       },
       "status": "active",
       "max_lag": "P3M"

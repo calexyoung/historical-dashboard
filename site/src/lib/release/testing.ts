@@ -43,7 +43,7 @@ export type Variant = {
    */
   edit?: Record<string, (file: Json, entry: Json) => void>;
   /**
-   * Keep the fixture's bulk files (`downloads/`, 0.7.0), with the datapackage made this
+   * Keep the fixture's bulk files (`downloads/`, 0.7.0; 0.8.0 with `ml_use`), with the datapackage made this
    * Release's own. Left out, a variant has none: they are optional, they are the fixture's
    * Series as written, and only a public-profile Release may hold them.
    */
@@ -155,7 +155,7 @@ export function promote(root: string, id: string): void {
  * committed register (`schema/rights-register.json`) holds no signed row for the fixture Origin, and nothing the app
  * runs can be handed this table: a gate is passed in as an argument, by a test.
  */
-export function fixtureRegister(decision: { display: boolean; redistribute: boolean }): unknown {
+export function fixtureRegister(decision: { display: boolean; redistribute: boolean; /** Left out: true. False is a signed row that reserves model training. */ ml_use?: boolean }): unknown {
   return {
     format: 1,
     version: "test-only",
@@ -166,7 +166,7 @@ export function fixtureRegister(decision: { display: boolean; redistribute: bool
         kind: "origin",
         origins: ["Macro Atlas fixture (synthetic)"],
         datasets: "*",
-        decision: { ...decision, store: false, ml_use: false, signed_by: "Alex", signed_on: "2026-01-01" },
+        decision: { ml_use: true, ...decision, store: false, signed_by: "Alex", signed_on: "2026-01-01" },
       },
     ],
   };

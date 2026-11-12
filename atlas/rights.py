@@ -261,6 +261,37 @@ class RightsGate:
                 return _deny(f"{problem}, so it is not permitted on the {surface} surface")
         return _allow()
 
+    def ml_use(self, lineage: Iterable[Mapping[str, str]]) -> dict:
+        """What a Release's Rights block says of use in training machine-learning models, for
+        values that came through ``lineage`` (rows of origin, dataset, channel and
+        representation; for a Derived series, every stored Series it rests on): ``ml_use`` is
+        this gate's answer for the production Surface, most restrictive wins, and
+        ``ml_use_reserved_by`` names each row whose signed decision says no, once, in the
+        order met. An answer of no with nobody named is a row that is not signed, not listed
+        or not cleared: rights that are not settled, which is not a reservation (ADR 0041)."""
+        try:
+            rows = [{**row, "permission": "ml_use"} for row in lineage]
+        except TypeError:
+            return {"ml_use": False}
+        if self.permits(rows, "production").allowed:
+            return {"ml_use": True}
+        names: list[str] = []
+        for asked in rows:
+            if _row_problem(asked):
+                continue
+            found = [row for row in self._rows if row["kind"] == "origin" and asked["origin"] in row["origins"]
+                     and (row["datasets"] == "*" or asked["dataset"] in row["datasets"])]
+            if asked["channel"] != DIRECT and asked["channel"] not in OWN_CHANNELS:
+                found += [row for row in self._rows
+                          if row["kind"] == "channel" and row["channel"] == asked["channel"]]
+            for row in found:
+                if row["decision"] is not None and not row["decision"]["ml_use"]:
+                    name = row.get("name") if _is_text(row.get("name")) else (
+                        asked["origin"] if row["kind"] == "origin" else f"the {row['channel']} channel")
+                    if name not in names:
+                        names.append(name)
+        return {"ml_use": False, **({"ml_use_reserved_by": names} if names else {})}
+
     def may_store(self, origin: str, dataset: str, channel: str) -> Decision:
         """May the capture job keep what this Origin serves through this Channel? There is no
         Surface in the question: running on one machine clears nothing (PLAN M7, ADR 0012)."""
@@ -303,6 +334,34 @@ def committed_gate() -> RightsGate:
 def permits(rights_used: Iterable[Mapping[str, str]], surface: str) -> Decision:
     """``RightsGate.permits`` over the committed rights register."""
     return committed_gate().permits(rights_used, surface)
+
+
+#: How every statement that a Series is not for model training begins (ADR 0041).
+ML_USE_LEAD = "Not for use in training machine-learning models"
+
+
+def _possessive(name: str) -> str:
+    return f"{name}'" if name.endswith("s") else f"{name}'s"
+
+
+def ml_use_note(rights: object) -> str | None:
+    """The sentence a Series' values carry wherever they leave the site when its Rights do not
+    allow use in training machine-learning models, or None when they do. ``rights`` is a
+    Catalog entry's Rights block. A block that does not say (a Release written before contract
+    0.8.0) is no permission. ``packages/core/src/rights.ts`` says the same;
+    ``checks/ml-use-cases.json`` holds both to it."""
+    flag = rights.get("ml_use") if isinstance(rights, Mapping) else None
+    if flag is True:
+        return None
+    if flag is not False:
+        return f"{ML_USE_LEAD}: this release does not record whether its terms allow it"
+    named = rights.get("ml_use_reserved_by")
+    names = [name for name in named if _is_text(name)] if isinstance(named, list) else []
+    if not names:
+        return f"{ML_USE_LEAD}: its rights are not settled"
+    owners = [_possessive(name) for name in names]
+    listed = owners[0] if len(owners) == 1 else f"{', '.join(owners[:-1])} and {owners[-1]}"
+    return f"{ML_USE_LEAD}: {listed} terms reserve it"
 
 
 def _grants_text(grants: Mapping[str, object] | None) -> str:

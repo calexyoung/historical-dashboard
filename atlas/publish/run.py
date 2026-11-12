@@ -49,7 +49,7 @@ from . import bulk as B
 from . import engine
 from . import root as R
 from . import saved as saved_queries
-from .export import AGE_NOTE, Built, ContentRefused, ExportError, add_content, add_derived, add_latest, build, dump, lag_limit
+from .export import AGE_NOTE, Built, ContentRefused, ExportError, add_content, add_derived, add_latest, build, dump, lag_limit, refresh_ml_use
 
 REJECTED, RETIRED = "rejected", "retired"
 #: What a root's STATUS.json says when the content could not be compiled. The reason itself
@@ -435,7 +435,11 @@ def _reuse(run: _Run, legacy: dict[str, bytes] | None, drop: dict[str, str] | No
             built.files[path] = data
             built.links[path] = run.root / "releases" / source / path
     built.rows = {key: row for key, row in manifest["series"].items() if key not in gone}
-    built.files[CATALOG] = files[CATALOG]
+    # The Catalog is carried over as it is, but for what it says of model training: that is
+    # said afresh from today's register, so a Release reused from before contract 0.8.0 states
+    # it, and one reused after a signature changed says what the register says now (ADR 0041).
+    refresh_ml_use(entries, run.gate)
+    built.files[CATALOG] = dump({"series": entries})
     # The content is written afresh from its files. v1's bands and recessions come from the
     # converter when it ran, else from the Release being reused.
     add_content(built, profile=run.profile, gate=run.gate, content=content, manual=manual,

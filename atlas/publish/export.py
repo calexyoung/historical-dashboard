@@ -147,20 +147,24 @@ class Built:
         return {key: row.get("state_hash") for key, row in sorted(self.rows.items())}
 
 
-def _register_rights(table: object, gate: RightsGate, producer: str, dataset: str) -> dict:
-    """The Catalog's Rights block for an Origin and dataset, as the register reads today."""
+def _register_rights(table: object, gate: RightsGate, producer: str, dataset: str,
+                     channel: str = "direct") -> dict:
+    """The Catalog's Rights block for an Origin and dataset, as the register reads today.
+    ``ml_use`` is the gate's answer for values that came through ``channel`` (ADR 0041)."""
     rows = table["rows"] if gate.problem is None else []
     row = next((r for r in rows if r["kind"] == "origin" and producer in r["origins"]
                 and (r["datasets"] == "*" or dataset in r["datasets"])), None)
+    ml_use = gate.ml_use([{"origin": producer, "dataset": dataset, "channel": channel,
+                           "representation": NATIVE}])
     if row is None:
         return {"owner": producer, "terms_url": None, "status": "unknown", "attribution": None,
-                "reviewed": None}
+                "reviewed": None, **ml_use}
     terms = [t for t in row.get("terms", []) if isinstance(t, dict)]
     read = sorted(t["read_on"] for t in terms if isinstance(t.get("read_on"), str))
     return {"owner": row.get("name") or producer,
             "terms_url": next((t["url"] for t in terms if isinstance(t.get("url"), str)), None),
             "status": row.get("licence_class", "unknown"), "attribution": row.get("attribution"),
-            "reviewed": read[-1] if read else None}
+            "reviewed": read[-1] if read else None, **ml_use}
 
 
 def _held(vintages: VintageStore, key: str) -> tuple[list[dict], dict] | str:
@@ -200,7 +204,8 @@ def combined_rights(blocks: list[dict]) -> dict:
     """The Rights block of a Derived series: the most restrictive status of the stored Series
     it rests on, and every one of their owners and attributions, so that no obligation is
     dropped. ``terms_url`` is that of the most restrictive; ``reviewed`` the oldest reading,
-    or none if any was never read."""
+    or none if any was never read. ``ml_use`` is true only when it is for every one of them,
+    and everybody any of them names as reserving it is named (ADR 0041)."""
     def rank(block: dict) -> int:
         return RIGHTS_ORDER.index(block["status"]) if block["status"] in RIGHTS_ORDER else len(RIGHTS_ORDER) - 1
 
@@ -210,7 +215,42 @@ def combined_rights(blocks: list[dict]) -> dict:
     return {"owner": "; ".join(dict.fromkeys(block["owner"] for block in blocks)),
             "terms_url": worst.get("terms_url"), "status": RIGHTS_ORDER[rank(worst)],
             "attribution": "; ".join(said) or None,
-            "reviewed": None if any(day is None for day in read) else min(read)}
+            "reviewed": None if any(day is None for day in read) else min(read),
+            **combined_ml_use(blocks)}
+
+
+def combined_ml_use(blocks: list[dict]) -> dict:
+    """``ml_use`` of what rests on these Rights blocks: the most restrictive, with every name."""
+    if all(block.get("ml_use") is True for block in blocks):
+        return {"ml_use": True}
+    names = list(dict.fromkeys(name for block in blocks for name in block.get("ml_use_reserved_by", [])))
+    return {"ml_use": False, **({"ml_use_reserved_by": names} if names else {})}
+
+
+def refresh_ml_use(entries: list[dict], gate: RightsGate) -> None:
+    """Say ``ml_use`` afresh in every entry's Rights, in place, as the register reads today:
+    for a Catalog carried over from a Release whose contract did not state it, or whose
+    register has since changed. Nothing else of a Rights block is touched."""
+    by_key = {entry["key"]: entry for entry in entries}
+
+    def stated(entry: dict) -> dict:
+        rights = {k: v for k, v in entry["rights"].items() if k not in ("ml_use", "ml_use_reserved_by")}
+        return {**rights, **gate.ml_use([{k: v for k, v in lineage(entry).items() if k != "permission"}])}
+
+    def leaves(key: str, seen: frozenset = frozenset()) -> list[dict]:
+        entry = by_key.get(key)
+        if entry is None or key in seen:
+            return [{"ml_use": False}]  # what cannot be followed is no permission
+        if "recipe" not in entry:
+            return [stated(entry)]
+        return [block for name in entry["recipe"]["inputs"] for block in leaves(name, seen | {key})]
+
+    for entry in entries:
+        if "recipe" in entry:
+            rights = {k: v for k, v in entry["rights"].items() if k not in ("ml_use", "ml_use_reserved_by")}
+            entry["rights"] = {**rights, **combined_ml_use(leaves(entry["key"]))}
+        else:
+            entry["rights"] = stated(entry)
 
 
 def _derived_entry(spec: dict, leaves: list[dict]) -> dict:
@@ -534,7 +574,8 @@ def build(*, profile: str, store: Path, table: object, gate: RightsGate, series:
         # A Series with nothing to show still has a name: its last recorded metadata.
         metadata = found[1] if not isinstance(found, str) else vintages.metadata_history(key)[-1]["metadata"]
         origin = metadata["source"]["origin"]
-        entry = _entry(spec, metadata, _register_rights(table, gate, origin["producer"], origin["dataset"]))
+        entry = _entry(spec, metadata, _register_rights(table, gate, origin["producer"], origin["dataset"],
+                                                        metadata["source"]["channel"]["via"]))
         if key in withdrawn:
             withhold(entry, f"withdrawn on {withdrawn[key]['withdrawn_at'][:10]}: {withdrawn[key]['reason']}")
             continue

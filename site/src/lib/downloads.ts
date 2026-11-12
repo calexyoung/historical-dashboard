@@ -36,6 +36,17 @@ export function downloadDecision(release: OpenedRelease, surface: Surface, name:
   if (!resource) return { ok: false, status: 404, message: "This release has no bulk file of that name" };
   const asked = askGate(release, surface, resource.series, "redistribute", { history: name.startsWith("vintages"), gate: options.gate });
   if (!asked.ok) return { ok: false, status: 403, message: `This file may not be handed out here: ${asked.message}` };
+  // What the file says of model training is fixed in its bytes (ADR 0041). Every Series it
+  // does not itself mark as not for that use is asked about today: if the register no longer
+  // allows it, or the file was written before files said anything, the file would leave with
+  // rows that read as usable and are not. It is refused whole, as above; the next Release's
+  // files say it.
+  const marked = new Set((resource.ml_use_reserved ?? []).map((row) => row.key as string));
+  const unmarked = resource.series.filter((key) => !marked.has(key));
+  const training = unmarked.length === 0 ? null : askGate(release, surface, unmarked, "ml_use", { history: name.startsWith("vintages"), gate: options.gate });
+  if (training && !training.ok) {
+    return { ok: false, status: 403, message: `This file may not be handed out here: it does not mark rows that are not for use in training machine-learning models today (${training.message})` };
+  }
   return { ok: true, resource };
 }
 
@@ -53,7 +64,14 @@ export type DownloadRow = {
   licences: string[];
   /** Null when it is handed out here; else why not. */
   refused: string | null;
+  /**
+   * Whether every row of it may be described as usable for training machine-learning models,
+   * as its datapackage says (ADR 0041). Null: the Release was written before a file said.
+   */
+  mlUse: boolean | null;
 };
+/** A Series whose rows in the bulk files are not for model training, with the sentence that says so. */
+export type NotForMl = { key: string; name: string; reason: string };
 export type DownloadsView = {
   release: string;
   /** Null: the Release has no bulk files, and `none` says why that can be. */
@@ -61,7 +79,11 @@ export type DownloadsView = {
   /** The whole tables. */
   whole: DownloadRow[];
   /** The same rows, for one licence class each. */
-  byLicence: { licence: string; label: string; attributions: string[]; terms: string[]; rows: DownloadRow[] }[];
+  byLicence: { licence: string; label: string; attributions: string[]; terms: string[]; rows: DownloadRow[]; notForMl: NotForMl[] }[];
+  /** The Series whose rows are marked `ml_use` false in the files, each with the reason in words. */
+  notForMl: NotForMl[];
+  /** The files were written before they said anything of model training: that is no permission. */
+  mlUseNotRecorded: boolean;
   datapackage: string | null;
   /** Series the Release publishes that are in no file, with the reason. */
   leftOut: { key: string; name: string; reason: string }[];
@@ -87,7 +109,7 @@ export function downloadsView(release: OpenedRelease, surface: Surface, options:
       release.manifest.profile !== "public"
         ? "This is a local-profile release. Bulk files are written only for a public-profile release."
         : "This release has no bulk files: it was written before there were any, or nothing in it may be redistributed.";
-    return { release: release.id, none, whole: [], byLicence: [], datapackage: null, leftOut: [], withheld, counts: { series: 0, observations: 0, withHistory: 0, versions: 0 } };
+    return { release: release.id, none, whole: [], byLicence: [], notForMl: [], mlUseNotRecorded: false, datapackage: null, leftOut: [], withheld, counts: { series: 0, observations: 0, withHistory: 0, versions: 0 } };
   }
   const row = (r: BulkResource): DownloadRow => {
     const decided = downloadDecision(release, surface, r.path, options);
@@ -102,7 +124,13 @@ export function downloadsView(release: OpenedRelease, surface: Surface, options:
       sha256: r.hash.slice("sha256:".length),
       licences: r.licences.map((l) => RIGHTS[l] ?? l),
       refused: decided.ok ? null : decided.message,
+      mlUse: r.ml_use ?? null,
     };
+  };
+  const notForMl = (of: BulkResource[]): NotForMl[] => {
+    const found = new Map<string, NotForMl>();
+    for (const r of of) for (const row of r.ml_use_reserved ?? []) if (!found.has(row.key)) found.set(row.key, { key: row.key, name: names.get(row.key) ?? row.key, reason: row.note });
+    return [...found.values()].sort((a, b) => a.key.localeCompare(b.key));
   };
   const whole = pack.resources.filter((r) => r.licence === undefined);
   const classes = [...new Set(pack.resources.flatMap((r) => (r.licence === undefined ? [] : [r.licence as string])))];
@@ -120,8 +148,11 @@ export function downloadsView(release: OpenedRelease, surface: Surface, options:
         attributions: [...new Set(of.flatMap((r) => r.attributions))],
         terms: [...new Set(of.flatMap((r) => r.licenses.flatMap((l) => (l.path ? [l.path] : []))))],
         rows: of.map(row),
+        notForMl: notForMl(of),
       };
     }),
+    notForMl: notForMl(pack.resources),
+    mlUseNotRecorded: pack.resources.some((r) => r.ml_use === undefined),
     datapackage: `/downloads/${release.id}/${DATAPACKAGE}`,
     leftOut: pack.left_out.map((r) => ({ key: r.key, name: names.get(r.key) ?? r.key, reason: r.reason })),
     withheld,

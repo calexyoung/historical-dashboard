@@ -78,6 +78,13 @@ an as-of view, which links to it.
   and in the name a browser saves it under (CSV, JSON and Markdown alike). On a public Surface a file of values is
   403 unless the register row of every Origin it rests on is signed and allows redistribution (PLAN 6.1;
   `python -m atlas rights` lists what is signed).
+- A file that may be handed out is not thereby usable for training a model. Where a Series'
+  Rights do not allow that, every file of its values says so (ADR 0041): a `# ` note line in the
+  CSV, `rights.ml_use: false` with `rights.ml_use_note` in JSON and in the metadata, a quotation
+  under the title of the Markdown and a fact among the Rights of its provenance. The sentence is
+  "Not for use in training machine-learning models: {the Origin}'s terms reserve it". Where the
+  Rights allow it nothing more is said. The site takes the stricter of what the Release states
+  and what the gate answers today.
 
 ## Other pages
 

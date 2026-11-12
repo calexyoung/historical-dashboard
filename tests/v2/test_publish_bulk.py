@@ -96,9 +96,10 @@ def test_a_public_release_carries_its_observations_as_one_long_csv(tmp_path, reg
     rows = csv_rows(directory / "downloads" / "observations.csv.gz")
     assert six(rows) == JOBS + PRICE
     assert list(rows[0]) == ["key", "period", "period_start", "period_end", "value", "status",
-                             "frequency", "kind", "unit", "licence"]
+                             "frequency", "kind", "unit", "licence", "ml_use"]
     assert rows[0]["frequency"] == "monthly" and rows[0]["kind"] == "stored"
     assert rows[0]["unit"] == "thousands of persons" and rows[0]["licence"] == "public_domain"
+    assert {row["ml_use"] for row in rows} == {"true"}
     assert validate_release(directory) == []
 
 
@@ -110,7 +111,8 @@ def test_the_three_formats_hold_the_same_rows(tmp_path, register, store):
     assert six(parquet_rows(directory / "observations.parquet")) == JOBS + PRICE
     # Every column, not only the six: the same table three times.
     columns = B.OBSERVATION_COLUMNS
-    as_text = lambda rows: [tuple("" if r[c] is None else str(r[c]) for c in columns if c != "value") for r in rows]
+    said = lambda v: "" if v is None else str(v).lower() if isinstance(v, bool) else str(v)  # CSV writes true and false
+    as_text = lambda rows: [tuple(said(r[c]) for c in columns if c != "value") for r in rows]
     assert as_text(csv_rows(directory / "observations.csv.gz")) == as_text(ndjson_rows(directory / "observations.ndjson.gz"))
     assert as_text(ndjson_rows(directory / "observations.ndjson.gz")) == as_text(parquet_rows(directory / "observations.parquet"))
 
@@ -250,6 +252,134 @@ def test_the_files_load_in_duckdb(tmp_path, register, store):
 def _signed(**grants) -> dict:
     return {"display": True, "redistribute": True, "store": True, "ml_use": True, "signed_by": "Alex",
             "signed_on": "2026-01-01", **grants}
+
+
+# --- not for use in training a model (ADR 0041) ---------------------------------------------------
+
+JOBS_NOTE = "Not for use in training machine-learning models: Fixture Jobs Office's terms reserve it"
+
+
+def reserved_register(tmp_path) -> Path:
+    """Prices keep every Permission; jobs may be shown, handed out and stored, and their
+    (invented) terms reserve use in training a model."""
+    table = fixture_table(datasets=["fixture prices"])
+    second = {**table["rows"][0], "id": "fx-jobs", "name": "Fixture Jobs Office", "datasets": ["fixture jobs"],
+              "licence_class": "citation_required", "decision": _signed(ml_use=False)}
+    second.pop("capture", None)
+    table["rows"].append(second)
+    return write_register(tmp_path / "ml-reserved.json", table)
+
+
+def test_the_catalog_says_which_series_are_not_for_model_training_and_who_reserves_it(tmp_path, store):
+    directory = publish(tmp_path, reserved_register(tmp_path), store,
+                        series=series_with_recipes(tmp_path / "series.json"))
+
+    rights = {e["key"]: e["rights"] for e in read_json(directory / "catalog.json")["series"]}
+    assert rights["fx_price"]["ml_use"] is True and "ml_use_reserved_by" not in rights["fx_price"]
+    assert rights["fx_jobs"]["ml_use"] is False and rights["fx_jobs"]["ml_use_reserved_by"] == ["Fixture Jobs Office"]
+    # A Derived series is as restricted as the most restricted Series it is computed from.
+    assert rights["fx_price_change"]["ml_use"] is True
+    assert rights["fx_jobs_per_price"]["ml_use"] is False
+    assert rights["fx_jobs_per_price"]["ml_use_reserved_by"] == ["Fixture Jobs Office"]
+    assert read_json(directory / "manifest.json")["schema_version"] == "0.8.0"
+    assert validate_release(directory) == []
+
+
+def test_every_bulk_row_says_whether_it_is_for_model_training_in_every_format(tmp_path, store):
+    downloads = publish(tmp_path, reserved_register(tmp_path), store,
+                        series=series_with_recipes(tmp_path / "series.json")) / "downloads"
+    want = {"fx_jobs": False, "fx_jobs_per_price": False, "fx_price": True, "fx_price_change": True}
+
+    for rows in (parquet_rows(downloads / "observations.parquet"), ndjson_rows(downloads / "observations.ndjson.gz")):
+        assert {(r["key"], r["ml_use"]) for r in rows} == set(want.items())
+    assert {(r["key"], r["ml_use"]) for r in csv_rows(downloads / "observations.csv.gz")} == {
+        (key, "true" if allowed else "false") for key, allowed in want.items()}
+    # Every version of a Series carries the Series' answer.
+    assert {(r["key"], r["ml_use"]) for r in parquet_rows(downloads / "vintages.parquet")} == {
+        ("fx_jobs", False), ("fx_price", True)}
+    # The CSV is still a plain table: no comment line a loader would have to skip.
+    assert gzip.decompress((downloads / "observations.csv.gz").read_bytes()).startswith(b"key,period,")
+
+
+def test_the_datapackage_says_it_in_words_for_each_file_and_each_licence_class(tmp_path, store):
+    downloads = publish(tmp_path, reserved_register(tmp_path), store,
+                        series=series_with_recipes(tmp_path / "series.json")) / "downloads"
+    package = read_json(downloads / "datapackage.json")
+    by_path = {r["path"]: r for r in package["resources"]}
+    both = [{"key": "fx_jobs", "note": JOBS_NOTE}, {"key": "fx_jobs_per_price", "note": JOBS_NOTE}]
+
+    for name in ("observations.parquet", "observations.csv.gz", "observations.ndjson.gz",
+                 "observations.citation_required.parquet"):
+        assert by_path[name]["ml_use"] is False and by_path[name]["ml_use_reserved"] == both, name
+        assert JOBS_NOTE in by_path[name]["description"]
+    assert by_path["vintages.parquet"]["ml_use_reserved"] == [{"key": "fx_jobs", "note": JOBS_NOTE}]
+    # A version is filed under the licence class recorded with it (the store was captured when
+    # the one row was public domain), and still carries today's answer about model training.
+    assert by_path["vintages.public_domain.parquet"]["ml_use_reserved"] == [{"key": "fx_jobs", "note": JOBS_NOTE}]
+    name = "observations.public_domain.parquet"
+    assert by_path[name]["ml_use"] is True and by_path[name]["ml_use_reserved"] == []
+    assert "machine-learning" not in by_path[name]["description"]
+    assert JOBS_NOTE in package["description"] and "fx_jobs, fx_jobs_per_price" in package["description"]
+    column = next(f for f in by_path["observations.parquet"]["schema"]["fields"] if f["name"] == "ml_use")
+    assert column["type"] == "boolean" and "training machine-learning models" in column["description"]
+
+
+def test_a_release_where_everything_is_allowed_says_nothing_more(tmp_path, register, store):
+    package = read_json(publish(tmp_path, register, store) / "downloads" / "datapackage.json")
+    assert all(r["ml_use"] is True and r["ml_use_reserved"] == [] for r in package["resources"])
+    assert "machine-learning" not in json.dumps({**package, "resources": [
+        {k: v for k, v in r.items() if k != "schema"} for r in package["resources"]]})
+
+
+def test_the_ml_use_column_is_a_boolean_in_pandas_polars_and_duckdb(tmp_path, store):
+    import duckdb
+    import pandas as pd
+    import polars as pl
+
+    downloads = publish(tmp_path, reserved_register(tmp_path), store) / "downloads"
+    want = {"fx_jobs": False, "fx_price": True}
+    for frame in (pd.read_parquet(downloads / "observations.parquet"), pd.read_csv(downloads / "observations.csv.gz"),
+                  pd.read_json(downloads / "observations.ndjson.gz", lines=True, convert_dates=False)):
+        assert frame["ml_use"].dtype == bool
+        assert frame.groupby("key")["ml_use"].all().to_dict() == want
+        assert set(frame[~frame["ml_use"]]["key"]) == {"fx_jobs"}
+    for frame in (pl.read_parquet(downloads / "observations.parquet"), pl.read_csv(downloads / "observations.csv.gz"),
+                  pl.read_ndjson(gzip.decompress((downloads / "observations.ndjson.gz").read_bytes()))):
+        assert frame.schema["ml_use"] == pl.Boolean
+        assert set(frame.filter(pl.col("ml_use"))["key"]) == {"fx_price"}
+    for reader in (f"read_parquet('{downloads / 'observations.parquet'}')", f"read_csv('{downloads / 'observations.csv.gz'}')",
+                   f"read_json('{downloads / 'observations.ndjson.gz'}', format = 'newline_delimited')"):
+        assert duckdb.sql(f"select distinct key from {reader} where not ml_use").fetchall() == [("fx_jobs",)]
+    assert duckdb.sql(f"select distinct key from read_parquet('{downloads / 'vintages.parquet'}') where ml_use").fetchall() == [("fx_price",)]
+
+
+def test_the_check_refuses_a_datapackage_that_does_not_say_what_its_rows_say(tmp_path, store):
+    register = reserved_register(tmp_path)
+    directory = publish(tmp_path, register, store)
+    files = {path.relative_to(directory).as_posix(): path.read_bytes() for path in directory.rglob("*") if path.is_file()}
+    gate = B.RightsGate(read_json(register))
+    assert B.problems(files, gate) == []
+
+    package = read_json(directory / "downloads" / "datapackage.json")
+    for resource in package["resources"]:
+        resource["ml_use"], resource["ml_use_reserved"] = True, []
+    files["downloads/datapackage.json"] = json.dumps(package).encode()
+    found = B.problems(files, gate)
+    assert any("ml_use_reserved is not the Series its rows mark false" in line for line in found), found
+
+
+def test_a_history_that_came_through_terms_that_do_not_allow_it_is_marked_false(tmp_path, register, store):
+    directory = publish(tmp_path, register, store)
+    files = {path.relative_to(directory).as_posix(): path.read_bytes() for path in directory.rglob("*") if path.is_file()}
+    catalog = {e["key"]: e for e in read_json(directory / "catalog.json")["series"]}
+    history = read_json(directory / "vintages" / "fx_price.json")
+    everything = B.RightsGate(read_json(register))
+    assert {r["ml_use"] for r in B._vintage_rows("fx_price", history, catalog["fx_price"], everything)} == {True}
+
+    # The same history, asked of a register whose row for where it came from reserves training.
+    table = fixture_table(decision=_signed(ml_use=False))
+    assert {r["ml_use"] for r in B._vintage_rows("fx_price", history, catalog["fx_price"], B.RightsGate(table))} == {False}
+    assert files  # the Release itself is untouched
 
 
 def test_a_series_that_may_be_shown_but_not_handed_out_is_in_no_bulk_file(tmp_path, store):

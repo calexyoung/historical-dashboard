@@ -244,3 +244,26 @@ export function permits(rightsUsed: readonly RightsUse[], surface: string): Deci
   committed ??= createRightsGate(RIGHTS_REGISTER);
   return committed.permits(rightsUsed, surface);
 }
+
+/** How every statement that a Series is not for model training begins (ADR 0041). */
+export const ML_USE_LEAD = "Not for use in training machine-learning models";
+
+const possessive = (name: string): string => (name.endsWith("s") ? `${name}'` : `${name}'s`);
+
+/**
+ * The sentence a Series' values carry wherever they leave the site when its Rights do not allow
+ * use in training machine-learning models, or null when they do. `rights` is a Catalog entry's
+ * Rights block. A block that does not say (a Release written before contract 0.8.0) is no
+ * permission. `atlas/rights.py` says the same; `checks/ml-use-cases.json` holds both to it.
+ */
+export function mlUseNote(rights: unknown): string | null {
+  const flag = isObject(rights) ? rights.ml_use : undefined;
+  if (flag === true) return null;
+  if (flag !== false) return `${ML_USE_LEAD}: this release does not record whether its terms allow it`;
+  const named = (rights as Record<string, unknown>).ml_use_reserved_by;
+  const names = Array.isArray(named) ? named.filter(isText) : [];
+  if (names.length === 0) return `${ML_USE_LEAD}: its rights are not settled`;
+  const owners = names.map(possessive);
+  const listed = owners.length === 1 ? owners[0]! : `${owners.slice(0, -1).join(", ")} and ${owners.at(-1)!}`;
+  return `${ML_USE_LEAD}: ${listed} terms reserve it`;
+}

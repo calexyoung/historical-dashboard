@@ -18,6 +18,13 @@ nothing else. M6 writes the register and puts it behind that question. This reco
    `packages/core/src/rights-register.generated.ts` (the rows the TypeScript gate reads, without
    the prose) are generated from it and checked by `npm run gen:check`. Python reads the file.
    There is no second place where a permission can be written.
+
+   *Note, 2026-11-12.* "One row per Origin" is no longer exact. A row covers an Origin's
+   datasets: all of them (`"datasets": "*"`) or a named list, and no two rows may cover the
+   same dataset of one Origin (the gate refuses a table where they do). Since the Energy
+   Information Administration's row was split that day, one Origin has two rows: `eia` (retail
+   gasoline and electricity generation, signed) and `eia-spot-prices` (not signed). The table
+   is still the one place a permission is written.
 2. **A grant is a signed decision, nothing else.** A decision says yes or no to display,
    redistribute, store and ML use, and carries `signed_by` and `signed_on`. The gate accepts
    only the signer named in its own code, and a real date. The proposal is advice and is never
@@ -25,6 +32,12 @@ nothing else. M6 writes the register and puts it behind that question. This reco
    no Catalog entry, Release or caller can state a permission; each is looked up from the
    decision on the register row. `tests/v2/test_rights_register.py` holds the list of rows Alex
    has signed, which is empty, so a decision cannot appear in the table unnoticed.
+
+   *Note, 2026-11-12.* That list is no longer empty; the test holds whatever it names. And
+   from contract 0.8.0 a Release's Catalog records, for each Series, the gate's answer about
+   ML use on the day the Release was written (ADR 0041). That is a record of the decision for
+   a reader of a file to see, not a second place to grant one: the writer looks it up from the
+   signed row, and the site asks the gate again and takes the stricter of the two.
 3. **What the gate asks on a public Surface**, for every row of a lineage, most restrictive
    wins: the representation is not legacy (refused whatever the register says); the Origin and
    dataset have a row, signed, that says yes; and, for an intermediary Channel, the Channel has

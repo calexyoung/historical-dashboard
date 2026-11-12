@@ -213,7 +213,8 @@ def _month_end(month: str) -> str:
 
 def _rights(owner: str) -> dict:
     """Not settled: nobody has read the terms for this Origin and Channel (PLAN M2, D2)."""
-    return {"owner": owner, "terms_url": None, "status": "unknown", "attribution": None, "reviewed": None}
+    return {"owner": owner, "terms_url": None, "status": "unknown", "attribution": None, "reviewed": None,
+            "ml_use": False}  # not settled is no permission to call it usable for model training (ADR 0041)
 
 
 def _source_of(key: str, meta: dict, catalog_entry: dict | None) -> dict:

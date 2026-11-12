@@ -16,6 +16,7 @@ from atlas.rights import (
     RightsGate,
     committed_gate,
     load_register,
+    ml_use_note,
     register_identity,
 )
 
@@ -59,7 +60,7 @@ PLAN_SOURCES = {
 # The rows Alex has signed. Only Alex adds to this list, in the same change in which he signs the
 # row in schema/rights-register.json. The builder never does (PLAN 6: "The agent proposes; Alex
 # decides and signs once").
-SIGNED_BY_ALEX: set[str] = {"bls", "treasury-fiscal-data", "fed-board", "bea", "eia", "census"}
+SIGNED_BY_ALEX: set[str] = {"bls", "treasury-fiscal-data", "fed-board", "bea", "eia", "census", "imf"}
 
 
 def test_the_register_has_the_shape_its_schema_describes():
@@ -94,6 +95,28 @@ def test_a_row_whose_terms_were_never_read_proposes_nothing(row):
     # Rows with no outside terms at all (Macro Atlas's own work, the public record) are exempt.
     if row["terms"] and all(terms["how"] == "not_read" for terms in row["terms"]):
         assert not any(row["proposal"][grant] for grant in GRANTS)
+
+
+def test_the_imf_row_is_signed_as_alex_decided_with_ml_use_refused():
+    """Alex, 2026-11-12 ("IMF option 1", ADR 0041): everything but ML use. A change to any of
+    the four grants, or to the day, is a new decision and is his to make."""
+    (row,) = [row for row in REGISTER["rows"] if row["id"] == "imf"]
+    assert row["decision"] == {"display": True, "redistribute": True, "store": True, "ml_use": False,
+                               "signed_by": "Alex", "signed_on": "2026-11-12"}
+    gate = RightsGate(REGISTER)
+    lineage = {"origin": "International Monetary Fund", "dataset": "Consumer Price Index", "channel": "direct",
+               "representation": "native"}
+    for permission in ("display", "redistribute"):
+        assert gate.permits([{**lineage, "permission": permission}], "production").allowed
+    assert not gate.permits([{**lineage, "permission": "ml_use"}], "production").allowed
+    assert gate.may_store(lineage["origin"], lineage["dataset"], "direct").allowed
+    assert gate.ml_use([lineage]) == {"ml_use": False, "ml_use_reserved_by": ["International Monetary Fund"]}
+    assert ml_use_note(gate.ml_use([lineage])) == (
+        "Not for use in training machine-learning models: International Monetary Fund's terms reserve it")
+    # The questions that stay open are still there to be read.
+    questions = " ".join(row["open_questions"])
+    assert "Alex judged on 2026-11-12 that two small requests a day (about 1.1 MB) are not bulk downloading" in questions
+    assert "short extracts" in questions and "national statistics office" in questions
 
 
 def test_no_decision_is_filled_in_that_alex_has_not_signed():

@@ -1,7 +1,7 @@
 // The rights gate: permits(rightsUsed, surface) over the rights register (PLAN M6; 6.1; ADR 0006).
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { PERMISSIONS, SURFACES, createRightsGate, permits, type RightsUse } from "./rights";
+import { PERMISSIONS, SURFACES, createRightsGate, mlUseNote, permits, type RightsUse } from "./rights";
 import { RIGHTS_REGISTER } from "./rights-register.generated";
 
 type Case = { name: string; register?: string; lineage: string; surface: string | null; allowed: boolean; reason_has?: string };
@@ -96,5 +96,12 @@ describe("createRightsGate", () => {
     expect(createRightsGate(testRegister).problem).toBeNull();
     expect(createRightsGate(table.registers["invalid_format"]).problem).toContain("format");
     expect(createRightsGate(table.registers["invalid_duplicate_id"]).problem).toContain("open");
+  });
+});
+
+describe("mlUseNote, shared table", () => {
+  const cases = (JSON.parse(read("checks/ml-use-cases.json")) as { cases: { name: string; rights: unknown; note: string | null }[] }).cases;
+  it.each(cases)("$name", (c) => {
+    expect(mlUseNote(c.rights)).toBe(c.note);
   });
 });

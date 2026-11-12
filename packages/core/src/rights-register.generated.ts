@@ -3,7 +3,7 @@
 
 export const RIGHTS_REGISTER: unknown = {
   "format": 1,
-  "version": "2026-11-12.4",
+  "version": "2026-11-12.5",
   "cleared_intermediaries": [],
   "rows": [
     {
@@ -151,7 +151,14 @@ export const RIGHTS_REGISTER: unknown = {
         "International Monetary Fund"
       ],
       "datasets": "*",
-      "decision": null
+      "decision": {
+        "display": true,
+        "redistribute": true,
+        "store": true,
+        "ml_use": false,
+        "signed_by": "Alex",
+        "signed_on": "2026-11-12"
+      }
     },
     {
       "id": "oecd",

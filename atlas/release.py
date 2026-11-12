@@ -27,7 +27,7 @@ from jsonschema import Draft202012Validator, ValidationError, validators
 from atlas.period import next_period, period_bounds
 
 SCHEMA_PATH = Path(__file__).resolve().parents[1] / "schema" / "release.schema.json"
-SCHEMA_VERSION = "0.7.0"
+SCHEMA_VERSION = "0.8.0"
 #: Every version this reader knows; a writer writes ``SCHEMA_VERSION``. 0.2.0 (M10) added
 #: ``vintages/`` and ``vintages_sha256``, so a 0.1.0 Release is one that holds neither. 0.3.0
 #: (M19) added ``content/events.json``: a 0.3.0 Release must have it, an earlier one may not.
@@ -36,7 +36,10 @@ SCHEMA_VERSION = "0.7.0"
 #: 0.6.0 (M23) added ``content/topics.json`` (required) and the Topics' entries of ``search.json``.
 #: 0.7.0 (M25) added ``downloads/``: bulk files and their ``datapackage.json``, in a public-profile
 #: Release only, and optional there (a Release with nothing that may be redistributed has none).
-SCHEMA_VERSIONS = ("0.1.0", "0.2.0", "0.3.0", "0.4.0", "0.5.0", "0.6.0", SCHEMA_VERSION)
+#: 0.8.0 (ADR 0041) added ``ml_use`` to a Catalog entry's Rights: every entry of a 0.8.0 Release
+#: states it, an earlier Release's need not, and a bulk file says which of its Series it is
+#: false for.
+SCHEMA_VERSIONS = ("0.1.0", "0.2.0", "0.3.0", "0.4.0", "0.5.0", "0.6.0", "0.7.0", SCHEMA_VERSION)
 #: The versions that have no ``content/events.json``.
 _BEFORE_EVENTS = ("0.1.0", "0.2.0")
 #: The versions that have no Claims, locks or latest Evidence rows.
@@ -47,6 +50,8 @@ _BEFORE_SEARCH = ("0.1.0", "0.2.0", "0.3.0", "0.4.0")
 _BEFORE_TOPICS = (*_BEFORE_SEARCH, "0.5.0")
 #: The versions that have no bulk files.
 _BEFORE_BULK = (*_BEFORE_TOPICS, "0.6.0")
+#: The versions whose Rights do not say ``ml_use``.
+_BEFORE_ML_USE = (*_BEFORE_BULK, "0.7.0")
 #: The six Segments, in the order of the Overview (CONTEXT.md, Segment).
 SEGMENTS = ("economy_jobs", "markets_money", "infrastructure", "governance_politics", "disasters_health",
             "us_in_the_world")
@@ -335,6 +340,8 @@ def _bulk_rules(bundle, files, bulk_paths: list[str], digests) -> list[Issue]:
     if package["release_id"] != manifest["release_id"]:
         add(DATAPACKAGE, f"it is release {package['release_id']}'s, not this one's")
     statuses = {entry["key"]: entry["rights"]["status"] for entry in bundle["catalog"]["series"]}
+    stated = manifest["schema_version"] not in _BEFORE_ML_USE
+    not_for_ml = {entry["key"] for entry in bundle["catalog"]["series"] if entry["rights"].get("ml_use") is not True}
     named: set[str] = set()
     for resource in package["resources"]:
         path = f"downloads/{resource['path']}"
@@ -360,6 +367,24 @@ def _bulk_rules(bundle, files, bulk_paths: list[str], digests) -> list[Issue]:
                 add(DATAPACKAGE, f"{resource['path']} lists {key}, which this release does not publish natively")
             elif licence is not None and path.startswith("downloads/observations") and statuses.get(key) != licence:
                 add(DATAPACKAGE, f"{resource['path']} lists {key}, whose licence class is not {licence}")
+        # 0.8.0 (ADR 0041): a file says which of its Series are not for model training. It may
+        # say so of more than the Catalog does (a history that came through other terms), never
+        # of fewer, and never of a Series it does not hold.
+        reserved = resource.get("ml_use_reserved")
+        if not stated:
+            pass  # an earlier contract did not say; a reader takes silence as no permission
+        elif "ml_use" not in resource or reserved is None:
+            add(DATAPACKAGE, f"{resource['path']}: it does not say ml_use and ml_use_reserved")
+        else:
+            keys = [row["key"] for row in reserved]
+            if len(set(keys)) != len(keys) or not set(keys) <= set(resource["series"]):
+                add(DATAPACKAGE, f"{resource['path']}: ml_use_reserved lists a Series twice, or one the file does not hold")
+            missed = sorted((not_for_ml & set(resource["series"])) - set(keys))
+            if missed:
+                add(DATAPACKAGE, f"{resource['path']}: ml_use_reserved leaves out {', '.join(missed)}, "
+                                 "which the catalog does not allow for model training")
+            if resource["ml_use"] is not (not keys):
+                add(DATAPACKAGE, f"{resource['path']}: ml_use is true exactly when ml_use_reserved is empty")
     for path in bulk_paths:
         if path not in named:
             add(path, "the datapackage does not name this file")
@@ -458,6 +483,7 @@ def _cross_file_rules(release_id, bundle, files, series_paths) -> list[Issue]:
             issues.extend(_period_rules(path, doc))
 
     issues.extend(_recipe_rules(entries, withheld))
+    issues.extend(_ml_use_rules(manifest["schema_version"], entries))
 
     # Annotations.
     seen = set()
@@ -832,6 +858,56 @@ def _recipe_rules(entries: dict[str, dict], withheld: set) -> list[Issue]:
             issues.append(
                 Issue("withheld_input", CATALOG, f"{key} is derived from withheld {', '.join(blocked)}")
             )
+    return issues
+
+
+def _ml_use_rules(version: str, entries: dict[str, dict]) -> list[Issue]:
+    """0.8.0 (ADR 0041): every Catalog entry's Rights say ``ml_use`` (an earlier Release's need
+    not); ``ml_use_reserved_by`` names somebody only where the answer is no; and a Derived
+    series is no more permitted than the stored Series its Recipe reaches: false where any of
+    them is false, naming everybody they name. What the answer should be is the register's
+    business and the writer's; this holds a Release to its own Catalog."""
+    issues: list[Issue] = []
+
+    def add(message: str) -> None:
+        issues.append(Issue("ml_use", CATALOG, message))
+
+    if version in _BEFORE_ML_USE:
+        return issues  # an earlier contract did not say; a reader takes silence as no permission
+
+    def leaves(key: str, seen: frozenset = frozenset()) -> list[dict] | None:
+        entry = entries.get(key)
+        if entry is None or key in seen:
+            return None  # an unknown input or a cycle: the Recipe rules report it
+        if "recipe" not in entry:
+            return [entry]
+        found: list[dict] = []
+        for name in entry["recipe"]["inputs"]:
+            below = leaves(name, seen | {key})
+            if below is None:
+                return None
+            found.extend(below)
+        return found
+
+    for key, entry in entries.items():
+        rights = entry["rights"]
+        if "ml_use" not in rights:
+            add(f"{key}: its Rights do not say ml_use")
+            continue
+        if rights["ml_use"] and "ml_use_reserved_by" in rights:
+            add(f"{key}: ml_use is true and ml_use_reserved_by names somebody")
+        if "recipe" not in entry:
+            continue
+        rests_on = leaves(key)
+        if rests_on is None or any("ml_use" not in leaf["rights"] for leaf in rests_on):
+            continue
+        refused = sorted(leaf["key"] for leaf in rests_on if not leaf["rights"]["ml_use"])
+        if rights["ml_use"] and refused:
+            add(f"{key}: ml_use is true, and it is computed from {', '.join(refused)}, where it is false")
+        owed = {name for leaf in rests_on for name in leaf["rights"].get("ml_use_reserved_by", [])}
+        missing = sorted(owed - set(rights.get("ml_use_reserved_by", [])))
+        if not rights["ml_use"] and missing:
+            add(f"{key}: ml_use_reserved_by leaves out {', '.join(missing)}")
     return issues
 
 

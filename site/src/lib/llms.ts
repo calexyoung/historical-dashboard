@@ -12,6 +12,7 @@ import type { RightsGate, Surface } from "@macro-atlas/core";
 import { FREQUENCIES } from "./catalog";
 import { mdText as md } from "./markdown";
 import { methodIndex } from "./method-docs";
+import { mlUse } from "./ml-use";
 import { askGate } from "./query";
 import type { OpenedRelease } from "./release/reader";
 import { claimTwin } from "./twin/claims";
@@ -27,6 +28,8 @@ export function llmsText(release: OpenedRelease, surface: Surface, options: { ad
     "",
     `This file lists release ${release.id}. Every page has a Markdown twin: add \`.md\` to its address (\`/index.md\` for the overview). A series page also has \`.csv\`, \`.json\` and \`.metadata.json\`. A file of values is given only where the rights of every series in it allow redistribution; otherwise the answer is 403 with the reason.`,
     "",
+    "Redistribution is not permission to train a model. A series whose rights do not allow use in training machine-learning models says so below, on its page, in each of its files (`rights.ml_use` is false in JSON) and in the bulk files' `ml_use` column.",
+    "",
     "## Pages",
     "",
     ...PAGE_TWINS.map((p) => `- [${md(p.about)}](${address}${p.twin})`),
@@ -38,7 +41,9 @@ export function llmsText(release: OpenedRelease, surface: Surface, options: { ad
   for (const entry of release.catalog.series) {
     const given = !withheld.has(entry.key) && askGate(release, surface, [entry.key], "redistribute", { gate }).ok;
     const about = `${md(entry.unit)}, ${(FREQUENCIES[entry.freq] ?? entry.freq).toLowerCase()}`;
-    out.push(given ? `- [${md(entry.name)}](${address}/data/${entry.key}.md): ${about}` : `- [${md(entry.name)}](${address}/data/${entry.key}.metadata.json): ${about}. ${withheld.has(entry.key) ? "Withheld" : "Its values are not handed out here"}; this is its metadata.`);
+    const training = mlUse(release, surface, entry, { gate }).note;
+    const reserved = training ? `. ${md(training)}.` : "";
+    out.push(given ? `- [${md(entry.name)}](${address}/data/${entry.key}.md): ${about}${reserved}` : `- [${md(entry.name)}](${address}/data/${entry.key}.metadata.json): ${about}. ${withheld.has(entry.key) ? "Withheld" : "Its values are not handed out here"}; this is its metadata.`);
   }
   out.push("");
 

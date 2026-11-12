@@ -38,13 +38,17 @@ def source(origin_id: str, via: str = "fixture") -> dict:
     }
 
 
-def rights(status: str = "public_domain", owner: str = "Macro Atlas project") -> dict:
+def rights(status: str = "public_domain", owner: str = "Macro Atlas project", ml_use: bool = True) -> dict:
+    """``ml_use`` False is an invented reservation (contract 0.8.0, ADR 0041): the fixture has
+    one Series that may be handed out and is not for model training, and its Withheld one."""
     return {
         "owner": owner,
         "terms_url": None,
         "status": status,
         "attribution": "Synthetic test data, Macro Atlas project",
         "reviewed": "2026-01-01",
+        "ml_use": ml_use,
+        **({} if ml_use else {"ml_use_reserved_by": [owner]}),
     }
 
 
@@ -264,7 +268,7 @@ CATALOG = {
             "segment": "economy_jobs",
             "topics": ["poverty"],
             "source": source("FX-POVERTY"),
-            "rights": rights("citation_required"),
+            "rights": rights("citation_required", ml_use=False),
             "status": "active",
             "max_lag": "P2Y",
         },
@@ -327,7 +331,7 @@ CATALOG = {
             "segment": "markets_money",
             "topics": ["markets"],
             "source": source("FX-EXCH", via="fixture_vendor"),
-            "rights": rights("no_redistribution", owner="Fixture Exchange Ltd (synthetic)"),
+            "rights": rights("no_redistribution", owner="Fixture Exchange Ltd (synthetic)", ml_use=False),
             "status": "active",
         },
         {
@@ -766,7 +770,7 @@ def build(root: Path, claims: bool = True, bulk: bool = True) -> Path:
     False leaves the Claim out: the data files alone, which is what make_claim.py computes
     the Claim's lock from. ``bulk`` False leaves the bulk files out, which is what
     bulk/make_bulk.py makes them from; otherwise they are copied in as that script wrote them
-    (0.7.0, M25)."""
+    (0.7.0, M25; from 0.8.0 with what each says of model training)."""
     release = root / "releases" / RELEASE_ID
     if release.exists():
         shutil.rmtree(release)
@@ -794,7 +798,7 @@ def build(root: Path, claims: bool = True, bulk: bool = True) -> Path:
         rows[key]["vintages_sha256"] = hashlib.sha256(data).hexdigest()
 
     manifest = {
-        "schema_version": "0.7.0",
+        "schema_version": "0.8.0",
         "semantics_version": "0",
         "release_id": RELEASE_ID,
         "profile": "public",

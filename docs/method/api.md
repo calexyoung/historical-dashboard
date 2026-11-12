@@ -30,7 +30,7 @@ route is 404, as JSON, with the routes.
 | `release_id` | the Release the answer was made from |
 | `semantics_version` | the engine's rules it was computed by |
 | `provenance` | for a Series: Origin, Channel, representation, when it was retrieved, its Recipe. For a body with no value of one Series: the Release (id, created, profile) and `release_sources`, every source the Release was made from. That is the Release's record; an Event or a Claim cites its own sources in its own fields |
-| `rights` | `permission` (the Permission asked: `redistribute`, or `none`), `permitted`, and for a Series its Rights status, owner, attribution, terms and the lineage the gate was asked about. For a body with no value, `permission` is `none` and `scope` says in words that this is not a statement about the Series it names: each carries its own |
+| `rights` | `permission` (the Permission asked: `redistribute`, or `none`), `permitted`, and for a Series its Rights status, owner, attribution, terms and the lineage the gate was asked about, with `ml_use` (whether the values may be described as usable for training machine-learning models) and `ml_use_note` (the sentence that says so where they may not, else null; ADR 0041). For a body with no value, `permission` is `none` and `scope` says in words that this is not a statement about the Series it names: each carries its own |
 
 An as-of answer (`series/{key}?as_of=`) also carries `basis`, `capture_gap` and
 `same_day_release`, with `cutoff`, `metadata_in_force` and `left_out_periods`, as

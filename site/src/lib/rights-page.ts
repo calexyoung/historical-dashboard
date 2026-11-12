@@ -50,6 +50,7 @@ function rowOf(row: RightsRow, cleared: readonly string[]): RightsPageRow {
   let effect: string;
   if (d === null) effect = "Not decided: nothing from it is shown or handed out on a public build.";
   else if (row.kind === "channel" && !cleared.includes(row.id)) effect = "Decided, but the channel is not cleared: nothing that came through it is shown on a public build.";
+  else if (d.display && d.redistribute && !d.ml_use) effect = "Its values may be shown and handed out as files. They are not for use in training machine-learning models, and every file of them says so.";
   else if (d.display && d.redistribute) effect = "Its values may be shown and handed out as files.";
   else if (d.display) effect = "Its values may be shown. They are in no download, twin, API answer or bulk file.";
   else effect = "Its values are not shown on a public build.";

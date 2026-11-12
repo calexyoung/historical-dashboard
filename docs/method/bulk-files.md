@@ -61,6 +61,7 @@ Leaving out is the only way anything is kept out. Nothing writes a row and then 
 | `kind` | text | `stored` or `derived` |
 | `unit` | text | |
 | `licence` | text | The licence class of the Series |
+| `ml_use` | boolean | False where the value is not for use in training machine-learning models (ADR 0041) |
 
 Rows are ordered by key, then by Period. The three formats hold the same rows in the same
 order. In CSV and JSON Lines a number is written as JSON writes it, so it reads back as the
@@ -80,6 +81,10 @@ One row per version in `vintages/{key}.json`: the columns above without `frequen
 | `origin`, `unit`, `licence` | As recorded with that version: its own day's, not today's |
 
 The two clocks are never merged into one column (`vintage-resolution.md`). A version's
+`ml_use` is one answer for a Series' whole history: the Series' own today, and the gate's for
+every Origin, dataset and Channel the history came through, whichever is stricter. It is in
+both tables as the last column.
+
 `licence` is the class the register gave when the version was captured, so
 `vintages.{licence}.parquet` is split by that, and a Series whose class changed has rows in
 two files. Whether a version is in any file at all is decided by today's register.
@@ -94,7 +99,10 @@ is given only for a class a Series in the file still has today.
 `path`, `format`, `mediatype`, `bytes`, `hash` (`sha256:` and the digest), `schema.fields`,
 `licenses` and `sources`, and fields of Macro Atlas's own: `rows`, `series` (the keys in the
 file), `licences` (the classes of its rows), `licence` (on a file for one class) and
-`attributions` (the lines each Origin asks to be cited with). The package also carries
+`attributions` (the lines each Origin asks to be cited with), `ml_use` (true only when every
+row of the file may be described as usable for training machine-learning models) and
+`ml_use_reserved` (each Series of the file that may not, with the sentence that says so and
+why; the same is said in the resource's `description`). The package also carries
 `release_id`, `created`, the rights register's version and hash, `left_out` and
 `without_history`.
 
@@ -116,11 +124,14 @@ each resource's `series` must be exactly the keys in its file, with its count of
 licence classes. The site decides whether a file may be handed out from that list, so a key
 left off it would never be asked about.
 
-The Release contract (0.7.0) holds a Release to its datapackage in both validators: bulk
+The Release contract (0.7.0; 0.8.0 for `ml_use`) holds a Release to its datapackage in both validators: bulk
 files only in a public-profile Release; every data file named by exactly one resource, and no
 file the datapackage does not name; each file's size and SHA-256 as stated; the package this
 Release's own; every Series listed one the Release publishes natively; a file for one licence
-class listing only Series of that class. A validator reads no Parquet, so what a table's rows
+class listing only Series of that class; and, from 0.8.0, each resource saying `ml_use` and
+`ml_use_reserved`, listing at least every Series of the file the Catalog does not allow for
+model training and none the file does not hold, with `ml_use` true exactly when the list is
+empty. The writer's check holds the same two fields to the `ml_use` column of the rows. A validator reads no Parquet, so what a table's rows
 are is the writer's check and the tests'.
 
 A content-only Release (`--reuse-data`) and a withdrawal write their bulk files again from the
@@ -142,6 +153,12 @@ files they hold, under the register as it reads then.
   a register allowed when the Release was written does not carry over. A refusal is 403 with
   the reason and no byte of the file. A file is never cut down to what is still allowed: its
   hash is in the datapackage. The datapackage holds no value and is always given.
+- **And about model training** (ADR 0041). What a file says of it is fixed in its bytes. Every
+  Series the file does not itself mark as not for that use is asked about today, under the
+  Permission `ml_use`. If the register no longer allows it, or the file was written before
+  files said anything and the register does not allow it, the file is refused whole with
+  403: it would leave with rows that read as usable and are not. The next Release's files
+  say it.
 - A file is counted against the rate limits (`api.md`), like a twin, and so is a request
   through `latest`.
 - A file is sent a chunk at a time, as the reader of the response takes it, from one open

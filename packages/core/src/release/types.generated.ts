@@ -135,7 +135,7 @@ export type TopicRelation =
   "component" | "excludes_components" | "input" | "same_survey" | "same_release";
 
 /**
- * Macro Atlas release contract, v0 (schema_version 0.6.0). A Release is a directory; this schema describes it gathered into one object: manifest.json, catalog.json, series/{key}.json, derived/{key}.json, vintages/{key}.json, content/annotations.json, content/events.json, content/claims.json, locks/{claim_id}.v{n}.lock.json, evidence/latest.json, content/highlights.json, search.json and content/topics.json. It is the seam between the writer and every reader (PLAN 4.2). Conventions the schema cannot express, and the cross-file rules, are in schema/README.md. Structural validity is not authorisation: whether a series may appear on a Surface is decided by permits() and the rights register.
+ * Macro Atlas release contract, v0 (schema_version 0.8.0). A Release is a directory; this schema describes it gathered into one object: manifest.json, catalog.json, series/{key}.json, derived/{key}.json, vintages/{key}.json, content/annotations.json, content/events.json, content/claims.json, locks/{claim_id}.v{n}.lock.json, evidence/latest.json, content/highlights.json, search.json and content/topics.json. It is the seam between the writer and every reader (PLAN 4.2). Conventions the schema cannot express, and the cross-file rules, are in schema/README.md. Structural validity is not authorisation: whether a series may appear on a Surface is decided by permits() and the rights register.
  */
 export interface Release {
   manifest: Manifest;
@@ -181,9 +181,9 @@ export interface Release {
  */
 export interface Manifest {
   /**
-   * Version of this contract. Readers refuse a version they do not know. 0.2.0 added vintages/ and vintages_sha256; a 0.1.0 Release holds neither. 0.3.0 (M19) added content/events.json, which a 0.3.0 Release must have and an earlier one may not, and the rule that every Event is one Annotation. 0.4.0 (M20) added content/claims.json, which a 0.4.0 Release must have, locks/ and evidence/latest.json. 0.5.0 (M22) added content/highlights.json and search.json, both of which a 0.5.0 Release must have. 0.6.0 (M23) added content/topics.json, which a 0.6.0 Release must have, and the Topics' entries of search.json. 0.7.0 (M25) added downloads/: bulk files and their datapackage.json, which only a public-profile Release may have. Writers write the last one listed.
+   * Version of this contract. Readers refuse a version they do not know. 0.2.0 added vintages/ and vintages_sha256; a 0.1.0 Release holds neither. 0.3.0 (M19) added content/events.json, which a 0.3.0 Release must have and an earlier one may not, and the rule that every Event is one Annotation. 0.4.0 (M20) added content/claims.json, which a 0.4.0 Release must have, locks/ and evidence/latest.json. 0.5.0 (M22) added content/highlights.json and search.json, both of which a 0.5.0 Release must have. 0.6.0 (M23) added content/topics.json, which a 0.6.0 Release must have, and the Topics' entries of search.json. 0.7.0 (M25) added downloads/: bulk files and their datapackage.json, which only a public-profile Release may have. 0.8.0 (ADR 0041) added ml_use to a Catalog entry's Rights, which every entry of a 0.8.0 Release must state, and what a bulk file says of it. Writers write the last one listed.
    */
-  schema_version: "0.1.0" | "0.2.0" | "0.3.0" | "0.4.0" | "0.5.0" | "0.6.0" | "0.7.0";
+  schema_version: "0.1.0" | "0.2.0" | "0.3.0" | "0.4.0" | "0.5.0" | "0.6.0" | "0.7.0" | "0.8.0";
   /**
    * Version of the engine's behaviour that wrote derived/ (ADR 0003).
    */
@@ -404,7 +404,7 @@ export interface Channel {
   auth?: "none" | "api_key";
 }
 /**
- * What the Origin's and Channel's terms were read to allow. The three Permissions are derived from this and the Channel, never typed in.
+ * What the Origin's and Channel's terms were read to allow. The Permissions to display and to redistribute are derived from the rights register and the Channel when they are asked for, never typed in. Whether the values may be described as usable for training machine-learning models is stated here (0.8.0), as the register answered when the Release was written.
  *
  * This interface was referenced by `Release`'s JSON-Schema
  * via the `definition` "rights".
@@ -418,6 +418,16 @@ export interface Rights {
    * The date the terms were read; null when they have not been.
    */
   reviewed: CalendarDate | null;
+  /**
+   * 0.8.0 (ADR 0041): whether the rights register allows describing these values as usable for training machine-learning models. The gate's answer for the production Surface when the Release was written; for a Derived series, false when it is false for any stored Series the Recipe reaches. Every entry of a 0.8.0 Release states it; where an earlier Release does not, that is no permission.
+   */
+  ml_use?: boolean;
+  /**
+   * 0.8.0: when ml_use is false because a signed row of the register says so, the name of each such row (an Origin's, or an intermediary Channel's), once each. Absent when ml_use is true, and when it is false only because a row is not signed, not listed or not cleared: rights that are not settled are not a reservation.
+   *
+   * @minItems 1
+   */
+  ml_use_reserved_by?: [string, ...string[]];
 }
 export interface SeriesBreak {
   period: PeriodLabel;
@@ -1756,7 +1766,7 @@ export interface Datapackage {
   resources: [BulkResource, ...BulkResource[]];
 }
 /**
- * One bulk file, as the datapackage names it (0.7.0; ADR 0039). A Frictionless Data Resource with a few fields of Macro Atlas's own: rows, series, licence, licences, attributions.
+ * One bulk file, as the datapackage names it (0.7.0; ADR 0039). A Frictionless Data Resource with a few fields of Macro Atlas's own: rows, series, licence, licences, attributions and, from 0.8.0, ml_use and ml_use_reserved.
  *
  * This interface was referenced by `Release`'s JSON-Schema
  * via the `definition` "bulkResource".
@@ -1820,4 +1830,15 @@ export interface BulkResource {
       }[]
     ];
   };
+  /**
+   * 0.8.0 (ADR 0041): true only when every row of the file may be described as usable for training machine-learning models. False when ml_use_reserved lists a Series.
+   */
+  ml_use?: boolean;
+  /**
+   * 0.8.0: the Series of the file whose values are not for use in training machine-learning models, each with the sentence that says so and why. The same rows are marked in the file's own ml_use column. Empty when ml_use is true.
+   */
+  ml_use_reserved?: {
+    key: SeriesKey;
+    note: string;
+  }[];
 }

@@ -95,7 +95,7 @@ describe("bulk files and discovery on a local build (the fixture release)", () =
       const rows = pack.resources.find((r) => r.path === "observations.parquet")!.rows;
       expect(csv.length - 1).toBe(rows);
       expect(ndjson.length).toBe(rows);
-      expect(csv[0]).toBe("key,period,period_start,period_end,value,status,frequency,kind,unit,licence");
+      expect(csv[0]).toBe("key,period,period_start,period_end,value,status,frequency,kind,unit,licence,ml_use");
       expect(csv.slice(1).map((line) => line.split(",").slice(0, 2).join(" "))).toEqual(ndjson.map((row) => `${String(row.key)} ${String(row.period)}`));
       expect(ndjson.some((row) => row.key === "fx_exchange_index")).toBe(false); // Withheld
       const parquet = new Uint8Array(await (await get(server.url(`/downloads/${FIXTURE_ID}/observations.parquet`))).arrayBuffer());

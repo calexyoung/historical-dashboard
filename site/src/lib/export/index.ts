@@ -27,6 +27,7 @@ import { explorerView, MODE_LABELS, type ExplorerView } from "../explorer/view";
 import { svgString, swatch, type SvgNode } from "../figure";
 import { printColors, PRINT_COLORS, PRINT_FONT } from "../figure/print";
 import { h } from "../figure/svg";
+import { mlUseLines } from "../ml-use";
 import { askGate } from "../query";
 import type { OpenedRelease } from "../release/reader";
 import { sourceWords } from "../series-page";
@@ -129,7 +130,7 @@ function wrap(text: string, width: number): string[] {
 }
 
 /** The whole chart as one drawing that needs nothing from the page. */
-function chartSvg(view: ExplorerView, release: OpenedRelease, stamped: boolean, address: string, left: string[]): string {
+function chartSvg(view: ExplorerView, release: OpenedRelease, stamped: boolean, address: string, left: string[], training: string[]): string {
   const W = 800;
   const M = 16;
   const CHAR = 7;
@@ -168,6 +169,8 @@ function chartSvg(view: ExplorerView, release: OpenedRelease, stamped: boolean, 
     y += 10;
   }
   lines(view.figure!.sourceLine);
+  // In the picture itself, so that the PNG a browser makes of it says so too (ADR 0041).
+  for (const note of training) lines(`${note}.`, { fill: INK });
   if (left.length > 0) lines(`Not in this picture: ${left.join("; ")}`);
   lines(`Release ${release.id} · engine semantics ${SEMANTICS_VERSION} · ${address}`);
   if (stamped) lines(`${STAMP}${releaseHoldsLegacy(release) ? " · local build · v1 data via FRED and Yahoo · rights not settled" : " · local build"}`, { "font-weight": 700, fill: INK });
@@ -255,6 +258,7 @@ export function exportView(release: OpenedRelease, surface: string, state: Explo
     const head = preamble(release, stamped, [
       `Every series of the release ${asked.refused.length > 0 ? "that may be redistributed here" : ""}, whole: ${inFile.length} series, ${rows.length} observations, as the release holds them`.replace("  ", " ").replace(" ,", ","),
       ...[...new Set(inFile.map(sourceWords))].slice(0, 40).map((s) => `Source: ${s}`),
+      ...mlUseLines(release, surface as Surface, inFile.map((e) => e.key), { gate }),
       ...(left.length > 0 ? [`Not in this file: ${left.join("; ")}`] : []),
     ]);
     const body = [...head, line(["series", "name", "unit", "frequency", "period", "period_start", "period_end", "value", "status"]), ...rows].join("\n") + "\n";
@@ -282,8 +286,10 @@ export function exportView(release: OpenedRelease, surface: string, state: Explo
     ...asked.refused.map(notHere),
     ...whole.absent.map((a) => `${a.name} (not in this release: ${a.reason})`),
   ];
+  // Said of each Series whose values are in the file and are not for model training (ADR 0041).
+  const training = mlUseLines(release, surface as Surface, [...inFile], { gate, history: state.asOf !== null });
   if (format === "svg") {
-    return { ok: true, filename: `${name}.svg`, contentType: "image/svg+xml; charset=utf-8", body: chartSvg(view, release, stamped, address, left), ...merged(asked) };
+    return { ok: true, filename: `${name}.svg`, contentType: "image/svg+xml; charset=utf-8", body: chartSvg(view, release, stamped, address, left, training), ...merged(asked) };
   }
 
   const head = preamble(release, stamped, [
@@ -293,6 +299,7 @@ export function exportView(release: OpenedRelease, surface: string, state: Explo
     ...view.selection.filter((s) => s.combined).map((s) => `${s.name}: brought from ${s.combined!.from.replace("_", " ")} to ${s.combined!.to} by ${s.combined!.method}`),
     "value is the series' own value; shown_value is the value as drawn (shown_as names the transform)",
     ...[...new Set(view.runs.map((r) => r.source))].map((s) => `Source: ${s}`),
+    ...training,
     ...(left.length > 0 ? [`Not in this file: ${left.join("; ")}`] : []),
   ]);
   const rows = view.runs.flatMap((r) => r.rows.map((o) => line([r.series, r.seriesName, r.run, o.period, o.period_start, o.period_end, o.value, r.unit, view.mode, o.shown, r.shownUnit, o.status === "no_answer" ? "final" : o.status])));

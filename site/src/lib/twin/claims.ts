@@ -23,10 +23,11 @@
  * A User note is in none of them: this module is never given one.
  */
 import { mdText } from "../markdown";
-import { SEMANTICS_VERSION, type RightsGate, type Surface } from "@macro-atlas/core";
+import { mlUseLines } from "../ml-use";
+import { ML_USE_LEAD, SEMANTICS_VERSION, type RightsGate, type Surface } from "@macro-atlas/core";
 import type { Claim, EvidenceFigure, EvidenceRow } from "@macro-atlas/core/release";
 import { releaseHoldsLegacy } from "../catalog";
-import { claimEvidence, claimPageView, isClaimId, type Cell, type FigureRow } from "../claims";
+import { claimEvidence, claimPageView, gateSays, isClaimId, type Cell, type FigureRow } from "../claims";
 import { csvLine, csvNote } from "../export";
 import { MAX_BYTES, tooManyBytes } from "../query";
 import type { OpenedRelease } from "../release/reader";
@@ -99,6 +100,15 @@ export function claimTwin(release: OpenedRelease, surface: Surface, id: string, 
   if (format === "lock.json") return held ? within(held.text, `${name}.v${held.listed.version}.lock.json`, "attachment") : noEvidence();
 
   const latest = held && held.latest.ok ? held.latest.rows : null;
+  // The figures are computed from Series: where one of them is not for model training, every
+  // file of the Claim's evidence made here says so (ADR 0041). Its history is asked about too.
+  const training = held ? mlUseLines(release, surface, [...new Set(held.lock.readings.map((r) => r.series))], { gate: options.gate, history: true }) : [];
+  // The figures are frozen: what they were computed from is the lineage the lock recorded (and
+  // the latest rows theirs), which need not be what the Series rest on today. Asked as well.
+  if (held) {
+    const recorded = [held.lock.rights_used, ...(held.latest.ok ? [held.latest.rows.rights_used] : [])].map((lineage) => gateSays(lineage, "ml_use", surface, options.gate)).find((d) => !d.allowed);
+    if (recorded && !recorded.allowed && !training.some((line) => line.includes(recorded.reason))) training.push(`${ML_USE_LEAD}: the rights register does not allow it today for what these figures were computed from (${recorded.reason})`);
+  }
 
   if (format === "evidence.csv") {
     if (!held) return noEvidence();
@@ -110,6 +120,7 @@ export function claimTwin(release: OpenedRelease, surface: Surface, id: string, 
       csvNote(`then and now_when_checked: lock version ${lock.version}, locked ${lock.locked_at}, computed on release ${lock.release.release_id}, engine semantics ${lock.semantics_version}`),
       csvNote(`latest: release ${release.id}, engine semantics ${SEMANTICS_VERSION}; not part of the lock`),
       csvNote("A figure is a number the Measure returned, or empty with the reason. No column holds a finding."),
+      ...training.map(csvNote),
       csvNote(`This file: ${page}/evidence.csv`),
     ];
     const lines: string[] = [];
@@ -148,6 +159,8 @@ export function claimTwin(release: OpenedRelease, surface: Surface, id: string, 
             lock_release: held.lock.release,
             lock_semantics_version: held.lock.semantics_version,
             rights_used: held.lock.rights_used,
+            ml_use: training.length === 0,
+            ml_use_notes: training,
             readings: held.lock.readings.map((reading) => {
               const late = latest?.readings.find((r) => r.id === reading.id);
               return { ...reading, latest: late?.latest ?? null, latest_refused: late?.refused ?? null };
@@ -175,6 +188,7 @@ export function claimTwin(release: OpenedRelease, surface: Surface, id: string, 
   for (const s of view.sources) out.push(`- ${md(s.name)} (${md(s.kind)}, ${md(s.locator)}): ${mdUrl(s.url)} · archived copy: ${mdUrl(s.archive)}`);
   out.push("");
   if (view.evidence.reason) out.push(md(view.evidence.reason), "");
+  if (training.length > 0) out.push(...training.map((line) => `> ${md(sentence(line))}`), "");
   for (const reading of view.readings) {
     out.push(`## Reading ${reading.n}`, "", `${md(reading.series.name)} (\`${reading.series.key}\`). ${md(reading.what)}${reading.unit ? ` Unit: ${md(reading.unit)}.` : ""}`, "");
     const e = reading.evidence;

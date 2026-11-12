@@ -352,3 +352,34 @@ def test_a_damaged_manifest_left_by_a_killed_run_does_not_stop_a_withdrawal(tmp_
     assert current(root) is None and R.release_ids(root) == []
     assert sorted(p.name for p in (store / "retired").iterdir()) == [first.release_id, second]
     assert not any(value in all_bytes(root) for value in JOBS)
+
+
+# --- a Release written before the contract said ml_use (ADR 0041) ----------------------------------
+
+
+def test_a_reuse_of_a_release_from_before_ml_use_states_it_from_todays_register(tmp_path, register):
+    import json
+
+    store = build_store(tmp_path / "store", register)
+    first = publish(tmp_path, register, store)
+    # Make the current Release what contract 0.7.0 wrote: no ml_use anywhere in it.
+    directory = tmp_path / "public" / "releases" / first.release_id
+    for path in directory.rglob("*"):
+        os.chmod(path, 0o755 if path.is_dir() else 0o644)
+    manifest, catalog = read_json(directory / "manifest.json"), read_json(directory / "catalog.json")
+    manifest["schema_version"] = "0.7.0"
+    for entry in catalog["series"]:
+        del entry["rights"]["ml_use"]
+    for name, document in (("manifest.json", manifest), ("catalog.json", catalog)):
+        (directory / name).write_text(json.dumps(document))
+    for name in [p.name for p in (directory / "downloads").iterdir()]:
+        (directory / "downloads" / name).unlink()   # 0.7.0's bulk tables had no ml_use column
+    (directory / "downloads").rmdir()
+
+    later = publish(tmp_path, register, store, now=NOW + HOUR, reuse_data=True)
+
+    assert later.outcome == "promoted", later.lines
+    assert manifest_of(tmp_path, later)["schema_version"] == "0.8.0"
+    reused = tmp_path / "public" / "releases" / later.release_id
+    assert all(entry["rights"]["ml_use"] is True for entry in read_json(reused / "catalog.json")["series"])
+    assert all(r["ml_use"] is True for r in read_json(reused / "downloads" / "datapackage.json")["resources"])
