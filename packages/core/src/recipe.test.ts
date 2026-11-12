@@ -318,6 +318,36 @@ describe("the fixture release", () => {
     expect(answer.inputs[0]).toMatchObject({ key: "fx_output_quarterly", basis: "provider" });
     expect(answer.unavailable).toMatchObject({ reason: "input_metadata_mixed" });
     expect(answer.observations).toEqual([]);
+    // The basis claimed is still the weakest among all the inputs, not that one input's.
+    const two = withRecipes(derived("fx_real_output", "quarterly", { op: "ratio", inputs: ["fx_price_index", "fx_output_quarterly"], order: "aggregate_then_compute" }));
+    const mixedLoad = (key: string) => {
+      const series = load(key);
+      if (key !== "fx_output_quarterly" || !series) return series;
+      return { ...series, vintages: { ...series.vintages!, provider_coverage: { from: "2022-04-01T00:00:00Z", to: "2026-01-01T00:00:00Z" } } };
+    };
+    const both = evaluateRecipe("fx_real_output", two, mixedLoad, { asOf: "2025-12-13", ...RELEASE });
+    expect(both.inputs.map((i) => i.basis)).toEqual(["uncertain", "provider"]);
+    expect(both.unavailable).toMatchObject({ reason: "input_metadata_mixed" });
+    expect(both.basis).toBe("uncertain");
+    // A Period the Origin withdrew, recorded under other metadata, is not in the answer and
+    // does not make it mixed.
+    const withdrawn = (key: string): ResolveSeries | null => {
+      const series = fixtureLoad(key);
+      if (!series || key !== "fx_output_quarterly") return series;
+      const file = structuredClone(series.vintages!);
+      const line = file.metadata[0]!;
+      file.metadata.push({ ...line, hash: "f".repeat(64), metadata: { ...line.metadata, unit: "millions of fixture dollars" } });
+      const last = file.rows.filter((row) => row.period === "2022-Q1").at(-1)!;
+      file.rows.splice(file.rows.indexOf(last) + 1, 0, { ...last, value: null, status: "missing", deleted: true, metadata: "f".repeat(64), provider_from: "2025-06-01T00:00:00Z", provider_to: null });
+      last.provider_to = "2025-06-01T00:00:00Z";
+      last.recorded_to = last.recorded_from;
+      return { ...series, vintages: file };
+    };
+    const afterWithdrawal = evaluateRecipe("fx_output_change", catalog, withdrawn, { asOf: "2025-11-28", ...RELEASE });
+    expect(afterWithdrawal.unavailable).toBeUndefined();
+    expect(afterWithdrawal.inputs[0]).toMatchObject({ basis: "provider", unit: "billions of fixture dollars" });
+    // Before the Origin had published anything there is nothing to compute, and it says that.
+    expect(evaluateRecipe("fx_output_change", catalog, fixtureLoad, { asOf: "2022-04-02", ...RELEASE }).unavailable).toMatchObject({ reason: "no_values" });
     // With one metadata throughout, the same question has an answer.
     expect(evaluateRecipe("fx_output_change", catalog, fixtureLoad, { asOf: "2025-11-28", ...RELEASE }).unavailable).toBeUndefined();
   });

@@ -265,7 +265,8 @@ export function resolve(series: ResolveSeries, asOf: string | null, release: { r
     }
     answer.basis = "provider";
     answer.same_day_release = rows.some((timed) => timed.provider !== null && providerDay(timed) === cutoff.day);
-    const hashes = new Set([...picked.values()].map((p) => p.timed.row.metadata));
+    // Of the versions in the answer: a Period the Origin withdrew is not one of them.
+    const hashes = new Set([...picked.values()].filter((p) => !p.timed.row.deleted).map((p) => p.timed.row.metadata));
     const shared = hashes.size === 1 ? file.metadata.find((line) => line.hash === [...hashes][0]) : undefined;
     if (shared) {
       answer.metadata = {

@@ -303,20 +303,18 @@ export function evaluateRecipe(
 
   // Each stored input is resolved on its own: its own Vintage, Basis and metadata in force.
   const held = new Map<string, Operand>();
+  const mixed: string[] = [];
   for (const name of closure.stored) {
     const entry = catalog.get(name)!;
     const series = load(name);
     if (!series) return fail("input_not_held", `this release holds no values for ${name}, which ${key} rests on`);
     const resolved = resolve(series, asOf, { releaseId: options.releaseId });
-    if (asOf !== null && resolved.metadata === null && resolved.basis !== "legacy" && resolved.basis !== "unavailable") {
-      // The versions in the answer were recorded under more than one metadata and no one of
-      // them is in force (the Origin's clock, vintage-resolution.md). Today's unit must not
-      // stand in for it, so nothing is computed.
-      answer.inputs.push({
-        key: name, basis: resolved.basis, cutoff: resolved.cutoff, capture_gap: resolved.capture_gap,
-        same_day_release: resolved.same_day_release, unit: entry.unit, left_out_periods: [],
-      });
-      return fail("input_metadata_mixed", `${name} was held under more than one unit or definition at that time, and which applied to each Period cannot be told; ${key} is not computed across them`, resolved.basis);
+    // The versions in the answer were recorded under more than one metadata and no one of
+    // them is in force (the Origin's clock, vintage-resolution.md). Today's unit must not
+    // stand in for it, so nothing will be computed. An answer with no Observation has no
+    // metadata either, and is simply empty.
+    if (asOf !== null && resolved.metadata === null && resolved.observations.length > 0 && resolved.basis !== "legacy" && resolved.basis !== "unavailable") {
+      mixed.push(name);
     }
     const leftOut = new Set(resolved.metadata?.other_metadata_periods ?? []);
     const unit = (asOf !== null && resolved.metadata?.metadata.unit) || entry.unit;
@@ -335,6 +333,13 @@ export function evaluateRecipe(
       const without = answer.inputs.filter((input) => input.basis === "unavailable" || input.basis === null).map((input) => input.key);
       return fail("input_unavailable", `there is no as-of answer for ${without.join(", ")}, so there is none for ${key}`);
     }
+  }
+  if (mixed.length > 0) {
+    return fail(
+      "input_metadata_mixed",
+      `${mixed.join(", ")} was held under more than one unit or definition at that time, and which applied to each Period cannot be told; ${key} is not computed across them`,
+      answer.basis,
+    );
   }
   for (const name of closure.derived) {
     const entry = catalog.get(name)!;
