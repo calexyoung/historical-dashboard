@@ -68,13 +68,22 @@ describe("what a measure does at the edges", () => {
     const tied = source([{ key: "fx_level", freq: "monthly", representation: "native", observations: run("monthly", "2024-01", [5, 9, 9, 3]) }], [entry("fx_level", "monthly")]);
     expect(short(latest(reading({ measure: "rank", order: "highest", period: "2024-01", window: WHOLE }), tied).figures)).toEqual([["value", 5, "2024-01"], ["rank", 3], ["of", 4]]);
   });
-  it("change steps over a missing end and names the Periods it used", () => {
-    const gappy = source([{ key: "fx_level", freq: "monthly", representation: "native", observations: run("monthly", "2024-01", [null, 102, 101, null]) }], [entry("fx_level", "monthly")]);
-    expect(short(latest(reading({ measure: "change", window: WHOLE }), gappy).figures)).toEqual([["start", 102, "2024-02"], ["end", 101, "2024-03"], ["change", -1], ["pct_change", expect.closeTo(-0.98039215686, 9)]]);
+  it("change is between the first and the last Period of the window by the calendar: a missing end is an empty figure, never another Period", () => {
+    const gappy = source([{ key: "fx_level", freq: "monthly", representation: "native", observations: run("monthly", "2024-01", [null, 102, 101, 104]) }], [entry("fx_level", "monthly")]);
+    const figures = latest(reading({ measure: "change", window: { from: "2024-01-01", to: "2024-04-30" } }), gappy).figures;
+    expect(short(figures)).toEqual([["start", null, "2024-01"], ["end", 104, "2024-04"], ["change", null], ["pct_change", null]]);
+    expect(figures.map((f) => f.empty)).toEqual(["missing", undefined, "operand_empty", "operand_empty"]);
+  });
+  it("a window that opens mid-month starts at the next Period that begins inside it", () => {
+    expect(short(latest(reading({ measure: "change", window: { from: "2024-01-15", to: "2024-05-10" } })).figures).slice(0, 2)).toEqual([["start", 102, "2024-02"], ["end", 110, "2024-05"]]);
+  });
+  it("a window with fewer than two Periods has no change to take", () => {
+    const e = lockEvidence({ said_on: "2026-06-10", checked_on: "2026-06-12", readings: [reading({ measure: "change", window: { from: "2024-01-01", to: "2024-01-31" } })] }, plain);
+    expect([e.ok, !e.ok && e.reason]).toEqual([false, "bad_reading"]);
   });
   it("a percent change from zero or below is empty: its sign would mislead", () => {
     const below = source([{ key: "fx_level", freq: "monthly", representation: "native", observations: run("monthly", "2024-01", [-2, 4]) }], [entry("fx_level", "monthly")]);
-    const figures = latest(reading({ measure: "change", window: WHOLE }), below).figures;
+    const figures = latest(reading({ measure: "change", window: { from: "2024-01-01", to: "2024-02-29" } }), below).figures;
     expect(short(figures)).toEqual([["start", -2, "2024-01"], ["end", 4, "2024-02"], ["change", 6], ["pct_change", null]]);
     expect(figures[3]!.empty).toBe("start_not_positive");
   });
@@ -235,10 +244,10 @@ describe("drift", () => {
   it("names each figure a Revision moved since the Claim was checked", () => {
     const revised = source([{ key: "fx_level", freq: "monthly", representation: "native", observations: run("monthly", "2026-01", [100, 100.9]), vintages }], [entry("fx_level", "monthly")]);
     const drift = claimDrift(locked, evidenceRow(FEB, revised, { state: "latest", asOf: null }), evidenceRow(FEB, revised, { state: "then", asOf: "2026-06-10" }));
-    expect(drift.map((d) => [d.kind, d.window, d.figure, d.locked, d.now])).toEqual([
-      ["latest_differs", null, "end", 100.6, 100.9],
-      ["latest_differs", null, "change", expect.closeTo(0.6, 9), expect.closeTo(0.9, 9)],
-      ["latest_differs", null, "pct_change", expect.closeTo(0.6, 9), expect.closeTo(0.9, 9)],
+    expect(drift.map((d) => [d.kind, d.window, d.figure, d.field, d.locked, d.now])).toEqual([
+      ["latest_differs", null, "end", "value", 100.6, 100.9],
+      ["latest_differs", null, "change", "value", expect.closeTo(0.6, 9), expect.closeTo(0.9, 9)],
+      ["latest_differs", null, "pct_change", "value", expect.closeTo(0.6, 9), expect.closeTo(0.9, 9)],
     ]);
   });
   it("says when the then row, computed again on this Release, is no longer the locked one", () => {
@@ -250,6 +259,18 @@ describe("drift", () => {
   it("says when the then row can no longer be computed at all", () => {
     const bare = source([{ key: "fx_level", freq: "monthly", representation: "native", observations: NOW }], [entry("fx_level", "monthly")]);
     const drift = claimDrift(locked, evidenceRow(FEB, bare, { state: "latest", asOf: null }), evidenceRow(FEB, bare, { state: "then", asOf: "2026-06-10" }));
-    expect(drift).toEqual([expect.objectContaining({ kind: "then_differs", figure: null, locked: null, now: null })]);
+    expect(drift).toEqual([{ kind: "then_differs", window: null, figure: null, field: "availability", locked: null, now: "no_vintages" }]);
+  });
+  it("covers the alternative windows, a Status and the unit, not only the declared figures", () => {
+    const wide = reading({ measure: "extreme", which: "max", window: { from: "2026-01-01", to: "2026-02-28" }, alternative_windows: [{ from: "2026-02-01", to: "2026-02-28" }] });
+    const e = lockEvidence({ ...spec, readings: [wide] }, watched);
+    if (!e.ok) throw new Error(e.message);
+    const preliminary = source([{ key: "fx_level", freq: "monthly", representation: "native", observations: run("monthly", "2026-01", [100, 100.6], { "2026-02": "revised" }), vintages }], [entry("fx_level", "monthly", { unit: "index, 2021 = 100" })]);
+    const drift = claimDrift(e.readings[0]!, evidenceRow(wide, preliminary, { state: "latest", asOf: null }), e.readings[0]!.then);
+    expect(drift.map((d) => [d.window?.from ?? null, d.figure, d.field, d.locked, d.now])).toEqual([
+      [null, null, "unit", "index, 2020 = 100", "index, 2021 = 100"],
+      [null, "extreme", "status", "final", "revised"],
+      ["2026-02-01", "extreme", "status", "final", "revised"],
+    ]);
   });
 });
