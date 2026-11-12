@@ -44,7 +44,7 @@ STORED = {
 DERIVED = ["gdp_yoy"]
 #: Invented keys of the two agencies' shapes, spelt out of plain words so that nothing here
 #: looks like a secret to a scanner. They open nothing.
-SEEDED = {"BEA_API_KEY": "-".join(["INVENTED", "0000", "0000", "0000", "NOTAREALKEY0"]),
+SEEDED = {"BEA_API_KEY": "INVENTED-0000-0000-0000-NOTAREALKEY0",
           "EIA_API_KEY": ("invented" * 5).title()}
 
 
