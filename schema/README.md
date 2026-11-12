@@ -123,7 +123,8 @@ signed row that says no; where the answer is no and nobody is named, the rights 
 settled. Every entry of a 0.8.0 Release states `ml_use`. An earlier Release need not, and a
 reader takes silence as no. A bulk file's resource says `ml_use` (true only when every row is)
 and `ml_use_reserved` (each Series that is not, with the sentence that says so); it may reserve
-more than the Catalog does (a history under other terms), never less. `ml_use_note` (Python) and
+more than the Catalog does (a history under other terms), never less, and each sentence begins
+"Not for use in training machine-learning models: ". `ml_use_note` (Python) and
 `mlUseNote` (TypeScript) make the sentence; `checks/ml-use-cases.json` holds both to it.
 
 **Hashes.** A manifest row's `sha256` is the hash of the file's exact bytes. `state_hash` is the
@@ -237,7 +238,7 @@ the last stage: they are judged against Series files already known to be sound.
 | rules | `implicit_gap` | a Period left out between the bounds |
 | rules | `bounds_mismatch` | the file's bounds are not its first and last Observation |
 | rules | `unknown_recipe_input`, `recipe_cycle`, `withheld_input` | Recipe structure |
-| rules | `ml_use` | from 0.8.0: a Catalog entry's Rights do not say `ml_use`; `ml_use_reserved_by` names somebody where `ml_use` is true; a Derived series says true where a stored Series it is computed from says false, or leaves out a name one of them gives |
+| rules | `ml_use` | from 0.8.0: a Catalog entry's Rights do not say `ml_use`; `ml_use_reserved_by` names somebody where `ml_use` is true; a Derived series says true where a stored Series it is computed from says false, leaves out a name one of them gives, or names somebody none of them names |
 | rules | `duplicate_annotation_id`, `unknown_series_ref`, `bad_anchor` | Annotations |
 | rules | `duplicate_event_id`, `bad_event_date` | two Events share an id; an Event's date or end is not a day, month or year of the calendar as its precision says, or it ends before it starts |
 | rules | `event_projection` | an Event has no Annotation, or its Annotation does not say what it says; an Annotation of kind `event` is the projection of no Event |

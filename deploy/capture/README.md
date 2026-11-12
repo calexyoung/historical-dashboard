@@ -45,7 +45,7 @@ fetchlog.ndjson                         one line per capture: time, request, hea
 runs.ndjson                             one line per run
 ```
 
-It needs Python 3.11 or later and `requests`. No Node, no pandas. The first four sources need no
+It needs Python 3.11.4 or later and `requests`. No Node, no pandas. The first four sources need no
 key and no secret; the BEA and the EIA need one key each ("API keys" below).
 
 | Endpoint | Row | What one run asks for | Size on 2026-11-11 |
@@ -210,25 +210,26 @@ the missed days, without fetching.
 ## The hand-off to the VPS
 
 When staging exists (M27) capture moves to the server's timer. Captures must not be lost or
-doubled on the way:
+doubled on the way. The steps, in order and with who does each, are in `deploy/RUNBOOK.md`
+("The first Release and the first deploy", step 11); in short:
 
 1. Disable the workflow in the capture repository (Actions → capture → Disable workflow). Wait
    for a run in progress to finish.
-2. Clone the capture repository and run `python -m atlas.capture --store <clone> --verify`. It
-   must say every blob is present and unaltered.
-3. Copy `raw/`, `fetchlog.ndjson` and `runs.ndjson` into the server's `$ATLAS_STORE`, and run
-   `--verify` again there. The two outputs must give the same counts.
-4. Start the server's timer. Its first run reports any day missed during the hand-off as
-   `MISSED`.
+2. Clone the capture repository on the server.
+3. `deploy/handoff.sh <surface> <clone>` (`atlas handoff`). It checks every blob of the clone,
+   refuses a clone a run did not finish in and a store that already holds Captures, copies
+   `raw/`, `fetchlog.ndjson` and `runs.ndjson`, checks the store the same way and compares the
+   counts. Do not copy the files by hand: a copy is not checked at either end.
+4. `deploy/refresh.sh <surface> --no-capture` replays them under each capture's original
+   retrieval time. Then start the server's timer; its first run reports any day missed during
+   the hand-off as `MISSED`.
 5. Keep the capture repository, read-only, as the off-host copy of the interim captures.
 
-`atlas replay` then builds the vintage store from these files, using each capture's
-original retrieval time.
+## Second choice: the server's own timer from the start
 
-## Second choice: a cron entry on the VPS
-
-If D6 is answered that way: a checkout of this repository at a pinned commit, a virtual
-environment with `requests`, and one crontab line per run time with `CRON_TZ=America/New_York`
-(10:45 and 17:30), each running `python -m atlas.capture --store /srv/macro-atlas/store` and
-mailing its output. The store then needs its own nightly off-host copy (PLAN 4.3), which the
-GitHub option gets for free.
+If D6 is answered that way, nothing here is used: the server captures as part of its refresh
+(`deploy/refresh.sh`, started by `deploy/systemd/macro-atlas-ingest@.timer` at 10:45 and 17:30
+by New York's clock, in winter and in summer alike), into the store of its Surface
+(`/srv/macro-atlas/<surface>/store`). `deploy/RUNBOOK.md` ("The timers") says how the units are
+installed; no crontab line is written by hand. The store then needs its own nightly off-host
+copy (PLAN 4.3; the runbook's "Backups"), which the GitHub option gets for free.

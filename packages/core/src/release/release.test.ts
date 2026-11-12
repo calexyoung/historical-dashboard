@@ -5,7 +5,8 @@ import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { searchDocument, validateRelease, type Release, type ReleaseFiles } from "./index";
+import { mlUseRules, searchDocument, validateRelease, type Release, type ReleaseFiles } from "./index";
+import type { CatalogEntry } from "./types.generated";
 
 const repo = fileURLToPath(new URL("../../../../", import.meta.url));
 const fixtureRoot = join(repo, "fixtures", "public");
@@ -146,5 +147,38 @@ describe("release validation, shared cases", () => {
 
   it("reports an empty release instead of throwing", () => {
     expect(validateRelease(releaseId, {}).map((i) => i.code)).toContain("missing_file");
+  });
+});
+
+describe("ml_use over Recipes that share inputs (the same tests as tests/v2/test_release.py)", () => {
+  /** Each level's two Series are each computed from both of the level below: 2 ** levels paths to the bottom. */
+  function diamonds(levels: number): Map<string, CatalogEntry> {
+    const rights = (more: object) => ({ owner: "x", terms_url: null, status: "public_domain", attribution: null, reviewed: null, ...more });
+    const entries = new Map<string, CatalogEntry>();
+    entries.set("leaf_a", { key: "leaf_a", rights: rights({ ml_use: true }) } as unknown as CatalogEntry);
+    entries.set("leaf_b", { key: "leaf_b", rights: rights({ ml_use: false, ml_use_reserved_by: ["B"] }) } as unknown as CatalogEntry);
+    let below = ["leaf_a", "leaf_b"];
+    for (let level = 0; level < levels; level++) {
+      const here = [`d${level}_a`, `d${level}_b`];
+      for (const key of here) entries.set(key, { key, recipe: { inputs: [...below] }, rights: rights({ ml_use: false, ml_use_reserved_by: ["B"] }) } as unknown as CatalogEntry);
+      below = here;
+    }
+    return entries;
+  }
+  const change = (entries: Map<string, CatalogEntry>, key: string, changed: object): void => void entries.set(key, { ...entries.get(key)!, ...changed } as CatalogEntry);
+
+  it("follows each key once", () => {
+    const entries = diamonds(60); // 2 ** 60 paths: not finished in a lifetime unless each key is followed once
+    expect(mlUseRules("0.8.0", entries)).toEqual([]);
+    change(entries, "d59_a", { rights: { ...entries.get("leaf_a")!.rights } });
+    expect(mlUseRules("0.8.0", entries).map((issue) => issue.message)).toEqual(["d59_a: ml_use is true, and it is computed from leaf_b, where it is false"]);
+  });
+
+  it("leaves a cycle or an unknown input to the Recipe rules, from every root", () => {
+    const entries = diamonds(3);
+    change(entries, "d0_a", { recipe: { inputs: ["d2_a", "leaf_a"] } });
+    change(entries, "d0_b", { recipe: { inputs: ["nowhere"] } });
+    for (const key of ["d2_a", "d2_b"]) change(entries, key, { rights: { ...entries.get(key)!.rights, ml_use_reserved_by: ["Nobody"] } });
+    expect(mlUseRules("0.8.0", entries)).toEqual([]);
   });
 });

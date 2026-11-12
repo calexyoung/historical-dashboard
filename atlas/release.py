@@ -25,6 +25,7 @@ from pathlib import Path
 from jsonschema import Draft202012Validator, ValidationError, validators
 
 from atlas.period import next_period, period_bounds
+from atlas.rights import ML_USE_LEAD
 
 SCHEMA_PATH = Path(__file__).resolve().parents[1] / "schema" / "release.schema.json"
 SCHEMA_VERSION = "0.8.0"
@@ -339,13 +340,21 @@ def _bulk_rules(bundle, files, bulk_paths: list[str], digests) -> list[Issue]:
         return issues
     if package["release_id"] != manifest["release_id"]:
         add(DATAPACKAGE, f"it is release {package['release_id']}'s, not this one's")
+    # Its licence statements rest on a rights register: the one this Release was decided by.
+    if any(package["rights_register"].get(part) != manifest["rights_register"].get(part)
+           for part in ("version", "sha256")):
+        add(DATAPACKAGE, "its rights register is not the one the manifest names")
     statuses = {entry["key"]: entry["rights"]["status"] for entry in bundle["catalog"]["series"]}
     stated = manifest["schema_version"] not in _BEFORE_ML_USE
     not_for_ml = {entry["key"] for entry in bundle["catalog"]["series"] if entry["rights"].get("ml_use") is not True}
     named: set[str] = set()
+    names: set[str] = set()
     for resource in package["resources"]:
         path = f"downloads/{resource['path']}"
         match = _BULK_FILE.fullmatch(path)
+        if resource["name"] in names:   # a Data Package tells its resources apart by name
+            add(DATAPACKAGE, f"the name {resource['name']} is given to two resources")
+        names.add(resource["name"])
         if path in named:
             add(DATAPACKAGE, f"{resource['path']} is named twice")
             continue
@@ -385,6 +394,12 @@ def _bulk_rules(bundle, files, bulk_paths: list[str], digests) -> list[Issue]:
                                  "which the catalog does not allow for model training")
             if resource["ml_use"] is not (not keys):
                 add(DATAPACKAGE, f"{resource['path']}: ml_use is true exactly when ml_use_reserved is empty")
+            # The note is what a person reads: it says the denial in the words every surface
+            # uses, so it cannot say the opposite of the flag beside it.
+            unsaid = sorted(row["key"] for row in reserved if not row["note"].startswith(f"{ML_USE_LEAD}: "))
+            if unsaid:
+                add(DATAPACKAGE, f"{resource['path']}: the note of {', '.join(unsaid)} in ml_use_reserved does not "
+                                 f"begin \"{ML_USE_LEAD}: \"")
     for path in bulk_paths:
         if path not in named:
             add(path, "the datapackage does not name this file")
@@ -875,18 +890,29 @@ def _ml_use_rules(version: str, entries: dict[str, dict]) -> list[Issue]:
     if version in _BEFORE_ML_USE:
         return issues  # an earlier contract did not say; a reader takes silence as no permission
 
+    # The stored Series each key rests on, each once. Worked out once for a key: a Recipe whose
+    # inputs share inputs would otherwise be walked again for every path that reaches them.
+    known: dict[str, list[dict] | None] = {}
+
     def leaves(key: str, seen: frozenset = frozenset()) -> list[dict] | None:
         entry = entries.get(key)
         if entry is None or key in seen:
             return None  # an unknown input or a cycle: the Recipe rules report it
+        if key in known:
+            return known[key]
         if "recipe" not in entry:
-            return [entry]
-        found: list[dict] = []
-        for name in entry["recipe"]["inputs"]:
-            below = leaves(name, seen | {key})
-            if below is None:
-                return None
-            found.extend(below)
+            found: list[dict] | None = [entry]
+        else:
+            distinct: dict[str, dict] = {}
+            for name in entry["recipe"]["inputs"]:
+                below = leaves(name, seen | {key})
+                if below is None:
+                    distinct = None
+                    break
+                distinct.update((leaf["key"], leaf) for leaf in below)
+            found = None if distinct is None else list(distinct.values())
+        # A key that reaches an unknown input or a cycle does so by whatever path it is reached.
+        known[key] = found
         return found
 
     for key, entry in entries.items():
@@ -905,9 +931,14 @@ def _ml_use_rules(version: str, entries: dict[str, dict]) -> list[Issue]:
         if rights["ml_use"] and refused:
             add(f"{key}: ml_use is true, and it is computed from {', '.join(refused)}, where it is false")
         owed = {name for leaf in rests_on for name in leaf["rights"].get("ml_use_reserved_by", [])}
-        missing = sorted(owed - set(rights.get("ml_use_reserved_by", [])))
+        named = set(rights.get("ml_use_reserved_by", []))
+        missing = sorted(owed - named)
         if not rights["ml_use"] and missing:
             add(f"{key}: ml_use_reserved_by leaves out {', '.join(missing)}")
+        unsupported = sorted(named - owed)
+        if not rights["ml_use"] and unsupported:
+            add(f"{key}: ml_use_reserved_by names {', '.join(unsupported)}, "
+                "whom none of the stored Series it is computed from names")
     return issues
 
 

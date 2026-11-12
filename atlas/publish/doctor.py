@@ -83,6 +83,7 @@ def _structure(root: Path, profile: str, report: _Report) -> dict[str, dict[str,
     if found is not None and found.get("profile") != profile:
         report.fail(f"the root says it is for {found.get('profile')}-profile releases, not {profile}")
     gone = R.withdrawn(root)
+    R.kept_by_name(root)    # the pins and the saved queries can be read: retention rests on both
     for release_id in R.release_ids(root):
         files = R.read_release(root, release_id)
         if isinstance(files, str):
@@ -172,6 +173,13 @@ def _public_surface(root: Path, surface: str, good: dict[str, dict[str, bytes]],
                   f"Series, and is permitted by the committed rights register on the {surface} surface")
 
 
+def _said_profile(root: Path) -> str:
+    try:
+        return (R.marker(root) or {}).get("profile", "local")
+    except R.RootRefused:
+        return "local"      # _structure reads the marker again and reports why it cannot be read
+
+
 def doctor(*, surface: str | None = None, root: Path | None = None, store: Path | None = None
            ) -> tuple[int, list[str]]:
     """Returns the exit status (1 for any failure) and the report's lines."""
@@ -184,19 +192,25 @@ def doctor(*, surface: str | None = None, root: Path | None = None, store: Path 
         if not root.is_dir():
             report.fail(f"{root} does not exist: there is no release to serve")
         else:
-            _public_surface(root, surface, _structure(root, "public", report), report)
+            try:
+                _public_surface(root, surface, _structure(root, "public", report), report)
+            except R.RootRefused as refused:
+                report.fail(str(refused))
         if surface == "staging":
             report.lines.append("      Staging is held to production's rule here. A local-profile release "
                                 "behind a password is the deploy step's to prove, not doctor's.")
     else:
-        roots = [(Path(root), (R.marker(Path(root)) or {}).get("profile", "local"))] if root else [
+        roots = [(Path(root), _said_profile(Path(root)))] if root else [
             (R.home("local"), "local")] + ([] if surface == "local" else [(R.home("public"), "public")])
         for path, profile in roots:
             report.lines.append(f"The {profile}-profile root: {path}")
             if not path.is_dir():
                 report.warn("it does not exist yet: nothing has been released into it")
                 continue
-            _structure(path, profile, report)
+            try:
+                _structure(path, profile, report)
+            except R.RootRefused as refused:
+                report.fail(str(refused))
             if profile == "public":
                 report.lines.append("      Rights are checked by the preflight: atlas doctor --surface production")
         store = Path(store) if store else R.home("store")

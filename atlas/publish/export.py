@@ -237,20 +237,77 @@ def refresh_ml_use(entries: list[dict], gate: RightsGate) -> None:
         rights = {k: v for k, v in entry["rights"].items() if k not in ("ml_use", "ml_use_reserved_by")}
         return {**rights, **gate.ml_use([{k: v for k, v in lineage(entry).items() if k != "permission"}])}
 
-    def leaves(key: str, seen: frozenset = frozenset()) -> list[dict]:
+    # What each key rests on, by the key of the stored Series (None: something that could not
+    # be followed), each once and worked out once: Recipes that share inputs are not walked
+    # again for every path that reaches them.
+    known: dict[str, dict[str | None, dict]] = {}
+
+    def leaves(key: str, seen: frozenset = frozenset()) -> dict[str | None, dict]:
         entry = by_key.get(key)
         if entry is None or key in seen:
-            return [{"ml_use": False}]  # what cannot be followed is no permission
-        if "recipe" not in entry:
-            return [stated(entry)]
-        return [block for name in entry["recipe"]["inputs"] for block in leaves(name, seen | {key})]
+            return {None: {"ml_use": False}}  # what cannot be followed is no permission
+        if key not in known:
+            if "recipe" not in entry:
+                known[key] = {key: stated(entry)}
+            else:
+                found: dict[str | None, dict] = {}
+                for name in entry["recipe"]["inputs"]:
+                    found.update(leaves(name, seen | {key}))
+                known[key] = found
+        return known[key]
 
     for entry in entries:
         if "recipe" in entry:
             rights = {k: v for k, v in entry["rights"].items() if k not in ("ml_use", "ml_use_reserved_by")}
-            entry["rights"] = {**rights, **combined_ml_use(leaves(entry["key"]))}
+            entry["rights"] = {**rights, **combined_ml_use(list(leaves(entry["key"]).values()))}
         else:
             entry["rights"] = stated(entry)
+
+
+def todays_rights(entries: list[dict], table: object, gate: RightsGate) -> list[dict]:
+    """A Catalog's entries with each Rights block as the register reads today. A Release that
+    reuses another's data files reuses its values, not what the register said of them that day:
+    a Series moved to another licence class is described, and filed in the bulk files, by
+    today's. An entry the register still describes the same way is returned as it is, so a
+    Catalog nothing changed for is the same bytes. v1's legacy entries are left alone (their
+    rights are not the register's to say), and so is everything when the register cannot be
+    trusted: the gate refuses the Release then."""
+    if gate.problem is not None:
+        return entries
+    fresh: dict[str, dict] = {}
+    for entry in entries:
+        if "recipe" not in entry and entry.get("representation") == NATIVE:
+            origin = entry["source"]["origin"]
+            rights = _register_rights(table, gate, origin["producer"], origin["dataset"],
+                                      entry["source"]["channel"]["via"])
+            fresh[entry["key"]] = entry if rights == entry["rights"] else {**entry, "rights": rights}
+        else:
+            fresh[entry["key"]] = entry
+
+    def stored(key: str) -> list[dict] | None:
+        """The stored Series a Derived one rests on, each once, in the order first reached."""
+        found, seen, stack = [], set(), list(reversed(fresh[key]["recipe"]["inputs"]))
+        while stack:
+            name = stack.pop()
+            if name in seen:
+                continue
+            seen.add(name)
+            if name not in fresh or fresh[name].get("representation") != NATIVE:
+                return None
+            if "recipe" in fresh[name]:
+                stack.extend(reversed(fresh[name]["recipe"]["inputs"]))
+            else:
+                found.append(fresh[name])
+        return found
+
+    for entry in entries:
+        if "recipe" in entry and entry.get("representation") == NATIVE:
+            leaves = stored(entry["key"])
+            if leaves:
+                rights = combined_rights([leaf["rights"] for leaf in leaves])
+                if rights != entry["rights"]:
+                    fresh[entry["key"]] = {**entry, "rights": rights}
+    return [fresh[entry["key"]] for entry in entries]
 
 
 def _derived_entry(spec: dict, leaves: list[dict]) -> dict:

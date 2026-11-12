@@ -196,7 +196,12 @@ export async function gate(
   let serving = opened.release.id;
   let pinnedFrom: string | null = null;
   const params = new URLSearchParams(request.search ?? "");
-  const pinnable = PINNABLE.has(request.pathname) && params.has("pin");
+  const token = config.twinToken;
+  // The second pass: the handler's own path, reached from a twin's address by this process.
+  const sent = !twin && internalTwinPath(request.pathname) && typeof token === "string" && token.length >= 16 && request.twinToken === token;
+  // The handler's own path takes a pin only on that second pass. Asked for directly it is
+  // not an address, and it must not get a Release opened (read, hashed and validated) first.
+  const pinnable = PINNABLE.has(request.pathname) && params.has("pin") && (sent || !internalTwinPath(request.pathname));
   if (pinnable || bulkOf !== null) {
     const pins = pinnable ? params.getAll("pin") : [bulkOf!];
     if (pins.length !== 1 || !RELEASE_ID.test(pins[0]!)) {
@@ -230,9 +235,6 @@ export async function gate(
   const firstVisit = request.pathname === "/" && request.method === "GET" && !request.prefetch && !SEEN.test(request.cookie ?? "");
   const seen = `${SEEN_COOKIE}=1; Path=${config.basePath || "/"}; Max-Age=31536000; SameSite=Lax; HttpOnly${request.secure ? "; Secure" : ""}`;
 
-  const token = config.twinToken;
-  // The second pass: the handler's own path, reached from a twin's address by this process.
-  const sent = !twin && internalTwinPath(request.pathname) && typeof token === "string" && token.length >= 16 && request.twinToken === token;
   return {
     action: "forward",
     ...(twin && token ? { rewrite: twin } : twin || (internalTwinPath(request.pathname) && !sent) ? { rewrite: NOT_AN_ADDRESS } : {}),

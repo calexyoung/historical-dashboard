@@ -283,7 +283,10 @@ def test_reuse_rollback_and_pin_cannot_bring_a_local_release_into_a_public_root(
     for result in (reused, rolled, pinned):
         assert result.outcome == "refused" and result.exit_code == 1, result.lines
     wanted = "this root takes public-profile releases" if how == "copied" else "reached through a link"
-    assert wanted in "\n".join(rolled.lines) and wanted in "\n".join(reused.lines)
+    assert wanted in "\n".join(rolled.lines)
+    # A release into it is stopped sooner: the root has Releases and no root.json, so the
+    # writer did not make it and does not adopt it.
+    assert "has no root.json and already holds release" in "\n".join(reused.lines)
     assert R.release_ids(root) == [local_release.name] and not (root / "pins.json").exists()
     if before is not None:
         assert all_bytes(root / "releases") == before

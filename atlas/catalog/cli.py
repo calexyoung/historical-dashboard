@@ -194,6 +194,15 @@ def catalog_main(argv: list[str]) -> int:
     except CatalogError as error:
         print(f"atlas catalog: {error}", file=sys.stderr)
         return 1
+    if g20:
+        # The page is drawn from what the matrix points at. Checked before anything is written:
+        # a cell that names no Series of the Catalog would otherwise stop the command part way.
+        dangling = G.coverage_references({"g20": g20}, entries, G.COVERAGE_DIR)
+        if dangling:
+            for problem in dangling[:8]:
+                print(f"atlas catalog: {problem}", file=sys.stderr)
+            print("atlas catalog: nothing was written; run python -m atlas check", file=sys.stderr)
+            return 1
     if args.write:
         print(f"wrote {T.write_table(entries, table)}")
         print(f"wrote {V.write_v1_coverage(entries, table)}")

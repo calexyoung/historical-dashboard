@@ -113,15 +113,61 @@ def replace_json(path: Path, document: object) -> None:
         temporary.unlink(missing_ok=True)
 
 
+_ABSENT = object()
+
+
 def read_json(path: Path, default=None):
+    """A file of the root as JSON, or ``default`` when it is not there. A file that is there
+    and is not JSON is a refusal that names it: it is never read as nothing."""
     try:
-        return json.loads(Path(path).read_text(encoding="utf-8"))
+        data = Path(path).read_bytes()
     except FileNotFoundError:
         return default
+    try:
+        return json.loads(data.decode("utf-8"))
+    except ValueError as error:     # not UTF-8 (UnicodeDecodeError is a ValueError), or not JSON
+        raise RootRefused(f"{path} cannot be read as JSON ({error}); nothing was changed. Put the "
+                          "file right, or restore the root from a backup") from None
+
+
+def _record(path: Path) -> dict | None:
+    """One of the root's own files, which is a JSON object or is not there. Anything else is
+    refused: read as empty, a damaged list of pins would let retention take what it names."""
+    found = read_json(path, _ABSENT)
+    if found is _ABSENT:
+        return None
+    if not isinstance(found, dict):     # `null` too: a file that is there says something
+        raise RootRefused(f"{path} does not hold a JSON object; nothing was changed. Put the file "
+                          "right, or restore the root from a backup")
+    return found
+
+
+def _held(path: Path, name: str, kind: type, what: str):
+    """The one collection a file of the root exists to hold, empty when the file is not
+    there. A file that is there and does not hold it is refused: ``{}`` is not "no pins"."""
+    record = _record(path)
+    if record is None:
+        return kind()
+    if not isinstance(record.get(name), kind):
+        raise _listed(path, record, what)
+    return record[name]
+
+
+def _listed(path: Path, found: object, what: str) -> RootRefused:
+    return RootRefused(f"{path} does not hold {what}; nothing was changed. Put the file right, or "
+                       "restore the root from a backup")
+
+
+def no_links(root: Path) -> None:
+    """The three directories a writer moves and deletes in are real directories of the root.
+    Through a link, a rename or a delete would land somewhere else."""
+    for name in ("releases", STAGING, TRASH):
+        if (Path(root) / name).is_symlink():
+            raise RootRefused(f"{Path(root) / name} is a link; a release root holds real directories only")
 
 
 def marker(root: Path) -> dict | None:
-    return read_json(Path(root) / MARKER)
+    return _record(Path(root) / MARKER)
 
 
 def claim(root: Path, profile: str, real_bytes: bool) -> None:
@@ -129,6 +175,17 @@ def claim(root: Path, profile: str, real_bytes: bool) -> None:
     of invented values can never be made a root of an agency's, nor the other way round."""
     found = marker(root)
     if found is None:
+        # No marker and Releases already here: the release writer did not make this root, so
+        # what it holds is not known. A public root is never adopted that way; a local one is
+        # (`atlas legacy-release` writes no marker) as long as every Release in it is local.
+        for folder in ("releases", TRASH):
+            for release_id in release_ids(root, folder):
+                held = _profile_of(Path(root) / folder / release_id)
+                if profile == "public" or held != "local":
+                    raise RootRefused(
+                        f"{root} has no {MARKER} and already holds release {release_id} "
+                        f"({held or 'unreadable'} profile): the release writer did not make this root, "
+                        f"so a {profile}-profile release does not go in it. Name an empty directory")
         replace_json(Path(root) / MARKER, {"format": FORMAT, "profile": profile, "real_bytes": real_bytes})
         return
     if found.get("profile") != profile:
@@ -138,6 +195,16 @@ def claim(root: Path, profile: str, real_bytes: bool) -> None:
         kinds = {True: "values an agency served", False: "invented values"}
         raise RootRefused(f"{root} holds {kinds.get(found.get('real_bytes'), 'something unknown')}; "
                           f"a release of {kinds[real_bytes]} does not go in it")
+
+
+def _profile_of(directory: Path) -> str | None:
+    """The Profile a Release's manifest states, or None when it cannot be read."""
+    try:
+        found = json.loads((directory / MANIFEST).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    profile = found.get("profile") if isinstance(found, dict) else None
+    return profile if isinstance(profile, str) else None
 
 
 def current(root: Path) -> str | None:
@@ -157,12 +224,19 @@ def release_ids(root: Path, folder: str = "releases") -> list[str]:
 
 
 def pins(root: Path) -> list[dict]:
-    return (read_json(Path(root) / PINS) or {}).get("pins", [])
+    path = Path(root) / PINS
+    found = _held(path, "pins", list, "a list of pins that each name a release id")
+    if not all(
+            isinstance(pin, dict) and isinstance(pin.get("release_id"), str)
+            and RELEASE_ID.fullmatch(pin["release_id"]) for pin in found):
+        raise _listed(path, found, "a list of pins that each name a release id")
+    return found
 
 
 def saved(root: Path) -> list[dict]:
     """The root's saved queries (PLAN M18; ``saved.py``). Each is its own Pin."""
-    entries = (read_json(Path(root) / SAVED) or {}).get("saved", [])
+    path = Path(root) / SAVED
+    entries = _held(path, "saved", list, "a list of saved queries")
     return [entry for entry in entries if isinstance(entry, dict)]
 
 
@@ -174,7 +248,11 @@ def kept_by_name(root: Path) -> set[str]:
 
 
 def withdrawn(root: Path) -> dict[str, dict]:
-    return (read_json(Path(root) / WITHDRAWN) or {}).get("series", {})
+    path = Path(root) / WITHDRAWN
+    found = _held(path, "series", dict, "the withdrawn Series, each with its record")
+    if not all(isinstance(record, dict) for record in found.values()):
+        raise _listed(path, found, "the withdrawn Series, each with its record")
+    return found
 
 
 def write_status(root: Path, **fields) -> None:
@@ -182,7 +260,7 @@ def write_status(root: Path, **fields) -> None:
 
 
 def status(root: Path) -> dict | None:
-    return read_json(Path(root) / STATUS)
+    return _record(Path(root) / STATUS)
 
 
 # --- a Release already in the root ---------------------------------------------------------------
@@ -412,6 +490,10 @@ def recover(root: Path, now: datetime) -> tuple[list[str], str | None]:
     if last and last.get("outcome") in ("running", "promoting"):
         notes.append(f"the run that started {last.get('started')} did not finish")
         intended = last.get("release_id")
+        if intended and not (isinstance(intended, str) and RELEASE_ID.fullmatch(intended)):
+            # It is used as a path below. What is not a release id names nothing to move.
+            notes.append(f"{STATUS} names no release id; nothing was moved")
+            intended = None
         if last["outcome"] == "promoting" and intended:
             if current(root) == intended:
                 # The caller journals it and then closes the intent (``close_promotion``), in
@@ -442,10 +524,13 @@ def close_promotion(root: Path, release_id: str, now: datetime) -> None:
 
 
 def _to_trash(root: Path, release_id: str, now: datetime) -> None:
+    no_links(root)
     trash = root / TRASH
     trash.mkdir(exist_ok=True)
     target = trash / release_id
-    if target.exists():
+    if target.is_symlink():
+        target.unlink()         # the link itself; what it points at is not the root's
+    elif target.exists():
         shutil.rmtree(target)
     os.rename(root / "releases" / release_id, target)
     replace_json(trash / f"{release_id}.json", {"format": FORMAT, "trashed_at": S.stamp(now)})
@@ -457,6 +542,7 @@ def prune(root: Path, now: datetime, keep: int = KEEP) -> tuple[list[str], list[
     renamed into ``trash/``, where a reader that already opened one can go on reading, and
     are deleted a day later. Returns (trashed, deleted)."""
     root = Path(root)
+    no_links(root)      # before anything is moved: a trash that is a link deletes somewhere else
     ids = release_ids(root)
     kept = set(ids[-keep:]) | kept_by_name(root) | {current(root)}
     trashed = [release_id for release_id in ids if release_id not in kept]
@@ -464,12 +550,18 @@ def prune(root: Path, now: datetime, keep: int = KEEP) -> tuple[list[str], list[
         _to_trash(root, release_id, now)
     deleted = []
     for note in sorted((root / TRASH).glob("*.json")) if (root / TRASH).is_dir() else []:
+        if not RELEASE_ID.fullmatch(note.stem) or note.is_symlink():
+            continue    # not a note this writer left: only a Release, by its id, is ever deleted
         try:
             due = S.unstamp(read_json(note)["trashed_at"]) + timedelta(days=TRASH_DAYS)
-        except (KeyError, TypeError, ValueError):
+        except (KeyError, TypeError, ValueError, RootRefused):
             continue
         if now >= due:
-            shutil.rmtree(root / TRASH / note.stem, ignore_errors=True)
+            target = root / TRASH / note.stem
+            if target.is_symlink():
+                target.unlink()
+            else:
+                shutil.rmtree(target, ignore_errors=True)
             note.unlink()
             deleted.append(note.stem)
     return trashed, deleted

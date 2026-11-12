@@ -49,7 +49,20 @@ from . import bulk as B
 from . import engine
 from . import root as R
 from . import saved as saved_queries
-from .export import AGE_NOTE, Built, ContentRefused, ExportError, add_content, add_derived, add_latest, build, dump, lag_limit, refresh_ml_use
+from .export import (
+    AGE_NOTE,
+    Built,
+    ContentRefused,
+    ExportError,
+    add_content,
+    add_derived,
+    add_latest,
+    build,
+    dump,
+    lag_limit,
+    refresh_ml_use,
+    todays_rights,
+)
 
 REJECTED, RETIRED = "rejected", "retired"
 #: What a root's STATUS.json says when the content could not be compiled. The reason itself
@@ -184,6 +197,10 @@ def _opened(command: str, *, profile: str, root: Path, store: Path, register: Pa
         if found is not None and found.get("profile") != profile:
             raise R.RootRefused(f"{root} is a {found.get('profile')}-profile root, not a {profile} one")
         with R.locked(root):
+            R.no_links(root)
+            # Read now, so that a file of the root that cannot be read stops the run before it
+            # changes anything, and by name.
+            R.pins(root), R.saved(root), R.withdrawn(root), R.status(root)
             store.mkdir(parents=True, exist_ok=True)
             try:
                 with S.locked(store):
@@ -435,11 +452,20 @@ def _reuse(run: _Run, legacy: dict[str, bytes] | None, drop: dict[str, str] | No
             built.files[path] = data
             built.links[path] = run.root / "releases" / source / path
     built.rows = {key: row for key, row in manifest["series"].items() if key not in gone}
-    # The Catalog is carried over as it is, but for what it says of model training: that is
-    # said afresh from today's register, so a Release reused from before contract 0.8.0 states
-    # it, and one reused after a signature changed says what the register says now (ADR 0041).
-    refresh_ml_use(entries, run.gate)
-    built.files[CATALOG] = dump({"series": entries})
+    # The values are reused; what the register says of them is read today. A Series whose row
+    # has changed (another licence class, other terms) is described by today's, here and in
+    # the bulk files made from this Catalog. So is what it says of model training: a Release
+    # reused from before contract 0.8.0 states it, and one reused after a signature changed
+    # says what the register says now (ADR 0041). Unchanged, the Catalog is the same bytes.
+    fresh = [dict(entry) for entry in todays_rights(entries, run.table, run.gate)]
+    refresh_ml_use(fresh, run.gate)
+    if fresh != entries:
+        built.files[CATALOG] = dump({**json.loads(files[CATALOG]), "series": fresh})
+        for entry in fresh:
+            if "rights_status" in built.rows.get(entry["key"], {}):
+                built.rows[entry["key"]] = {**built.rows[entry["key"]], "rights_status": entry["rights"]["status"]}
+    else:
+        built.files[CATALOG] = files[CATALOG]
     # The content is written afresh from its files. v1's bands and recessions come from the
     # converter when it ran, else from the Release being reused.
     add_content(built, profile=run.profile, gate=run.gate, content=content, manual=manual,

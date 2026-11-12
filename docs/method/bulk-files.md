@@ -87,11 +87,15 @@ both tables as the last column.
 
 `licence` is the class the register gave when the version was captured, so
 `vintages.{licence}.parquet` is split by that, and a Series whose class changed has rows in
-two files. Whether a version is in any file at all is decided by today's register.
+two files. A version the store recorded with no rights has no class of its own day: its
+`licence` is `unknown` and it is in `vintages.unknown.parquet`. Today's class is never written
+back onto it. Whether a version is in any file at all is decided by today's register.
 
 A file of versions is described in the datapackage by what was recorded with its rows: their
 licence classes, the attribution each carried, the Origin each names. Today's terms address
-is given only for a class a Series in the file still has today.
+is given only for a class a Series in the file still has today. For a version recorded with
+no rights the attribution is the one the register asks for the Series today: what class the
+version was under is not known, and what must be said when the file is handed out still is.
 
 ## The datapackage
 
@@ -102,7 +106,10 @@ file), `licences` (the classes of its rows), `licence` (on a file for one class)
 `attributions` (the lines each Origin asks to be cited with), `ml_use` (true only when every
 row of the file may be described as usable for training machine-learning models) and
 `ml_use_reserved` (each Series of the file that may not, with the sentence that says so and
-why; the same is said in the resource's `description`). The package also carries
+why; the same is said in the resource's `description`). The sentence names whoever's signed
+row reserves it, whether that row is the Series' own today or one its history came through;
+where the Series' own Rights allow it and no signed row is known to reserve it for the
+history, it says the rights of its history are not settled. The package also carries
 `release_id`, `created`, the rights register's version and hash, `left_out` and
 `without_history`.
 
@@ -131,7 +138,8 @@ Release's own; every Series listed one the Release publishes natively; a file fo
 class listing only Series of that class; and, from 0.8.0, each resource saying `ml_use` and
 `ml_use_reserved`, listing at least every Series of the file the Catalog does not allow for
 model training and none the file does not hold, with `ml_use` true exactly when the list is
-empty. The writer's check holds the same two fields to the `ml_use` column of the rows. A validator reads no Parquet, so what a table's rows
+empty, and each sentence beginning "Not for use in training machine-learning models: ", so
+that it cannot say the opposite of the flag. The writer's check holds the same two fields to the `ml_use` column of the rows. A validator reads no Parquet, so what a table's rows
 are is the writer's check and the tests'.
 
 A content-only Release (`--reuse-data`) and a withdrawal write their bulk files again from the

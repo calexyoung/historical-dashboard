@@ -210,6 +210,11 @@ describe("page twins", () => {
     expect(text).toContain("## Not for training machine-learning models");
     expect(text).toContain(`${NOTE}.`);
     expect(text).toMatch(/observations\.parquet.*\| Not every row \|/);
+    // A Series is listed when any file marks rows of it: its versions may be marked where its
+    // Observations are not. And what may be handed out today is said file by file, above.
+    expect(text).toContain("Some of their rows are marked false in the `ml_use` column");
+    expect(text).not.toContain("Every row of them");
+    expect(text).not.toContain("are in the files and may be redistributed");
     expect(text).toMatch(/observations\.public\\?_domain\.parquet.*\| Every row \|/);
   });
 });
@@ -230,6 +235,9 @@ describe("/downloads", () => {
     const html = renderToStaticMarkup(<DownloadsPage view={view} basePath="/macro-atlas" address={ADDRESS} current />);
     expect(html).toContain("Not for training machine-learning models");
     expect(html).toContain("Macro Atlas project&#x27;s terms reserve it");
+    expect(html).toContain("Some of their rows are marked");
+    expect(html).not.toContain("very row of them");
+    expect(html).not.toContain("are in the files and may be redistributed");
     expect(html.match(/data-ml-use="false"/g)?.length).toBe(by.size - [...by.values()].filter(Boolean).length);
   });
 
@@ -293,6 +301,21 @@ describe("what was recorded, not only what a Series rests on today", () => {
     expect(notes(changed)).toEqual([expect.stringContaining("for what these figures were computed from")]);
   });
 
+  it("a lock and latest rows that came through two Origins that each reserve it name both", () => {
+    const THIRD = "A third origin (synthetic)";
+    const both = createRightsGate({ ...table, rows: [...table.rows, ...[OTHER, THIRD].map((name, n) => ({ ...table.rows[0]!, id: `another-${n}`, name, origins: [name], decision: { display: true, redistribute: true, store: false, ml_use: false, signed_by: "Alex", signed_on: "2026-01-01" } }))] });
+    const said = (changed: OpenedRelease): string[] => (JSON.parse(body(claimTwin(changed, "production", claimId(), "json", { address: ADDRESS, gate: both }))) as { evidence: { ml_use_notes: string[] } }).evidence.ml_use_notes;
+    const changed = structuredClone(release);
+    for (const lock of Object.values(changed.locks)) for (const row of lock.parsed.rights_used) row.origin = OTHER;
+    for (const claim of changed.latest!.claims) for (const row of claim.rights_used) row.origin = THIRD;
+    expect(said(changed)).toHaveLength(2);
+    expect(said(changed)[0]).toContain(OTHER);
+    expect(said(changed)[1]).toContain(THIRD);
+    // The same lineage in both is said once.
+    for (const claim of changed.latest!.claims) for (const row of claim.rights_used) row.origin = OTHER;
+    expect(said(changed)).toHaveLength(1);
+  });
+
   it("a file of versions whose history came through an Origin that reserves it is refused, and the Observations are not", () => {
     const changed = structuredClone(release);
     for (const line of changed.vintages[OPEN]!.metadata) line.metadata.source.origin.producer = OTHER;
@@ -323,6 +346,22 @@ describe("discovery", () => {
     expect(line(RESERVED)).toContain(`${NOTE}.`);
     expect(line(OPEN)).not.toContain("machine-learning");
     expect(text).toContain("Redistribution is not permission to train a model");
+  });
+
+  it("llms.txt: says it of a Series listed by its metadata alone, withheld or not handed out here", () => {
+    const withheld = release.manifest.withheld[0]!.key;
+    const local = llmsText(release, "local", { address: ADDRESS }).split("\n").find((l) => l.includes(`/data/${withheld}.metadata.json)`))!;
+    expect(local).toContain("Withheld; this is its metadata.");
+    expect(local).toContain(`${LEAD}: `);
+    // Nothing may be redistributed and the register reserves model training: every line is
+    // metadata only, and the one whose Rights reserve it still says so.
+    const closed = createRightsGate(fixtureRegister({ display: true, redistribute: false, ml_use: false }));
+    const text = llmsText(release, "production", { address: ADDRESS, gate: closed });
+    const line = text.split("\n").find((l) => l.includes(`/data/${RESERVED}.metadata.json)`))!;
+    expect(line).toContain("Its values are not handed out here; this is its metadata.");
+    expect(line).toContain(`${NOTE}.`);
+    expect(line.endsWith(".")).toBe(true);
+    expect(line).not.toContain("..");
   });
 
   it("JSON-LD: the Dataset's conditions of access say it", () => {

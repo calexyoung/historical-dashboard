@@ -27,10 +27,12 @@ export const methodLinks =
   (basePath: string): Resolve =>
   (href) => {
     if (/^https:\/\/[^\s]+$/.test(href)) return { href, external: true };
-    if (/^\/(?!\/)[a-z0-9/_.#?=&-]*$/i.test(href) && !href.endsWith(".md")) return { href: `${basePath}${href}`, external: false };
+    // A method document first, by its file and whatever fragment follows it: `claims.md#the-lock`
+    // is the contract's page, not the Markdown twin of the reader's page of the same name.
     const [file, anchor] = href.split("#");
     const slug = BY_FILE.get((file ?? "").split("/").pop() ?? "");
     if (slug && /^(?:\.\/|docs\/method\/|\/docs\/method\/)?[a-z-]+\.md$/.test(file ?? "")) return { href: `${basePath}/docs/method/${slug}${anchor ? `#${anchor.replace(/[^a-z0-9-]/gi, "")}` : ""}`, external: false };
+    if (/^\/(?!\/)[a-z0-9/_.#?=&-]*$/i.test(href) && !(file ?? "").endsWith(".md")) return { href: `${basePath}${href}`, external: false };
     return null;
   };
 

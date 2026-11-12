@@ -146,8 +146,10 @@ export function DownloadsPage({ view, basePath, address, current }: { view: Down
           ) : (
             <>
               <p className="mb-3 max-w-[68ch] text-sm text-ink-2">
-                These series are in the files and may be redistributed. Their values are not for use in training machine-learning models: every row of them is marked{" "}
-                <code className="font-mono">false</code> in the <code className="font-mono">ml_use</code> column, and the data package says so file by file.
+                {/* A Series is named here when any file marks rows of it (its versions may be marked where its
+                    Observations are not), and whether a file is handed out here today is said beside the file. */}
+                These series are in the files. Some of their rows are marked <code className="font-mono">false</code> in the{" "}
+                <code className="font-mono">ml_use</code> column: those values are not for use in training machine-learning models. The data package says so file by file.
               </p>
               <Named rows={view.notForMl} basePath={basePath} />
             </>
@@ -155,7 +157,8 @@ export function DownloadsPage({ view, basePath, address, current }: { view: Down
         </Panel>
       )}
 
-      {view.whole.some((file) => file.refused === null) && (
+      {/* The examples read these two files: shown only when both are given. */}
+      {["observations.parquet", "observations.csv.gz"].every((name) => view.whole.some((file) => file.name === name && file.refused === null)) && (
         <Panel id="load" title="Load them">
           <pre tabIndex={0} aria-label="How to load the files" role="region" className="overflow-x-auto text-[13px] leading-relaxed text-ink">
             <code className="font-mono">{`# pandas

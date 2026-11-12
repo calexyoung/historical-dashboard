@@ -171,13 +171,15 @@ def _history_refusal(history: dict, gate: RightsGate) -> str | None:
     return None if decision.allowed else decision.reason
 
 
-def history_ml_use(history: dict, gate: RightsGate) -> bool:
-    """Whether everything a Series' history came through allows model training: a version
-    fetched through other terms than today's is under those terms (ADR 0041)."""
+def history_ml_use_said(history: dict, gate: RightsGate) -> dict:
+    """What the gate says of model training for everything a Series' history came through: a
+    version fetched through other terms than today's is under those terms (ADR 0041).
+    ``ml_use``, and ``ml_use_reserved_by`` where a signed row says no. A history that does not
+    say where it came from is no permission, and nobody is named."""
     try:
-        return gate.ml_use(history_lineages(history))["ml_use"]
+        return gate.ml_use(history_lineages(history))
     except (ValueError, KeyError, TypeError, AttributeError):
-        return False
+        return {"ml_use": False}
 
 
 def _number(value) -> float | None:
@@ -200,10 +202,15 @@ def _observation_rows(files: dict[str, bytes], catalog: dict[str, dict], keys: l
 
 def _vintage_rows(key: str, history: dict, entry: dict, gate: RightsGate) -> list[dict]:
     """One row per version, each under the metadata recorded with it: the unit, the Origin and
-    the licence class a version carries are those of its own day, not today's. ``ml_use`` is
-    one answer for the whole history, the most restrictive: the Series' own today, and the
-    gate's for every Origin, dataset and Channel the history came through."""
-    ml_use = entry["rights"].get("ml_use") is True and history_ml_use(history, gate)
+    the licence class a version carries are those of its own day, not today's. A version
+    recorded with no rights has no class of its own day to give: it is ``unknown``, and today's
+    class is not written back onto it. What must be said of the file is another matter: for
+    such a version it is what the register asks to be said of the Series today, so that no
+    file leaves without a citation today's terms require. ``ml_use`` is one answer for the
+    whole history, the most restrictive: the Series' own today, and the gate's for every
+    Origin, dataset and Channel the history came through."""
+    said = history_ml_use_said(history, gate)
+    ml_use = entry["rights"].get("ml_use") is True and said["ml_use"]
     lines = {line["hash"]: line["metadata"] for line in history["metadata"]}
     rows = []
     for index, v in enumerate(history["rows"]):
@@ -217,9 +224,10 @@ def _vintage_rows(key: str, history: dict, entry: dict, gate: RightsGate) -> lis
                      "channel": v["channel"],
                      "origin": ((metadata.get("source") or {}).get("origin") or {}).get("producer"),
                      "unit": metadata.get("unit"),
-                     "licence": rights.get("licence_class") or entry["rights"]["status"],
+                     "licence": rights.get("licence_class") or "unknown",
                      "ml_use": ml_use, "_n": index,
-                     # Not a column: what the datapackage says of the file the row is in.
+                     # Not columns: what the datapackage says of the file the row is in.
+                     "_ml_use_reserved_by": said.get("ml_use_reserved_by", []),
                      "_attribution": (rights.get("attribution") if rights.get("licence_class")
                                       else entry["rights"].get("attribution"))})
     # The order of the file is the order of the versions; a stable sort keeps it within a Period.
@@ -227,6 +235,24 @@ def _vintage_rows(key: str, history: dict, entry: dict, gate: RightsGate) -> lis
     for row in rows:
         del row["_n"]
     return rows
+
+
+def _ml_use_reason(entry: dict, rows: list[dict]) -> str:
+    """Why a Series' rows in a file are not for model training, in the sentence every reader
+    looks for. Whoever a signed row names is named, whether the row is the Series' own today or
+    one its history came through; where the Series' own Rights allow it and nobody's signed row
+    is known to reserve it for the history, that is rights that are not settled."""
+    own = entry["rights"]
+    past = list(dict.fromkeys(name for row in rows if row["key"] == entry["key"]
+                              for name in row.get("_ml_use_reserved_by", ())))
+    if own.get("ml_use") is True:
+        if past:
+            return ml_use_note({"ml_use": False, "ml_use_reserved_by": past})
+        return f"{ML_USE_LEAD}: the rights of its history are not settled"
+    if own.get("ml_use") is False and past:
+        names = [name for name in own.get("ml_use_reserved_by") or [] if isinstance(name, str)]
+        return ml_use_note({"ml_use": False, "ml_use_reserved_by": list(dict.fromkeys(names + past))})
+    return ml_use_note(own)
 
 
 # --- the three formats ----------------------------------------------------------------------------
@@ -359,10 +385,7 @@ def _resource(path: str, data: bytes, table: str, extension: str, rows: list[dic
     for e in entries:
         if all(row["ml_use"] for row in rows if row["key"] == e["key"]):
             continue
-        # A Series whose own Rights allow it and whose history does not: nobody's signed row
-        # is known to reserve it here, so it is said as rights that are not settled.
-        note = ml_use_note(e["rights"]) or f"{ML_USE_LEAD}: the rights of its history are not settled"
-        reserved.append({"key": e["key"], "note": note})
+        reserved.append({"key": e["key"], "note": _ml_use_reason(e, rows)})
     what = "every version held of each Period" if table == "vintages" else "the Observations, one a row"
     whose = "" if not licence else (f", for the versions recorded under the licence class {licence}" if table == "vintages"
                                     else f", for the Series whose licence class is {licence}")
@@ -473,10 +496,10 @@ def problems(files: dict[str, bytes], gate: RightsGate) -> list[str]:
     bytes: each table again, in every format; the rows the Release's own files give; and the
     gate, asked afresh about every Series a row names."""
     paths = sorted(p for p in files if p.startswith(f"{FOLDER}/") and p != DATAPACKAGE)
-    if not paths and DATAPACKAGE not in files:
-        return []
-    if json.loads(files[MANIFEST]).get("profile") != "public" if MANIFEST in files else False:
-        return ["bulk files are written only for a public-profile release"]
+    public = json.loads(files[MANIFEST]).get("profile") == "public" if MANIFEST in files else True
+    nothing = not paths and DATAPACKAGE not in files
+    if not public:
+        return [] if nothing else ["bulk files are written only for a public-profile release"]
     catalog = {entry["key"]: entry for entry in json.loads(files[CATALOG])["series"]}
     found: list[str] = []
     tables: dict[str, list[tuple]] = {}
@@ -520,6 +543,10 @@ def problems(files: dict[str, bytes], gate: RightsGate) -> list[str]:
         if path in files and _history_refusal(json.loads(files[path]), gate) is None:
             versions.extend(_vintage_rows(key, json.loads(files[path]), catalog[key], gate))
     expected["vintages"] = [tuple(row[c] for c in VINTAGE_COLUMNS) for row in versions]
+    if nothing:
+        # No file and no descriptor. That is right when nothing may be handed out, and a loss
+        # when something may: the files are missing, not merely absent.
+        return [f"{table}.parquet: is missing" for table in ("observations", "vintages") if expected[table]]
     for table in ("observations", "vintages"):
         if expected[table] and f"{table}.parquet" not in tables:
             found.append(f"{table}.parquet: is missing")

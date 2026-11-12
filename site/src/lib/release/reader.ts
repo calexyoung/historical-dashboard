@@ -240,7 +240,9 @@ export function createReleaseReader(options: {
   const opening = new Map<string, Promise<Opened>>();
   let lastGood: OpenedRelease | null = null;
   /** The datapackage's own size and hash, by release id, as read when the Release was opened. */
-  const packages = new Map<string, { bytes: number; sha256: string }>();
+  // By the opened Release itself, not by its id: the digest is there for exactly as long as the
+  // Release is held, whichever of `good` and `lastGood` holds it.
+  const packages = new WeakMap<OpenedRelease, { bytes: number; sha256: string }>();
 
   const fail = (kind: FailureKind, id: string | null, reason: string): Failure => ({ ok: false, kind, id, reason });
 
@@ -299,7 +301,7 @@ export function createReleaseReader(options: {
       vintages: folder<VintageFile>("vintages"),
       downloads: files[DATAPACKAGE] ? parse<Datapackage>(DATAPACKAGE) : null,
     };
-    if (files[DATAPACKAGE]) packages.set(id, { bytes: files[DATAPACKAGE].length, sha256: createHash("sha256").update(files[DATAPACKAGE]).digest("hex") });
+    if (files[DATAPACKAGE]) packages.set(release, { bytes: files[DATAPACKAGE].length, sha256: createHash("sha256").update(files[DATAPACKAGE]).digest("hex") });
     release.search = files["search.json"] ? parse<SearchFile>("search.json") : searchDocument(release);
     const refused = refusal(release, surface);
     if (refused) return fail("refused", id, refused);
@@ -351,7 +353,6 @@ export function createReleaseReader(options: {
           while (good.size > KEEP) {
             const oldest = good.keys().next().value!;
             good.delete(oldest);
-            packages.delete(oldest);
           }
         } else {
           failed.set(id, { failure: opened, until: now() + RETRY_MS });
@@ -444,7 +445,7 @@ export function createReleaseReader(options: {
     const opened = await pinned(id);
     if (!opened.ok || opened.release.downloads === null || typeof name !== "string") return null;
     let listed: { bytes: number; sha256: string } | undefined;
-    if (name === "datapackage.json") listed = packages.get(id);
+    if (name === "datapackage.json") listed = packages.get(opened.release);
     else {
       const resource = opened.release.downloads.resources.find((r) => r.path === name);
       if (resource) listed = { bytes: resource.bytes, sha256: resource.hash.slice("sha256:".length) };
