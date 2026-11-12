@@ -27,7 +27,7 @@ const KEY = /^[a-z][a-z0-9_]{0,63}$/;
 const REQUEST = "engine-request.json";
 const REPORT = "engine-report.json";
 
-type Check = { check: string; outcome: "pass" | "fail" | "not_checked"; detail?: string };
+type Check = { check: string; outcome: "pass" | "fail" | "not_checked"; detail?: string; /** Why a spot was not checked. */ reason?: "no_series" | "no_value" };
 type Spot = { key: string; period: string; value: number; tolerance: number; source?: string; url?: string };
 
 class Refused extends Error {}
@@ -132,8 +132,10 @@ function verify(release: string, spotPath: string | null): number {
         if (stored) held = new Map(stored.observations.map((o) => [o.period, o.value]));
       }
       const value = held?.get(spot.period);
-      if (value === undefined || value === null) {
-        checks.push({ check: name, outcome: "not_checked", detail: "this release holds no value for it" });
+      if (!held) {
+        checks.push({ check: name, outcome: "not_checked", reason: "no_series", detail: "this release does not hold the series" });
+      } else if (value === undefined || value === null) {
+        checks.push({ check: name, outcome: "not_checked", reason: "no_value", detail: "this release holds no value for that period" });
       } else if (Math.abs(value - spot.value) <= spot.tolerance) {
         checks.push({ check: name, outcome: "pass" });
       } else {

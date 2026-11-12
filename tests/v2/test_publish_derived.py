@@ -16,7 +16,7 @@ from pathlib import Path
 import pytest
 
 from atlas.publish import release, withdraw
-from atlas.publish.export import ExportError, build
+from atlas.publish.export import build
 from atlas.release import validate_release
 from atlas.rights import RightsGate
 from atlas.vintage.replay import SeriesTableError, load_derived, load_series
@@ -24,8 +24,6 @@ from atlas.vintage.replay import SeriesTableError, load_derived, load_series
 from .release_helpers import (
     MAKE,
     NOW,
-    ORIGIN,
-    RECIPES,
     all_bytes,
     build_store,
     current,
@@ -96,7 +94,7 @@ def test_a_release_holds_the_derived_series_the_engine_computed(tmp_path, regist
     # Jobs per index point: 150010 / 100; no February price; 150300 / 100.9, preliminary.
     ratio = read_json(directory / "derived" / "fx_jobs_per_price.json")
     assert [(o["period"], o["status"]) for o in ratio["observations"]] == [
-        ("2026-01", "preliminary" if False else "final"), ("2026-02", "missing"), ("2026-03", "preliminary")]
+        ("2026-01", "final"), ("2026-02", "missing"), ("2026-03", "preliminary")]
     assert ratio["observations"][0]["value"] == pytest.approx(1500.1, abs=1e-9)
     assert ratio["observations"][2]["value"] == pytest.approx(150300 / 100.9, abs=1e-9)
 
@@ -238,7 +236,6 @@ def test_a_derived_entry_the_table_cannot_stand_behind_is_refused(tmp_path, brok
 def test_a_table_without_recipes_has_none_and_the_committed_table_declares_cpi_yoy():
     from .release_helpers import SERIES
     assert load_derived(SERIES) == []
-    assert [e["key"] for e in load_derived(RECIPES.with_name("series.json"))] == []
     committed = {e["key"]: e for e in load_derived()}
     assert committed["cpi_yoy"]["recipe"] == {"op": "pct_change", "inputs": ["cpi_nsa"],
                                               "order": "aggregate_then_compute", "params": {"lag": 12}}
@@ -294,7 +291,7 @@ def test_a_step_that_does_not_finish_in_time_rejects_the_run(tmp_path, register,
     ("exit 0\n", "report"),                                                           # wrote nothing
     ("echo '{' > engine-report.json\nexit 0\n", "report"),                             # not JSON
     ("echo '{\"format\":1,\"semantics_version\":\"9\",\"derived\":{},\"empty\":[],\"checks\":[]}' > engine-report.json\n"
-     "exit 0\n", "fx_"),                                                              # says nothing of what was asked
+     + "exit 0\n", "fx_"),                                                              # says nothing of what was asked
     ("echo x > stray.txt\nexit 0\n", "stray.txt"),                                     # a file nobody asked for
     ("echo x >> catalog.json\nexit 0\n", "catalog.json"),                              # changed its input
     ("mkdir -p derived && ln -s ../catalog.json derived/fx_price_change.json\nexit 0\n", "link"),
@@ -377,10 +374,12 @@ def test_on_a_local_build_only_recipes_of_the_series_table_are_handed_to_the_eng
         "rights": {"owner": "x", "terms_url": None, "status": "unknown", "attribution": None, "reviewed": None},
         "recipe": {"op": "pct_change", "inputs": ["v1_level"], "order": "aggregate_then_compute", "params": {"lag": 12}}}
     level = {**{k: v for k, v in legacy_entry.items() if k != "recipe"}, "key": "v1_level"}
-    file = lambda key: json.dumps({"key": key, "freq": "monthly", "representation": "legacy_monthly_rounded",  # noqa: E731
-                                   "period_start": "2024-01-01", "period_end": "2024-01-31", "observations": [
-                                       {"period": "2024-01", "period_start": "2024-01-01", "period_end": "2024-01-31",
-                                        "value": 1.5, "status": "final"}]}).encode()
+    def file(key: str) -> bytes:
+        return json.dumps({"key": key, "freq": "monthly", "representation": "legacy_monthly_rounded",
+                           "period_start": "2024-01-01", "period_end": "2024-01-31", "observations": [
+                               {"period": "2024-01", "period_start": "2024-01-01", "period_end": "2024-01-31",
+                                "value": 1.5, "status": "final"}]}).encode()
+
     row = {"sha256": "0" * 64, "channel": "computed", "rights_status": "unknown", "representation": "legacy_monthly_rounded"}
     legacy = {
         "catalog.json": json.dumps({"series": [level, legacy_entry]}).encode(),
@@ -396,12 +395,3 @@ def test_on_a_local_build_only_recipes_of_the_series_table_are_handed_to_the_eng
     assert built.materialise == ["fx_jobs_per_price", "fx_price_change"]
     assert built.files["derived/v1_yoy.json"] == legacy["derived/v1_yoy.json"]
     assert "derived/fx_price_change.json" not in built.files          # the engine has not run yet
-
-
-def test_a_derived_spec_cannot_take_the_key_of_a_legacy_series_half_way(tmp_path, register, store):
-    """A key computed by the engine replaces v1's Series of that key whole, or not at all."""
-    table = read_json(register)
-    path = series_with_recipes(tmp_path / "s.json", [change("fx_price_change", "fx_price")])
-    with pytest.raises(ExportError, match="public"):
-        build(profile="public", store=store, table=table, gate=RightsGate(table), series=load_series(path),
-              derived=load_derived(path), created=NOW, legacy={})

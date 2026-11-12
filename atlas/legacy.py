@@ -519,17 +519,22 @@ def _as_utc(moment: datetime | None) -> datetime:
 
 
 # The engine's Transforms, in its order (packages/core/src/transform.ts).
-TRANSFORMS = ("lin", "log", "rebase", "z", "pc1", "drawdown")
-RATIO_TRANSFORMS = frozenset({"log", "rebase", "pc1", "drawdown"})
+TRANSFORMS = ("lin", "chg", "ch1", "pch", "pc1", "pca", "log", "rebase", "z", "drawdown")
+#: Those that divide by one of the Series' own values, or take its logarithm.
+RATIO_TRANSFORMS = frozenset({"pch", "pc1", "pca", "log", "rebase", "drawdown"})
+#: Those that need a year made of a fixed number of Periods.
+YEARLY_TRANSFORMS = frozenset({"ch1", "pc1", "pca"})
 
 
 def offered_transforms(entry: dict, series_file: dict) -> list[str]:
     """Which Transforms a Series offers (docs/method/transforms.md).
 
-    The four that divide by one of the Series' own values, or take its logarithm, read the
-    right way only on a Series that stays above zero: a percent change from a negative value
-    has the wrong sign, and an index on a base the Series later crosses means nothing. v1
-    offered all six for everything. An irregular Series has no Observation one year earlier.
+    Those that divide by one of the Series' own values, or take its logarithm, read the right
+    way only on a Series that stays above zero: a percent change from a negative value has the
+    wrong sign, and an index on a base the Series later crosses means nothing. v1 offered all
+    of its six for everything. An irregular Series has no Observation one year earlier and no
+    fixed number of Periods in a year. The differences (``chg``, ``ch1``) are in the Series'
+    own unit and mislead on no sign.
     """
     observed = [o["value"] for o in series_file["observations"] if o["value"] is not None]
     positive = bool(observed) and min(observed) > 0
@@ -537,7 +542,7 @@ def offered_transforms(entry: dict, series_file: dict) -> list[str]:
     for name in TRANSFORMS:
         if name in RATIO_TRANSFORMS and not positive:
             continue
-        if name == "pc1" and entry["freq"] == "irregular":
+        if name in YEARLY_TRANSFORMS and entry["freq"] == "irregular":
             continue
         offered.append(name)
     return offered

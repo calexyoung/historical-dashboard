@@ -14,7 +14,10 @@ as it was and says why in ``STATUS.json``.
 Order inside a release run, and what a kill at each point leaves (``root.recover`` puts each
 right at the start of the next run):
 
-1. STATUS ``running``; export; checks. Nothing in the root but STATUS has changed.
+1. STATUS ``running``; export; the Node step, in a directory of its own under ``.staging/``
+   that is removed as soon as its Derived series are read back (``engine.py``); checks.
+   Nothing in the root but STATUS has changed, unless the kill came during the Node step: then
+   its directory is left in ``.staging/``, and removed like anything else there.
 2. The files are written under ``.staging/``. A kill leaves them there; they are removed.
 3. STATUS ``promoting`` with the release id; the directory is renamed into ``releases/``.
    A kill leaves a Release nothing names; it is moved to the trash.
@@ -38,11 +41,12 @@ from .. import legacy as L
 from ..capture import store as S
 from ..release import ANNOTATIONS, CATALOG, MANIFEST, SCHEMA_VERSION, validate_files
 from ..rights import REGISTER_PATH, RightsGate
-from ..staging import STAGING, PromotionRefused, _write_current, promote, stage
-from ..vintage.replay import SeriesTableError, load_series
+from ..staging import STAGING, PromotionRefused, _no_links, _write_current, promote, stage
+from ..vintage.replay import SeriesTableError, load_derived, load_series
 from ..vintage.store import VintageStore
+from . import engine
 from . import root as R
-from .export import AGE_NOTE, Built, ExportError, build, dump, lag_limit
+from .export import AGE_NOTE, Built, ExportError, add_derived, build, dump, lag_limit
 
 REJECTED, RETIRED = "rejected", "retired"
 
@@ -255,23 +259,37 @@ def _manifest(run: _Run, built: Built, release_id: str, created: datetime, repor
     return manifest
 
 
-def _publish(run: _Run, built: Built, write: Callable[[Path, bytes], None]) -> tuple[str, str, list[dict]]:
-    """Check, stage and promote ``built``. Returns (outcome, release id, failed checks);
-    ``promoted`` means CURRENT now names the Release. Raises OSError and PromotionRefused
-    only from before the commit point, with the staging area cleaned up."""
+def _publish(run: _Run, built: Built, write: Callable[[Path, bytes], None],
+             spot: Path | None = None) -> tuple[str, str, list[dict]]:
+    """Compute the Derived series (the Node step), then check, stage and promote ``built``.
+    Returns (outcome, release id, failed checks); ``promoted`` means CURRENT now names the
+    Release. Raises OSError and PromotionRefused only from before the commit point, with the
+    staging area cleaned up."""
     created = run.now
+    stopped = None
+    if built.materialise:
+        # The engine alone computes a Derived value (ADR 0003). It works in a directory of its
+        # own inside the staging area; what it leaves is checked there and read back as bytes.
+        _no_links(run.root)
+        try:
+            add_derived(built, engine.run(run.root / STAGING, built.files, built.materialise, spot=spot))
+        except engine.EngineError as error:
+            stopped = {"check": engine.CHECK, "outcome": "fail", "detail": str(error)[:2000]}
     release_id = built.release_id(created)
-    draft = {**built.files, MANIFEST: dump(_manifest(run, built, release_id, created, [], False))}
-    report = _checks(run, built, draft, created)
-    # "signed": every row of the register this Release rests on is signed in the file it
-    # names (ADR 0020 point 8). It follows from the gate, and authorises nothing by itself.
-    signed = run.gate.problem is None and not R.rights_problems(draft, run.gate)
-    report.append({"check": "release contract", "outcome": "pass"})
-    files = {**built.files, MANIFEST: dump(_manifest(run, built, release_id, created, report, signed))}
-    issues = validate_files(release_id, files)
-    if issues:
-        report[-1] = {"check": "release contract", "outcome": "fail",
-                      "detail": "; ".join(str(issue) for issue in issues[:5])[:2000]}
+    if stopped is not None:
+        report = [stopped]      # nothing else is worth checking in a Release that lacks files
+    else:
+        draft = {**built.files, MANIFEST: dump(_manifest(run, built, release_id, created, [], False))}
+        report = _checks(run, built, draft, created)
+        # "signed": every row of the register this Release rests on is signed in the file it
+        # names (ADR 0020 point 8). It follows from the gate, and authorises nothing by itself.
+        signed = run.gate.problem is None and not R.rights_problems(draft, run.gate)
+        report.append({"check": "release contract", "outcome": "pass"})
+        files = {**built.files, MANIFEST: dump(_manifest(run, built, release_id, created, report, signed))}
+        issues = validate_files(release_id, files)
+        if issues:
+            report[-1] = {"check": "release contract", "outcome": "fail",
+                          "detail": "; ".join(str(issue) for issue in issues[:5])[:2000]}
     failed = [item for item in report if item["outcome"] == "fail"]
     if failed:
         R.replace_json(run.store / REJECTED / f"{release_id}.json", {
@@ -399,23 +417,24 @@ def _with_what_rests_on(entries: list[dict], keys: set[str]) -> set[str]:
 def release(*, profile: str, root: Path, store: Path, register: Path | None = None,
             series: Path | None = None, now: datetime | None = None, legacy: bool | None = None,
             legacy_repo: Path | None = None, reuse_data: bool = False, keep: int = R.KEEP,
-            write: Callable[[Path, bytes], None] = _write) -> Result:
+            write: Callable[[Path, bytes], None] = _write, spot: Path | None = None) -> Result:
     """Write, check and promote one Release of ``profile`` into ``root`` from the vintage
     store at ``store``. ``legacy`` (local profile only; default yes) adds v1's Series for the
     keys the store does not hold. ``reuse_data`` keeps the current Release's data files and
-    rewrites only its content."""
+    rewrites only its content. ``spot`` is the file of spot values the Node step checks
+    (default ``checks/spot.json``)."""
     wants_legacy = profile == "local" and legacy is not False
     if not reuse_data and not wants_legacy and not VintageStore(store).series_keys():
         # Before a directory, a lock or a status file is made for a run with nothing to do.
         return _refused(f"REFUSED: there is nothing to release: {store} holds no Series")
     def command() -> Result:
         with _opened("release", profile=profile, root=root, store=store, register=register, now=now) as run:
-            return _release(run, series, legacy, legacy_repo, reuse_data, keep, write)
+            return _release(run, series, legacy, legacy_repo, reuse_data, keep, write, spot)
 
     return _guarded(command)
 
 
-def _release(run: _Run, series, legacy, legacy_repo, reuse_data, keep, write) -> Result:
+def _release(run: _Run, series, legacy, legacy_repo, reuse_data, keep, write, spot=None) -> Result:
     vintages = VintageStore(run.store)
     real = vintages.holds_real_bytes()
     with_legacy = run.profile == "local" and (legacy if legacy is not None else real is not False)
@@ -437,14 +456,14 @@ def _release(run: _Run, series, legacy, legacy_repo, reuse_data, keep, write) ->
             table = load_series(series)
             built = build(profile=run.profile, store=run.store, table=run.table, gate=run.gate,
                           series=table, created=run.now, withdrawn=R.withdrawn(run.root),
-                          legacy=legacy_files)
+                          legacy=legacy_files, derived=load_derived(series))
         for row in built.withheld:
             run.lines.append(f"WITHHELD {row['key']}: {row['reason']}")
-        if not built.rows and not _may_be_empty(run):
+        if not built.rows and not built.materialise and not _may_be_empty(run):
             raise _Refusal("there is nothing to release: " + (
                 "every Series the store holds is withheld" if built.withheld
                 else f"{run.store} holds no Series the series table names"))
-        outcome, release_id, failed = _publish(run, built, write)
+        outcome, release_id, failed = _publish(run, built, write, spot)
     except (_Refusal, ExportError, SeriesTableError, R.RootRefused) as refusal:
         run.lines.append(f"REFUSED: {refusal}")
         return run.finish("refused", 1)
