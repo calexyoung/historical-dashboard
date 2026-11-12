@@ -1,9 +1,9 @@
 // GENERATED from schema/release.schema.json by scripts/gen-schema.mjs. Do not edit.
 
-export const SCHEMA_VERSION = "0.6.0";
+export const SCHEMA_VERSION = "0.7.0";
 
 /** Every version this reader knows; a writer writes the last. */
-export const SCHEMA_VERSIONS: readonly string[] = ["0.1.0","0.2.0","0.3.0","0.4.0","0.5.0","0.6.0"];
+export const SCHEMA_VERSIONS: readonly string[] = ["0.1.0","0.2.0","0.3.0","0.4.0","0.5.0","0.6.0","0.7.0"];
 
 export const releaseSchema: Record<string, unknown> = {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -87,6 +87,9 @@ export const releaseSchema: Record<string, unknown> = {
     },
     "topics": {
       "$ref": "#/$defs/topicsFile"
+    },
+    "datapackage": {
+      "$ref": "#/$defs/datapackage"
     }
   },
   "$defs": {
@@ -193,14 +196,15 @@ export const releaseSchema: Record<string, unknown> = {
       ],
       "properties": {
         "schema_version": {
-          "description": "Version of this contract. Readers refuse a version they do not know. 0.2.0 added vintages/ and vintages_sha256; a 0.1.0 Release holds neither. 0.3.0 (M19) added content/events.json, which a 0.3.0 Release must have and an earlier one may not, and the rule that every Event is one Annotation. 0.4.0 (M20) added content/claims.json, which a 0.4.0 Release must have, locks/ and evidence/latest.json. 0.5.0 (M22) added content/highlights.json and search.json, both of which a 0.5.0 Release must have. 0.6.0 (M23) added content/topics.json, which a 0.6.0 Release must have, and the Topics' entries of search.json. Writers write the last one listed.",
+          "description": "Version of this contract. Readers refuse a version they do not know. 0.2.0 added vintages/ and vintages_sha256; a 0.1.0 Release holds neither. 0.3.0 (M19) added content/events.json, which a 0.3.0 Release must have and an earlier one may not, and the rule that every Event is one Annotation. 0.4.0 (M20) added content/claims.json, which a 0.4.0 Release must have, locks/ and evidence/latest.json. 0.5.0 (M22) added content/highlights.json and search.json, both of which a 0.5.0 Release must have. 0.6.0 (M23) added content/topics.json, which a 0.6.0 Release must have, and the Topics' entries of search.json. 0.7.0 (M25) added downloads/: bulk files and their datapackage.json, which only a public-profile Release may have. Writers write the last one listed.",
           "enum": [
             "0.1.0",
             "0.2.0",
             "0.3.0",
             "0.4.0",
             "0.5.0",
-            "0.6.0"
+            "0.6.0",
+            "0.7.0"
           ]
         },
         "semantics_version": {
@@ -3354,6 +3358,352 @@ export const releaseSchema: Record<string, unknown> = {
           "type": "array",
           "items": {
             "$ref": "#/$defs/topic"
+          }
+        }
+      }
+    },
+    "bulkResource": {
+      "description": "One bulk file, as the datapackage names it (0.7.0; ADR 0039). A Frictionless Data Resource with a few fields of Macro Atlas's own: rows, series, licence, licences, attributions.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "path",
+        "type",
+        "title",
+        "description",
+        "format",
+        "mediatype",
+        "bytes",
+        "hash",
+        "rows",
+        "series",
+        "licences",
+        "licenses",
+        "sources",
+        "attributions",
+        "schema"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[a-z0-9-]+$"
+        },
+        "path": {
+          "type": "string",
+          "pattern": "^(observations|vintages)(\\.[a-z_]+)?\\.(parquet|csv\\.gz|ndjson\\.gz)$"
+        },
+        "type": {
+          "const": "table"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1
+        },
+        "format": {
+          "enum": [
+            "parquet",
+            "csv",
+            "ndjson"
+          ]
+        },
+        "mediatype": {
+          "enum": [
+            "application/vnd.apache.parquet",
+            "application/gzip"
+          ]
+        },
+        "encoding": {
+          "const": "utf-8"
+        },
+        "compression": {
+          "const": "gzip"
+        },
+        "bytes": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "hash": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "rows": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "series": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/key"
+          }
+        },
+        "licence": {
+          "$ref": "#/$defs/rightsStatus"
+        },
+        "licences": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/rightsStatus"
+          }
+        },
+        "licenses": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "name",
+              "title"
+            ],
+            "properties": {
+              "name": {
+                "enum": [
+                  "other-pd",
+                  "other-at",
+                  "other-closed"
+                ]
+              },
+              "title": {
+                "type": "string",
+                "minLength": 1
+              },
+              "path": {
+                "type": "string",
+                "pattern": "^https://"
+              }
+            }
+          }
+        },
+        "sources": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "title"
+            ],
+            "properties": {
+              "title": {
+                "type": "string",
+                "minLength": 1
+              },
+              "path": {
+                "type": "string",
+                "pattern": "^https://"
+              }
+            }
+          }
+        },
+        "attributions": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "schema": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "fields"
+          ],
+          "properties": {
+            "fields": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "name",
+                  "type",
+                  "description"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "pattern": "^[a-z_]+$"
+                  },
+                  "type": {
+                    "enum": [
+                      "string",
+                      "date",
+                      "number",
+                      "boolean"
+                    ]
+                  },
+                  "description": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "datapackage": {
+      "description": "downloads/datapackage.json (0.7.0, M25; ADR 0039): a Frictionless Data Package v2 that names every bulk file of the Release with its size, its SHA-256 and its licence. Only a public-profile Release has one.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "$schema",
+        "name",
+        "title",
+        "description",
+        "release_id",
+        "created",
+        "version",
+        "rights_register",
+        "licenses",
+        "licences",
+        "left_out",
+        "without_history",
+        "resources"
+      ],
+      "properties": {
+        "$schema": {
+          "const": "https://datapackage.org/profiles/2.0/datapackage.json"
+        },
+        "name": {
+          "type": "string",
+          "pattern": "^[a-z0-9-]+$"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1
+        },
+        "release_id": {
+          "type": "string",
+          "pattern": "^[0-9]{8}T[0-9]{6}Z-[0-9a-f]{7,12}$"
+        },
+        "version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "created": {
+          "$ref": "#/$defs/datetime"
+        },
+        "rights_register": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "version",
+            "sha256"
+          ],
+          "properties": {
+            "version": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "sha256": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        },
+        "licenses": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "name",
+              "title"
+            ],
+            "properties": {
+              "name": {
+                "enum": [
+                  "other-pd",
+                  "other-at",
+                  "other-closed"
+                ]
+              },
+              "title": {
+                "type": "string",
+                "minLength": 1
+              },
+              "path": {
+                "type": "string",
+                "pattern": "^https://"
+              }
+            }
+          }
+        },
+        "licences": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/rightsStatus"
+          }
+        },
+        "left_out": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "key",
+              "reason"
+            ],
+            "properties": {
+              "key": {
+                "$ref": "#/$defs/key"
+              },
+              "reason": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          },
+          "description": "Series the Release publishes that are in no bulk file, each with the gate's reason."
+        },
+        "without_history": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "key",
+              "reason"
+            ],
+            "properties": {
+              "key": {
+                "$ref": "#/$defs/key"
+              },
+              "reason": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          },
+          "description": "Series in the Observations whose versions are not in vintages.parquet, each with the reason."
+        },
+        "resources": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/bulkResource"
           }
         }
       }

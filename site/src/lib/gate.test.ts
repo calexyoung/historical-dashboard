@@ -418,3 +418,101 @@ describe("gate: rate limits on the read API and on files (PLAN section 7, M24)",
     for (let i = 0; i < 3; i++) expect((await gate({ ...base, reader: readerOf(open) }, from("/api/v1/catalog.json"))).action).toBe("forward");
   });
 });
+
+describe("gate: bulk files and the Markdown twin of a page (M25; ADR 0039)", () => {
+  const OLD = "20260115T000000Z-ccccccc";
+  const older = { id: OLD } as OpenedRelease;
+  const readerWith = (current: Opened, pinned: Opened): ReleaseReader & { asked: string[] } => {
+    const reader = { asked: [] as string[], current: async () => current, open: async () => current, pinned: async (id: string) => (reader.asked.push(id), pinned) };
+    return reader;
+  };
+  const config = { ...base, basePath: "/macro-atlas", twinToken: "a-token-only-this-process-knows" };
+  const at = (pathname: string, search = "") => ({ host: "mydashboards.co", pathname, search });
+
+  it("fixes a bulk file's request to the Release its address names", async () => {
+    const reader = readerWith(good, { ok: true, release: older, refreshFailed: null });
+    for (const pathname of [`/downloads/${OLD}/observations.parquet`, `/downloads/${OLD}`, `/downloads/${OLD}/`]) {
+      const decision = await gate({ ...config, reader }, at(pathname));
+      if (decision.action !== "forward") throw new Error("expected forward");
+      expect(decision.requestHeaders[RELEASE_HEADER]).toBe(OLD);
+      expect(decision.requestHeaders[CURRENT_HEADER]).toBe(release.id);
+    }
+    const current = await gate({ ...config, reader: readerWith(good, { ok: false, kind: "gone", id: release.id, reason: "" }) }, at(`/downloads/${release.id}/observations.parquet`));
+    expect(current.action === "forward" && current.requestHeaders[RELEASE_HEADER]).toBe(release.id);
+  });
+
+  it("answers 410 for a Release retention no longer keeps, with where the current files are and no data", async () => {
+    const decision = await gate({ ...config, reader: readerWith(good, { ok: false, kind: "gone", id: OLD, reason: "no longer kept" }) }, at(`/downloads/${OLD}/observations.parquet`));
+    expect(decision).toMatchObject({ action: "respond", status: 410 });
+    if (decision.action === "respond") expect(decision.body).toContain("/macro-atlas/downloads");
+  });
+
+  it.each(["refused", "invalid", "unavailable"] as const)("answers 503, never CURRENT's file, when the Release named is %s", async (kind) => {
+    const decision = await gate({ ...config, reader: readerWith(good, { ok: false, kind, id: OLD, reason: "x" }) }, at(`/downloads/${OLD}/observations.parquet`));
+    expect(decision).toMatchObject({ action: "respond", status: 503 });
+  });
+
+  it("refuses an address that names no release id, and opens nothing; latest is left to the handler", async () => {
+    const reader = readerWith(good, { ok: true, release: older, refreshFailed: null });
+    for (const pathname of ["/downloads/..%2F..%2Fetc/passwd", "/downloads/current/observations.parquet", "/downloads/20260115T000000Z-ccccccc%0A/x"]) {
+      expect(await gate({ ...config, reader }, at(pathname))).toMatchObject({ action: "respond", status: 400 });
+    }
+    for (const pathname of ["/downloads/latest/observations.parquet", "/downloads/latest", "/downloads"]) {
+      const decision = await gate({ ...config, reader }, at(pathname));
+      expect(decision.action === "forward" && decision.requestHeaders[RELEASE_HEADER]).toBe(release.id);
+    }
+    expect(reader.asked).toEqual([]);
+  });
+
+  it("counts a bulk file against the rate limits, and not the page that lists them", async () => {
+    const limiter = createRateLimiter({ address: { burst: 1, perSecond: 0.001 }, clock: () => 0 });
+    const reader = readerWith(good, { ok: true, release: older, refreshFailed: null });
+    expect((await gate({ ...config, reader, limiter }, at("/downloads"))).action).toBe("forward");
+    expect((await gate({ ...config, reader, limiter }, at(`/downloads/${OLD}/observations.parquet`))).action).toBe("forward");
+    expect(await gate({ ...config, reader, limiter }, at(`/downloads/${OLD}/observations.parquet`))).toMatchObject({ action: "respond", status: 429 });
+    expect((await gate({ ...config, reader, limiter }, at("/downloads"))).action).toBe("forward");
+    // The door through `latest` is counted too: it is a request for a file.
+    expect(await gate({ ...config, reader, limiter }, at("/downloads/latest/observations.parquet"))).toMatchObject({ action: "respond", status: 429 });
+    expect((await gate({ ...config, reader, limiter }, at("/downloads/latest"))).action).toBe("forward");
+  });
+
+  it.each([
+    ["/index.md", "/page-twin/index"],
+    ["/highlights.md", "/page-twin/highlights"],
+    ["/topics/inflation.md", "/page-twin/topics/inflation"],
+    ["/events/2022-06-fixture-event.md", "/page-twin/events/2022-06-fixture-event"],
+    ["/docs/method/twins.md", "/page-twin/docs/method/twins"],
+    ["/docs/rights.md", "/page-twin/docs/rights"],
+    ["/downloads.md", "/page-twin/downloads"],
+  ])("sends %s to the page-twin handler with the token", async (pathname, route) => {
+    const decision = await gate({ ...config, reader: readerOf(good) }, at(pathname));
+    if (decision.action !== "forward") throw new Error("expected forward");
+    expect(decision.rewrite).toBe(route);
+    expect(decision.requestHeaders[TWIN_HEADER]).toBe(config.twinToken);
+  });
+
+  it("the page-twin handler's own path is not an address, and a page with no twin gets none", async () => {
+    const direct = await gate({ ...config, reader: readerOf(good) }, at("/page-twin/highlights"));
+    expect(direct.action === "forward" && direct.rewrite).toBe("/not-found/not-an-address");
+    for (const pathname of ["/api/health.md", "/nothing.md", "/topics/Inflation.md", "/explore/export.md", "/.md"]) {
+      const decision = await gate({ ...config, reader: readerOf(good) }, at(pathname));
+      expect(decision.action === "forward" && decision.rewrite).toBeUndefined();
+    }
+  });
+
+  it("the Explorer's Markdown twin keeps its pin, on both passes", async () => {
+    const reader = readerWith(good, { ok: true, release: older, refreshFailed: null });
+    const first = await gate({ ...config, reader }, at("/explore.md", `?s=unrate&pin=${OLD}`));
+    expect(first.action === "forward" && first.requestHeaders[RELEASE_HEADER]).toBe(OLD);
+    const second = await gate({ ...config, reader }, { ...at("/page-twin/explore", `?s=unrate&pin=${OLD}`), twinToken: config.twinToken });
+    if (second.action !== "forward") throw new Error("expected forward");
+    expect(second.requestHeaders[RELEASE_HEADER]).toBe(OLD);
+    expect(second.rewrite).toBeUndefined();
+  });
+
+  it("a page's twin is counted against the rate limits like any other twin", async () => {
+    const limiter = createRateLimiter({ address: { burst: 1, perSecond: 0.001 }, clock: () => 0 });
+    expect((await gate({ ...config, reader: readerOf(good), limiter }, at("/highlights.md"))).action).toBe("forward");
+    expect(await gate({ ...config, reader: readerOf(good), limiter }, at("/highlights.md"))).toMatchObject({ action: "respond", status: 429 });
+  });
+});

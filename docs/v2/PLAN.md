@@ -343,6 +343,12 @@ before taking the Derived files in; spot values are `checks/spot.json`; a Derive
 published only when everything it rests on is, and carries the most restrictive rights status
 of its inputs; `semantics_version` is 0.6.0; `deploy/ingest.Dockerfile` is the ingest image.
 
+As built in M25 (ADR 0039, `docs/method/bulk-files.md`): the release contract is 0.7.0 and a
+public-profile Release holds `downloads/`: the four files of the layout above, the same rows by
+licence class (`observations.{licence}.…`, `vintages.{licence}.parquet`) and `datapackage.json`.
+A Series is in them only under the Permission to redistribute; the site asks the gate again
+when a file is requested, so production keeps a copy for five minutes, not for good.
+
 As built in M20 (ADR 0034, `docs/method/claims.md`): the release contract is 0.4.0;
 `content/claims.json` holds the Claims with their locks by name, `locks/` the locks that may
 be shown, and `evidence/latest.json` each locked Reading's latest row and the drift, written by

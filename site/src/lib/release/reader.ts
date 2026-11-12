@@ -15,7 +15,9 @@
  * Node only. A Release is immutable once promoted, so a good one is read and validated once,
  * and served from memory for as long as it is still in the root.
  */
-import { lstat, readdir, readFile, stat } from "node:fs/promises";
+import { createHash } from "node:crypto";
+import { createReadStream } from "node:fs";
+import { lstat, open as openFile, readdir, readFile, stat, type FileHandle } from "node:fs/promises";
 import { join } from "node:path";
 import type { Surface } from "@macro-atlas/core";
 import {
@@ -23,6 +25,8 @@ import {
   SEGMENTS,
   validateRelease,
   type AnnotationsFile,
+  type BulkDigests,
+  type Datapackage,
   type Catalog,
   type ClaimLock,
   type ClaimsFile,
@@ -71,7 +75,17 @@ export type OpenedRelease = {
   derived: Record<string, SeriesFile>;
   /** `vintages/{key}.json`: what was held for a stored Series over time. Not every Series has one. */
   vintages: Record<string, VintageFile>;
+  /**
+   * `downloads/datapackage.json` (0.7.0, M25): the bulk files of the Release, each with its
+   * size, hash, rows, Series and licence. Null when the Release has none: they are optional,
+   * and only a public-profile Release may hold them. The files themselves are never held in
+   * memory; `ReleaseReader.download` hands one out.
+   */
+  downloads: Datapackage | null;
 };
+
+/** One bulk file of a Release, to be sent as it is on disk. */
+export type DownloadFile = { name: string; bytes: number; sha256: string; /** A new stream of the file's bytes, each time it is called. */ stream(): ReadableStream<Uint8Array> };
 
 export type FailureKind =
   /** No CURRENT, CURRENT is not a release id, or the release directory cannot be read. */
@@ -117,6 +131,13 @@ export type ReleaseReader = {
    * one being served: a run that was rejected leaves CURRENT as it was.
    */
   lastRun?(): Promise<LastRun | null>;
+  /**
+   * One bulk file of a Release this reader may serve (`downloads/{name}`, or the datapackage),
+   * or null: the Release cannot be opened here, it names no such file, or the file on disk is
+   * no longer the size that was checked when the Release was opened. Only a name the
+   * datapackage lists is ever looked for, so no path can be made from the name.
+   */
+  download?(id: string, name: string): Promise<DownloadFile | null>;
 };
 
 export type LastRun = { started: string | null; finished: string | null; outcome: string; release_id: string | null; failed_checks: number };
@@ -170,7 +191,23 @@ function manifestRefusal(bytes: Uint8Array | undefined, surface: Surface): strin
   return `the ${surface} surface serves only public-profile releases; this one's profile is ${JSON.stringify(profile) ?? "not given"}`;
 }
 
-async function readFiles(dir: string): Promise<ReleaseFiles | string> {
+const DATAPACKAGE = "downloads/datapackage.json";
+const NOT_READ = new Uint8Array(0);
+/** How much of a bulk file is read for each chunk a response asks for. */
+const CHUNK = 64 * 1024;
+
+/** The size and SHA-256 of a file, read as a stream: a bulk file is never held whole in memory. */
+async function digestOf(path: string): Promise<{ bytes: number; sha256: string }> {
+  const hash = createHash("sha256");
+  let bytes = 0;
+  for await (const chunk of createReadStream(path)) {
+    hash.update(chunk as Buffer);
+    bytes += (chunk as Buffer).length;
+  }
+  return { bytes, sha256: hash.digest("hex") };
+}
+
+async function readFiles(dir: string, digests: BulkDigests): Promise<ReleaseFiles | string> {
   const files: ReleaseFiles = {};
   const entries = await readdir(dir, { recursive: true, withFileTypes: true });
   for (const entry of entries) {
@@ -179,6 +216,12 @@ async function readFiles(dir: string): Promise<ReleaseFiles | string> {
     const relative = full.slice(dir.length + 1).split("\\").join("/");
     // A link could point outside the Release; the contract is plain files only.
     if (!entry.isFile()) return `${relative} is not a regular file`;
+    if (relative.startsWith("downloads/") && relative !== DATAPACKAGE) {
+      // A bulk data file: hashed as it is read, and named to the validator with its digest.
+      digests[relative] = await digestOf(full);
+      files[relative] = NOT_READ;
+      continue;
+    }
     files[relative] = await readFile(full);
   }
   return files;
@@ -196,13 +239,16 @@ export function createReleaseReader(options: {
   const failed = new Map<string, { failure: Failure; until: number }>();
   const opening = new Map<string, Promise<Opened>>();
   let lastGood: OpenedRelease | null = null;
+  /** The datapackage's own size and hash, by release id, as read when the Release was opened. */
+  const packages = new Map<string, { bytes: number; sha256: string }>();
 
   const fail = (kind: FailureKind, id: string | null, reason: string): Failure => ({ ok: false, kind, id, reason });
 
   async function load(id: string): Promise<Opened> {
     let files: ReleaseFiles | string;
+    const digests: BulkDigests = {};
     try {
-      files = await readFiles(join(root, "releases", id));
+      files = await readFiles(join(root, "releases", id), digests);
     } catch (error) {
       const code = (error as NodeJS.ErrnoException).code ?? "error";
       return fail("unavailable", id, `release ${id} cannot be read (${code})`);
@@ -212,7 +258,7 @@ export function createReleaseReader(options: {
     // is not public-profile is refused whether or not the rest of it is well formed.
     const early = surface === "local" ? null : manifestRefusal(files["manifest.json"], surface);
     if (early) return fail("refused", id, early);
-    const issues = validateRelease(id, files);
+    const issues = validateRelease(id, files, digests);
     if (issues.length > 0) {
       // The contract's own profile rules are the same rule seen from the writer's side: a breach
       // is a refusal (503, no fallback), not a failed refresh.
@@ -251,7 +297,9 @@ export function createReleaseReader(options: {
       series: folder("series"),
       derived: folder("derived"),
       vintages: folder<VintageFile>("vintages"),
+      downloads: files[DATAPACKAGE] ? parse<Datapackage>(DATAPACKAGE) : null,
     };
+    if (files[DATAPACKAGE]) packages.set(id, { bytes: files[DATAPACKAGE].length, sha256: createHash("sha256").update(files[DATAPACKAGE]).digest("hex") });
     release.search = files["search.json"] ? parse<SearchFile>("search.json") : searchDocument(release);
     const refused = refusal(release, surface);
     if (refused) return fail("refused", id, refused);
@@ -300,7 +348,11 @@ export function createReleaseReader(options: {
         if (opened.ok) {
           failed.delete(id);
           good.set(id, opened.release);
-          while (good.size > KEEP) good.delete(good.keys().next().value!);
+          while (good.size > KEEP) {
+            const oldest = good.keys().next().value!;
+            good.delete(oldest);
+            packages.delete(oldest);
+          }
         } else {
           failed.set(id, { failure: opened, until: now() + RETRY_MS });
           while (failed.size > 4 * KEEP) failed.delete(failed.keys().next().value!);
@@ -387,5 +439,74 @@ export function createReleaseReader(options: {
     }
   }
 
-  return { current, open, pinned, savedText, lastRun };
+  async function download(id: string, name: string): Promise<DownloadFile | null> {
+    // Only a Release kept in `releases/` and opened under the validation and the guard.
+    const opened = await pinned(id);
+    if (!opened.ok || opened.release.downloads === null || typeof name !== "string") return null;
+    let listed: { bytes: number; sha256: string } | undefined;
+    if (name === "datapackage.json") listed = packages.get(id);
+    else {
+      const resource = opened.release.downloads.resources.find((r) => r.path === name);
+      if (resource) listed = { bytes: resource.bytes, sha256: resource.hash.slice("sha256:".length) };
+    }
+    if (!listed) return null;
+    // The name is one the datapackage lists, and the contract holds those to a fixed pattern.
+    const path = join(root, "releases", id, "downloads", name);
+    try {
+      const info = await lstat(path);
+      if (!info.isFile() || info.size !== listed.bytes) return null;
+    } catch {
+      return null;
+    }
+    const { bytes, sha256 } = listed;
+    return {
+      name,
+      bytes,
+      sha256,
+      stream: () => {
+        // One handle, opened when the first chunk is asked for and read to the end: a Release
+        // renamed into the trash while it is being sent is still sent whole. A chunk is read
+        // only when the reader of the response asks for one, so a slow reader holds one chunk
+        // in memory and not the file; a reader that goes away closes the handle.
+        let handle: FileHandle | null = null;
+        let sent = 0;
+        const close = async (): Promise<void> => {
+          const held = handle;
+          handle = null;
+          await held?.close().catch(() => undefined);
+        };
+        return new ReadableStream<Uint8Array>(
+          {
+            async pull(controller) {
+              try {
+                handle ??= await openFile(path, "r");
+                const want = Math.min(CHUNK, bytes - sent);
+                const { bytesRead, buffer } = want > 0 ? await handle.read(Buffer.allocUnsafe(want), 0, want, sent) : { bytesRead: 0, buffer: Buffer.alloc(0) };
+                if (bytesRead === 0) {
+                  await close();
+                  // Shorter than the size that was checked: an error, never a file cut short in silence.
+                  if (sent !== bytes) controller.error(new Error(`${name} ended after ${sent} of ${bytes} bytes`));
+                  else controller.close();
+                  return;
+                }
+                sent += bytesRead;
+                controller.enqueue(new Uint8Array(buffer.buffer, buffer.byteOffset, bytesRead));
+                if (sent === bytes) {
+                  await close();
+                  controller.close();
+                }
+              } catch (error) {
+                await close();
+                controller.error(error);
+              }
+            },
+            cancel: close,
+          },
+          { highWaterMark: 0 },
+        );
+      },
+    };
+  }
+
+  return { current, open, pinned, savedText, lastRun, download };
 }

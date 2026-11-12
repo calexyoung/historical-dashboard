@@ -22,6 +22,7 @@
  *
  * A User note is in none of them: this module is never given one.
  */
+import { mdText } from "../markdown";
 import { SEMANTICS_VERSION, type RightsGate, type Surface } from "@macro-atlas/core";
 import type { Claim, EvidenceFigure, EvidenceRow } from "@macro-atlas/core/release";
 import { releaseHoldsLegacy } from "../catalog";
@@ -45,15 +46,7 @@ const localNote = (release: OpenedRelease): string =>
   releaseHoldsLegacy(release) ? "Local build · v1 data via FRED and Yahoo · rights not settled · do not redistribute" : "Local build · do not redistribute";
 const json = (doc: unknown): string => JSON.stringify(doc, null, 1) + "\n";
 const sentence = (text: string): string => `${text}${/[.!?]$/.test(text) ? "" : "."}`;
-const md = (text: string | number | null | undefined): string =>
-  String(text ?? "")
-    .replace(/\s+/g, " ")
-    .trim()
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/([\\`*_[\]#|~])/g, "\\$1")
-    .replace(/^([-+>=]|\d+[.)])/, "\\$1");
+const md = mdText;
 /** An address in Markdown: nothing in it can open a tag, a link, emphasis or a table cell. */
 const mdUrl = (url: string): string => url.replace(/[^A-Za-z0-9\-._~:/?#@!$&+,;=%]/gu, (c) => encodeURIComponent(c)).replace(/[()'*_]/g, (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`);
 

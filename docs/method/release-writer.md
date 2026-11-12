@@ -111,8 +111,16 @@ repository's Catalog and coverage matrices first (a dangling reference refuses t
 with the file and the line), with a range's members resolved and its Events limited to those
 the Release holds. `search.json` then has an entry for each (`docs/method/topics.md`).
 
-**Not written yet.** Bulk files (M25). A local
-Release carries v1's Derived series as the legacy converter writes them.
+**Bulk files** (M25, ADR 0039; contract 0.7.0; `docs/method/bulk-files.md`) are a
+public-profile Release's alone: `downloads/` holds its Observations as one long table in
+Parquet, CSV.gz and JSON Lines, every version it holds as `vintages.parquet`, the same rows
+by licence class, and a Frictionless `datapackage.json`. A Series is in them only when the
+gate permits **redistribute** for its whole lineage; one that may only be shown is published
+and left out, and the check `bulk files` warns and names it. They are made from the Release's
+own files on every path (a reuse and a withdrawal too), and the release id covers them.
+
+A local Release has no bulk files, and carries v1's Derived series as the legacy converter
+writes them.
 
 ## Derived series and the Node step
 
@@ -200,6 +208,8 @@ kept in `$ATLAS_STORE/rejected/{release_id}.json`.
 | Values as doubles (above) | warn |
 | Engine: derived series (the Node step ran, and what it left is what was asked for) | fail |
 | Spot value (one line per spot the Release holds) | fail; warn when the Period is not held |
+| Bulk files (public Profile): what they hold, and what was left out | warn when a published Series, or a Series' history, may not be redistributed and so is in no file, or when none could be written |
+| Bulk files: every row is one that may be redistributed, in every format (each table read back from its bytes) | fail |
 
 The rights check is asked of the staged files, not of what the export meant to write. In
 normal running it finds nothing, because the export already withheld what the gate refuses.

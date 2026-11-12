@@ -18,12 +18,21 @@ export function SiteFooter({ surface, release }: { surface: Surface; release: Op
           </time>
         </p>
         {BUILD_WORD[surface] && <p data-surface={surface}>{BUILD_WORD[surface]}</p>}
-        <p className="flex gap-x-4 sm:ml-auto">
+        <p className="flex flex-wrap gap-x-4 gap-y-1 sm:ml-auto">
           <a href={glossaryHref(BASE_PATH)} className="press hover-ink inline-flex min-h-6 min-w-6 items-center text-accent underline underline-offset-2">
             Glossary
           </a>
+          <a href={`${BASE_PATH}/docs/method`} className="press hover-ink inline-flex min-h-6 min-w-6 items-center text-accent underline underline-offset-2">
+            Method
+          </a>
+          <a href={`${BASE_PATH}/docs/rights`} className="press hover-ink inline-flex min-h-6 min-w-6 items-center text-accent underline underline-offset-2">
+            Rights
+          </a>
           <a href={`${BASE_PATH}/docs/api`} className="press hover-ink inline-flex min-h-6 min-w-6 items-center text-accent underline underline-offset-2">
             API
+          </a>
+          <a href={`${BASE_PATH}/downloads`} className="press hover-ink inline-flex min-h-6 min-w-6 items-center text-accent underline underline-offset-2">
+            Downloads
           </a>
         </p>
       </div>

@@ -21,6 +21,8 @@ dev = [
     "playwright",
     "ruff",
     "hypothesis>=6.170.15",
+    "polars>=2.1.0",
+    "duckdb>=2.0.0",
 ]
 
 [tool.setuptools]

@@ -79,6 +79,11 @@ an as-of view, which links to it.
   403 unless the register row of every Origin it rests on is signed and allows redistribution (PLAN 6.1;
   `python -m atlas rights` lists what is signed).
 
+## Other pages
+
+Every other page has a Markdown twin too (`/highlights.md`, `/topics/{slug}.md`, `/index.md`
+for the Overview; M25). Those are asked row by row, not refused whole: `bulk-files.md`.
+
 ## Text from a Release
 
 A name, a description, a unit or a note is written into every file as text. In Markdown it is

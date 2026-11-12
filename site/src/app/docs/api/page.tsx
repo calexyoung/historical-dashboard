@@ -41,7 +41,7 @@ function Rows({ head, rows, mono = true }: { head: [string, string]; rows: [Reac
  * The read API, for a person or a program that wants the data without the pages (PLAN M24).
  * A reading page: no script and no motion. Everything it states about routes, lists and limits
  * is read from the tables the API itself answers from (`lib/api/docs.ts`); the contract for the
- * repository is `docs/method/api.md`. Its Markdown twin arrives with the other pages' (M25).
+ * repository is `docs/method/api.md`. Its Markdown twin is `/docs/api.md`, made from the same view (M25).
  */
 export default async function ApiDocsPage() {
   const { release, address } = await releaseForRequest();

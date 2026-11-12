@@ -46,6 +46,9 @@ def apply_case(case, files, release_id):
             files[step["to"]] = files.pop(step["from"])
         elif op == "raw":
             files[step["file"]] = step["text"].encode()
+        elif op == "remove_bulk":
+            for path in [path for path in files if path.startswith("downloads/")]:
+                del files[path]
         elif op == "rename_release":
             release_id = step["id"]
         elif op == "project_search":

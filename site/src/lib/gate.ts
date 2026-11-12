@@ -29,6 +29,13 @@
  *    not again on the handler's own path. Pages, the health check and the app's own files are
  *    never counted.
  *
+ * 7. A bulk file's address names its Release (`/downloads/{release id}/{file}`, M25; ADR 0039), so
+ *    it is fixed to that Release exactly as a pinned view is, here and nowhere else: 410 once
+ *    retention no longer keeps it, 503 when it may not be served, never another Release's file.
+ *    A file is counted against the rate limits. `/downloads/latest/…` is the handler's to
+ *    redirect, from the Release CURRENT names. The Markdown twin of a page is a twin like any
+ *    other (4, 6), and the Explorer's keeps its pin.
+ *
  * Pure apart from the reader and the limiter it is given; `proxy.ts` is the thin Next adapter around it.
  */
 import type { Surface } from "@macro-atlas/core";
@@ -67,7 +74,9 @@ export const SEEN_COOKIE = "atlas-seen";
 const SEEN = new RegExp(`(?:^|;\\s*)${SEEN_COOKIE}=1(?:;|$)`);
 
 /** The routes that take `pin=`. */
-const PINNABLE: ReadonlySet<string> = new Set(["/explore", "/explore/export"]);
+const PINNABLE: ReadonlySet<string> = new Set(["/explore", "/explore/export", "/explore.md", "/page-twin/explore"]);
+/** A Release's bulk files by its id: the listing, or one file. `latest` is not an id and is the handler's. */
+const DOWNLOADS = /^\/downloads\/([^/]+)(?:\/([^/]+))?\/?$/;
 /** Where a path that is the app's own, and not an address, is sent: nowhere, so it is not found. */
 export const NOT_AN_ADDRESS = "/not-found/not-an-address";
 
@@ -166,7 +175,11 @@ export async function gate(
   // --- rate limits: the read API, a twin's address (this pass only), the Explorer's export ---
   const twin = twinRouteOf(request.pathname);
   const api = API.test(request.pathname);
-  if (config.limiter && (api || twin !== null || request.pathname === "/explore/export")) {
+  const download = DOWNLOADS.exec(request.pathname);
+  const bulkOf = download && download[1] !== "latest" ? download[1]! : null;
+  // A file, by its Release's id or through `latest`: both are counted, the listing is not.
+  const bulkFile = download !== null && download[2] !== undefined;
+  if (config.limiter && (api || twin !== null || bulkFile || request.pathname === "/explore/export")) {
     const taken = config.limiter.take(addressOf(request.forwardedFor));
     if (!taken.ok) {
       const seconds = taken.retryAfter;
@@ -183,15 +196,21 @@ export async function gate(
   let serving = opened.release.id;
   let pinnedFrom: string | null = null;
   const params = new URLSearchParams(request.search ?? "");
-  if (PINNABLE.has(request.pathname) && params.has("pin")) {
-    const pins = params.getAll("pin");
+  const pinnable = PINNABLE.has(request.pathname) && params.has("pin");
+  if (pinnable || bulkOf !== null) {
+    const pins = pinnable ? params.getAll("pin") : [bulkOf!];
     if (pins.length !== 1 || !RELEASE_ID.test(pins[0]!)) {
-      return refuse(400, "text/plain; charset=utf-8", "pin: one release id, as a pinned link carries it. Nothing is shown in its place.\n");
+      return pinnable
+        ? refuse(400, "text/plain; charset=utf-8", "pin: one release id, as a pinned link carries it. Nothing is shown in its place.\n")
+        : refuse(400, "text/plain; charset=utf-8", "A bulk file's address names its release: /downloads/{release id}/{file}, or /downloads/latest/{file}.\n");
     }
     const pin = pins[0]!;
     if (pin !== opened.release.id) {
       const held = reader.pinned ? await reader.pinned(pin) : ({ ok: false, kind: "unavailable", id: pin, reason: "this reader opens no pinned release" } as const);
       if (!held.ok && held.kind === "gone") {
+        if (!pinnable) {
+          return refuse(410, "text/plain; charset=utf-8", `Release ${pin} is no longer kept, so its bulk files are not offered. The current release's are at ${config.basePath ?? ""}/downloads\n`);
+        }
         params.delete("pin");
         params.delete("format");
         const rest = params.toString();
@@ -199,7 +218,7 @@ export async function gate(
         return refuse(410, "text/html; charset=utf-8", goneHtml(pin, href));
       }
       if (!held.ok) {
-        return refuse(503, "text/plain; charset=utf-8", "Macro Atlas cannot serve the release this link is pinned to. Nothing is shown in its place.\n", { "retry-after": "60" });
+        return refuse(503, "text/plain; charset=utf-8", pinnable ? "Macro Atlas cannot serve the release this link is pinned to. Nothing is shown in its place.\n" : "Macro Atlas cannot serve that release. Nothing is given in its place.\n", { "retry-after": "60" });
       }
       serving = held.release.id;
     }

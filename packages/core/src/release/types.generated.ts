@@ -171,6 +171,7 @@ export interface Release {
   highlights?: HighlightsFile;
   search?: SearchFile;
   topics?: TopicsFile;
+  datapackage?: Datapackage;
 }
 /**
  * manifest.json: what this Release is and what it holds. created is when the Release was written, and is also the fixed date against which staleness (max_lag) is judged, so a Release never changes state as the clock moves.
@@ -180,9 +181,9 @@ export interface Release {
  */
 export interface Manifest {
   /**
-   * Version of this contract. Readers refuse a version they do not know. 0.2.0 added vintages/ and vintages_sha256; a 0.1.0 Release holds neither. 0.3.0 (M19) added content/events.json, which a 0.3.0 Release must have and an earlier one may not, and the rule that every Event is one Annotation. 0.4.0 (M20) added content/claims.json, which a 0.4.0 Release must have, locks/ and evidence/latest.json. 0.5.0 (M22) added content/highlights.json and search.json, both of which a 0.5.0 Release must have. 0.6.0 (M23) added content/topics.json, which a 0.6.0 Release must have, and the Topics' entries of search.json. Writers write the last one listed.
+   * Version of this contract. Readers refuse a version they do not know. 0.2.0 added vintages/ and vintages_sha256; a 0.1.0 Release holds neither. 0.3.0 (M19) added content/events.json, which a 0.3.0 Release must have and an earlier one may not, and the rule that every Event is one Annotation. 0.4.0 (M20) added content/claims.json, which a 0.4.0 Release must have, locks/ and evidence/latest.json. 0.5.0 (M22) added content/highlights.json and search.json, both of which a 0.5.0 Release must have. 0.6.0 (M23) added content/topics.json, which a 0.6.0 Release must have, and the Topics' entries of search.json. 0.7.0 (M25) added downloads/: bulk files and their datapackage.json, which only a public-profile Release may have. Writers write the last one listed.
    */
-  schema_version: "0.1.0" | "0.2.0" | "0.3.0" | "0.4.0" | "0.5.0" | "0.6.0";
+  schema_version: "0.1.0" | "0.2.0" | "0.3.0" | "0.4.0" | "0.5.0" | "0.6.0" | "0.7.0";
   /**
    * Version of the engine's behaviour that wrote derived/ (ADR 0003).
    */
@@ -1697,4 +1698,126 @@ export interface TopicRange {
       country: string;
     }[]
   ];
+}
+/**
+ * downloads/datapackage.json (0.7.0, M25; ADR 0039): a Frictionless Data Package v2 that names every bulk file of the Release with its size, its SHA-256 and its licence. Only a public-profile Release has one.
+ *
+ * This interface was referenced by `Release`'s JSON-Schema
+ * via the `definition` "datapackage".
+ */
+export interface Datapackage {
+  $schema: "https://datapackage.org/profiles/2.0/datapackage.json";
+  name: string;
+  title: string;
+  description: string;
+  release_id: string;
+  version: string;
+  created: Instant;
+  rights_register: {
+    version: string | null;
+    sha256: string | null;
+  };
+  /**
+   * @minItems 1
+   */
+  licenses: [
+    {
+      name: "other-pd" | "other-at" | "other-closed";
+      title: string;
+      path?: string;
+    },
+    ...{
+      name: "other-pd" | "other-at" | "other-closed";
+      title: string;
+      path?: string;
+    }[]
+  ];
+  /**
+   * @minItems 1
+   */
+  licences: [RightsStatus, ...RightsStatus[]];
+  /**
+   * Series the Release publishes that are in no bulk file, each with the gate's reason.
+   */
+  left_out: {
+    key: SeriesKey;
+    reason: string;
+  }[];
+  /**
+   * Series in the Observations whose versions are not in vintages.parquet, each with the reason.
+   */
+  without_history: {
+    key: SeriesKey;
+    reason: string;
+  }[];
+  /**
+   * @minItems 1
+   */
+  resources: [BulkResource, ...BulkResource[]];
+}
+/**
+ * One bulk file, as the datapackage names it (0.7.0; ADR 0039). A Frictionless Data Resource with a few fields of Macro Atlas's own: rows, series, licence, licences, attributions.
+ *
+ * This interface was referenced by `Release`'s JSON-Schema
+ * via the `definition` "bulkResource".
+ */
+export interface BulkResource {
+  name: string;
+  path: string;
+  type: "table";
+  title: string;
+  description: string;
+  format: "parquet" | "csv" | "ndjson";
+  mediatype: "application/vnd.apache.parquet" | "application/gzip";
+  encoding?: "utf-8";
+  compression?: "gzip";
+  bytes: number;
+  hash: string;
+  rows: number;
+  /**
+   * @minItems 1
+   */
+  series: [SeriesKey, ...SeriesKey[]];
+  licence?: RightsStatus;
+  /**
+   * @minItems 1
+   */
+  licences: [RightsStatus, ...RightsStatus[]];
+  /**
+   * @minItems 1
+   */
+  licenses: [
+    {
+      name: "other-pd" | "other-at" | "other-closed";
+      title: string;
+      path?: string;
+    },
+    ...{
+      name: "other-pd" | "other-at" | "other-closed";
+      title: string;
+      path?: string;
+    }[]
+  ];
+  sources: {
+    title: string;
+    path?: string;
+  }[];
+  attributions: string[];
+  schema: {
+    /**
+     * @minItems 1
+     */
+    fields: [
+      {
+        name: string;
+        type: "string" | "date" | "number" | "boolean";
+        description: string;
+      },
+      ...{
+        name: string;
+        type: "string" | "date" | "number" | "boolean";
+        description: string;
+      }[]
+    ];
+  };
 }

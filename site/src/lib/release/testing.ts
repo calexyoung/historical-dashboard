@@ -42,6 +42,12 @@ export type Variant = {
    * caller's business.
    */
   edit?: Record<string, (file: Json, entry: Json) => void>;
+  /**
+   * Keep the fixture's bulk files (`downloads/`, 0.7.0), with the datapackage made this
+   * Release's own. Left out, a variant has none: they are optional, they are the fixture's
+   * Series as written, and only a public-profile Release may hold them.
+   */
+  bulk?: boolean;
 };
 
 export function tempRoot(): string {
@@ -61,6 +67,13 @@ export function addRelease(root: string, variant: Variant): string {
   manifest.release_id = variant.id;
   if (variant.profile) manifest.profile = variant.profile;
   if (variant.signed !== undefined) manifest.rights_register.signed = variant.signed;
+  if (variant.bulk) {
+    const pack = readJson(join(dir, "downloads", "datapackage.json"));
+    pack.release_id = variant.id;
+    writeJson(join(dir, "downloads", "datapackage.json"), pack);
+  } else {
+    rmSync(join(dir, "downloads"), { recursive: true, force: true });
+  }
   if (variant.schema) {
     manifest.schema_version = variant.schema;
     rmSync(join(dir, "content", "topics.json"), { force: true });

@@ -2,7 +2,7 @@
 
 `release.schema.json` is the contract between whatever writes a Release and everything that reads
 one (PLAN 4.2). Words in capitals are defined in `/CONTEXT.md`. This is **v0**
-(`schema_version` `0.6.0`; M10 added `vintages/`, M19 Events, M20 Claims, locks and latest rows, M22 the headline Series and the search index, M23 Topics): it already carries what tracks A to D need, and later milestones add
+(`schema_version` `0.7.0`; M10 added `vintages/`, M19 Events, M20 Claims, locks and latest rows, M22 the headline Series and the search index, M23 Topics, M25 bulk files): it already carries what tracks A to D need, and later milestones add
 to it (locks, search, downloads) by raising the version. A reader refuses a version it does
 not know. It still reads 0.1.0, the contract before vintages: such a Release holds no
 `vintages/` file, so every Release kept in a root stays readable (ADR 0024). Writers write the newest.
@@ -48,6 +48,10 @@ TypeScript's types and its copy of the schema are generated: `npm run gen` after
   content/highlights.json            the headline Series of each Segment, in the Overview's order (0.5.0)
   search.json                        what a reader can search for, as words (0.5.0)
   content/topics.json                the Topics, by slug, each range's members resolved (0.6.0)
+  downloads/datapackage.json         the bulk files, each with its size, SHA-256 and licence (0.7.0;
+                                     optional, and a public-profile Release's alone)
+  downloads/observations[.{licence}].parquet | .csv.gz | .ndjson.gz
+  downloads/vintages[.{licence}].parquet
 ```
 
 Beside `CURRENT` and `releases/` a root written by the release writer (M9) also holds `LOCK`,

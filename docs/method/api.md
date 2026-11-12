@@ -111,7 +111,7 @@ Two token buckets, in the memory of the process that serves the site.
 | every address together | 600 | 20 a second |
 
 Counted: every request to `/api/v1`, every twin (a Series' four, a Claim's four) and the
-Explorer's export. Not counted: pages, the health check, the app's own files. A twin is counted
+Explorer's export, and every bulk file (`bulk-files.md`). Not counted: pages, the health check, the app's own files. A twin is counted
 once, on the pass that recognises its address.
 
 Over either bucket the answer is 429 with `Retry-After` in whole seconds, `no-store`, and for

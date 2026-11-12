@@ -73,7 +73,7 @@ export function apiDocsView(release: OpenedRelease, surface: Surface, address: s
     limits: [
       ["Each address", `${n(LIMITS.address.burst)} requests at once, then ${perMinute(LIMITS.address.perSecond)}. An IPv6 address is counted with its /64 network.`],
       ["Every address together", `${n(LIMITS.global.burst)} requests at once, then ${perMinute(LIMITS.global.perSecond)}.`],
-      ["What is counted", "Every request to /api/v1, every file of a page (.csv, .json, .md, .metadata.json, a claim's evidence and lock) and every export from the Explorer. Pages are not counted."],
+      ["What is counted", "Every request to /api/v1, every file of a page (.csv, .json, .md, .metadata.json, a claim's evidence and lock), every bulk file and every export from the Explorer. Pages are not counted."],
       ["One answer", `At most ${n(MAX_ROWS)} observations, ${n(MAX_BYTES / 1024 / 1024)} MiB, and ${n(MAX_MS / 1000)} seconds. An as-of answer or a history reads at most ${n(MAX_VINTAGE_ROWS)} versions.`],
     ],
     example: entry ? { key: entry.key, name: entry.name, given: given !== undefined } : null,
