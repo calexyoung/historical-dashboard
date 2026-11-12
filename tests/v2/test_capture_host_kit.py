@@ -47,7 +47,12 @@ def test_the_capture_step_needs_requests_only_and_no_secret():
     text = (KIT / "capture.yml").read_text()
     assert text.count(" install ") == 1 and "install requests==" in text  # nothing else
     assert "secrets." not in text
-    assert step("Capture")["run"].strip().endswith("-m atlas.capture")
+    run = step("Capture")["run"].strip()
+    assert run.endswith("-m atlas.capture $only")
+    # The one thing the host may choose: which signed rows to fetch (M14: a source whose row is
+    # not signed yet can be left out instead of failing every run). It only ever adds --only.
+    assert step("Capture")["env"]["ATLAS_CAPTURE_ONLY"] == "${{ vars.ATLAS_CAPTURE_ONLY }}"
+    assert 'for name in $ATLAS_CAPTURE_ONLY; do only="$only --only $name"; done' in run
 
 
 def test_what_was_captured_is_committed_even_when_the_run_failed():
@@ -73,5 +78,5 @@ def test_captures_that_could_not_be_pushed_are_saved_as_an_artifact_not_lost_wit
 
 def test_the_runbook_says_what_only_alex_can_do():
     text = (KIT / "README.md").read_text()
-    for needed in ("D2", "D6", "ATLAS_REF", "--dry-run", "--verify", "MISSED", "hand-off"):
+    for needed in ("D2", "D6", "ATLAS_REF", "ATLAS_CAPTURE_ONLY", "--dry-run", "--verify", "MISSED", "hand-off"):
         assert needed in text, needed

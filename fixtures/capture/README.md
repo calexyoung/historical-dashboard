@@ -1,7 +1,7 @@
 # Capture fixtures
 
-One recorded exchange for every endpoint the rights register lists (14 since M13: two of BLS,
-two of Treasury Fiscal Data, ten of the Federal Reserve Board), in the form
+One recorded exchange for every endpoint the rights register lists (16 since M14: two of BLS,
+two of Treasury Fiscal Data, ten of the Federal Reserve Board, two of the IMF), in the form
 `atlas capture --replay` reads (ADR 0021):
 
 ```

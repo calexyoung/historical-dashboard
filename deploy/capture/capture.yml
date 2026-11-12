@@ -56,8 +56,15 @@ jobs:
         env:
           ATLAS_STORE: ${{ github.workspace }}/store
           ATLAS_CAPTURE_USER_AGENT: ${{ vars.ATLAS_CAPTURE_USER_AGENT }}
+          # Optional: register rows or endpoints to fetch, separated by spaces (for example
+          # "bls treasury-fiscal-data fed-board"). Empty means every endpoint the register lists.
+          # It selects; it clears nothing: a selected row that is not signed still fails the run.
+          ATLAS_CAPTURE_ONLY: ${{ vars.ATLAS_CAPTURE_ONLY }}
         run: |
-          "$RUNNER_TEMP/venv/bin/python" -m atlas.capture
+          set -f
+          only=""
+          for name in $ATLAS_CAPTURE_ONLY; do only="$only --only $name"; done
+          "$RUNNER_TEMP/venv/bin/python" -m atlas.capture $only
 
       - name: Keep what was captured
         id: keep

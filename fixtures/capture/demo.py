@@ -1,16 +1,16 @@
-"""See the three agency adapters work on the committed fixtures, in a temporary directory:
+"""See the four source adapters work on the committed fixtures, in a temporary directory:
 
     python fixtures/capture/demo.py            # print what happens
     python fixtures/capture/demo.py --out DIR  # keep the store and the release root in DIR
 
 It runs the real commands over the recorded exchanges in this directory (invented values in
 the sources' real shapes; nothing is asked of the network): ``atlas capture --replay`` for the
-14 endpoints the rights register lists, ``atlas replay`` into a vintage store, and a
-public-profile release of every Series the BLS, Treasury and Federal Reserve Board adapters
+16 endpoints the rights register lists, ``atlas replay`` into a vintage store, and a
+public-profile release of every Series the BLS, Treasury, Federal Reserve Board and IMF adapters
 read, with the Derived series the engine computes from them (the Node step needs Node 22.18 or
 later).
 
-The register these are decided under is a copy of the committed one with the three agency rows
+The register these are decided under is a copy of the committed one with those four rows
 signed *in the temporary directory only*. That is why the commands run at all, and why the
 release can never be written into $ATLAS_PUBLIC. Under the committed register, where no row is
 signed, the same first command fetches nothing; the demo shows that too. The release is given
@@ -36,8 +36,9 @@ from atlas.publish.run import release
 from atlas.rights import load_register
 from atlas.vintage.cli import main as replay
 
-ROWS = ("bls", "treasury-fiscal-data", "fed-board")
-SHOW = ("debt", "receipts", "gs10", "fedfunds", "eurusd", "fedassets", "net_worth", "labor_share")
+ROWS = ("bls", "treasury-fiscal-data", "fed-board", "imf")
+SHOW = ("debt", "receipts", "gs10", "fedfunds", "eurusd", "fedassets", "net_worth", "labor_share",
+        "jp_cpi", "us_cpi", "tryusd", "ez_fx")
 
 
 def said(command, arguments) -> tuple[int, list[str]]:
@@ -57,7 +58,7 @@ def run(directory: Path, keep: bool = False) -> int:
     # The gate takes only a decision that names Alex, so the demo's copy names him, as the
     # tests' registers do. It is not his decision, and the file says so where it is read first.
     table["about"] = ("A DEMO COPY written by fixtures/capture/demo.py. The decisions on the bls, "
-                      "treasury-fiscal-data and fed-board rows are not Alex's. " + table["about"])
+                      "treasury-fiscal-data, fed-board and imf rows are not Alex's. " + table["about"])
     register = directory / "register-signed-for-the-demo.json"
     register.write_text(json.dumps(table))
     spots = directory / "no-spots.json"
@@ -67,7 +68,7 @@ def run(directory: Path, keep: bool = False) -> int:
     print(f"1. Under the committed register: atlas capture exits {status}. {lines[-1]}")
 
     status, lines = said(capture, ["--store", str(store), "--register", str(register), "--replay", str(HERE)])
-    print(f"\n2. With the three rows signed for the demo: {lines[-1].split(' into ')[0]}.")
+    print(f"\n2. With the four rows signed for the demo: {lines[-1].split(' into ')[0]}.")
     if status:
         return status
     status, lines = said(replay, ["--store", str(store), "--register", str(register)])

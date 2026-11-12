@@ -165,3 +165,51 @@ def test_the_imf_row_decides_alone_another_origins_signature_shows_nothing_of_th
     # Every Series in the store is the Fund's: there is nothing left to release.
     assert result.exit_code == 1
     assert not (tmp_path / "public" / "CURRENT").exists()
+
+
+# --- what a later capture does to what an earlier one recorded --------------------------------
+
+
+def test_a_null_where_a_number_was_is_a_missing_month_and_padding_is_a_withdrawal(tmp_path):
+    """Three fetches of one invented series. A month the Fund still lists, now with no number,
+    is recorded as missing (the Fund said so). A first month that becomes a null joins the
+    padding before the series begins: it is no entry any more, so it is withdrawn. A month the
+    Fund no longer lists at all is withdrawn too. A missing month that gets a number is a
+    revision. Nothing is ever dropped without a row that says so."""
+    from atlas.capture.run import run_capture
+    from atlas.vintage import VintageStore
+    from atlas.vintage.replay import replay
+
+    from .capture_helpers import Scripted, origin_row
+    from .capture_helpers import register as test_register
+    from .imf_helpers import body
+
+    key = "JPN.CPI._T.IX.M"
+    url = f"https://api.imf.org/external/sdmx/3.0/data/dataflow/IMF.STA/CPI/+/{key}?dimensionAtObservation=TIME_PERIOD"
+    table = test_register(origin_row("imf", "International Monetary Fund", [
+        {"id": "imf-x", "adapter": "imf_sdmx", "datasets": ["Consumer Price Index"],
+         "params": {"agency": "IMF.STA", "flow": "CPI", "series": [key]}}]))
+    series = [{"key": "fx_jp", "freq": "monthly", "endpoint": "imf-x", "origin_id": key,
+               "dataset": "Consumer Price Index", "url": None,
+               "metadata": [{"from": None, "name": "x", "unit": "index", "seasonal_adjustment": "nsa"}]}]
+
+    def fetched(day: str, obs: list[tuple]) -> None:
+        transport = Scripted({url: [(200, body({key: {"obs": obs}}))]}, start=f"{day}T15:50:00")
+        assert run_capture(tmp_path, table, transport, sleep=lambda seconds: None).exit_code == 0
+        assert replay(tmp_path, tmp_path, table, series).exit_code == 0
+
+    fetched("2026-11-11", [("2026-M06", "1.1", "O"), ("2026-M07", "1.2", "O"), ("2026-M08", "1.3", "O"),
+                           ("2026-M09", "1.4", "O")])
+    fetched("2026-11-12", [("2026-M06", None, "O"), ("2026-M07", "1.2", "O"), ("2026-M08", None, "O"),
+                           ("2026-M09", None, "O")])
+    held = {row["period"]: row for row in VintageStore(tmp_path).vintage("fx_jp")}
+    assert sorted(held) == ["2026-07", "2026-08", "2026-09"]  # June is padding now: withdrawn
+    assert (held["2026-08"]["value"], held["2026-08"]["status"]) == (None, "missing")
+    assert (held["2026-09"]["value"], held["2026-09"]["status"]) == (None, "missing")
+    june = [row for row in VintageStore(tmp_path).rows("fx_jp") if row["period"] == "2026-06"]
+    assert [(row["value"], row["deleted"]) for row in june] == [("1.1", False), (None, True)]
+
+    fetched("2026-11-13", [("2026-M07", "1.2", "O"), ("2026-M08", "1.35", "O")])
+    held = {row["period"]: row for row in VintageStore(tmp_path).vintage("fx_jp")}
+    assert sorted(held) == ["2026-07", "2026-08"]  # September is not listed any more: withdrawn
+    assert (held["2026-08"]["value"], held["2026-08"]["status"]) == ("1.35", "final")
