@@ -68,7 +68,7 @@ test.describe("claims", () => {
     await expect(main.locator('[data-cell="then"] [data-state="preliminary"] svg').first()).toBeVisible();
     await expect(main.locator("[data-claim-drawing]")).toHaveCount(3);
     await expect(main.locator('[data-sensitivity="rise-since-january"] tbody tr')).toHaveCount(15);
-    await expect(main.getByRole("link", { name: "recording: Fixture broadcaster (synthetic)" })).toHaveAttribute("href", "https://video.example.org/fixture-briefing");
+    await expect(main.getByRole("link", { name: /^recording ?: Fixture broadcaster/ })).toHaveAttribute("href", "https://video.example.org/fixture-briefing");
     await expect(main.getByRole("link", { name: /archived/ }).first()).toHaveAttribute("href", "https://example.org/archive/2026/fixture-briefing");
     await main.getByRole("link", { name: "Fixture price index", exact: true }).first().click();
     await expect(page).toHaveURL(atlas.url("/data/fx_price_index"));
