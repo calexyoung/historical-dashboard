@@ -56,6 +56,19 @@ describe("aggregation by measure kind", () => {
     ]);
   });
 
+  it("needs more than half of a Period's values for a mean or a last value", () => {
+    // One month of three is not the quarter's average; two of three is given, and counted.
+    const result = aggregate(of("monthly", "2024-01", [100, null, null, 106, null, 110], "index", "mean"), "quarterly");
+    expect(table(result)).toEqual([["2024-Q1", null, "missing"], ["2024-Q2", 108, "final"]]);
+    if (result.ok) expect(result.observations.map((o) => [o.members, o.present])).toEqual([[3, 1], [3, 2]]);
+    expect(table(aggregate(of("monthly", "2024-01", [10, null, null], "stock", "last"), "quarterly"))).toEqual([["2024-Q1", null, "missing"]]);
+  });
+
+  it("a Period built on a partial one is partial", () => {
+    const s = of("monthly", "2024-01", [1, 2, 3], "flow", "sum", { "2024-03": "partial" });
+    expect(table(aggregate(s, "quarterly"))).toEqual([["2024-Q1", 6, "partial"]]);
+  });
+
   it("has no value for a Period in which nothing is present", () => {
     expect(table(aggregate(of("monthly", "2024-01", [null, null, null, 4, 5, 6], "rate", "mean"), "quarterly"))[0]).toEqual(["2024-Q1", null, "missing"]);
   });
@@ -106,6 +119,8 @@ describe("partial periods", () => {
       ["2024-Q2", 15, "final"],
       ["2024-Q3", 15, "partial"],
     ]);
+    // A month that is there but empty still spoils a sum to date.
+    expect(table(aggregate(of("monthly", "2024-04", [4, 5, 6, 7, null], "flow", "sum"), "quarterly"))[1]).toEqual(["2024-Q3", null, "missing"]);
   });
 
   it("a month of working days is whole although it begins and ends on a weekend", () => {

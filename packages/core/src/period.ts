@@ -151,3 +151,39 @@ export function nextPeriod(freq: string, label: string): string | null {
   }
   return span(freq, candidate) ? candidate : null;
 }
+
+/**
+ * The label of the Period of `freq` that a calendar day falls in. Null for a day that is not
+ * one, a weekend day asked of a business-daily Series, or an irregular Series (no cadence).
+ * The engine's alone: Python never brings a Series to another frequency (ADR 0003).
+ */
+export function periodContaining(freq: string, date: string): string | null {
+  const ms = day(date);
+  if (ms === null) return null;
+  const d = new Date(ms);
+  let label: string;
+  switch (freq) {
+    case "daily":
+      label = date;
+      break;
+    case "business_daily":
+      if (isoWeekday(ms) > 5) return null;
+      label = date;
+      break;
+    case "weekly":
+      label = isoWeekLabel(ms);
+      break;
+    case "monthly":
+      label = date.slice(0, 7);
+      break;
+    case "quarterly":
+      label = `${date.slice(0, 4)}-Q${Math.floor(d.getUTCMonth() / 3) + 1}`;
+      break;
+    case "annual":
+      label = date.slice(0, 4);
+      break;
+    default:
+      return null;
+  }
+  return span(freq, label) ? label : null;
+}
