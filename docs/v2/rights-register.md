@@ -2,7 +2,7 @@
 
 # Rights register
 
-Version `2026-11-11.draft-6`. 0 of 30 rows signed. Intermediary Channels cleared: none.
+Version `2026-11-11.draft-6`. 0 of 31 rows signed. Intermediary Channels cleared: none.
 
 One row per Origin and per intermediary Channel: the terms that were read, the sentences that
 matter quoted, a proposal, and Alex's decision (CONTEXT.md, Rights register; PLAN 6 and 6.1;
@@ -80,6 +80,7 @@ with that date in `cleared_intermediaries`.
 | `national-statistics-offices` National statistics offices (placeholder) | origin | unknown | none to read | nothing | not decided |
 | `gallup` Gallup (hand-entered presidential approval) | origin | unknown | no | nothing | not decided |
 | `wikipedia` Wikipedia (hand-entered election results) | origin | citation required | yes | nothing | not decided |
+| `fec` Federal Election Commission (hand-entered election results) | origin | public domain | yes | all four | not decided |
 | `public-record` Hand-entered facts from the public record | origin | public domain | none to read | all four | not decided |
 | `macro-atlas-computed` Macro Atlas, computed series | origin | public domain | none to read | all four | not decided |
 | `macro-atlas-fixture` Macro Atlas, synthetic fixture | origin | public domain | none to read | all four | not decided |
@@ -683,7 +684,7 @@ Decision: **not decided**.
 
 ### Gallup (hand-entered presidential approval)
 
-Row `gallup`. Presidential approval, quarterly averages, entered by hand in v1. v2.0 hand-entered files (M16).
+Row `gallup`. Presidential approval, quarterly averages, entered by hand in v1. The hand-entered file format exists (M16); nothing is entered under this row as proposed.
 
 - Origin, as a Catalog entry names it: "Gallup"; all datasets.
 - Licence class: unknown.
@@ -711,11 +712,35 @@ Terms: <https://foundation.wikimedia.org/wiki/Policy:Terms_of_Use> (read on 2026
 
 > Reuse of content that we host is welcome, though exceptions exist for content contributed under "fair use" or similar exemptions under applicable copyright law. Any reuse must comply with the underlying license(s).
 
-Proposal: allow **nothing**. Do not clear; re-source instead. Election results are public facts with official records (the Federal Election Commission, the Clerk of the House, the National Archives). M16 should enter them from those, each with its citation, which avoids a share-alike condition on Macro Atlas's downloads.
+Proposal: allow **nothing**. Do not clear; re-source instead. Election results are public facts with official records (the Federal Election Commission, the Clerk of the House, the National Archives). M16 built the hand-entered file format for them and proposed a row for the Federal Election Commission (fec); the figures are entered from that record, each with its citation, once that row is decided, which avoids a share-alike condition on Macro Atlas's downloads.
 
 Open questions:
 
 - Choose the official source for presidential and congressional results in M16 and give it its own row.
+
+Decision: **not decided**.
+
+### Federal Election Commission (hand-entered election results)
+
+Row `fec`. Popular-vote totals for president and for the House of Representatives, entered by hand from the Commission's Federal Elections publications, each figure with its citation (the two election-margin Series). v2.0 hand-entered files (M16): the file format and its adapter exist; no value is entered until this row is decided.
+
+- Origin, as a Catalog entry names it: "Federal Election Commission"; all datasets.
+- Licence class: public domain.
+- Attribution: Source: Federal Election Commission, Federal Elections (the edition and page cited with each figure).
+
+Terms: <https://www.fec.gov/introduction-campaign-finance/election-results-and-voting-information/> (read on 2026-11-11, from the page's own text).
+
+> The FEC also publishes Federal Elections, a biennial compilation of official, certified federal election results.
+
+Terms: <https://www.fec.gov/about/privacy-and-security-policy/> (read on 2026-11-11, from the page's own text).
+
+Proposal: allow **all four**. U.S. federal works are not subject to copyright in the United States (17 U.S.C. 105). That is the basis proposed here; the pages read do not themselves state a licence. Vote totals are facts of the public record; each is entered with the edition and page it was read from.
+
+Open questions:
+
+- The Commission compiles its totals from the state election offices, which certify them. Confirm that citing the Commission's publication, not each state, is the record wanted.
+- The margin shown is of the two-party vote, computed from the two totals cited; the hand-entered file shows that working beside each value. Confirm that this is the quantity wanted (v1 showed the same).
+- The privacy and security policy page was read and says nothing of reuse of the Commission's publications.
 
 Decision: **not decided**.
 
@@ -733,7 +758,7 @@ Proposal: allow **all four**. Dates and office-holders are facts of public recor
 
 Open questions:
 
-- M16 decides which hand-entered files qualify and names the record each one cites.
+- M16 built the terms file format (catalog/manual/terms): one file per office, each term with the official record it was read from. No term is entered until this row is decided; which offices are entered, and from which record each, is then stated in each file.
 
 Decision: **not decided**.
 

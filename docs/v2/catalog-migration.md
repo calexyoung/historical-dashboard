@@ -16,8 +16,8 @@ fixture by the milestone that builds the adapter.
 
 | Proposal | v1 series | Meaning |
 |---|---|---|
-| re-source from an Origin | 69 | An Origin publishes it over a direct Channel (or it is entered by hand from one) and the register proposes to allow that Origin's data to be shown. |
-| needs D2 | 24 | The route depends on a decision the register does not propose a yes to: an Origin with no row yet, a row whose proposal is no display, or an intermediary Channel. |
+| re-source from an Origin | 71 | An Origin publishes it over a direct Channel (or it is entered by hand from one) and the register proposes to allow that Origin's data to be shown. |
+| needs D2 | 22 | The route depends on a decision the register does not propose a yes to: an Origin with no row yet, a row whose proposal is no display, or an intermediary Channel. |
 | withheld | 33 | No route is known: a rights restriction, no route established yet, or discontinued. The Series stays in the Catalog by name. |
 
 62 Series were never in v1: `ar_cpi`, `ar_fx`, `ar_infl`, `au_cpi`, `au_fx`, `au_infl`, `br_cpi`, `br_fx`, `br_infl`, `ca_cpi`, `ca_fx`, `ca_infl`, `cn_fx`, `construction_private`, `construction_public`, `construction_total`, `cpi_nsa`, `de_cpi`, `de_infl`, `elec_gen`, `ez_fx`, `fr_cpi`, `fr_infl`, `gdp_nominal`, `id_cpi`, `id_fx`, `id_infl`, `in_cpi`, `in_fx`, `in_infl`, `it_cpi`, `it_infl`, `jp_fx`, `kr_cpi`, `kr_fx`, `kr_infl`, `mx_cpi`, `mx_fx`, `mx_infl`, `net_worth`, `outlays`, `pce`, `personal_income`, `real_dpi`, `receipts`, `ru_cpi`, `ru_fx`, `ru_infl`, `sa_cpi`, `sa_fx`, `sa_infl`, `tr_cpi`, `tr_infl`, `trade_q`, `uk_cpi_imf`, `uk_fx`, `uk_infl_imf`, `us_cpi`, `us_infl`, `za_cpi`, `za_fx`, `za_infl`. `cpi_nsa` (M8) is what `cpi_yoy` is computed from (ADR 0025); the others arrived with the adapter that reads them (M13, ADR 0027; the G20 consumer price, inflation and exchange-rate Series with the IMF adapter, M14, ADR 0028; the BEA's and the EIA's with theirs, M15, ADR 0029). 188 Series in all.
@@ -28,7 +28,6 @@ Each needs a row, with its terms read, before anything can be decided for the Se
 
 - **Economic Policy Uncertainty (Baker, Bloom and Davis)**: `euepu`, `gepu`, `usepu`
 - **European Central Bank**: `ecb`, `ecb_assets`
-- **Federal Election Commission**: `house_margin`, `pres_margin`
 - **Federal Reserve Bank of New York**: `sofr`
 - **Freddie Mac**: `mortgage`
 - **National Bureau of Economic Research**: `usrec`
@@ -162,14 +161,14 @@ Each needs a row, with its terms read, before anything can be decided for the Se
 
 | Key | Name | v1 took it from | Proposed Source | Proposal | Still open |
 |---|---|---|---|---|---|
-| `approval` | Presidential approval (Gallup, approx.) | Hand-entered: atlas/approval.yaml | Gallup: Presidential approval, quarterly averages; hand entered | needs D2: the register proposes no display for Gallup (hand-entered presidential approval) (its terms are not read) | adapter not built (planned for M16); identifier not settled; 1 open question on the register row |
+| `approval` | Presidential approval (Gallup, approx.) | Hand-entered: atlas/approval.yaml | Gallup: Presidential approval, quarterly averages; hand entered | needs D2: the register proposes no display for Gallup (hand-entered presidential approval) (its terms are not read) | nothing entered yet: a hand-entered file waits for a decision on its register row; 1 open question on the register row |
 | `euepu` | Europe economic policy uncertainty | FRED EUEPUINDXM | Economic Policy Uncertainty (Baker, Bloom and Davis): European Economic Policy Uncertainty Index | needs D2: the register has no row for Economic Policy Uncertainty (Baker, Bloom and Davis) | adapter not built; identifier not settled |
 | `gepu` | Global economic policy uncertainty | FRED GEPUCURRENT | Economic Policy Uncertainty (Baker, Bloom and Davis): Global Economic Policy Uncertainty Index | needs D2: the register has no row for Economic Policy Uncertainty (Baker, Bloom and Davis) | adapter not built; identifier not settled |
-| `house_margin` | House popular vote margin (D−R) | Hand-entered: atlas/politics.yaml (Wikipedia election infoboxes) | Federal Election Commission: Federal Elections: official results for House of Representatives; hand entered | needs D2: the register has no row for Federal Election Commission | adapter not built (planned for M16); identifier not settled |
-| `pres_margin` | Presidential popular vote margin (D−R) | Hand-entered: atlas/politics.yaml (Wikipedia election infoboxes) | Federal Election Commission: Federal Elections: official results for president; hand entered | needs D2: the register has no row for Federal Election Commission | adapter not built (planned for M16); identifier not settled |
+| `house_margin` | House popular vote margin (D−R) | Hand-entered: atlas/politics.yaml (Wikipedia election infoboxes) | Federal Election Commission: Federal Elections: official results for House of Representatives; hand entered | re-source from Federal Election Commission (hand-entered election results), entered by hand | nothing entered yet: a hand-entered file waits for a decision on its register row; 3 open questions on the register row |
+| `pres_margin` | Presidential popular vote margin (D−R) | Hand-entered: atlas/politics.yaml (Wikipedia election infoboxes) | Federal Election Commission: Federal Elections: official results for president; hand entered | re-source from Federal Election Commission (hand-entered election results), entered by hand | nothing entered yet: a hand-entered file waits for a decision on its register row; 3 open questions on the register row |
 | `umcsent` | Consumer sentiment (U. Michigan) | FRED UMCSENT | University of Michigan, Surveys of Consumers: Index of Consumer Sentiment (`ICS`); no Channel | withheld (no route established): The survey is the University's own and its terms have not been read; v1's channel showed it by permission. | — |
 | `usepu` | US economic policy uncertainty | FRED USEPUINDXM | Economic Policy Uncertainty (Baker, Bloom and Davis): US Monthly Economic Policy Uncertainty Index | needs D2: the register has no row for Economic Policy Uncertainty (Baker, Bloom and Davis) | adapter not built; identifier not settled |
-| `usrec` | US recession (NBER) | FRED USREC | National Bureau of Economic Research: US Business Cycle Expansions and Contractions; hand entered | needs D2: the register has no row for National Bureau of Economic Research | adapter not built (planned for M19); identifier not settled; the same quantity in another representation than v1's |
+| `usrec` | US recession (NBER) | FRED USREC | National Bureau of Economic Research: US Business Cycle Expansions and Contractions; hand entered | needs D2: the register has no row for National Bureau of Economic Research | nothing entered yet: a hand-entered file waits for a decision on its register row; the same quantity in another representation than v1's |
 
 ### The US in the world
 

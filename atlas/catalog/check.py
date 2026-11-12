@@ -6,7 +6,8 @@ reader is shown a problem and never its consequences:
 1. **schema**: every file is strict JSON, a valid Series, and named for its key.
 2. **references**: what an entry points at exists. A Recipe's inputs; an alias that is no other
    Series' key; the Endpoint a Series is bound to, on the register row of its own Origin, for
-   its own dataset, bound once.
+   its own dataset, bound once. A hand-entered file (catalog/manual) is in its format, with a
+   citation for every entry, and is read by an endpoint of the register.
 3. **semantics**: what an entry says makes sense. The aggregation its Measure kind allows; the
    Recipe graph has no cycle (the cycle is named) and never asks for a finer result than an
    input; a difference or a sum takes inputs in one unit, as the engine requires; a Series in
@@ -14,15 +15,18 @@ reader is shown a problem and never its consequences:
    metadata versions are in order.
 4. **rights**: the register is one the gate trusts, and no Series in the pipeline comes
    through an intermediary Channel that has not been cleared (ADR 0006, PLAN 6.1). An entry
-   cannot state Rights or a Permission at all: the schema has no place for either.
+   cannot state Rights or a Permission at all: the schema has no place for either. A
+   hand-entered file is in the repository only if its Origin's row is signed for it.
 
 Claims, Events and Topics add their own layers when they arrive (M19, M20).
 """
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from datetime import datetime
 from pathlib import Path
 
+from .. import manual
 from ..capture import store as S
 from ..capture.adapters import ADAPTERS
 from ..rights import DIRECT, OWN_CHANNELS, RightsGate, load_register
@@ -151,10 +155,68 @@ def _references(entries: dict[str, dict], directory: Path, table: object) -> lis
               and entry["freq"] != "monthly"):
             # Both Census readers read months and nothing else (M16).
             problem(key, f"it is {entry['freq']}, and the endpoint {name} reads a file of monthly figures")
+        elif endpoint.adapter == "manual" and origin["origin_id"] is not None:
+            # A hand-entered file states its frequency and the unit of each series (M16).
+            if entry["freq"] != endpoint.params["frequency"]:
+                problem(key, f"it is {entry['freq']}, and the hand-entered file of {name} is "
+                             f"{endpoint.params['frequency']}")
+            unit = endpoint.params["units"].get(origin["origin_id"])
+            if unit is not None and entry["unit"] != unit:
+                problem(key, f"its unit is {entry['unit']!r}, and the hand-entered file of {name} gives "
+                             f"{origin['origin_id']} in {unit!r}")
         binding = (name, origin["origin_id"])
         if binding in bound:
             problem(key, f"{origin['origin_id']} of {name} is already bound to {bound[binding]}")
         bound.setdefault(binding, key)
+    return out
+
+
+def _manual_files(directory: Path, table: object) -> tuple[list[Problem], list[tuple[Path, str, str, str]]]:
+    """The hand-entered files beside the Catalog (``catalog/manual``), held to their format and
+    to the endpoint that reads them. Returns the problems and, for the rights layer, each file
+    with what it holds ("values" or "terms") and the Origin and dataset it was entered from."""
+    from ..capture.run import RegisterError, endpoints_from_register
+
+    out: list[Problem] = []
+    held: list[tuple[Path, str, str, str]] = []
+    try:
+        readers = {e.params["file"]: e for e in endpoints_from_register(table) if e.adapter == "manual"}
+    except RegisterError:
+        readers = {}
+    today = datetime.now(S.RELEASE_ZONE).date().isoformat()
+    for path in manual.series_files(directory):
+        endpoint = readers.get(f"catalog/manual/{path.name}")
+        if endpoint is None:
+            out.append(Problem("references", str(path), "no endpoint of the rights register reads it: a "
+                                                        "hand-entered file is read through the capture kit or not kept"))
+            continue
+        scope = {**endpoint.params, "origin": endpoint.origin, "datasets": list(endpoint.datasets), "asked_on": today}
+        evidence = ADAPTERS["manual"].examine(scope, [path.read_bytes()])
+        out.extend(Problem("references", str(path), said) for said in evidence.problems)
+        for dataset in endpoint.datasets:
+            held.append((path, "values", endpoint.origin, dataset))
+    for path in manual.terms_files(directory):
+        problems: list[str] = []
+        document = manual.read_terms_file(path.read_bytes(), problems, today)
+        out.extend(Problem("references", str(path), said) for said in problems)
+        if document is not None:
+            held.append((path, "terms", document["origin"]["producer"], document["origin"]["dataset"]))
+    return out, held
+
+
+def _manual_rights(held: list[tuple[Path, str, str, str]], gate: RightsGate) -> list[Problem]:
+    """A committed hand-entered file is a copy anyone can read. Its Origin's row must be signed
+    and allow both keeping it and handing it out; until then nothing is typed in."""
+    out = []
+    for path, what, origin, dataset in held:
+        stored = gate.may_store(origin, dataset, "hand_entered")
+        public = gate.permits([{"origin": origin, "dataset": dataset, "channel": "hand_entered",
+                                "representation": "native", "permission": "redistribute"}], "production")
+        reason = stored.reason if not stored.allowed else None if public.allowed else \
+            public.reason.split(", so it is not permitted")[0]
+        if reason:
+            out.append(Problem("rights", str(path), f"it holds {what} entered by hand from {origin}, and "
+                                                    f"{reason}: a committed file is a public copy"))
     return out
 
 
@@ -244,7 +306,8 @@ def _semantics(entries: dict[str, dict], directory: Path) -> list[Problem]:
     return out
 
 
-def _rights(entries: dict[str, dict], directory: Path, table: object, register: Path | None) -> list[Problem]:
+def _rights(entries: dict[str, dict], directory: Path, table: object, register: Path | None,
+            held: list[tuple[Path, str, str, str]] | None = None) -> list[Problem]:
     gate = RightsGate(table)
     where = str(register) if register else "schema/rights-register.json"
     if gate.problem is not None:
@@ -262,7 +325,7 @@ def _rights(entries: dict[str, dict], directory: Path, table: object, register: 
                                f"it is {entry['status']} and comes through {via}, an intermediary "
                                "Channel that no amendment to ADR 0006 has cleared (PLAN 6.1): "
                                "nothing is fetched through it"))
-    return out
+    return [*out, *_manual_rights(held or [], gate)]
 
 
 def check(directory: Path | None = None, register: Path | None = None) -> Report:
@@ -283,10 +346,19 @@ def check(directory: Path | None = None, register: Path | None = None) -> Report
         table = load_register(register)
     except (OSError, ValueError):
         table = None
-    steps = (lambda: [*_references(entries, directory, table),
-                      *coverage_references(matrices, entries, coverage_dir)],
+    # So do the hand-entered files (catalog/manual): to their format, their endpoint, and the
+    # rights of the Origin they were entered from.
+    held: list[tuple[Path, str, str, str]] = []
+
+    def references() -> list[Problem]:
+        found, files = _manual_files(directory.parent / "manual", table)
+        held.extend(files)
+        return [*_references(entries, directory, table),
+                *coverage_references(matrices, entries, coverage_dir), *found]
+
+    steps = (references,
              lambda: _semantics(entries, directory),
-             lambda: _rights(entries, directory, table, register))
+             lambda: _rights(entries, directory, table, register, held))
     for layer, step in zip(layers[1:], steps, strict=True):
         layer.ran, layer.problems = True, step()
         if layer.problems:

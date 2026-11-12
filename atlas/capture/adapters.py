@@ -27,6 +27,7 @@ from types import MappingProxyType
 from urllib.parse import urlencode
 from xml.etree import ElementTree
 
+from .. import manual
 from .http import CaptureError, Fetch, Part, Request
 from .store import RELEASE_ZONE
 
@@ -2070,6 +2071,69 @@ class CensusC30Adapter:
         return NormalizedState(not problems, capture.evidence.scope, series if not problems else {}, problems)
 
 
+class ManualAdapter:
+    """A hand-entered file of the repository (``atlas/manual.py``): figures that no source
+    serves as data, typed in from a published record, each with its citation. Read through the
+    capture kit like any source, so that what was entered on a day is kept as it was and a
+    correction is a revision with a retrieval time. No request leaves the machine.
+
+    The endpoint is on the register row of the Origin whose record was read and pins the file,
+    the frequency of its Periods, the series read and the unit of each. Its Channel is
+    ``hand_entered``. A series is named by the file's own name for it. Whole = strict JSON of
+    the format, for this Origin and dataset, exactly the series pinned, every entry a Period of
+    the frequency with a number written as text and a citation that says who published the
+    record, what it is called, its address, the day it was read and where in it the figure is;
+    and where an entry shows its working, the value is what the working gives."""
+
+    name = "manual"
+    version = 1
+    channel = "hand_entered"
+
+    def problem(self, params: dict) -> str | None:
+        series, units = params.get("series"), params.get("units")
+        if not isinstance(params.get("file"), str) or not manual.FILE.fullmatch(params["file"]):
+            return "its file is not a file directly under catalog/manual"
+        if params.get("frequency") not in manual.FREQUENCIES:
+            return "it does not say the frequency of the file's Periods"
+        if not isinstance(series, list) or not series or not all(isinstance(s, str) and s for s in series):
+            return "it names no series"
+        if len(set(series)) != len(series):
+            return "it names a series twice"
+        if not isinstance(units, dict) or set(units) != set(series) \
+                or not all(isinstance(u, str) and u for u in units.values()):
+            return "it does not pin the unit of each series"
+        return None
+
+    def fetch(self, endpoint: Endpoint, fetch: Fetch) -> Evidence:
+        params = endpoint.params
+        scope = {"file": params["file"], "origin": endpoint.origin, "datasets": list(endpoint.datasets),
+                 "frequency": params["frequency"], "series": list(params["series"]),
+                 "units": dict(params["units"]),
+                 "asked_on": fetch.now().astimezone(RELEASE_ZONE).date().isoformat()}
+        return self.examine(scope, [fetch.read(scope["file"]).body])
+
+    def _read(self, scope: dict, bodies: list[bytes], problems: list[str]) -> tuple[dict[str, list[dict]], dict]:
+        if len(bodies) != 1:
+            problems.append(f"1 part was asked for and {len(bodies)} were kept")
+            return {}, {}
+        return manual.read_series_file(bodies[0], scope, problems)
+
+    def examine(self, scope: dict, bodies: list[bytes]) -> Evidence:
+        problems: list[str] = []
+        _, checks = self._read(scope, bodies, problems)
+        return _evidence(scope, checks, list(dict.fromkeys(problems)))
+
+    def coverage(self, scope: dict) -> tuple[None, None]:
+        """The whole file is read, every time: an entry taken out of it is gone."""
+        return None, None
+
+    def parse(self, capture: RawCapture) -> NormalizedState:
+        problems: list[str] = []
+        series, _ = self._read(capture.evidence.scope, capture.bodies, problems)
+        problems = list(dict.fromkeys(problems))
+        return NormalizedState(not problems, capture.evidence.scope, series if not problems else {}, problems)
+
+
 def _month_after(day: str) -> str | None:
     """The month (YYYY-MM) of the day after ``day``; None after the calendar's last day."""
     try:
@@ -2088,7 +2152,7 @@ def _is_day(text: str) -> bool:
 ADAPTERS = {adapter.name: adapter for adapter in
             (FixtureAdapter(), BlsAdapter(), TreasuryFiscalDataAdapter(), FedBoardAdapter(),
              ImfSdmxAdapter(), BeaAdapter(), EiaAdapter(), CensusEitsAdapter(),
-             CensusC30Adapter())}
+             CensusC30Adapter(), ManualAdapter())}
 
 
 def key_of(endpoint: Endpoint) -> tuple[str, str] | None:

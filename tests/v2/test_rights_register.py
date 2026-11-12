@@ -52,6 +52,7 @@ PLAN_SOURCES = {
     "NTIA": "ntia",
     "hand-entered approval": "gallup",
     "hand-entered election margins": "wikipedia",
+    "hand-entered election margins, from the official record": "fec",  # M16
     "hand-entered terms of government": "public-record",
 }
 

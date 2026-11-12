@@ -2003,7 +2003,7 @@
         "Gallup"
       ],
       "datasets": "*",
-      "used_for": "Presidential approval, quarterly averages, entered by hand in v1. v2.0 hand-entered files (M16).",
+      "used_for": "Presidential approval, quarterly averages, entered by hand in v1. The hand-entered file format exists (M16); nothing is entered under this row as proposed.",
       "terms": [
         {
           "url": "https://www.gallup.com/",
@@ -2055,10 +2055,51 @@
         "redistribute": false,
         "store": false,
         "ml_use": false,
-        "note": "Do not clear; re-source instead. Election results are public facts with official records (the Federal Election Commission, the Clerk of the House, the National Archives). M16 should enter them from those, each with its citation, which avoids a share-alike condition on Macro Atlas's downloads."
+        "note": "Do not clear; re-source instead. Election results are public facts with official records (the Federal Election Commission, the Clerk of the House, the National Archives). M16 built the hand-entered file format for them and proposed a row for the Federal Election Commission (fec); the figures are entered from that record, each with its citation, once that row is decided, which avoids a share-alike condition on Macro Atlas's downloads."
       },
       "open_questions": [
         "Choose the official source for presidential and congressional results in M16 and give it its own row."
+      ],
+      "decision": null
+    },
+    {
+      "id": "fec",
+      "kind": "origin",
+      "name": "Federal Election Commission (hand-entered election results)",
+      "origins": [
+        "Federal Election Commission"
+      ],
+      "datasets": "*",
+      "used_for": "Popular-vote totals for president and for the House of Representatives, entered by hand from the Commission's Federal Elections publications, each figure with its citation (the two election-margin Series). v2.0 hand-entered files (M16): the file format and its adapter exist; no value is entered until this row is decided.",
+      "terms": [
+        {
+          "url": "https://www.fec.gov/introduction-campaign-finance/election-results-and-voting-information/",
+          "read_on": "2026-11-11",
+          "how": "page",
+          "quotes": [
+            "The FEC also publishes Federal Elections, a biennial compilation of official, certified federal election results."
+          ]
+        },
+        {
+          "url": "https://www.fec.gov/about/privacy-and-security-policy/",
+          "read_on": "2026-11-11",
+          "how": "page",
+          "quotes": []
+        }
+      ],
+      "licence_class": "public_domain",
+      "attribution": "Source: Federal Election Commission, Federal Elections (the edition and page cited with each figure).",
+      "proposal": {
+        "display": true,
+        "redistribute": true,
+        "store": true,
+        "ml_use": true,
+        "note": "U.S. federal works are not subject to copyright in the United States (17 U.S.C. 105). That is the basis proposed here; the pages read do not themselves state a licence. Vote totals are facts of the public record; each is entered with the edition and page it was read from."
+      },
+      "open_questions": [
+        "The Commission compiles its totals from the state election offices, which certify them. Confirm that citing the Commission's publication, not each state, is the record wanted.",
+        "The margin shown is of the two-party vote, computed from the two totals cited; the hand-entered file shows that working beside each value. Confirm that this is the quantity wanted (v1 showed the same).",
+        "The privacy and security policy page was read and says nothing of reuse of the Commission's publications."
       ],
       "decision": null
     },
@@ -2082,7 +2123,7 @@
         "note": "Dates and office-holders are facts of public record, entered by hand with a citation each. A file that takes its figures from a private compiler does not belong under this row."
       },
       "open_questions": [
-        "M16 decides which hand-entered files qualify and names the record each one cites."
+        "M16 built the terms file format (catalog/manual/terms): one file per office, each term with the official record it was read from. No term is entered until this row is decided; which offices are entered, and from which record each, is then stated in each file."
       ],
       "decision": null,
       "terms_note": "There is no single terms page: each entry cites the official record it was taken from."

@@ -242,6 +242,15 @@ export const RIGHTS_REGISTER: unknown = {
       "decision": null
     },
     {
+      "id": "fec",
+      "kind": "origin",
+      "origins": [
+        "Federal Election Commission"
+      ],
+      "datasets": "*",
+      "decision": null
+    },
+    {
       "id": "public-record",
       "kind": "origin",
       "origins": [
