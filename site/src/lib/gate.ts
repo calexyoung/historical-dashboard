@@ -21,10 +21,20 @@
  *    the current Release; one that cannot be read or may not be served here is 503. Nothing is
  *    ever served in a pinned Release's place. Only the Explorer and its export take a pin.
  *
- * Pure apart from the reader it is given; `proxy.ts` is the thin Next adapter around it.
+ * 6. The read API (`/api/v1/…`), every twin and the Explorer's export are counted against the rate
+ *    limits (PLAN section 7, M24; ADR 0038): a bucket for the address the nearest proxy wrote and
+ *    one for everybody. Over either, the answer is 429 with how long to wait. It is decided after
+ *    1 and 2, so a build that may serve nothing still says 503, and before a pinned Release is
+ *    looked for or any route runs. A twin is counted on the pass that recognises its address and
+ *    not again on the handler's own path. Pages, the health check and the app's own files are
+ *    never counted.
+ *
+ * Pure apart from the reader and the limiter it is given; `proxy.ts` is the thin Next adapter around it.
  */
 import type { Surface } from "@macro-atlas/core";
+import { errorBody, toJson } from "./api/envelope";
 import { buildCsp } from "./csp";
+import { addressOf, type RateLimiter } from "./rate-limit";
 import { RELEASE_ID, type ReleaseReader } from "./release/reader";
 import { internalTwinPath, twinRouteOf } from "./twin/address";
 
@@ -73,7 +83,7 @@ export type Decision =
        */
       rewrite?: string;
     }
-  | { action: "respond"; status: 400 | 410 | 421 | 503; headers: Record<string, string>; body: string };
+  | { action: "respond"; status: 400 | 410 | 421 | 429 | 503; headers: Record<string, string>; body: string };
 
 export type GateConfig = {
   reader: ReleaseReader;
@@ -85,7 +95,12 @@ export type GateConfig = {
   twinToken?: string;
   /** Where the site is served, for the one link a 410 carries. */
   basePath?: string;
+  /** The buckets of this process. Left out, nothing is limited (a test of something else). */
+  limiter?: RateLimiter;
 };
+
+/** The read API's own paths: `/api/v1` and everything under it. */
+const API = /^\/api\/v1(\/|$)/;
 
 const escapeHtml = (text: string): string => text.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 /** The whole answer for a pin retention no longer keeps: plain, self-contained, and with no data in it. */
@@ -113,6 +128,8 @@ export async function gate(
     prefetch?: boolean;
     /** The reader came over HTTPS. */
     secure?: boolean;
+    /** The request's X-Forwarded-For header: what the proxy in front wrote. */
+    forwardedFor?: string | null;
   },
 ): Promise<Decision> {
   const { reader, surface } = config;
@@ -125,7 +142,7 @@ export async function gate(
     "permissions-policy": "camera=(), microphone=(), geolocation=(), interest-cohort=()",
     ...(surface === "production" ? {} : { "x-robots-tag": "noindex" }),
   };
-  const refuse = (status: 400 | 410 | 421 | 503, type: string, body: string, extra: Record<string, string> = {}): Decision => ({
+  const refuse = (status: 400 | 410 | 421 | 429 | 503, type: string, body: string, extra: Record<string, string> = {}): Decision => ({
     action: "respond",
     status,
     headers: { ...security, "content-type": type, "cache-control": "no-store", ...extra },
@@ -144,6 +161,22 @@ export async function gate(
       return refuse(503, "application/json; charset=utf-8", JSON.stringify(body) + "\n", retry);
     }
     return refuse(503, "text/plain; charset=utf-8", "Macro Atlas is unavailable: there is no release it can serve.\n", retry);
+  }
+
+  // --- rate limits: the read API, a twin's address (this pass only), the Explorer's export ---
+  const twin = twinRouteOf(request.pathname);
+  const api = API.test(request.pathname);
+  if (config.limiter && (api || twin !== null || request.pathname === "/explore/export")) {
+    const taken = config.limiter.take(addressOf(request.forwardedFor));
+    if (!taken.ok) {
+      const seconds = taken.retryAfter;
+      const whose = taken.scope === "address" ? "this address has asked for too much in a short time" : "every address together has asked for too much in a short time";
+      const message = `Too many requests: ${whose}. Ask again in ${seconds} second${seconds === 1 ? "" : "s"}`;
+      const extra = { "retry-after": String(seconds) };
+      return api || request.pathname.endsWith(".json")
+        ? refuse(429, "application/json; charset=utf-8", toJson(errorBody(opened.release, { status: 429, code: "rate_limited", message, retry_after_seconds: seconds })), extra)
+        : refuse(429, "text/plain; charset=utf-8", `${message}.\n`, extra);
+    }
   }
 
   // --- a pinned view: the Release the address names, or no data at all ---
@@ -178,7 +211,6 @@ export async function gate(
   const firstVisit = request.pathname === "/" && request.method === "GET" && !request.prefetch && !SEEN.test(request.cookie ?? "");
   const seen = `${SEEN_COOKIE}=1; Path=${config.basePath || "/"}; Max-Age=31536000; SameSite=Lax; HttpOnly${request.secure ? "; Secure" : ""}`;
 
-  const twin = twinRouteOf(request.pathname);
   const token = config.twinToken;
   // The second pass: the handler's own path, reached from a twin's address by this process.
   const sent = !twin && internalTwinPath(request.pathname) && typeof token === "string" && token.length >= 16 && request.twinToken === token;

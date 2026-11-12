@@ -7,7 +7,8 @@
  * refuses is not charged to the other, so an address that is being refused cannot use up what
  * everybody shares. `addressOf(header)` says whose request it is.
  *
- * Hidden here: the refill arithmetic, the bound on how many addresses are remembered, and how an
+ * Hidden here: the refill arithmetic, the bound on how many addresses are remembered (and the one
+ * bucket the rest share when it is reached), and how an
  * address is read from what a reverse proxy wrote. Pure apart from the clock it is given.
  */
 export type Bucket = { /** The most tokens it holds: how many requests may come at once. */ burst: number; /** Tokens added each second. */ perSecond: number };
@@ -20,13 +21,15 @@ export type Taken = { ok: true } | { ok: false; scope: "address" | "global"; /**
 export type RateLimiter = { take(address: string): Taken; /** Addresses remembered now. */ size(): number };
 
 type State = { tokens: number; at: number };
+const OVERFLOW = "overflow";
 
 export function createRateLimiter(options: Partial<Limits> & { /** Milliseconds, from any fixed start. */ clock?: () => number } = {}): RateLimiter {
   const limits: Limits = { address: options.address ?? LIMITS.address, global: options.global ?? LIMITS.global, maxAddresses: options.maxAddresses ?? LIMITS.maxAddresses };
   const clock = options.clock ?? (() => performance.now());
   const everybody: State = { tokens: limits.global.burst, at: clock() };
-  // In the order they were last used: a Map keeps insertion order, and a used entry is put back at the end.
   const addresses = new Map<string, State>();
+  // Not in the map, so it is never counted or forgotten.
+  const overflow: State = { tokens: limits.address.burst, at: clock() };
 
   const refill = (state: State, bucket: Bucket, now: number): void => {
     const elapsed = Math.max(0, now - state.at) / 1000;
@@ -40,24 +43,28 @@ export function createRateLimiter(options: Partial<Limits> & { /** Milliseconds,
     take(address) {
       const now = clock();
       refill(everybody, limits.global, now);
-      let own = addresses.get(address);
-      if (own) {
-        refill(own, limits.address, now);
-        addresses.delete(address);
-      } else {
-        if (addresses.size >= limits.maxAddresses) {
-          // A bucket that has refilled says nothing a new one would not.
-          for (const [key, state] of addresses) {
-            refill(state, limits.address, now);
-            if (state.tokens >= limits.address.burst) addresses.delete(key);
-          }
-          while (addresses.size >= limits.maxAddresses) addresses.delete(addresses.keys().next().value!);
+      let key = address;
+      let own = addresses.get(key);
+      if (!own && addresses.size >= limits.maxAddresses) {
+        // A bucket that has refilled says nothing a new one would not: forget those.
+        for (const [held, state] of addresses) {
+          refill(state, limits.address, now);
+          if (state.tokens >= limits.address.burst) addresses.delete(held);
         }
-        own = { tokens: limits.address.burst, at: now };
+        // Still no room: forgetting a bucket in use would hand its address a new burst, so
+        // every address that cannot be remembered shares one bucket until there is room.
+        if (addresses.size >= limits.maxAddresses) {
+          key = OVERFLOW;
+          own = overflow;
+        }
       }
-      addresses.set(address, own);
-      if (own.tokens < 1) return { ok: false, scope: "address", retryAfter: wait(own, limits.address) };
-      if (everybody.tokens < 1) return { ok: false, scope: "global", retryAfter: wait(everybody, limits.global) };
+      if (own) refill(own, limits.address, now);
+      else {
+        own = { tokens: limits.address.burst, at: now };
+        addresses.set(key, own);
+      }
+      const waits = [own.tokens < 1 ? wait(own, limits.address) : 0, everybody.tokens < 1 ? wait(everybody, limits.global) : 0] as const;
+      if (waits[0] > 0 || waits[1] > 0) return { ok: false, scope: waits[1] >= waits[0] && waits[1] > 0 ? "global" : "address", retryAfter: Math.max(...waits) };
       own.tokens -= 1;
       everybody.tokens -= 1;
       return { ok: true };

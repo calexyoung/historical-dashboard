@@ -55,6 +55,12 @@ describe("one bucket for everybody", () => {
     expect(limiter.take("c")).toEqual({ ok: false, scope: "global", retryAfter: 1 });
   });
 
+  it("when both are empty, the wait is the longer of the two", () => {
+    const limiter = createRateLimiter({ address: { burst: 1, perSecond: 0.5 }, global: { burst: 1, perSecond: 0.1 }, maxAddresses: 4, clock: clockAt().read });
+    limiter.take("a");
+    expect(limiter.take("a")).toEqual({ ok: false, scope: "global", retryAfter: 10 });
+  });
+
   it("a request one bucket refuses is not charged to the other", () => {
     const clock = clockAt();
     const limiter = createRateLimiter({ ...small, clock: clock.read });
@@ -70,21 +76,31 @@ describe("one bucket for everybody", () => {
 });
 
 describe("how many addresses are remembered", () => {
-  it("is bounded: a bucket that has refilled is forgotten first, then the one unused longest", () => {
+  const few = { address: { burst: 2, perSecond: 1 }, global: { burst: 1000, perSecond: 1000 }, maxAddresses: 3 };
+
+  it("is bounded: a bucket that has refilled is forgotten, since a new one would say the same", () => {
     const clock = clockAt();
-    const limiter = createRateLimiter({ address: { burst: 2, perSecond: 1 }, global: { burst: 1000, perSecond: 1000 }, maxAddresses: 3, clock: clock.read });
+    const limiter = createRateLimiter({ ...few, clock: clock.read });
     for (const address of ["a", "b", "c"]) limiter.take(address);
     expect(limiter.size()).toBe(3);
     clock.now += 10_000; // all three have refilled
     limiter.take("d");
     expect(limiter.size()).toBe(1);
-    // Nothing has refilled now: the oldest goes.
-    limiter.take("e");
-    limiter.take("f");
-    limiter.take("g");
+  });
+
+  it("when none has refilled, nobody's count is reset: every further address shares one bucket", () => {
+    const clock = clockAt();
+    const limiter = createRateLimiter({ ...few, clock: clock.read });
+    for (const address of ["a", "b", "c"]) for (let i = 0; i < 2; i++) limiter.take(address);
+    // Three addresses are remembered and all are empty. Two new ones share a burst of two.
+    expect([limiter.take("d").ok, limiter.take("e").ok]).toEqual([true, true]);
+    expect(limiter.take("f")).toMatchObject({ ok: false, scope: "address" });
     expect(limiter.size()).toBe(3);
-    // "d" was forgotten, so it starts again with a whole burst; that is the price of the bound.
-    expect([limiter.take("d").ok, limiter.take("d").ok, limiter.take("d").ok]).toEqual([true, true, false]);
+    // The remembered ones were not forgotten to make room: "a" is still empty.
+    expect(limiter.take("a").ok).toBe(false);
+    // Once they have refilled there is room again, and "f" has a bucket of its own.
+    clock.now += 10_000;
+    expect([limiter.take("f").ok, limiter.take("f").ok, limiter.take("f").ok]).toEqual([true, true, false]);
   });
 });
 
