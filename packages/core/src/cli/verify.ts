@@ -7,7 +7,12 @@
  *     STAGED/derived/{key}.json     one per Derived series that has a value
  *     STAGED/engine-report.json     what was written (with hashes), what came out empty, the checks
  *
- * and nothing else, anywhere. Every file is created new: an existing file or a link in its
+ *     STAGED/evidence/latest.json   the latest Evidence row of every locked Reading, and the drift
+ *
+ * and nothing else, anywhere. The last is written when the request names Claim locks
+ * (`claims`: paths of lock files in STAGED): for each Reading of each lock, the *latest* row on
+ * this Release, and where it, or the *then* row computed again, is no longer the locked one
+ * (ADR 0034). Drift fails nothing: only a person re-locks. Every file is created new: an existing file or a link in its
  * place is a failure, never something to write through. Python reads the result back, checks
  * it again and alone promotes.
  *
@@ -18,7 +23,9 @@
 import { createHash } from "node:crypto";
 import { closeSync, existsSync, lstatSync, mkdirSync, openSync, readFileSync, realpathSync, writeSync } from "node:fs";
 import { join } from "node:path";
+import { claimDrift, evidenceRow, readingsLineage, resolveReading, type ClaimReading, type DriftEntry, type EvidenceRow, type LockedReading, type ResolvedReading } from "../claim";
 import { evaluateRecipe, type RecipeSeries } from "../recipe";
+import { releaseSource } from "./source";
 import { SEMANTICS_VERSION } from "../transform";
 import type { ResolveSeries } from "../vintage";
 
@@ -26,6 +33,32 @@ const USAGE = "usage: atlas-core verify --release STAGED [--spot FILE]";
 const KEY = /^[a-z][a-z0-9_]{0,63}$/;
 const REQUEST = "engine-request.json";
 const REPORT = "engine-report.json";
+const LATEST = "evidence/latest.json";
+const LOCK = /^locks\/[0-9]{4}-[0-9]{2}-[0-9]{2}-[a-z0-9]+(-[a-z0-9]+)*\.v[1-9][0-9]{0,3}\.lock\.json$/;
+
+type Lock = { claim_id: string; version: number; record: { said_on: string; said_at?: string; readings: ClaimReading[] }; readings: LockedReading[] };
+type LatestReading = { id: string; latest: EvidenceRow | null; refused: { reason: string; message: string } | null; drift: DriftEntry[] };
+
+/** The latest rows of one lock's Readings on the staged Release, and their drift. */
+function latestOf(lock: Lock, root: string) {
+  const source = releaseSource(root, "staged");
+  const resolved: ResolvedReading[] = [];
+  const readings: LatestReading[] = lock.record.readings.map((reading) => {
+    const locked = lock.readings.find((one) => one.id === reading.id)!;
+    const result = resolveReading(reading, source.catalog);
+    if (!result.ok) {
+      // This Release cannot measure the Reading at all (the Series is gone from it, or is v1's here).
+      const refused = { reason: result.reason, message: result.message };
+      const gone = (kind: DriftEntry["kind"], was: EvidenceRow): DriftEntry => ({ kind, window: null, figure: null, field: "availability", locked: was.unavailable?.reason ?? null, now: result.reason });
+      return { id: reading.id, latest: null, refused, drift: [gone("latest_differs", locked.now_when_checked), gone("then_differs", locked.then)] };
+    }
+    resolved.push(result.resolved);
+    const latest = evidenceRow(reading, source, { state: "latest", asOf: null });
+    const thenAgain = evidenceRow(reading, source, { state: "then", asOf: lock.record.said_at ?? lock.record.said_on });
+    return { id: reading.id, latest, refused: null, drift: claimDrift(locked, latest, thenAgain) };
+  });
+  return { claim_id: lock.claim_id, lock_version: lock.version, rights_used: readingsLineage(resolved, source), readings };
+}
 
 type Check = { check: string; outcome: "pass" | "fail" | "not_checked"; detail?: string; /** Why a spot was not checked. */ reason?: "no_series" | "no_value" };
 type Spot = { key: string; period: string; value: number; tolerance: number; source?: string; url?: string };
@@ -63,9 +96,13 @@ function verify(release: string, spotPath: string | null): number {
   const derived: Record<string, { sha256: string; observations: number; period_start: string; period_end: string; rights_status: string }> = {};
   const empty: { key: string; message: string }[] = [];
 
-  const request = readJson(join(root, REQUEST)) as { format?: unknown; materialise?: unknown };
+  const request = readJson(join(root, REQUEST)) as { format?: unknown; materialise?: unknown; claims?: unknown };
   if (request.format !== 1 || !Array.isArray(request.materialise) || !request.materialise.every((key) => typeof key === "string" && KEY.test(key))) {
     throw new Refused(`${REQUEST} does not list the series to compute`);
+  }
+  const lockPaths = request.claims ?? [];
+  if (!Array.isArray(lockPaths) || !lockPaths.every((path) => typeof path === "string" && LOCK.test(path))) {
+    throw new Refused(`${REQUEST} does not name the claim locks to compute latest rows for`);
   }
   const asked = request.materialise as string[];
   const entries = (readJson(join(root, "catalog.json")) as { series: RecipeSeries[] }).series;
@@ -144,7 +181,25 @@ function verify(release: string, spotPath: string | null): number {
     }
   }
 
+  // The latest row of every locked Reading, and the drift (ADR 0034).
+  let latestText: string | null = null;
+  const drifted: { claim_id: string; lock_version: number; differences: number }[] = [];
+  if (lockPaths.length > 0) {
+    const claims = (lockPaths as string[]).map((path) => latestOf(readJson(join(root, path)) as Lock, root));
+    for (const claim of claims) {
+      const differences = claim.readings.reduce((n, reading) => n + reading.drift.length, 0);
+      if (differences > 0) drifted.push({ claim_id: claim.claim_id, lock_version: claim.lock_version, differences });
+    }
+    latestText = `${JSON.stringify({ semantics_version: SEMANTICS_VERSION, claims })}\n`;
+  }
+
   // Everything is computed before anything is written.
+  if (latestText !== null) {
+    const folder = join(root, "evidence");
+    if (!existsSync(folder) && !isLink(folder)) mkdirSync(folder);
+    realDirectory(folder, root);
+    createNew(join(root, LATEST), latestText);
+  }
   if (outputs.length > 0) {
     const folder = join(root, "derived");
     if (!existsSync(folder) && !isLink(folder)) mkdirSync(folder);
@@ -152,7 +207,10 @@ function verify(release: string, spotPath: string | null): number {
     for (const { key, text } of outputs) createNew(join(folder, `${key}.json`), text);
   }
   const failed = checks.filter((check) => check.outcome === "fail");
-  createNew(join(root, REPORT), `${JSON.stringify({ format: 1, semantics_version: SEMANTICS_VERSION, derived, empty, checks })}\n`);
+  createNew(join(root, REPORT), `${JSON.stringify({
+    format: 1, semantics_version: SEMANTICS_VERSION, derived, empty, checks,
+    ...(latestText === null ? {} : { latest: { sha256: createHash("sha256").update(latestText).digest("hex"), drift: drifted } }),
+  })}\n`);
   for (const check of failed) console.error(`FAILED ${check.check}: ${check.detail ?? ""}`);
   return failed.length > 0 ? 1 : 0;
 }

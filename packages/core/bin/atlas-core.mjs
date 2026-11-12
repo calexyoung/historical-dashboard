@@ -3,6 +3,9 @@
 //
 //   node packages/core/bin/atlas-core.mjs verify --release STAGED [--spot checks/spot.json]
 //
+//   node packages/core/bin/atlas-core.mjs claim --release DIR --request FILE
+//
+// `claim` prints the Evidence rows a Claim lock freezes (ADR 0034); it writes no file.
 // `verify` is the Node step of the publisher (ADR 0002): it computes the Derived series a
 // staged Release asks for and writes them, and its report, inside that directory only.
 //
@@ -31,5 +34,5 @@ registerHooks({
   },
 });
 
-const { main } = await import("../src/cli/verify.ts");
+const { main } = await import(process.argv[2] === "claim" ? "../src/cli/claim.ts" : "../src/cli/verify.ts");
 process.exitCode = main(process.argv.slice(2));
