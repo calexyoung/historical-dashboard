@@ -7,6 +7,8 @@
 #   2. Brings the compose file up and checks that each base path serves the fixture release from
 #      its own build, that each container is healthy, and that both ports are bound to 127.0.0.1.
 #   3. Checks that a build with no Surface, or with one that does not match its base path, fails.
+#   4. Builds the ingest image (Python and Node, PLAN M11), reads its layers for the same seeds,
+#      and runs a whole release with Derived series inside it on the invented vintage fixture.
 #
 # Nothing is pushed and nothing is uploaded.
 set -euo pipefail
@@ -88,5 +90,38 @@ refuse "no surface" --build-arg BASE_PATH=/macro-atlas
 refuse "no base path" --build-arg ATLAS_SURFACE=local
 refuse "production at the staging path" --build-arg ATLAS_SURFACE=production --build-arg BASE_PATH=/macro-atlas-staging
 refuse "staging at the production path" --build-arg ATLAS_SURFACE=staging --build-arg BASE_PATH=/macro-atlas
+
+echo "== the ingest image: its own allowlist, every layer read, a whole release run inside it"
+# deploy/ingest.Dockerfile (PLAN M11): Python and Node, the one writer. The seeds planted above
+# are still in place, so the same needles must be absent from its layers too.
+INGEST=macro-atlas-local-ingest
+docker build -q -f deploy/ingest.Dockerfile -t "$INGEST" . >/dev/null
+# Also absent: v1's hand-entered tables, which sit inside the atlas package.
+python3 deploy/scan_image.py "$INGEST" "${NEEDLES[@]}" \
+  "v1-catalog-table=$(head -c 2000 atlas/catalog.yaml | tail -c 80)" \
+  "v1-approval-table=$(head -c 2000 atlas/approval.yaml | tail -c 80)"
+if python3 deploy/scan_image.py "$INGEST" "known=atlas-core verify --release" >/dev/null 2>&1; then
+  echo "FAIL: the layer scan did not find a string the ingest image is known to hold"; exit 1
+fi
+echo "ok  the scan finds a string that is in the ingest image"
+[ "$(docker run --rm --entrypoint id "$INGEST" -u)" != 0 ] || { echo "FAIL: the ingest image runs as root"; exit 1; }
+# The real commands on the invented vintage fixture (mounted, never in the image): capture
+# replay, vintage replay, then a release whose two Derived series the Node step computes.
+# The image's own filesystem is read-only: everything is written under the mounted /tmp.
+docker run --rm --read-only --tmpfs /tmp -v "$PWD/fixtures:/app/fixtures:ro" --entrypoint sh "$INGEST" -c '
+  set -e
+  python fixtures/release/demo.py --quiet --out /tmp/demo >/dev/null
+  release="/tmp/demo/public/releases/$(cat /tmp/demo/public/CURRENT)"
+  test -s "$release/derived/fx_price_change.json"
+  test -s "$release/derived/fx_jobs_per_price.json"
+  grep -q "\"semantics_version\":\"0\." "$release/manifest.json"
+  test ! -e /tmp/demo/public/.staging || test -z "$(ls -A /tmp/demo/public/.staging)"
+' || { echo "FAIL: a release with Derived series could not be written inside the ingest image"; exit 1; }
+echo "ok  ingest: non-root, read-only filesystem, a release with Derived series from the Node step"
+# With no register row signed the real job refuses, in the image as anywhere else.
+if docker run --rm --read-only --tmpfs /store --tmpfs /public "$INGEST" release --profile public >/dev/null 2>&1; then
+  echo "FAIL: the ingest image released something from an empty store"; exit 1
+fi
+echo "ok  ingest: atlas release --profile public refuses on an empty store"
 
 echo "ALL OK"
