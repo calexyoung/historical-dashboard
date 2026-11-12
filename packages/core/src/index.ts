@@ -7,3 +7,5 @@ export * from "./transform";
 export * from "./staleness";
 export * from "./stats";
 export * from "./vintage";
+export * from "./aggregate";
+export * from "./recipe";

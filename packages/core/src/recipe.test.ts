@@ -104,7 +104,7 @@ describe("the arithmetic", () => {
       derived("yoy", "quarterly", { op: "pct_change", inputs: ["x"], order: "aggregate_then_compute", params: { lag: 4 } }),
       derived("qoq", "quarterly", { op: "pct_change", inputs: ["x"], order: "aggregate_then_compute", params: { lag: 1 } }));
     expect(table(evaluate("yoy", w))).toEqual([["2024-Q1", 10.000000000000009, "revised"]]); // 2024-Q2 on a zero: no value, and trimmed
-    expect(table(evaluate("qoq", w))).toEqual([["2023-Q2", -100, "revised"], ["2023-Q3", null, "missing"], ["2023-Q4", 300, "final"], ["2024-Q1", -45, "final"], ["2024-Q2", (5 / 110 - 1) * 100, "final"]]);
+    expect(table(evaluate("qoq", w))).toEqual([["2023-Q2", -100, "revised"], ["2023-Q3", null, "missing"], ["2023-Q4", 300, "final"], ["2024-Q1", (110 / 200 - 1) * 100, "final"], ["2024-Q2", (5 / 110 - 1) * 100, "final"]]);
   });
 
   it("a partial Period gives no derived value", () => {
