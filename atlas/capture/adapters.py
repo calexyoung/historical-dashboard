@@ -356,14 +356,33 @@ def _natural(key: tuple) -> tuple:
 
 class FedBoardAdapter:
     """One package of the Federal Reserve Board's Data Download Program, as CSV, whole history.
-    The file is whole when its six label rows are there, its columns are exactly the series
-    expected, in order, and every data row is a date, in order, with one cell per series."""
+    A file is whole when its six label rows are there, its columns are exactly the series
+    expected, in order, every data row is a Period of the file's kind, in order, with one cell
+    per series, and every cell is a number, a code the Board uses for "no number" or (only
+    before a series begins or after it ends) empty.
+
+    ``period`` says how the file names time: ``day`` (2026-11-06), ``week`` (a day, the level
+    on that day standing for its ISO week), ``month`` (2026-10) or ``quarter`` (2026Q2).
+
+    ``from_years`` asks for the package in spans. The program answers 200 with an empty body
+    when a file would be too large (H.10's daily rates since 1971, verified 2026-11-11), and
+    also the first time it is asked for a file it has not built, so an empty answer is asked
+    for again; a span that stays empty leaves the capture incomplete, and the cure is another
+    cut in ``from_years``. The last span ends on 31 December of this year in New York: an open
+    end is not answered.
+
+    ``labels`` holds what the Board's label rows say of a series (unit, multiplier, currency).
+    A label that changes makes the capture incomplete: the figures would mean something else."""
 
     name = "fed_board"
-    version = 1
+    version = 2
     URL = "https://www.federalreserve.gov/datadownload/Output.aspx"
     LABELS = ("Series Description", "Unit:", "Multiplier:", "Currency:", "Unique Identifier:",
               "Time Period")
+    PERIODS = ("day", "week", "month", "quarter")
+    #: What the Board prints where it lists a Period and gives no number (seen 2026-11-11).
+    NO_NUMBER = ("ND", "NA", "NC")
+    _LABEL_FIELDS = ("unit", "multiplier", "currency")
 
     def problem(self, params: dict) -> str | None:
         if not all(isinstance(params.get(name), str) and params[name] for name in ("rel", "series")):
@@ -371,42 +390,166 @@ class FedBoardAdapter:
         expect = params.get("expect")
         if not isinstance(expect, list) or not expect or not all(isinstance(e, str) and e for e in expect):
             return "it does not say which series to expect"
+        if params.get("period", "day") not in self.PERIODS:
+            return "its period is not day, week, month or quarter"
+        years = params.get("from_years")
+        if years is not None and (not isinstance(years, list) or not years or not all(
+                type(y) is int and 1000 <= y <= 9999 for y in years) or years != sorted(set(years))):
+            return "its from_years are not years in order"
+        labels = params.get("labels", {})
+        if not isinstance(labels, dict):
+            return "its labels are not an object"
+        for name, said in labels.items():
+            if name not in expect:
+                return f"its labels name {name}, which it does not expect"
+            if not isinstance(said, dict) or set(said) != set(self._LABEL_FIELDS) \
+                    or not all(isinstance(v, str) for v in said.values()):
+                return f"its labels do not give a unit, a multiplier and a currency for {name}"
         return None
+
+    def _url(self, scope: dict, span: list[str] | None) -> str:
+        def us(day: str) -> str:
+            return f"{day[5:7]}/{day[8:10]}/{day[0:4]}"
+
+        start, end = (us(span[0]), us(span[1])) if span else ("", "")
+        query = urlencode({"rel": scope["rel"], "series": scope["series"], "lastobs": "", "from": start,
+                           "to": end, "filetype": "csv", "label": "include", "layout": "seriescolumn"})
+        return f"{self.URL}?{query}"
 
     def fetch(self, endpoint: Endpoint, fetch: Fetch) -> Evidence:
         params = endpoint.params
         scope = {"rel": params["rel"], "series": params["series"], "expect": list(params["expect"])}
-        query = urlencode({"rel": scope["rel"], "series": scope["series"], "lastobs": "", "from": "",
-                           "to": "", "filetype": "csv", "label": "include", "layout": "seriescolumn"})
-        return self.examine(scope, [fetch.get(f"{self.URL}?{query}").body])
+        if params.get("period", "day") != "day":
+            scope["period"] = params["period"]
+        if params.get("labels"):
+            scope["labels"] = {name: dict(said) for name, said in params["labels"].items()}
+        years = params.get("from_years")
+        if years:
+            this_year = fetch.now().astimezone(RELEASE_ZONE).year
+            ends = [year - 1 for year in years[1:]] + [max(this_year, years[-1])]
+            scope["spans"] = [[f"{a:04d}-01-01", f"{b:04d}-12-31"] for a, b in zip(years, ends, strict=True)]
+
+        def again(response) -> str | None:
+            return None if response.body else "HTTP 200 with an empty body"
+
+        bodies = [fetch.get(self._url(scope, span), again=again).body
+                  for span in scope.get("spans", [None])]
+        return self.examine(scope, bodies)
+
+    @staticmethod
+    def _time(kind: str, cell: str) -> tuple[str, str, str] | None:
+        """A time cell as (the Period's label, its first day, its last day), or None."""
+        from ..period import period_bounds
+
+        if kind in ("day", "week"):
+            if not _is_day(cell):
+                return None
+            if kind == "day":
+                return cell, cell, cell
+            iso = date.fromisoformat(cell).isocalendar()
+            label, freq = f"{iso[0]:04d}-W{iso[1]:02d}", "weekly"
+        elif kind == "month":
+            label, freq = cell, "monthly"
+        else:
+            label, freq = (f"{cell[:4]}-Q{cell[5:]}" if len(cell) == 6 and cell[4] == "Q" else ""), "quarterly"
+        bounds = period_bounds(freq, label) if cell.isascii() else None
+        return (label, *bounds) if bounds else None
+
+    def _read(self, scope: dict, bodies: list[bytes], problems: list[str]) -> tuple[list[str], dict[str, list[dict]]]:
+        """The time cells of every data row, in the order read, and each series' Observations.
+        Everything that keeps the answer from being whole is added to ``problems``."""
+        kind = scope.get("period", "day")
+        spans = scope.get("spans")
+        expect = scope["expect"]
+        width = len(expect) + 1
+        cells_seen: list[str] = []
+        columns: dict[str, list[tuple[str, str, str]]] = {name: [] for name in expect}
+        if len(bodies) != len(spans or [None]):
+            problems.append(f"{len(spans or [None])} parts were asked for and {len(bodies)} were kept")
+        for number, body in enumerate(bodies, start=1):
+            where = f"part {number}: " if spans else ""
+            try:
+                rows = list(csv.reader(io.StringIO(body.decode("utf-8"), newline="")))
+            except (UnicodeDecodeError, csv.Error):
+                problems.append(f"{where}the file is not CSV text")
+                continue
+            labels = tuple(row[0].strip() if row else "" for row in rows[: len(self.LABELS)])
+            if labels != self.LABELS:
+                problems.append(f"{where}the file does not begin with the six label rows")
+                continue
+            identifiers = [cell.split("/") for cell in rows[4][1:]]
+            if (rows[5][1:] != expect or len(identifiers) != len(expect) or any(
+                    len(parts) != 3 or parts[0] != scope["rel"] or not parts[1] or parts[2] != name
+                    for parts, name in zip(identifiers, expect, strict=True))):
+                problems.append(f"{where}the columns are not the series expected")
+                continue
+            for name, want in scope.get("labels", {}).items():
+                at = expect.index(name) + 1
+                got = {"unit": rows[1][at] if at < len(rows[1]) else "",
+                       "multiplier": rows[2][at] if at < len(rows[2]) else "",
+                       "currency": rows[3][at] if at < len(rows[3]) else ""}
+                if got != want:
+                    def say(d: dict) -> str:
+                        return ", ".join(f"{f} {d[f]!r}" for f in self._LABEL_FIELDS)
+                    problems.append(f"{where}{name} is labelled {say(got)}; {say(want)} was expected")
+            for row in rows[len(self.LABELS):]:
+                time = self._time(kind, row[0]) if len(row) == width else None
+                if time is None:
+                    problems.append(f"{where}a data row is not a {kind} and {width - 1} cells: "
+                                    f"{row[0] if row else ''!r}")
+                    break
+                if spans and number <= len(spans) and not spans[number - 1][0] <= time[1] <= time[2] <= spans[number - 1][1]:
+                    problems.append(f"part {number} has {row[0]}, outside the span asked for")
+                cells_seen.append(row[0])
+                for name, cell in zip(expect, row[1:], strict=True):
+                    columns[name].append((time[0], row[0], cell))
+        if cells_seen != sorted(set(cells_seen)):
+            problems.append("the dates are not in order, or one appears twice")
+        if not cells_seen and not problems:
+            problems.append("the file has no data rows")
+        series: dict[str, list[dict]] = {}
+        for name, column in columns.items():
+            filled = [i for i, (_, _, cell) in enumerate(column) if cell != ""]
+            out, seen = [], set()
+            for i, (label, shown, cell) in enumerate(column):
+                if cell == "":
+                    if filled and filled[0] < i < filled[-1]:
+                        problems.append(f"{name} has an empty cell for {shown}, between two Periods "
+                                        "it has entries for")
+                    continue
+                if label in seen:
+                    problems.append(f"{name} gives {label} twice")
+                    continue
+                seen.add(label)
+                if cell in self.NO_NUMBER:
+                    out.append({"period": label, "value": None, "status": "unavailable",
+                                "footnotes": [{"code": cell, "text": ""}]})
+                elif _is_number(cell):
+                    out.append({"period": label, "value": cell, "status": "observed", "footnotes": []})
+                else:
+                    problems.append(f"{name} has a cell that is not a number, {', '.join(self.NO_NUMBER)} "
+                                    f"or empty for {shown}: {cell!r}")
+            series[name] = out
+        return cells_seen, series
 
     def examine(self, scope: dict, bodies: list[bytes]) -> Evidence:
         problems: list[str] = []
-        checks: dict = {"rows": 0, "first": None, "last": None}
-        try:
-            rows = list(csv.reader(io.StringIO(bodies[0].decode("utf-8"), newline="")))
-        except (UnicodeDecodeError, csv.Error):
-            return _evidence(scope, checks, ["the file is not CSV text"])
-        labels = tuple(row[0].strip() if row else "" for row in rows[: len(self.LABELS)])
-        if labels != self.LABELS:
-            return _evidence(scope, checks, ["the file does not begin with the six label rows"])
-        prefix = f"{scope['rel']}/{scope['rel']}/"
-        columns = [cell.removeprefix(prefix) for cell in rows[4][1:]]
-        if columns != scope["expect"] or rows[5][1:] != scope["expect"]:
-            problems.append("the columns are not the series expected")
-        width, days = len(scope["expect"]) + 1, []
-        for row in rows[len(self.LABELS):]:
-            if len(row) != width or not _is_day(row[0]):
-                problems.append(f"a data row is not a date and {width - 1} cells: {row[0] if row else ''!r}")
-                break
-            days.append(row[0])
-        if days != sorted(set(days)):
-            problems.append("the dates are not in order, or one appears twice")
-        if not days and not problems:
-            problems.append("the file has no data rows")
-        checks = {"rows": len(days), "first": days[0] if days else None,
-                  "last": days[-1] if days else None}
-        return _evidence(scope, checks, problems)
+        seen, _ = self._read(scope, bodies, problems)
+        checks = {"rows": len(seen), "first": seen[0] if seen else None, "last": seen[-1] if seen else None}
+        return _evidence(scope, checks, list(dict.fromkeys(problems)))
+
+    def coverage(self, scope: dict) -> tuple[str | None, str | None]:
+        """What was asked about: everything, for a whole package; for spans, their first day
+        to their last. Never what happened to come back, or a Period that left the file
+        would not be seen to have gone."""
+        spans = scope.get("spans")
+        return (spans[0][0], spans[-1][1]) if spans else (None, None)
+
+    def parse(self, capture: RawCapture) -> NormalizedState:
+        scope = capture.evidence.scope
+        problems: list[str] = []
+        _, series = self._read(scope, capture.bodies, problems)
+        return NormalizedState(not problems, scope, series, list(dict.fromkeys(problems)))
 
 
 def _is_day(text: str) -> bool:

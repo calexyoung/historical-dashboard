@@ -25,14 +25,14 @@ def url(rel="H15", start="", end=""):
             "&label=include&layout=seriescolumn")
 
 
-def csv(names, rows, rel="H15", group=None, units=None, multipliers=None):
+def csv(names, rows, rel="H15", group=None, units=None, multipliers=None, currencies=None):
     def quoted(label, cells):
         return ",".join(f'"{cell}"' for cell in [label, *cells])
 
     head = [quoted("Series Description", ["d"] * len(names)),
             quoted("Unit:", units or ["Percent:_Per_Year"] * len(names)),
             quoted("Multiplier:", multipliers or ["1"] * len(names)),
-            quoted("Currency:", ["NA"] * len(names)),
+            quoted("Currency:", currencies or ["NA"] * len(names)),
             quoted("Unique Identifier: ", [f"{rel}/{group or rel}/{name}" for name in names]),
             quoted("Time Period", names)]
     return "\n".join(head + rows) + "\n"
@@ -91,6 +91,14 @@ def test_a_time_cell_of_the_wrong_shape_is_not_whole(rows, problem):
     assert problem in raw.evidence.problems
 
 
+def test_an_empty_cell_between_two_values_is_a_fault_not_a_gap():
+    # The Board leaves a cell empty only before a series begins and after it ends.
+    body = csv(["A"], ["2026-11-05,4.10", "2026-11-06,", "2026-11-09,4.12", "2026-11-10,"])
+    raw, _ = fetch(endpoint(["A"]), {url(): [(200, body)]})
+    assert raw.evidence.problems == ["A has an empty cell for 2026-11-06, between two Periods it has entries for"]
+    assert FED.parse(raw).complete is False
+
+
 def test_two_wednesdays_in_one_week_are_not_whole():
     body = csv(["A"], ["2026-11-03,1.5", "2026-11-04,1.6"])
     raw, _ = fetch(endpoint(["A"], period="week"), {url(): [(200, body)]})
@@ -114,14 +122,17 @@ def test_a_unit_or_multiplier_that_changed_is_not_whole():
     # Net worth is printed in millions. If the Board printed billions one day, every figure
     # would be wrong by a thousand and look fine.
     spec = endpoint(["FL.Q"], rel="Z1", period="quarter",
-                    labels={"FL.Q": {"unit": "Currency", "multiplier": "1000000"}})
-    good = csv(["FL.Q"], ["2026Q2,195870496"], rel="Z1", units=["Currency"], multipliers=["1000000"])
-    bad = csv(["FL.Q"], ["2026Q2,195870"], rel="Z1", units=["Currency"], multipliers=["1e+09"])
+                    labels={"FL.Q": {"unit": "Currency", "multiplier": "1000000", "currency": "USD"}})
+    good = csv(["FL.Q"], ["2026Q2,195870496"], rel="Z1", units=["Currency"], multipliers=["1000000"],
+               currencies=["USD"])
+    bad = csv(["FL.Q"], ["2026Q2,195870"], rel="Z1", units=["Currency"], multipliers=["1e+09"],
+              currencies=["USD"])
     raw, _ = fetch(spec, {url("Z1"): [(200, good)]})
     assert raw.evidence.complete, raw.evidence.problems
     raw, _ = fetch(spec, {url("Z1"): [(200, bad)]})
-    assert "FL.Q is labelled unit 'Currency', multiplier '1e+09'; unit 'Currency', multiplier '1000000' was expected" \
-        in raw.evidence.problems
+    assert ("FL.Q is labelled unit 'Currency', multiplier '1e+09', currency 'USD'; "
+            "unit 'Currency', multiplier '1000000', currency 'USD' was expected") in raw.evidence.problems
+    assert FED.parse(raw).complete is False
 
 
 def test_a_package_too_large_for_one_answer_is_asked_for_in_spans():
@@ -168,8 +179,9 @@ def test_an_empty_answer_is_asked_for_again_and_then_kept_as_not_whole():
     ({"period": "year"}, "its period is not day, week, month or quarter"),
     ({"from_years": [1990, 1971]}, "its from_years are not years in order"),
     ({"from_years": []}, "its from_years are not years in order"),
-    ({"labels": {"B": {"unit": "x", "multiplier": "1"}}}, "its labels name B, which it does not expect"),
-    ({"labels": {"A": {"unit": "x"}}}, "its labels do not give a unit and a multiplier for A"),
+    ({"labels": {"B": {"unit": "x", "multiplier": "1", "currency": "NA"}}},
+     "its labels name B, which it does not expect"),
+    ({"labels": {"A": {"unit": "x"}}}, "its labels do not give a unit, a multiplier and a currency for A"),
 ])
 def test_params_the_adapter_cannot_use_are_refused_when_the_register_is_read(params, problem):
     assert FED.problem({"rel": "H15", "series": "abc", "expect": ["A"], **params}) == problem

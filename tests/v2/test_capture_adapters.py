@@ -292,7 +292,7 @@ def test_the_fed_board_package_is_one_csv_of_the_series_expected():
     (fed_csv([fed_row("2026-11-05")], names=list(reversed(NAMES))), "the columns are not the series expected"),
     (fed_csv([]), "the file has no data rows"),
     (fed_csv([fed_row("2026-11-05"), "2026-11-06,4.00,4.0"]),
-     "a data row is not a date and 11 cells: '2026-11-06'"),
+     "a data row is not a day and 11 cells: '2026-11-06'"),
     (fed_csv([fed_row("2026-11-06"), fed_row("2026-11-05")]),
      "the dates are not in order, or one appears twice"),
     (fed_csv([fed_row("2026-11-05"), fed_row("2026-11-05")]),
