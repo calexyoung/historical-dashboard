@@ -22,7 +22,10 @@ import {
   validateRelease,
   type AnnotationsFile,
   type Catalog,
+  type ClaimLock,
+  type ClaimsFile,
   type EventsFile,
+  type LatestFile,
   type Manifest,
   type Release,
   type ReleaseFiles,
@@ -38,6 +41,15 @@ export type OpenedRelease = {
   annotations: AnnotationsFile;
   /** `content/events.json`: the Events, whole. A Release written before there were any (0.2.0) has none. */
   events: EventsFile;
+  /** `content/claims.json`: the Claims, each with its locks by name. A Release written before 0.4.0 has none. */
+  claims: ClaimsFile;
+  /**
+   * `locks/{claim id}.v{n}.lock.json`, by `{claim id}.v{n}`: each lock that is in the Release,
+   * read, and as the text that was written (a reader who downloads it can check its hash).
+   */
+  locks: Record<string, { parsed: ClaimLock; text: string }>;
+  /** `evidence/latest.json`: the latest Evidence rows, computed when the Release was written. Null: no lock has one. */
+  latest: LatestFile | null;
   series: Record<string, SeriesFile>;
   derived: Record<string, SeriesFile>;
   /** `vintages/{key}.json`: what was held for a stored Series over time. Not every Series has one. */
@@ -207,6 +219,13 @@ export function createReleaseReader(options: {
       catalog: parse<Catalog>("catalog.json"),
       annotations: parse<AnnotationsFile>("content/annotations.json"),
       events: files["content/events.json"] ? parse<EventsFile>("content/events.json") : { events: [] },
+      claims: files["content/claims.json"] ? parse<ClaimsFile>("content/claims.json") : { claims: [] },
+      locks: Object.fromEntries(
+        Object.keys(files)
+          .filter((path) => path.startsWith("locks/") && path.endsWith(".lock.json"))
+          .map((path) => [path.slice("locks/".length, -".lock.json".length), { parsed: parse<ClaimLock>(path), text: decoder.decode(files[path]) }]),
+      ),
+      latest: files["evidence/latest.json"] ? parse<LatestFile>("evidence/latest.json") : null,
       series: folder("series"),
       derived: folder("derived"),
       vintages: folder<VintageFile>("vintages"),

@@ -286,6 +286,28 @@ svg :focus-visible {
   .data-table.w-auto {
     width: auto;
   }
+  /*
+   * Atlas: a Claim's evidence (figures down, then / now when checked / latest across). Three
+   * narrow columns of figures that fit a phone: headers may wrap, the last column has no gutter,
+   * and what is under a figure (its Period, its Data state) is stacked, not strung out.
+   */
+  .data-table.evidence thead th {
+    white-space: normal;
+  }
+  .data-table.evidence th,
+  .data-table.evidence td {
+    padding-right: 10px;
+  }
+  .data-table.evidence th:last-child,
+  .data-table.evidence td:last-child {
+    padding-right: 0;
+  }
+  .data-table.evidence td.n {
+    min-width: 4.25rem;
+  }
+  .data-table.evidence td small {
+    display: block;
+  }
   .data-table thead th {
     padding: 6px 12px 6px 0;
     font-size: 12px;
