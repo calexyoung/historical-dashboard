@@ -38,9 +38,10 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from .. import manual
-from ..release import ANNOTATIONS, CLAIMS, EVENTS, LEGACY
+from ..release import ANNOTATIONS, CATALOG, CLAIMS, EVENTS, HIGHLIGHTS, LEGACY, SEARCH, search_document
 from . import claims as K
 from . import events as E
+from . import highlights as H
 from . import wordlist as W
 
 HAND_ENTERED = "hand_entered"
@@ -65,6 +66,9 @@ class Compiled:
     #: The lock files in ``files`` whose Claims need a latest row: the newest lock of each
     #: Claim, when it is in the Release. The engine step is asked for exactly these.
     latest_for: list[str] = field(default_factory=list)
+    #: The headline Series as declared (``content/highlights.json`` of the repository), by
+    #: Segment. ``add_reading_files`` projects it once the Release's Catalog is final.
+    highlights: dict[str, list[str]] = field(default_factory=dict)
 
 
 def dump(document) -> bytes:
@@ -322,6 +326,31 @@ def compile_content(*, profile: str, content: Path | None = None, manual: Path |
         seen.add(annotation["id"])
     _compile_claims(out, profile=profile, content=content, gate=gate, local_locks=local_locks,
                     withdrawn=set(withdrawn or ()), carry_locks=carry_locks)
+    declared, problems, body = H.load(content)
+    if problems:
+        raise ContentError("; ".join(problems[:5]))
+    if body is not None:
+        out.read.append((H.FILE, body))
+    out.highlights = declared
     out.files[EVENTS] = dump({"events": compiled_events})
     out.files[ANNOTATIONS] = dump({"annotations": annotations})
     return out
+
+
+def add_reading_files(files: dict[str, bytes], withheld: list[dict], declared: dict[str, list[str]]) -> list[dict]:
+    """Write a Release's ``content/highlights.json`` and ``search.json`` into ``files`` (M22;
+    ADR 0036), and return what its check report says of them. Called by every writer last of
+    all, when the Catalog, the withheld list, the Events and the Claims are what the Release
+    will hold: both files are projections of those and of nothing else. Neither reads an
+    Observation, so no value can enter either from data; a Withheld Series is in both by name."""
+    catalog = json.loads(files[CATALOG])
+    document, left_out = H.project(declared, catalog["series"])
+    files[HIGHLIGHTS] = dump(document)
+    index = search_document(catalog, withheld, json.loads(files[EVENTS]), json.loads(files[CLAIMS]))
+    files[SEARCH] = dump(index)
+    named = sum(len(row["series"]) for row in document["segments"])
+    # Left out is said, and is not a warning: a Release of some of the Catalog names fewer.
+    report = [{"check": "content: headline series", "outcome": "pass",
+               "detail": (f"{named} headline Series" + (f"; left out: {', '.join(left_out)}" if left_out else ""))[:2000]},
+              {"check": "content: search index", "outcome": "pass", "detail": f"{len(index['entries'])} entries"}]
+    return report

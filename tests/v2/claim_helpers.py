@@ -53,7 +53,7 @@ def row(state: str, value: float, as_of: str | None = None) -> dict:
             "inputs": [{"key": "unrate", "basis": None if as_of is None else "atlas_observed", "capture_gap": None,
                         "same_day_release": False, "unit": "percent", "last_capture": "2031-03-06T14:00:00Z"}],
             "unit": "percent", "figures": [{"name": "value", "value": value, "period": "2031-01", "status": "final"}],
-            "window_sensitivity": [], "release_id": "20310306T150000Z-abcdef0", "semantics_version": "0.7.0"}
+            "window_sensitivity": [], "release_id": "20310306T150000Z-abcdef0", "semantics_version": "0.8.0"}
 
 
 def lock(record: dict | None = None, *, version: int = 1, profile: str = "public", then: float = 4.1,
@@ -65,7 +65,7 @@ def lock(record: dict | None = None, *, version: int = 1, profile: str = "public
         "reason": reason if version > 1 or reason else None, "supersedes": version - 1 if version > 1 else None,
         "record": K.record(record), "record_sha256": K.record_sha256(record),
         "release": {"release_id": "20310306T150000Z-abcdef0", "created": "2031-03-06T15:00:00Z", "profile": profile},
-        "semantics_version": "0.7.0",
+        "semantics_version": "0.8.0",
         "rights_used": [{"origin": ORIGIN, "dataset": "fixture jobs", "channel": "fixture", "representation": "native"}],
         "readings": [{"id": "rate-in-january", "series": "unrate", "freq": "monthly", "unit": "percent",
                       "transform": "lin", "measure": "value_at", "recipe": None,

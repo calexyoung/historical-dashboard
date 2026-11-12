@@ -648,6 +648,27 @@ def claims_file() -> tuple[dict, bytes | None, bytes | None]:
     return {"claims": [{**CLAIM, "locks": listed}] if lock is not None else []}, lock, latest
 
 
+#: The headline Series (content/highlights.json): the first of a Segment is its row of the
+#: Overview. Between them they show a Takeaway, a preliminary value, a Withheld Series, a stale
+#: one, one with no cadence to compare over, and two Segments with nothing to show.
+HIGHLIGHTS = {"segments": [
+    {"segment": "economy_jobs", "series": ["fx_price_index", "fx_poverty_rate_annual", "fx_output_quarterly",
+                                           "fx_price_index_yoy", "fx_payrolls_break"]},
+    {"segment": "markets_money", "series": ["fx_exchange_index"]},
+    {"segment": "infrastructure", "series": ["fx_permits_stale"]},
+    {"segment": "governance_politics", "series": ["fx_vote_margin"]},
+    {"segment": "disasters_health", "series": []},
+    {"segment": "us_in_the_world", "series": []},
+]}
+
+
+def search_document(catalog: dict, withheld: list, events: dict, claims: dict) -> dict:
+    """search.json, by the contract's own projection (atlas/release.py)."""
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    from atlas.release import search_document as project
+    return project(catalog, withheld, events, claims)
+
+
 def dump(obj) -> bytes:
     return (json.dumps(obj, indent=2, ensure_ascii=False) + "\n").encode("utf-8")
 
@@ -683,7 +704,7 @@ def build(root: Path, claims: bool = True) -> Path:
         rows[key]["vintages_sha256"] = hashlib.sha256(data).hexdigest()
 
     manifest = {
-        "schema_version": "0.4.0",
+        "schema_version": "0.5.0",
         "semantics_version": "0",
         "release_id": RELEASE_ID,
         "profile": "public",
@@ -711,6 +732,8 @@ def build(root: Path, claims: bool = True) -> Path:
     if latest is not None:
         (release / "evidence").mkdir()
         (release / "evidence" / "latest.json").write_bytes(latest)
+    (release / "content" / "highlights.json").write_bytes(dump(HIGHLIGHTS))
+    (release / "search.json").write_bytes(dump(search_document(CATALOG, manifest["withheld"], EVENTS, listed)))
     (root / "CURRENT").write_text(RELEASE_ID + "\n")
     return release
 

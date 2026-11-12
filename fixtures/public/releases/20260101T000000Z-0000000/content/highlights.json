@@ -1,0 +1,40 @@
+{
+  "segments": [
+    {
+      "segment": "economy_jobs",
+      "series": [
+        "fx_price_index",
+        "fx_poverty_rate_annual",
+        "fx_output_quarterly",
+        "fx_price_index_yoy",
+        "fx_payrolls_break"
+      ]
+    },
+    {
+      "segment": "markets_money",
+      "series": [
+        "fx_exchange_index"
+      ]
+    },
+    {
+      "segment": "infrastructure",
+      "series": [
+        "fx_permits_stale"
+      ]
+    },
+    {
+      "segment": "governance_politics",
+      "series": [
+        "fx_vote_margin"
+      ]
+    },
+    {
+      "segment": "disasters_health",
+      "series": []
+    },
+    {
+      "segment": "us_in_the_world",
+      "series": []
+    }
+  ]
+}

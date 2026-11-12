@@ -133,6 +133,8 @@ class Built:
     latest_for: list[str] = field(default_factory=list)
     #: What the engine step found drifted: {claim_id, lock_version, differences}.
     drift: list[dict] = field(default_factory=list)
+    #: The headline Series as the repository declares them, by Segment (``add_reading_files``).
+    highlights: dict[str, list[str]] = field(default_factory=dict)
 
     def release_id(self, created: datetime) -> str:
         digest = hashlib.sha256()
@@ -615,6 +617,7 @@ def add_content(built: Built, *, profile: str, gate: RightsGate, content: Path |
     built.files.update(compiled.files)
     built.report.extend(compiled.report)
     built.latest_for = compiled.latest_for
+    built.highlights = compiled.highlights
 
 
 def add_latest(built: Built, outcome: engine.Outcome) -> None:

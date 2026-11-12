@@ -82,7 +82,7 @@ def test_a_release_holds_the_derived_series_the_engine_computed(tmp_path, regist
     assert validate_release(directory) == []
     manifest = read_json(directory / "manifest.json")
     assert sorted(manifest["series"]) == ["fx_jobs", "fx_jobs_per_price", "fx_price", "fx_price_change"]
-    assert manifest["semantics_version"] == "0.7.0"
+    assert manifest["semantics_version"] == "0.8.0"
     assert manifest["checks"]["passed"] is True
     assert {"check": "engine: derived series", "outcome": "pass"} in manifest["checks"]["report"]
 
@@ -337,7 +337,7 @@ def test_a_reuse_keeps_the_derived_files_and_does_not_run_the_step(tmp_path, reg
     assert second.outcome == "promoted", second.lines
     one, two = directory_of(tmp_path, first), directory_of(tmp_path, second)
     assert (two / "derived" / "fx_price_change.json").read_bytes() == (one / "derived" / "fx_price_change.json").read_bytes()
-    assert read_json(two / "manifest.json")["semantics_version"] == "0.7.0"
+    assert read_json(two / "manifest.json")["semantics_version"] == "0.8.0"
 
 
 def test_withdrawing_an_input_takes_what_is_computed_from_it(tmp_path, register, store, series):

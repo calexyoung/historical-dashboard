@@ -10,3 +10,4 @@ export * from "./vintage";
 export * from "./aggregate";
 export * from "./recipe";
 export * from "./claim";
+export * from "./highlights";

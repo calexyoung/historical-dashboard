@@ -1,0 +1,140 @@
+{
+  "entries": [
+    {
+      "kind": "series",
+      "id": "fx_price_index",
+      "title": "Fixture price index",
+      "text": "Synthetic monthly index with one missing month and a preliminary latest value.",
+      "keywords": [
+        "index, 2024-01 = 100",
+        "Macro Atlas fixture (synthetic)",
+        "fixture",
+        "FX-PRICE",
+        "USA",
+        "inflation"
+      ]
+    },
+    {
+      "kind": "series",
+      "id": "fx_output_quarterly",
+      "title": "Fixture output",
+      "text": "Synthetic quarterly flow with one missing quarter.",
+      "keywords": [
+        "billions of fixture dollars",
+        "Macro Atlas fixture (synthetic)",
+        "fixture",
+        "FX-OUTPUT",
+        "USA",
+        "growth"
+      ]
+    },
+    {
+      "kind": "series",
+      "id": "fx_poverty_rate_annual",
+      "title": "Fixture poverty rate",
+      "text": "Synthetic annual rate. Its rights status asks for a citation.",
+      "keywords": [
+        "percent of residents",
+        "Macro Atlas fixture (synthetic)",
+        "fixture",
+        "FX-POVERTY",
+        "USA",
+        "poverty"
+      ]
+    },
+    {
+      "kind": "series",
+      "id": "fx_vote_margin",
+      "title": "Fixture election margin",
+      "text": "Synthetic result per election. Each value stands until the next election.",
+      "keywords": [
+        "percentage points",
+        "Macro Atlas fixture (synthetic)",
+        "fixture",
+        "FX-VOTE",
+        "USA",
+        "elections"
+      ]
+    },
+    {
+      "kind": "series",
+      "id": "fx_price_index_yoy",
+      "title": "Fixture price index, change from a year earlier",
+      "text": "Derived from the fixture price index by a recipe.",
+      "keywords": [
+        "percent change from a year earlier",
+        "Macro Atlas fixture (synthetic)",
+        "fixture",
+        "FX-PRICE",
+        "USA",
+        "inflation"
+      ]
+    },
+    {
+      "kind": "series",
+      "id": "fx_exchange_index",
+      "title": "Fixture exchange index",
+      "text": "Stands for a licensed index: listed by name, values withheld.",
+      "keywords": [
+        "index",
+        "Macro Atlas fixture (synthetic)",
+        "fixture",
+        "FX-EXCH",
+        "USA",
+        "markets"
+      ],
+      "withheld": true
+    },
+    {
+      "kind": "series",
+      "id": "fx_payrolls_break",
+      "title": "Fixture payrolls",
+      "text": "Synthetic monthly count with a break in January 2025.",
+      "keywords": [
+        "thousands of jobs",
+        "Macro Atlas fixture (synthetic)",
+        "fixture",
+        "FX-PAYROLLS",
+        "USA",
+        "jobs"
+      ]
+    },
+    {
+      "kind": "series",
+      "id": "fx_permits_stale",
+      "title": "Fixture building permits",
+      "text": "Synthetic monthly series whose source stopped in June 2024.",
+      "keywords": [
+        "thousands of units, annual rate",
+        "Macro Atlas fixture (synthetic)",
+        "fixture",
+        "FX-PERMITS",
+        "USA",
+        "construction"
+      ]
+    },
+    {
+      "kind": "event",
+      "id": "2024-09-18-fixture-rate-decision",
+      "title": "Fixture central bank changes its rate",
+      "text": "The fixture central bank announced a new policy rate on 18 September 2024.\n\nThe announcement was published in the fixture gazette the same day.",
+      "keywords": [
+        "policy",
+        "2024-09-18",
+        "inflation"
+      ]
+    },
+    {
+      "kind": "claim",
+      "id": "2025-12-11-a-fixture-official-on-fixture-prices",
+      "title": "A. Fixture, 2025-12-11",
+      "text": "The fixture price index stood at 109.5 in November, up about five percent since January.",
+      "keywords": [
+        "A. Fixture",
+        "Fixture minister of prices (synthetic)",
+        "none",
+        "inflation"
+      ]
+    }
+  ]
+}

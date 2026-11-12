@@ -21,6 +21,8 @@ import { dayWords, exactDecimals, fixed, FREQ_NOUN, FREQ_WORD, labelStart, list,
 export { DATA_STATES, MARK_NAMES, STATE_INFO, mark, markIcon, type DataState, type MarkName } from "./states";
 export { svgString, type SvgNode } from "./svg";
 export type { Silence, SilenceRule } from "./takeaway";
+export { changeStrip, type ChangeStrip, type StripCell, type StripFigure, type StripLatest, type StripMark } from "./change-strip";
+export { sparkline, SPARK } from "./sparkline";
 
 export type FigureObservation = {
   period: string;
@@ -50,6 +52,8 @@ export type ShownSeries = {
   priceBasis?: string;
   country?: string;
   maxLag?: string;
+  /** The Series' declared rule for bringing it to a slower frequency (the change strip asks the engine with it). */
+  agg?: string;
   breaks?: { period: string; note: string }[];
   /**
    * "ln": the values are natural logarithms (the engine's `log`). They are drawn as they are and

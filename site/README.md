@@ -10,7 +10,7 @@ Every build is given its Surface and base path explicitly; there are no defaults
 | What | Command | Address |
 |---|---|---|
 | On v1's data (converts it first; local only) | `make v2` | http://localhost:3000/macro-atlas/data, then any series name, e.g. http://localhost:3000/macro-atlas/data/unrate |
-| Development, fixture release | `make v2-dev` | http://localhost:3000/macro-atlas/explore |
+| Development, fixture release | `make v2-dev` | http://localhost:3000/macro-atlas/ (the Overview), `/highlights`, `/search`, `/explore` |
 | Both base paths in Docker, loopback only | `make v2-up` | http://localhost:3101/macro-atlas/explore and http://localhost:3102/macro-atlas-staging/explore |
 | A production build by hand | `ATLAS_SURFACE=local BASE_PATH=/macro-atlas npm run build -w @macro-atlas/site`, then `ATLAS_RELEASE_ROOT=$PWD/fixtures/public npm start -w @macro-atlas/site` | http://localhost:3000/macro-atlas/explore |
 

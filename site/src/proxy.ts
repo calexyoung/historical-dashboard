@@ -29,6 +29,10 @@ export async function proxy(request: NextRequest): Promise<Response> {
       search: request.nextUrl.search,
       twinToken: request.headers.get(TWIN_HEADER),
       namedHost: request.headers.get(HOST_HEADER),
+      method: request.method,
+      cookie: request.headers.get("cookie"),
+      prefetch: request.headers.has("next-router-prefetch") || /prefetch/i.test(`${request.headers.get("purpose") ?? ""} ${request.headers.get("sec-purpose") ?? ""}`),
+      secure: (request.headers.get("x-forwarded-proto") ?? request.nextUrl.protocol.replace(":", "")) === "https",
     },
   );
 

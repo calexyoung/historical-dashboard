@@ -27,4 +27,12 @@ describe("navigation: only tabs whose pages exist are shown (PLAN section 3)", (
     expect(breadcrumb("/data")).toBe("Data");
     expect(breadcrumb("/nowhere")).toBeNull();
   });
+
+  it("names Highlights and Search, which have no tab, and nothing on the Overview itself (M22)", () => {
+    expect(breadcrumb("/highlights")).toBe("Highlights");
+    expect(breadcrumb("/search")).toBe("Search");
+    expect(breadcrumb("/")).toBeNull();
+    expect(tabsFor("/highlights").some((t) => t.current)).toBe(false);
+    expect(tabsFor("/").map((t) => t.label)).toEqual(["Explore", "Events", "Data"]);
+  });
 });

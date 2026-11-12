@@ -27,16 +27,22 @@ from jsonschema import Draft202012Validator, ValidationError, validators
 from atlas.period import next_period, period_bounds
 
 SCHEMA_PATH = Path(__file__).resolve().parents[1] / "schema" / "release.schema.json"
-SCHEMA_VERSION = "0.4.0"
+SCHEMA_VERSION = "0.5.0"
 #: Every version this reader knows; a writer writes ``SCHEMA_VERSION``. 0.2.0 (M10) added
 #: ``vintages/`` and ``vintages_sha256``, so a 0.1.0 Release is one that holds neither. 0.3.0
 #: (M19) added ``content/events.json``: a 0.3.0 Release must have it, an earlier one may not.
 #: 0.4.0 (M20) added ``content/claims.json`` (required), ``locks/`` and ``evidence/latest.json``.
-SCHEMA_VERSIONS = ("0.1.0", "0.2.0", "0.3.0", SCHEMA_VERSION)
+#: 0.5.0 (M22) added ``content/highlights.json`` and ``search.json`` (both required).
+SCHEMA_VERSIONS = ("0.1.0", "0.2.0", "0.3.0", "0.4.0", SCHEMA_VERSION)
 #: The versions that have no ``content/events.json``.
 _BEFORE_EVENTS = ("0.1.0", "0.2.0")
 #: The versions that have no Claims, locks or latest Evidence rows.
 _BEFORE_CLAIMS = ("0.1.0", "0.2.0", "0.3.0")
+#: The versions that have no headline Series and no search index.
+_BEFORE_SEARCH = ("0.1.0", "0.2.0", "0.3.0", "0.4.0")
+#: The six Segments, in the order of the Overview (CONTEXT.md, Segment).
+SEGMENTS = ("economy_jobs", "markets_money", "infrastructure", "governance_politics", "disasters_health",
+            "us_in_the_world")
 #: The fields of a Claim its lock freezes (atlas/content/claims.py, RECORD_FIELDS).
 _CLAIM_RECORD = ("claimant", "said_on", "said_at", "venue", "sources", "quote", "readings",
                  "readings_not_measured", "selection_note", "checked_on")
@@ -47,6 +53,9 @@ ANNOTATIONS = "content/annotations.json"
 EVENTS = "content/events.json"
 CLAIMS = "content/claims.json"
 LATEST = "evidence/latest.json"
+HIGHLIGHTS = "content/highlights.json"
+SEARCH = "search.json"
+_OPTIONAL_FILES = (EVENTS, CLAIMS, LATEST, HIGHLIGHTS, SEARCH)
 REQUIRED_FILES = (MANIFEST, CATALOG, ANNOTATIONS)
 _SERIES_FILE = re.compile(r"(series|derived|vintages)/([a-z][a-z0-9_]{0,63})\.json")
 _LOCK_FILE = re.compile(r"locks/([0-9]{4}-[0-9]{2}-[0-9]{2}-[a-z0-9]+(?:-[a-z0-9]+)*\.v[1-9][0-9]{0,3})\.lock\.json")
@@ -129,7 +138,7 @@ def validate_files(release_id: str, files: Mapping[str, bytes]) -> list[Issue]:
             series_paths[match[1]][match[2]] = path
         elif lock:
             lock_paths[lock[1]] = path
-        elif path not in REQUIRED_FILES and path not in (EVENTS, CLAIMS, LATEST):
+        elif path not in REQUIRED_FILES and path not in _OPTIONAL_FILES:
             issues.append(Issue("unknown_file", path, "the release contract does not name this file"))
     for path in REQUIRED_FILES:
         if path not in files:
@@ -139,7 +148,7 @@ def validate_files(release_id: str, files: Mapping[str, bytes]) -> list[Issue]:
 
     parsed: dict[str, object] = {}
     known = list(REQUIRED_FILES) + [p for folder in series_paths.values() for p in folder.values()]
-    known += [path for path in (EVENTS, CLAIMS, LATEST) if path in files] + list(lock_paths.values())
+    known += [path for path in _OPTIONAL_FILES if path in files] + list(lock_paths.values())
     for path in known:
         try:
             parsed[path] = json.loads(
@@ -177,6 +186,11 @@ def validate_files(release_id: str, files: Mapping[str, bytes]) -> list[Issue]:
             issues.append(Issue("unknown_file", path, f"schema_version {version} does not name this file"))
     elif version is not None and CLAIMS not in files:
         issues.append(Issue("missing_file", CLAIMS, "a release must have this file"))
+    for path in (HIGHLIGHTS, SEARCH):
+        if version in _BEFORE_SEARCH and path in files:
+            issues.append(Issue("unknown_file", path, f"schema_version {version} does not name this file"))
+        elif version is not None and version not in _BEFORE_SEARCH and path not in files:
+            issues.append(Issue("missing_file", path, "a release must have this file"))
     if issues:
         return issues
 
@@ -195,6 +209,10 @@ def validate_files(release_id: str, files: Mapping[str, bytes]) -> list[Issue]:
         bundle["locks"] = {name: parsed[path] for name, path in lock_paths.items()}
     if LATEST in parsed:
         bundle["latest"] = parsed[LATEST]
+    if HIGHLIGHTS in parsed:
+        bundle["highlights"] = parsed[HIGHLIGHTS]
+    if SEARCH in parsed:
+        bundle["search"] = parsed[SEARCH]
     for error in sorted(_validator().iter_errors(bundle), key=lambda e: list(map(str, e.absolute_path))):
         path, pointer = _locate(list(error.absolute_path))
         issues.append(Issue("schema", path, f"{pointer}: {error.message}"[:400]))
@@ -206,6 +224,8 @@ def validate_files(release_id: str, files: Mapping[str, bytes]) -> list[Issue]:
     issues.extend(_claim_rules(bundle, files, lock_paths))
     if not issues:  # a last stage: a vintage file is judged against Series files that are sound
         issues.extend(_vintage_rules(bundle, files, vintage_paths))
+    if not issues:  # and the headline Series and the search index against a Catalog and content that are
+        issues.extend(_reading_rules(bundle))
     return issues
 
 
@@ -249,7 +269,7 @@ def _locate(parts: list) -> tuple:
     if head == "locks" and rest:
         return f"locks/{rest[0]}.lock.json", "/" + "/".join(map(str, rest[1:]))
     file = {"manifest": MANIFEST, "catalog": CATALOG, "annotations": ANNOTATIONS, "events": EVENTS,
-            "claims": CLAIMS, "latest": LATEST}.get(head, str(head))
+            "claims": CLAIMS, "latest": LATEST, "highlights": HIGHLIGHTS, "search": SEARCH}.get(head, str(head))
     return file, "/" + "/".join(map(str, rest))
 
 
@@ -460,6 +480,68 @@ def _claim_rules(bundle: dict, files: Mapping[str, bytes], lock_paths: dict[str,
         add("claim_evidence", LATEST, f"{claim_id} v{need[claim_id]} is in the release and has no latest row")
     if not held["claims"]:
         add("claim_evidence", LATEST, "the file is there only when a lock has a latest row")
+    return issues
+
+
+def search_document(catalog: dict, withheld: list[dict], events: dict | None, claims: dict | None) -> dict:
+    """``search.json`` (0.5.0, M22; ADR 0036): what a reader can search for in a Release, as
+    words. One entry for every Series of ``catalog.json``, then every Event, then every Claim,
+    each in its file's order. It is a projection of those three files and of the manifest's
+    withheld list, and of nothing else: no Observation, lock or Evidence row is read to make it, so no
+    value can enter it from data (a description or a quote is content a person wrote, public on
+    its own page). Writers write exactly this; both validators hold a Release to it."""
+    def words(*values) -> list[str]:
+        return [value for value in values if isinstance(value, str) and value]
+
+    gone = {row["key"] for row in withheld}
+    entries = []
+    for entry in catalog["series"]:
+        origin = (entry.get("source") or {}).get("origin") or {}
+        entries.append({
+            "kind": "series", "id": entry["key"], "title": entry["name"], "text": entry.get("description") or "",
+            "keywords": words(entry.get("unit"), origin.get("producer"), origin.get("dataset"),
+                              origin.get("origin_id"), entry.get("country"), *entry.get("topics", [])),
+            **({"withheld": True} if entry["key"] in gone else {})})
+    for event in (events or {}).get("events", []):
+        entries.append({"kind": "event", "id": event["id"], "title": event["title"], "text": event["description"],
+                        "keywords": words(event["category"], event["date"], *event.get("topics", []))})
+    for claim in (claims or {}).get("claims", []):
+        who = claim["claimant"]
+        entries.append({"kind": "claim", "id": claim["id"], "title": f"{who['name']}, {claim['said_on']}",
+                        "text": claim["quote"],
+                        "keywords": words(who["name"], who.get("role"), who.get("party"), *claim.get("topics", []))})
+    return {"entries": entries}
+
+
+def _reading_rules(bundle: dict) -> list[Issue]:
+    """0.5.0 (M22; ADR 0036): the headline Series are Series of this Release, each under its own
+    Segment, and the search index is the projection of the Release's own files and no more."""
+    issues: list[Issue] = []
+    held = bundle.get("highlights")
+    if held is not None:
+        segment_of = {entry["key"]: entry.get("segment") for entry in bundle["catalog"]["series"]}
+        if [row["segment"] for row in held["segments"]] != list(SEGMENTS):
+            issues.append(Issue("highlights", HIGHLIGHTS, "it does not list the six Segments once each, in the order of the Overview"))
+        seen: set[str] = set()
+        for row in held["segments"]:
+            for key in row["series"]:
+                if key not in segment_of:
+                    issues.append(Issue("highlights", HIGHLIGHTS, f"{key} is not a Series of this release's catalog"))
+                elif segment_of[key] != row["segment"]:
+                    issues.append(Issue("highlights", HIGHLIGHTS, f"{key} is listed under {row['segment']} and the catalog puts it in {segment_of[key]}"))
+                if key in seen:
+                    issues.append(Issue("highlights", HIGHLIGHTS, f"{key} is listed more than once"))
+                seen.add(key)
+    index = bundle.get("search")
+    if index is not None:
+        expected = search_document(bundle["catalog"], bundle["manifest"]["withheld"], bundle.get("events"),
+                                   bundle.get("claims"))["entries"]
+        entries = index["entries"]
+        if len(entries) != len(expected):
+            issues.append(Issue("search_projection", SEARCH, f"it holds {len(entries)} entries and the release's Series, Events and Claims are {len(expected)}"))
+        for got, want in zip(entries, expected):
+            if got != want:
+                issues.append(Issue("search_projection", SEARCH, f"the entry for {want['kind']} {want['id']} is not the projection of the release's own files"))
     return issues
 
 

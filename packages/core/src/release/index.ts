@@ -18,7 +18,7 @@ import { Ajv2020, type ErrorObject, type ValidateFunction } from "ajv/dist/2020.
 import addFormats from "ajv-formats";
 import { nextPeriod, periodBounds } from "../period";
 import { releaseSchema, SCHEMA_VERSION, SCHEMA_VERSIONS } from "./schema.generated";
-import type { Anchor, CatalogEntry, Claim, Event, Release, SeriesFile, VintageRow } from "./types.generated";
+import type { Anchor, CatalogEntry, Claim, Event, Release, SearchEntry, SearchFile, SeriesFile, VintageRow } from "./types.generated";
 
 export type * from "./types.generated";
 export { SCHEMA_VERSION, SCHEMA_VERSIONS };
@@ -62,6 +62,8 @@ export type IssueCode =
   | "duplicate_claim_id"
   | "claim_lock"
   | "claim_evidence"
+  | "highlights"
+  | "search_projection"
   | "unsigned_register"
   | "legacy_in_public"
   | "draft_in_public";
@@ -75,6 +77,13 @@ const ANNOTATIONS = "content/annotations.json";
 const EVENTS = "content/events.json";
 const CLAIMS = "content/claims.json";
 const LATEST = "evidence/latest.json";
+const HIGHLIGHTS = "content/highlights.json";
+const SEARCH = "search.json";
+const OPTIONAL_FILES: readonly string[] = [EVENTS, CLAIMS, LATEST, HIGHLIGHTS, SEARCH];
+/** The versions that have no headline Series and no search index; from 0.5.0 (M22) a Release must have both files. */
+const BEFORE_SEARCH: readonly unknown[] = ["0.1.0", "0.2.0", "0.3.0", "0.4.0"];
+/** The six Segments, in the order of the Overview (CONTEXT.md, Segment). */
+export const SEGMENTS = ["economy_jobs", "markets_money", "infrastructure", "governance_politics", "disasters_health", "us_in_the_world"] as const;
 /** The versions that have no Claims, locks or latest Evidence rows; from 0.4.0 (M20) a Release must have content/claims.json. */
 const BEFORE_CLAIMS: readonly unknown[] = ["0.1.0", "0.2.0", "0.3.0"];
 /** The fields of a Claim its lock freezes (atlas/content/claims.py, RECORD_FIELDS). */
@@ -181,7 +190,7 @@ function locate(instancePath: string): [string, string] {
     return [`${head}/${rest[0]}.json`, "/" + rest.slice(1).join("/")];
   }
   if (head === "locks" && rest.length > 0) return [`locks/${rest[0]}.lock.json`, "/" + rest.slice(1).join("/")];
-  const named: Record<string, string> = { manifest: MANIFEST, catalog: CATALOG, annotations: ANNOTATIONS, events: EVENTS, claims: CLAIMS, latest: LATEST };
+  const named: Record<string, string> = { manifest: MANIFEST, catalog: CATALOG, annotations: ANNOTATIONS, events: EVENTS, claims: CLAIMS, latest: LATEST, highlights: HIGHLIGHTS, search: SEARCH };
   const file = named[head ?? ""] ?? MANIFEST;
   return [file, "/" + rest.join("/")];
 }
@@ -206,7 +215,7 @@ export function validateRelease(releaseId: string, files: ReleaseFiles): Issue[]
     if (match && match[1] === "vintages") vintagePaths.set(match[2]!, path);
     else if (match) seriesPaths[match[1] as Folder].set(match[2]!, path);
     else if (lock) lockPaths.set(lock[1]!, path);
-    else if (!(REQUIRED_FILES as readonly string[]).includes(path) && path !== EVENTS && path !== CLAIMS && path !== LATEST) {
+    else if (!(REQUIRED_FILES as readonly string[]).includes(path) && !OPTIONAL_FILES.includes(path)) {
       issues.push({ code: "unknown_file", path, message: "the release contract does not name this file" });
     }
   }
@@ -218,7 +227,7 @@ export function validateRelease(releaseId: string, files: ReleaseFiles): Issue[]
   const parsed = new Map<string, unknown>();
   const known = [
     ...REQUIRED_FILES, ...FOLDERS.flatMap((f) => [...seriesPaths[f].values()]), ...vintagePaths.values(),
-    ...[EVENTS, CLAIMS, LATEST].filter((path) => files[path]), ...lockPaths.values(),
+    ...OPTIONAL_FILES.filter((path) => files[path]), ...lockPaths.values(),
   ];
   for (const path of known) {
     try {
@@ -260,6 +269,13 @@ export function validateRelease(releaseId: string, files: ReleaseFiles): Issue[]
   } else if (version !== undefined && !files[CLAIMS]) {
     issues.push({ code: "missing_file", path: CLAIMS, message: "a release must have this file" });
   }
+  for (const path of [HIGHLIGHTS, SEARCH]) {
+    if (BEFORE_SEARCH.includes(version) && files[path]) {
+      issues.push({ code: "unknown_file", path, message: `schema_version ${String(version)} does not name this file` });
+    } else if (version !== undefined && !BEFORE_SEARCH.includes(version) && !files[path]) {
+      issues.push({ code: "missing_file", path, message: "a release must have this file" });
+    }
+  }
   if (issues.length > 0) return issues;
 
   const collect = (folder: Folder): Record<string, unknown> =>
@@ -274,6 +290,8 @@ export function validateRelease(releaseId: string, files: ReleaseFiles): Issue[]
     ...(parsed.has(EVENTS) ? { events: parsed.get(EVENTS) } : {}),
     ...(parsed.has(CLAIMS) ? { claims: parsed.get(CLAIMS), locks: Object.fromEntries([...lockPaths].map(([name, path]) => [name, parsed.get(path)])) } : {}),
     ...(parsed.has(LATEST) ? { latest: parsed.get(LATEST) } : {}),
+    ...(parsed.has(HIGHLIGHTS) ? { highlights: parsed.get(HIGHLIGHTS) } : {}),
+    ...(parsed.has(SEARCH) ? { search: parsed.get(SEARCH) } : {}),
   };
   const validate = schemaValidator();
   if (!validate(bundle)) {
@@ -286,8 +304,79 @@ export function validateRelease(releaseId: string, files: ReleaseFiles): Issue[]
 
   issues.push(...crossFileRules(releaseId, bundle as Release, files, seriesPaths));
   issues.push(...claimRules(bundle as Release, files, lockPaths));
-  // A last stage: a vintage file is judged against Series files that are sound.
+  // A last stage: a vintage file is judged against Series files that are sound, and the headline
+  // Series and the search index against a Catalog and content that are.
   if (issues.length === 0) issues.push(...vintageRules(bundle as Release, files, vintagePaths));
+  if (issues.length === 0) issues.push(...readingRules(bundle as Release));
+  return issues;
+}
+
+/**
+ * `search.json` (0.5.0, M22; ADR 0036): what a reader can search for in a Release, as words. One
+ * entry for every Series of `catalog.json`, then every Event, then every Claim, each in its
+ * file's order. It is a projection of those three files and of the manifest's withheld list,
+ * and of nothing else: no Observation, lock or Evidence row is read to make it, so no value can
+ * enter it from data (a description or a quote is content a person wrote, public on its own page). The Python twin (`atlas.release.search_document`) is what writers write.
+ */
+export function searchDocument(release: Pick<Release, "catalog" | "manifest" | "events" | "claims">): SearchFile {
+  const words = (...values: unknown[]): string[] => values.filter((value): value is string => typeof value === "string" && value !== "");
+  const gone = new Set(release.manifest.withheld.map((row) => row.key));
+  const entries: SearchEntry[] = [];
+  for (const entry of release.catalog.series) {
+    const origin = entry.source?.origin;
+    entries.push({
+      kind: "series", id: entry.key, title: entry.name, text: entry.description || "",
+      keywords: words(entry.unit, origin?.producer, origin?.dataset, origin?.origin_id, entry.country, ...(entry.topics ?? [])),
+      ...(gone.has(entry.key) ? { withheld: true as const } : {}),
+    });
+  }
+  for (const event of release.events?.events ?? []) {
+    entries.push({ kind: "event", id: event.id, title: event.title, text: event.description, keywords: words(event.category, event.date, ...(event.topics ?? [])) });
+  }
+  for (const claim of release.claims?.claims ?? []) {
+    const who = claim.claimant;
+    entries.push({ kind: "claim", id: claim.id, title: `${who.name}, ${claim.said_on}`, text: claim.quote, keywords: words(who.name, who.role, who.party, ...(claim.topics ?? [])) });
+  }
+  return { entries };
+}
+
+/**
+ * 0.5.0 (M22; ADR 0036): the headline Series are Series of this Release, each under its own
+ * Segment, and the search index is the projection of the Release's own files and no more.
+ */
+function readingRules(bundle: Release): Issue[] {
+  const issues: Issue[] = [];
+  const held = bundle.highlights;
+  if (held) {
+    const segmentOf = new Map(bundle.catalog.series.map((entry) => [entry.key, entry.segment as string | undefined]));
+    if (held.segments.map((row) => row.segment).join() !== SEGMENTS.join()) {
+      issues.push({ code: "highlights", path: HIGHLIGHTS, message: "it does not list the six Segments once each, in the order of the Overview" });
+    }
+    const seen = new Set<string>();
+    for (const row of held.segments) {
+      for (const key of row.series) {
+        if (!segmentOf.has(key)) issues.push({ code: "highlights", path: HIGHLIGHTS, message: `${key} is not a Series of this release's catalog` });
+        else if (segmentOf.get(key) !== row.segment) {
+          issues.push({ code: "highlights", path: HIGHLIGHTS, message: `${key} is listed under ${row.segment} and the catalog puts it in ${String(segmentOf.get(key))}` });
+        }
+        if (seen.has(key)) issues.push({ code: "highlights", path: HIGHLIGHTS, message: `${key} is listed more than once` });
+        seen.add(key);
+      }
+    }
+  }
+  const index = bundle.search;
+  if (index) {
+    const expected = searchDocument(bundle).entries;
+    if (index.entries.length !== expected.length) {
+      issues.push({ code: "search_projection", path: SEARCH, message: `it holds ${index.entries.length} entries and the release's Series, Events and Claims are ${expected.length}` });
+    }
+    for (let i = 0; i < Math.min(index.entries.length, expected.length); i++) {
+      const want = expected[i]!;
+      if (!sameValue(index.entries[i], want)) {
+        issues.push({ code: "search_projection", path: SEARCH, message: `the entry for ${want.kind} ${want.id} is not the projection of the release's own files` });
+      }
+    }
+  }
   return issues;
 }
 

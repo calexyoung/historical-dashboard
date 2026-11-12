@@ -78,7 +78,7 @@
   "created": "2026-01-01T00:00:00Z",
   "profile": "public"
  },
- "semantics_version": "0.7.0",
+ "semantics_version": "0.8.0",
  "rights_used": [
   {
    "origin": "Macro Atlas fixture (synthetic)",
@@ -142,7 +142,7 @@
     ],
     "window_sensitivity": [],
     "release_id": "20260101T000000Z-0000000",
-    "semantics_version": "0.7.0"
+    "semantics_version": "0.8.0"
    },
    "now_when_checked": {
     "state": "now_when_checked",
@@ -171,7 +171,7 @@
     ],
     "window_sensitivity": [],
     "release_id": "20260101T000000Z-0000000",
-    "semantics_version": "0.7.0"
+    "semantics_version": "0.8.0"
    }
   },
   {
@@ -337,7 +337,7 @@
      }
     ],
     "release_id": "20260101T000000Z-0000000",
-    "semantics_version": "0.7.0"
+    "semantics_version": "0.8.0"
    },
    "now_when_checked": {
     "state": "now_when_checked",
@@ -433,7 +433,7 @@
      }
     ],
     "release_id": "20260101T000000Z-0000000",
-    "semantics_version": "0.7.0"
+    "semantics_version": "0.8.0"
    }
   },
   {
@@ -505,7 +505,7 @@
     ],
     "window_sensitivity": [],
     "release_id": "20260101T000000Z-0000000",
-    "semantics_version": "0.7.0"
+    "semantics_version": "0.8.0"
    },
    "now_when_checked": {
     "state": "now_when_checked",
@@ -534,9 +534,9 @@
     ],
     "window_sensitivity": [],
     "release_id": "20260101T000000Z-0000000",
-    "semantics_version": "0.7.0"
+    "semantics_version": "0.8.0"
    }
   }
  ],
- "lock_sha256": "5a33615df14f843bfa0a4b5c3cf853ce5965e3f84e0a44edc201cf122247cb0d"
+ "lock_sha256": "2280ac54b44fe19db26bdf5debf643a480b5c68baf25bb73ff8279dd3ef3c0ff"
 }

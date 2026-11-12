@@ -19,7 +19,9 @@ It runs after the Catalog's four layers and holds Macro Atlas's own content to i
   the versions whole; the Claim's record is the one its newest lock froze; the lock was
   computed on a public-profile Release; and the rights gate permits display and
   redistribution of everything its numbers came through (a lock in the repository is a file
-  of values).
+  of values);
+- ``content/highlights.json``, the headline Series (M22; ADR 0036), names Series of the
+  Catalog, each once, under the Segment the Catalog puts it in, and none that is retired.
 
 Reads files; fetches and writes nothing.
 """
@@ -30,6 +32,7 @@ from pathlib import Path
 from ..catalog.load import Problem
 from . import claims as K
 from . import events as E
+from . import highlights as H
 from . import notes as N
 from . import wordlist as W
 from .compile import CONTENT_DIR
@@ -79,6 +82,19 @@ def check_content(series: dict[str, dict] | set[str], content: Path | None = Non
             remarks.append(f"{path.name} is a draft and {where} (the word list): it is in no public release "
                            "until its wording is decided")
     problems += _claims(series, content / "claims", gate, remarks)
+    declared, found, _body = H.load(content)
+    for said in found:
+        where, _, rest = said.partition(": ")
+        problem(Path(where), rest)
+    for segment, keys in declared.items():
+        for key in keys:
+            entry = series.get(key) if isinstance(series, dict) else None
+            if key not in series:
+                problem(content / H.FILE, f"{segment}: it names the Series {key}, which is not in the catalog")
+            elif entry is not None and entry.get("segment") != segment:
+                problem(content / H.FILE, f"{key} is listed under {segment} and the catalog puts it in {entry.get('segment')}")
+            elif entry is not None and entry.get("status") == "retired":
+                problem(content / H.FILE, f"{key} is retired: a headline Series is one that is still kept")
     for path in N.note_files(notes):
         relative = path.relative_to(N.NOTES_DIR if notes is None else Path(notes))
         if len(relative.parts) != 2 or path.suffix != ".md":

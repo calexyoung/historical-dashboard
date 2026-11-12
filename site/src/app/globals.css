@@ -435,6 +435,57 @@ svg :focus-visible {
     transition: none;
   }
 
+  /*
+   * The search sheet: a <dialog> under the top bar, the page's width on a phone. It is opened
+   * from the keyboard many times a day, so it has no transition at all, in or out (PLAN
+   * section 8). The page behind is dimmed, at once.
+   */
+  .search-sheet {
+    position: fixed;
+    inset: 8px 8px auto 8px;
+    margin: 0 auto;
+    width: auto;
+    max-width: 640px;
+    max-height: min(80dvh, 640px);
+    padding: 0;
+    border: 0;
+    border-top: 2px solid var(--color-ink);
+    background: var(--color-panel);
+    color: var(--color-ink);
+    box-shadow: 0 8px 32px rgb(0 0 0 / 0.18);
+  }
+  .search-sheet[open] {
+    display: flex;
+    flex-direction: column;
+  }
+  .search-sheet::backdrop {
+    background: var(--color-scrim);
+    opacity: 0.35;
+  }
+  @media (min-width: 640px) {
+    .search-sheet {
+      inset: 48px 16px auto 16px;
+    }
+  }
+
+  /*
+   * The Overview's rows on a reader's first visit, and only then (the gate says so): each fades
+   * up 6px, 40 ms after the one before. The rows are in the page and can be read and pressed
+   * throughout; where `@starting-style` is not supported they are simply there.
+   */
+  .overview-rows[data-first-visit] > li {
+    transition:
+      opacity 320ms var(--ease-out),
+      transform 320ms var(--ease-out);
+    transition-delay: calc(var(--i, 0) * 40ms);
+  }
+  @starting-style {
+    .overview-rows[data-first-visit] > li {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+  }
+
   /* The skip link: off screen until it has keyboard focus. Appears at once, no animation. */
   .skip-link {
     position: absolute;
@@ -478,5 +529,16 @@ svg :focus-visible {
   }
   .press:active {
     transform: none;
+  }
+  /* The Overview's first visit: the rows fade in where they are. */
+  .overview-rows[data-first-visit] > li {
+    transition: opacity 320ms ease;
+    transition-delay: calc(var(--i, 0) * 40ms);
+  }
+  @starting-style {
+    .overview-rows[data-first-visit] > li {
+      opacity: 0;
+      transform: none;
+    }
   }
 }

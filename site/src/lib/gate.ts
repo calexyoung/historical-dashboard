@@ -47,6 +47,15 @@ export const HOST_HEADER = "x-atlas-host";
  * Whatever a client sent under this name is removed.
  */
 export const CURRENT_HEADER = "x-atlas-current";
+/**
+ * Set to "1" on a reader's first visit to the Overview, and removed otherwise (ADR 0036). The
+ * page reads this, not the cookie: the answer is decided once, here, from the request itself.
+ */
+export const FIRST_VISIT_HEADER = "x-atlas-first-visit";
+/** Says only that this browser has opened the Overview before. It holds "1" and nothing else. */
+export const SEEN_COOKIE = "atlas-seen";
+const SEEN = new RegExp(`(?:^|;\\s*)${SEEN_COOKIE}=1(?:;|$)`);
+
 /** The routes that take `pin=`. */
 const PINNABLE: ReadonlySet<string> = new Set(["/explore", "/explore/export"]);
 /** Where a path that is the app's own, and not an address, is sent: nowhere, so it is not found. */
@@ -88,7 +97,23 @@ const LOOPBACK_HOST = /^(localhost|[a-z0-9-]+\.localhost|127\.0\.0\.1|\[::1\])(:
 
 export async function gate(
   config: GateConfig,
-  request: { host: string | null; /** Without the base path. */ pathname: string; search?: string; /** What the request carries under TWIN_HEADER. */ twinToken?: string | null; /** What the request carries under HOST_HEADER. */ namedHost?: string | null },
+  request: {
+    host: string | null;
+    /** Without the base path. */
+    pathname: string;
+    search?: string;
+    /** What the request carries under TWIN_HEADER. */
+    twinToken?: string | null;
+    /** What the request carries under HOST_HEADER. */
+    namedHost?: string | null;
+    method?: string;
+    /** The request's Cookie header. */
+    cookie?: string | null;
+    /** The request is a browser's or the router's prefetch, not a reader opening the page. */
+    prefetch?: boolean;
+    /** The reader came over HTTPS. */
+    secure?: boolean;
+  },
 ): Promise<Decision> {
   const { reader, surface } = config;
   const csp = buildCsp(config.nonce, { dev: config.dev });
@@ -148,6 +173,11 @@ export async function gate(
     pinnedFrom = opened.release.id;
   }
 
+  // A reader's first visit to the Overview: said to the page, and remembered for a year. Only a
+  // reader's own GET of the Overview counts, so a prefetch does not use the first visit up.
+  const firstVisit = request.pathname === "/" && request.method === "GET" && !request.prefetch && !SEEN.test(request.cookie ?? "");
+  const seen = `${SEEN_COOKIE}=1; Path=${config.basePath || "/"}; Max-Age=31536000; SameSite=Lax; HttpOnly${request.secure ? "; Secure" : ""}`;
+
   const twin = twinRouteOf(request.pathname);
   const token = config.twinToken;
   // The second pass: the handler's own path, reached from a twin's address by this process.
@@ -164,8 +194,9 @@ export async function gate(
       [REFRESH_FAILED_HEADER]: opened.refreshFailed && pinnedFrom === null ? JSON.stringify(opened.refreshFailed) : null,
       [NONCE_HEADER]: config.nonce,
       [PATH_HEADER]: request.pathname + (request.search ?? ""),
+      [FIRST_VISIT_HEADER]: firstVisit ? "1" : null,
       "content-security-policy": csp,
     },
-    responseHeaders: security,
+    responseHeaders: firstVisit ? { ...security, "set-cookie": seen } : security,
   };
 }

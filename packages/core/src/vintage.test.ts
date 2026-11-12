@@ -123,7 +123,7 @@ describe("no coverage", () => {
   it("every answer echoes the Release and the engine's semantics version", () => {
     const answer = resolve(native(observed, NOW), "2026-06-09", RELEASE);
     expect([answer.key, answer.as_of, answer.release_id, answer.semantics_version]).toEqual(["fx_price", "2026-06-09", RELEASE.releaseId, SEMANTICS_VERSION]);
-    expect(SEMANTICS_VERSION).toBe("0.7.0");
+    expect(SEMANTICS_VERSION).toBe("0.8.0");
   });
 });
 

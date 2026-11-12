@@ -116,7 +116,7 @@ export type Instant1 = string;
 export type Sha2562 = string;
 
 /**
- * Macro Atlas release contract, v0 (schema_version 0.4.0). A Release is a directory; this schema describes it gathered into one object: manifest.json, catalog.json, series/{key}.json, derived/{key}.json, vintages/{key}.json, content/annotations.json, content/events.json, content/claims.json, locks/{claim_id}.v{n}.lock.json and evidence/latest.json. It is the seam between the writer and every reader (PLAN 4.2). Conventions the schema cannot express, and the cross-file rules, are in schema/README.md. Structural validity is not authorisation: whether a series may appear on a Surface is decided by permits() and the rights register.
+ * Macro Atlas release contract, v0 (schema_version 0.5.0). A Release is a directory; this schema describes it gathered into one object: manifest.json, catalog.json, series/{key}.json, derived/{key}.json, vintages/{key}.json, content/annotations.json, content/events.json, content/claims.json, locks/{claim_id}.v{n}.lock.json, evidence/latest.json, content/highlights.json and search.json. It is the seam between the writer and every reader (PLAN 4.2). Conventions the schema cannot express, and the cross-file rules, are in schema/README.md. Structural validity is not authorisation: whether a series may appear on a Surface is decided by permits() and the rights register.
  */
 export interface Release {
   manifest: Manifest;
@@ -149,6 +149,8 @@ export interface Release {
     [k: string]: ClaimLock;
   };
   latest?: LatestFile;
+  highlights?: HighlightsFile;
+  search?: SearchFile;
 }
 /**
  * manifest.json: what this Release is and what it holds. created is when the Release was written, and is also the fixed date against which staleness (max_lag) is judged, so a Release never changes state as the clock moves.
@@ -158,9 +160,9 @@ export interface Release {
  */
 export interface Manifest {
   /**
-   * Version of this contract. Readers refuse a version they do not know. 0.2.0 added vintages/ and vintages_sha256; a 0.1.0 Release holds neither. 0.3.0 (M19) added content/events.json, which a 0.3.0 Release must have and an earlier one may not, and the rule that every Event is one Annotation. 0.4.0 (M20) added content/claims.json, which a 0.4.0 Release must have, locks/ and evidence/latest.json. Writers write the last one listed.
+   * Version of this contract. Readers refuse a version they do not know. 0.2.0 added vintages/ and vintages_sha256; a 0.1.0 Release holds neither. 0.3.0 (M19) added content/events.json, which a 0.3.0 Release must have and an earlier one may not, and the rule that every Event is one Annotation. 0.4.0 (M20) added content/claims.json, which a 0.4.0 Release must have, locks/ and evidence/latest.json. 0.5.0 (M22) added content/highlights.json and search.json, both of which a 0.5.0 Release must have. Writers write the last one listed.
    */
-  schema_version: "0.1.0" | "0.2.0" | "0.3.0" | "0.4.0";
+  schema_version: "0.1.0" | "0.2.0" | "0.3.0" | "0.4.0" | "0.5.0";
   /**
    * Version of the engine's behaviour that wrote derived/ (ADR 0003).
    */
@@ -1422,4 +1424,128 @@ export interface DriftEntry {
   field: "value" | "period" | "status" | "empty" | "unit" | "availability";
   locked: number | string | null;
   now: number | string | null;
+}
+/**
+ * content/highlights.json (0.5.0): the headline Series of each Segment, chosen by an editor (CONTEXT.md, Highlights, Overview). All six Segments, once each, in the order of the Overview. The first Series of a Segment is its row of the Overview; all of them are rows of Highlights. Every key is a Series of this Release's catalog.json in that Segment. It names Series and holds no value; a Withheld Series may be named.
+ *
+ * This interface was referenced by `Release`'s JSON-Schema
+ * via the `definition` "highlightsFile".
+ */
+export interface HighlightsFile {
+  /**
+   * @minItems 6
+   * @maxItems 6
+   */
+  segments: [
+    {
+      segment:
+        | "economy_jobs"
+        | "markets_money"
+        | "infrastructure"
+        | "governance_politics"
+        | "disasters_health"
+        | "us_in_the_world";
+      /**
+       * @maxItems 24
+       */
+      series: SeriesKey[];
+    },
+    {
+      segment:
+        | "economy_jobs"
+        | "markets_money"
+        | "infrastructure"
+        | "governance_politics"
+        | "disasters_health"
+        | "us_in_the_world";
+      /**
+       * @maxItems 24
+       */
+      series: SeriesKey[];
+    },
+    {
+      segment:
+        | "economy_jobs"
+        | "markets_money"
+        | "infrastructure"
+        | "governance_politics"
+        | "disasters_health"
+        | "us_in_the_world";
+      /**
+       * @maxItems 24
+       */
+      series: SeriesKey[];
+    },
+    {
+      segment:
+        | "economy_jobs"
+        | "markets_money"
+        | "infrastructure"
+        | "governance_politics"
+        | "disasters_health"
+        | "us_in_the_world";
+      /**
+       * @maxItems 24
+       */
+      series: SeriesKey[];
+    },
+    {
+      segment:
+        | "economy_jobs"
+        | "markets_money"
+        | "infrastructure"
+        | "governance_politics"
+        | "disasters_health"
+        | "us_in_the_world";
+      /**
+       * @maxItems 24
+       */
+      series: SeriesKey[];
+    },
+    {
+      segment:
+        | "economy_jobs"
+        | "markets_money"
+        | "infrastructure"
+        | "governance_politics"
+        | "disasters_health"
+        | "us_in_the_world";
+      /**
+       * @maxItems 24
+       */
+      series: SeriesKey[];
+    }
+  ];
+}
+/**
+ * search.json (0.5.0): one entry for every Series of catalog.json, then every Event of content/events.json, then every Claim of content/claims.json, each in that file's order. A public-profile Release holds no draft, so its index names none.
+ *
+ * This interface was referenced by `Release`'s JSON-Schema
+ * via the `definition` "searchFile".
+ */
+export interface SearchFile {
+  entries: SearchEntry[];
+}
+/**
+ * One thing a reader can search for: a Series, an Event or a Claim of this Release. Words only: a name, the text that describes it, and keywords. No field holds an Observation's value, and both validators hold every entry to the projection of the Release's own catalog.json, content/events.json and content/claims.json (schema/README.md).
+ *
+ * This interface was referenced by `Release`'s JSON-Schema
+ * via the `definition` "searchEntry".
+ */
+export interface SearchEntry {
+  kind: "series" | "event" | "claim";
+  /**
+   * The Series key, the Event id or the Claim id: what the page's address ends in.
+   */
+  id: string;
+  title: string;
+  /**
+   * A Series' description, an Event's description, a Claim's quote. Empty when there is none.
+   */
+  text: string;
+  keywords: string[];
+  /**
+   * A Series only: it is Withheld in this Release (listed by name, no values anywhere).
+   */
+  withheld?: true;
 }

@@ -2,7 +2,7 @@
 
 `release.schema.json` is the contract between whatever writes a Release and everything that reads
 one (PLAN 4.2). Words in capitals are defined in `/CONTEXT.md`. This is **v0**
-(`schema_version` `0.4.0`; M10 added `vintages/`, M19 Events, M20 Claims, locks and latest rows): it already carries what tracks A to D need, and later milestones add
+(`schema_version` `0.5.0`; M10 added `vintages/`, M19 Events, M20 Claims, locks and latest rows, M22 the headline Series and the search index): it already carries what tracks A to D need, and later milestones add
 to it (locks, search, downloads) by raising the version. A reader refuses a version it does
 not know. It still reads 0.1.0, the contract before vintages: such a Release holds no
 `vintages/` file, so every Release kept in a root stays readable (ADR 0024). Writers write the newest.
@@ -45,6 +45,8 @@ TypeScript's types and its copy of the schema are generated: `npm run gen` after
   content/claims.json                the Claims, each with its locks by name (0.4.0)
   locks/{claim_id}.v{n}.lock.json    a Claim lock, as the bytes it was written as (0.4.0)
   evidence/latest.json               each locked Reading's latest Evidence row, and the drift (0.4.0)
+  content/highlights.json            the headline Series of each Segment, in the Overview's order (0.5.0)
+  search.json                        what a reader can search for, as words (0.5.0)
 ```
 
 Beside `CURRENT` and `releases/` a root written by the release writer (M9) also holds `LOCK`,
@@ -174,13 +176,22 @@ computed on a local-profile Release. The hash a lock carries of itself (`lock_sh
 writer's own and is checked by `atlas check`, not here. `schema/claim.schema.json` is the
 authoring form (the front matter of `content/claims/{id}.md`).
 
+**The headline Series and the search index** (0.5.0, M22; ADR 0036). `content/highlights.json`
+lists the six Segments once each, in the order of the Overview, each with Series keys that are
+in this Release's `catalog.json` under that Segment, none twice. `search.json` is one entry
+for every Series of the Catalog, then every Event, then every Claim, in their files' order:
+`kind`, `id`, `title`, `text`, `keywords`, and `withheld: true` for a Series on the manifest's
+withheld list. It must be exactly the projection `search_document` (Python) and
+`searchDocument` (TypeScript) make of the Release's own files. Neither file is made from an
+Observation; a description or a quote is content a person wrote.
+
 Checks run in stages and stop at the first stage that reports something. Vintage files are
 the last stage: they are judged against Series files already known to be sound.
 
 | Stage | Code | Meaning |
 |---|---|---|
 | files | `unknown_file` | a file the contract does not name |
-| files | `missing_file` | `manifest.json`, `catalog.json` or `content/annotations.json` is absent; or, from 0.3.0, `content/events.json`; or, from 0.4.0, `content/claims.json` |
+| files | `missing_file` | `manifest.json`, `catalog.json` or `content/annotations.json` is absent; or, from 0.3.0, `content/events.json`; or, from 0.4.0, `content/claims.json`; or, from 0.5.0, `content/highlights.json` or `search.json` |
 | JSON | `invalid_json` | a file is not JSON |
 | version | `unsupported_schema_version` | the reader does not know this `schema_version` |
 | schema | `schema` | a file breaks `release.schema.json` |
@@ -206,6 +217,8 @@ the last stage: they are judged against Series files already known to be sound.
 | rules | `duplicate_claim_id` | two Claims share an id |
 | rules | `claim_lock` | a lock file that no Claim lists, is not named for what it holds, or is not the bytes or the record the Claim lists; a Claim whose locks are not listed whole from 1, or that lists one as in the Release when it is not (or the other way round); a public Claim with no lock; a lock computed on a local-profile Release in a public one |
 | rules | `claim_evidence` | `evidence/latest.json` is not exactly the newest in-release lock of each Claim, once each, with that lock's Readings in order; or it is missing, or there with nothing in it |
+| rules | `highlights` | `content/highlights.json` does not list the six Segments in order, or names a key that is not in the Catalog, is under another Segment, or is listed twice |
+| rules | `search_projection` | `search.json` is not the projection of the Release's own Catalog, withheld list, Events and Claims |
 | rules | `unsigned_register`, `legacy_in_public`, `draft_in_public` | a public Release must name a signed rights register and hold no legacy data (a Series, or an Annotation that is v1's) and no drafts (a Series, an Event or a Claim) |
 | vintages | `orphan_vintage_file` | a vintage file for a key with no file under `series/` |
 | vintages | `withheld_present` | a withheld Series has a vintage file |
