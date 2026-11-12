@@ -11,6 +11,7 @@ content/events/migration-review.json   the record of the review of v1's 83 (not 
 catalog/manual/terms/{office}.json     a terms file: who held an office and when (ADR 0030)
 catalog/manual/spans/{name}.json       a spans file: the dated stretches of a layer (recessions)
 notes/{user}/{id}.md                   one user's own note; in no Release
+content/claims/{id}.md                 a Claim, and content/claims/locks/ its locks: docs/method/claims.md
 ```
 
 `catalog/manual` is empty today: a hand-entered file is a public copy of somebody's record, and

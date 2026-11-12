@@ -2,7 +2,7 @@
 
 The Catalog of Series is not here: it is `catalog/series/{key}.json` (`docs/method/catalog.md`).
 
-Macro Atlas's own content as files: Events (`events/`, since M19), Claims (M20), Topics (M23),
+Macro Atlas's own content as files: Events (`events/`, since M19), Claims (`claims/`, since M20: `docs/method/claims.md`; none is committed yet), Topics (M23),
 data notes. No opinion, no verdicts and no explanations of the site's own (ADR 0011). How an
 Event is written, checked and compiled into a Release: `docs/method/content.md` (ADR 0033).
 

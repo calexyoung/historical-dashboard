@@ -1,0 +1,325 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mydashboards.co/macro-atlas/schema/claim.schema.json",
+  "title": "Claim",
+  "description": "One Claim (CONTEXT.md; PLAN 5 and M20; ADR 0011, ADR 0034): the front matter of content/claims/{id}.md. The text under the front matter is the quote, verbatim. A Claim is a record and the Readings needed to examine it. There is no field for a finding, a rating, a label or a context flag, here or in a Claim lock, and unknown fields are refused: a judgment on a Claim is a user's own and lives in that user's notes.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "claimant",
+    "said_on",
+    "venue",
+    "sources",
+    "readings",
+    "readings_not_measured",
+    "selection_note",
+    "checked_on",
+    "corrections",
+    "topics",
+    "status"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "maxLength": 100,
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}-[a-z0-9]+(-[a-z0-9]+)*$",
+      "description": "Permanent: said_on, then a slug. The file is named for it."
+    },
+    "claimant": {
+      "$ref": "#/$defs/claimant"
+    },
+    "said_on": {
+      "type": "string",
+      "pattern": "^(?!0000)[0-9]{4}-[0-9]{2}-[0-9]{2}$",
+      "description": "The New York calendar day the statement was made."
+    },
+    "said_at": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$",
+      "description": "The instant it was made, in UTC, when known. It falls on said_on in New York. With it the Cutoff is that instant; without it, 00:00 New York on said_on (D7)."
+    },
+    "venue": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 300,
+      "pattern": "^\\S(.*\\S)?$"
+    },
+    "sources": {
+      "description": "Two or more records of the statement, each archived (ADR 0011).",
+      "type": "array",
+      "minItems": 2,
+      "items": {
+        "$ref": "#/$defs/claimSource"
+      }
+    },
+    "readings": {
+      "type": "array",
+      "maxItems": 12,
+      "items": {
+        "$ref": "#/$defs/claimReading"
+      }
+    },
+    "readings_not_measured": {
+      "description": "Other ways the words could be read that this record does not measure, each in a line.",
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 300,
+        "pattern": "^\\S(.*\\S)?$"
+      }
+    },
+    "selection_note": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^\\S([\\s\\S]*\\S)?$",
+      "description": "Why this statement was recorded."
+    },
+    "checked_on": {
+      "type": "string",
+      "pattern": "^(?!0000)[0-9]{4}-[0-9]{2}-[0-9]{2}$",
+      "description": "The New York calendar day the Claim was recorded and its figures computed (now when checked)."
+    },
+    "corrections": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/claimCorrection"
+      }
+    },
+    "topics": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+      }
+    },
+    "status": {
+      "description": "A draft is never in a public-profile Release. Only a person makes a Claim public (D7).",
+      "enum": [
+        "draft",
+        "public"
+      ]
+    }
+  },
+  "$defs": {
+    "claimWindow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "from",
+        "to"
+      ],
+      "properties": {
+        "from": {
+          "type": "string",
+          "pattern": "^(?!0000)[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+        },
+        "to": {
+          "type": "string",
+          "pattern": "^(?!0000)[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+        }
+      },
+      "title": "ClaimWindow",
+      "description": "Calendar dates, both inclusive."
+    },
+    "claimReading": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "series",
+        "transform",
+        "measure"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+          "maxLength": 40,
+          "description": "Names the Reading within its Claim. Permanent once locked."
+        },
+        "series": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]{0,63}$"
+        },
+        "freq": {
+          "description": "A slower frequency to bring the Series to before anything else. Absent: the Series' own.",
+          "enum": [
+            "weekly",
+            "monthly",
+            "quarterly",
+            "annual"
+          ]
+        },
+        "transform": {
+          "description": "One of the engine's Transforms (docs/method/transforms.md). rebase, z and drawdown depend on a window and go only with a measure that has one.",
+          "enum": [
+            "lin",
+            "chg",
+            "ch1",
+            "pch",
+            "pc1",
+            "pca",
+            "log",
+            "rebase",
+            "z",
+            "drawdown"
+          ]
+        },
+        "measure": {
+          "description": "The closed list (PLAN 4.5). Each returns numbers, never true or false.",
+          "enum": [
+            "value_at",
+            "change",
+            "extreme",
+            "rank",
+            "difference"
+          ]
+        },
+        "period": {
+          "description": "value_at, rank: the Period measured, as a label at the Reading's frequency.",
+          "type": "string",
+          "minLength": 4,
+          "maxLength": 10
+        },
+        "periods": {
+          "description": "difference: two Periods; the answer is the second less the first.",
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": {
+            "type": "string",
+            "minLength": 4,
+            "maxLength": 10
+          }
+        },
+        "window": {
+          "$ref": "#/$defs/claimWindow"
+        },
+        "which": {
+          "description": "extreme: the largest or the smallest value.",
+          "enum": [
+            "max",
+            "min"
+          ]
+        },
+        "order": {
+          "description": "rank: whether 1 is the highest value or the lowest.",
+          "enum": [
+            "highest",
+            "lowest"
+          ]
+        },
+        "alternative_windows": {
+          "description": "Other windows the same measure is taken over, so a reader sees how much the declared one matters (Window sensitivity). Only with change, extreme or rank.",
+          "type": "array",
+          "maxItems": 12,
+          "items": {
+            "$ref": "#/$defs/claimWindow"
+          }
+        }
+      },
+      "title": "ClaimReading",
+      "description": "One way to turn a Claim's words into something measurable (CONTEXT.md, Reading). Which fields go with which measure is in docs/method/claims.md; both atlas check and the engine hold a Reading to it. There is no field for what the figures show."
+    },
+    "claimSource": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "url",
+        "archive_url",
+        "locator",
+        "kind"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300,
+          "pattern": "^\\S(.*\\S)?$"
+        },
+        "url": {
+          "type": "string",
+          "pattern": "^https://\\S+$"
+        },
+        "archive_url": {
+          "type": "string",
+          "pattern": "^https://\\S+$",
+          "description": "An archived copy of the address. A Claim's source has no exception."
+        },
+        "locator": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300,
+          "pattern": "^\\S(.*\\S)?$",
+          "description": "Where in the source the words are: a time in a recording, a page, a paragraph."
+        },
+        "kind": {
+          "description": "What kind of record it is. Two sources of one Claim are different records of the statement.",
+          "enum": [
+            "recording",
+            "transcript",
+            "own_publication",
+            "report"
+          ]
+        }
+      },
+      "title": "ClaimSource"
+    },
+    "claimant": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "role",
+        "party"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300,
+          "pattern": "^\\S(.*\\S)?$"
+        },
+        "role": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300,
+          "pattern": "^\\S(.*\\S)?$",
+          "description": "The office or position held when the Claim was made."
+        },
+        "party": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300,
+          "pattern": "^\\S(.*\\S)?$",
+          "description": "The party at the time; \"none\" for a person with no party."
+        }
+      },
+      "title": "Claimant"
+    },
+    "claimCorrection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "date",
+        "reason"
+      ],
+      "properties": {
+        "date": {
+          "type": "string",
+          "pattern": "^(?!0000)[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^\\S([\\s\\S]*\\S)?$"
+        }
+      },
+      "title": "ClaimCorrection",
+      "description": "A dated, public change to the Claim after publication, with the reason (CONTEXT.md, Correction)."
+    }
+  }
+}

@@ -69,7 +69,7 @@ def test_it_computes_the_fixtures_derived_series_exactly_as_the_plain_formula_do
     written = json.loads((directory / "derived" / f"{YOY}.json").read_text())
     assert written == json.loads((FIXTURE / "derived" / f"{YOY}.json").read_text())
     said = report(directory)
-    assert said["semantics_version"] == "0.6.0"
+    assert said["semantics_version"] == "0.7.0"
     assert said["derived"][YOY]["sha256"] == hashlib.sha256((directory / "derived" / f"{YOY}.json").read_bytes()).hexdigest()
     assert said["derived"][YOY]["rights_status"] == "public_domain"
     assert said["empty"] == []

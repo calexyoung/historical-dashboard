@@ -52,6 +52,10 @@ export function addRelease(root: string, variant: Variant): string {
   if (variant.schema) {
     manifest.schema_version = variant.schema;
     rmSync(join(dir, "content", "events.json"), { force: true });
+    // A Release written before 0.4.0 holds no Claim, lock or latest Evidence row either.
+    rmSync(join(dir, "content", "claims.json"), { force: true });
+    rmSync(join(dir, "locks"), { recursive: true, force: true });
+    rmSync(join(dir, "evidence"), { recursive: true, force: true });
   }
   // A Series whose file is changed here no longer has the history the fixture wrote for it,
   // and a legacy Series never has one: its vintage file goes.

@@ -1,0 +1,542 @@
+{
+ "format": 1,
+ "claim_id": "2025-12-11-a-fixture-official-on-fixture-prices",
+ "version": 1,
+ "locked_at": "2026-01-01T00:30:00Z",
+ "reason": null,
+ "supersedes": null,
+ "record": {
+  "claimant": {
+   "name": "A. Fixture",
+   "role": "Fixture minister of prices (synthetic)",
+   "party": "none"
+  },
+  "said_on": "2025-12-11",
+  "venue": "A fixture press conference (synthetic)",
+  "sources": [
+   {
+    "name": "Fixture broadcaster (synthetic)",
+    "url": "https://video.example.org/fixture-briefing",
+    "archive_url": "https://example.org/archive/2026/fixture-briefing",
+    "locator": "at 12:40",
+    "kind": "recording"
+   },
+   {
+    "name": "Fixture gazette (synthetic)",
+    "url": "https://example.org/fixture-gazette/briefing",
+    "archive_url": "https://example.org/archive/2026/fixture-gazette-briefing",
+    "locator": "paragraph 9",
+    "kind": "transcript"
+   }
+  ],
+  "quote": "The fixture price index stood at 109.5 in November, up about five percent since January.",
+  "readings": [
+   {
+    "id": "index-in-november",
+    "series": "fx_price_index",
+    "transform": "lin",
+    "measure": "value_at",
+    "period": "2025-11"
+   },
+   {
+    "id": "rise-since-january",
+    "series": "fx_price_index",
+    "transform": "lin",
+    "measure": "change",
+    "window": {
+     "from": "2025-01-01",
+     "to": "2025-11-30"
+    },
+    "alternative_windows": [
+     {
+      "from": "2024-11-01",
+      "to": "2025-11-30"
+     },
+     {
+      "from": "2025-06-01",
+      "to": "2025-11-30"
+     }
+    ]
+   },
+   {
+    "id": "from-a-year-earlier",
+    "series": "fx_price_index_yoy",
+    "transform": "lin",
+    "measure": "value_at",
+    "period": "2025-11"
+   }
+  ],
+  "readings_not_measured": [
+   "The index with fixture food and fuel left out."
+  ],
+  "selection_note": "Kept in the fixture so that a Claim, its lock and its latest rows can be read in tests.",
+  "checked_on": "2025-12-31"
+ },
+ "record_sha256": "0d17588bfc45adfed1ab7c96269d33e3881160cc92238c1e5bd024f968459cff",
+ "release": {
+  "release_id": "20260101T000000Z-0000000",
+  "created": "2026-01-01T00:00:00Z",
+  "profile": "public"
+ },
+ "semantics_version": "0.7.0",
+ "rights_used": [
+  {
+   "origin": "Macro Atlas fixture (synthetic)",
+   "dataset": "fixture",
+   "channel": "fixture",
+   "representation": "native"
+  }
+ ],
+ "readings": [
+  {
+   "id": "index-in-november",
+   "series": "fx_price_index",
+   "freq": "monthly",
+   "unit": "index, 2024-01 = 100",
+   "transform": "lin",
+   "measure": "value_at",
+   "recipe": null,
+   "periods": [
+    {
+     "period": "2025-11",
+     "start": "2025-11-01",
+     "end": "2025-11-30"
+    }
+   ],
+   "window": null,
+   "alternative_windows": [],
+   "then": {
+    "state": "then",
+    "as_of": "2025-12-11",
+    "cutoff": {
+     "instant": "2025-12-11T05:00:00Z",
+     "day": "2025-12-11",
+     "precision": "date",
+     "zone": "America/New_York"
+    },
+    "basis": "atlas_observed",
+    "same_day_release": false,
+    "inputs": [
+     {
+      "key": "fx_price_index",
+      "basis": "atlas_observed",
+      "capture_gap": {
+       "from": "2025-12-10T15:45:00Z",
+       "to": "2025-12-11T15:45:00Z",
+       "missed_days": 0,
+       "changed_across": false
+      },
+      "same_day_release": false,
+      "unit": "index, 2024-01 = 100",
+      "last_capture": "2025-12-31T15:45:00Z"
+     }
+    ],
+    "unit": "index, 2024-01 = 100",
+    "figures": [
+     {
+      "name": "value",
+      "value": 109.5,
+      "period": "2025-11",
+      "status": "preliminary"
+     }
+    ],
+    "window_sensitivity": [],
+    "release_id": "20260101T000000Z-0000000",
+    "semantics_version": "0.7.0"
+   },
+   "now_when_checked": {
+    "state": "now_when_checked",
+    "as_of": null,
+    "cutoff": null,
+    "basis": null,
+    "same_day_release": false,
+    "inputs": [
+     {
+      "key": "fx_price_index",
+      "basis": null,
+      "capture_gap": null,
+      "same_day_release": false,
+      "unit": "index, 2024-01 = 100",
+      "last_capture": "2025-12-31T15:45:00Z"
+     }
+    ],
+    "unit": "index, 2024-01 = 100",
+    "figures": [
+     {
+      "name": "value",
+      "value": 109.3,
+      "period": "2025-11",
+      "status": "final"
+     }
+    ],
+    "window_sensitivity": [],
+    "release_id": "20260101T000000Z-0000000",
+    "semantics_version": "0.7.0"
+   }
+  },
+  {
+   "id": "rise-since-january",
+   "series": "fx_price_index",
+   "freq": "monthly",
+   "unit": "index, 2024-01 = 100",
+   "transform": "lin",
+   "measure": "change",
+   "recipe": null,
+   "periods": [],
+   "window": {
+    "from": "2025-01-01",
+    "to": "2025-11-30",
+    "periods": [
+     {
+      "period": "2025-01",
+      "start": "2025-01-01",
+      "end": "2025-01-31"
+     },
+     {
+      "period": "2025-11",
+      "start": "2025-11-01",
+      "end": "2025-11-30"
+     }
+    ]
+   },
+   "alternative_windows": [
+    {
+     "from": "2024-11-01",
+     "to": "2025-11-30",
+     "periods": [
+      {
+       "period": "2024-11",
+       "start": "2024-11-01",
+       "end": "2024-11-30"
+      },
+      {
+       "period": "2025-11",
+       "start": "2025-11-01",
+       "end": "2025-11-30"
+      }
+     ]
+    },
+    {
+     "from": "2025-06-01",
+     "to": "2025-11-30",
+     "periods": [
+      {
+       "period": "2025-06",
+       "start": "2025-06-01",
+       "end": "2025-06-30"
+      },
+      {
+       "period": "2025-11",
+       "start": "2025-11-01",
+       "end": "2025-11-30"
+      }
+     ]
+    }
+   ],
+   "then": {
+    "state": "then",
+    "as_of": "2025-12-11",
+    "cutoff": {
+     "instant": "2025-12-11T05:00:00Z",
+     "day": "2025-12-11",
+     "precision": "date",
+     "zone": "America/New_York"
+    },
+    "basis": "atlas_observed",
+    "same_day_release": false,
+    "inputs": [
+     {
+      "key": "fx_price_index",
+      "basis": "atlas_observed",
+      "capture_gap": {
+       "from": "2025-12-10T15:45:00Z",
+       "to": "2025-12-11T15:45:00Z",
+       "missed_days": 0,
+       "changed_across": false
+      },
+      "same_day_release": false,
+      "unit": "index, 2024-01 = 100",
+      "last_capture": "2025-12-31T15:45:00Z"
+     }
+    ],
+    "unit": "index, 2024-01 = 100",
+    "figures": [
+     {
+      "name": "start",
+      "value": 105,
+      "period": "2025-01",
+      "status": "final"
+     },
+     {
+      "name": "end",
+      "value": 109.5,
+      "period": "2025-11",
+      "status": "preliminary"
+     },
+     {
+      "name": "change",
+      "value": 4.5
+     },
+     {
+      "name": "pct_change",
+      "value": 4.285714285714286
+     }
+    ],
+    "window_sensitivity": [
+     {
+      "from": "2024-11-01",
+      "to": "2025-11-30",
+      "figures": [
+       {
+        "name": "start",
+        "value": 104.1,
+        "period": "2024-11",
+        "status": "final"
+       },
+       {
+        "name": "end",
+        "value": 109.5,
+        "period": "2025-11",
+        "status": "preliminary"
+       },
+       {
+        "name": "change",
+        "value": 5.400000000000006
+       },
+       {
+        "name": "pct_change",
+        "value": 5.1873198847262305
+       }
+      ]
+     },
+     {
+      "from": "2025-06-01",
+      "to": "2025-11-30",
+      "figures": [
+       {
+        "name": "start",
+        "value": 107.2,
+        "period": "2025-06",
+        "status": "final"
+       },
+       {
+        "name": "end",
+        "value": 109.5,
+        "period": "2025-11",
+        "status": "preliminary"
+       },
+       {
+        "name": "change",
+        "value": 2.299999999999997
+       },
+       {
+        "name": "pct_change",
+        "value": 2.1455223880596987
+       }
+      ]
+     }
+    ],
+    "release_id": "20260101T000000Z-0000000",
+    "semantics_version": "0.7.0"
+   },
+   "now_when_checked": {
+    "state": "now_when_checked",
+    "as_of": null,
+    "cutoff": null,
+    "basis": null,
+    "same_day_release": false,
+    "inputs": [
+     {
+      "key": "fx_price_index",
+      "basis": null,
+      "capture_gap": null,
+      "same_day_release": false,
+      "unit": "index, 2024-01 = 100",
+      "last_capture": "2025-12-31T15:45:00Z"
+     }
+    ],
+    "unit": "index, 2024-01 = 100",
+    "figures": [
+     {
+      "name": "start",
+      "value": 105,
+      "period": "2025-01",
+      "status": "final"
+     },
+     {
+      "name": "end",
+      "value": 109.3,
+      "period": "2025-11",
+      "status": "final"
+     },
+     {
+      "name": "change",
+      "value": 4.299999999999997
+     },
+     {
+      "name": "pct_change",
+      "value": 4.095238095238092
+     }
+    ],
+    "window_sensitivity": [
+     {
+      "from": "2024-11-01",
+      "to": "2025-11-30",
+      "figures": [
+       {
+        "name": "start",
+        "value": 104.1,
+        "period": "2024-11",
+        "status": "final"
+       },
+       {
+        "name": "end",
+        "value": 109.3,
+        "period": "2025-11",
+        "status": "final"
+       },
+       {
+        "name": "change",
+        "value": 5.200000000000003
+       },
+       {
+        "name": "pct_change",
+        "value": 4.995196926032663
+       }
+      ]
+     },
+     {
+      "from": "2025-06-01",
+      "to": "2025-11-30",
+      "figures": [
+       {
+        "name": "start",
+        "value": 107.2,
+        "period": "2025-06",
+        "status": "final"
+       },
+       {
+        "name": "end",
+        "value": 109.3,
+        "period": "2025-11",
+        "status": "final"
+       },
+       {
+        "name": "change",
+        "value": 2.0999999999999943
+       },
+       {
+        "name": "pct_change",
+        "value": 1.9589552238805916
+       }
+      ]
+     }
+    ],
+    "release_id": "20260101T000000Z-0000000",
+    "semantics_version": "0.7.0"
+   }
+  },
+  {
+   "id": "from-a-year-earlier",
+   "series": "fx_price_index_yoy",
+   "freq": "monthly",
+   "unit": "percent change from a year earlier",
+   "transform": "lin",
+   "measure": "value_at",
+   "recipe": {
+    "key": "fx_price_index_yoy",
+    "recipe": {
+     "op": "pct_change",
+     "inputs": [
+      "fx_price_index"
+     ],
+     "params": {
+      "lag": 12
+     },
+     "order": "compute_then_aggregate"
+    },
+    "rests_on": [
+     "fx_price_index"
+    ]
+   },
+   "periods": [
+    {
+     "period": "2025-11",
+     "start": "2025-11-01",
+     "end": "2025-11-30"
+    }
+   ],
+   "window": null,
+   "alternative_windows": [],
+   "then": {
+    "state": "then",
+    "as_of": "2025-12-11",
+    "cutoff": {
+     "instant": "2025-12-11T05:00:00Z",
+     "day": "2025-12-11",
+     "precision": "date",
+     "zone": "America/New_York"
+    },
+    "basis": "atlas_observed",
+    "same_day_release": false,
+    "inputs": [
+     {
+      "key": "fx_price_index",
+      "basis": "atlas_observed",
+      "capture_gap": {
+       "from": "2025-12-10T15:45:00Z",
+       "to": "2025-12-11T15:45:00Z",
+       "missed_days": 0,
+       "changed_across": false
+      },
+      "same_day_release": false,
+      "unit": "index, 2024-01 = 100",
+      "last_capture": "2025-12-31T15:45:00Z"
+     }
+    ],
+    "unit": "percent change from a year earlier",
+    "figures": [
+     {
+      "name": "value",
+      "value": 5.187319884726227,
+      "period": "2025-11",
+      "status": "preliminary"
+     }
+    ],
+    "window_sensitivity": [],
+    "release_id": "20260101T000000Z-0000000",
+    "semantics_version": "0.7.0"
+   },
+   "now_when_checked": {
+    "state": "now_when_checked",
+    "as_of": null,
+    "cutoff": null,
+    "basis": null,
+    "same_day_release": false,
+    "inputs": [
+     {
+      "key": "fx_price_index",
+      "basis": null,
+      "capture_gap": null,
+      "same_day_release": false,
+      "unit": "index, 2024-01 = 100",
+      "last_capture": "2025-12-31T15:45:00Z"
+     }
+    ],
+    "unit": "percent change from a year earlier",
+    "figures": [
+     {
+      "name": "value",
+      "value": 4.9951969260326745,
+      "period": "2025-11",
+      "status": "final"
+     }
+    ],
+    "window_sensitivity": [],
+    "release_id": "20260101T000000Z-0000000",
+    "semantics_version": "0.7.0"
+   }
+  }
+ ],
+ "lock_sha256": "5a33615df14f843bfa0a4b5c3cf853ce5965e3f84e0a44edc201cf122247cb0d"
+}

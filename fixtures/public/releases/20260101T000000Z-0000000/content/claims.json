@@ -1,0 +1,92 @@
+{
+  "claims": [
+    {
+      "id": "2025-12-11-a-fixture-official-on-fixture-prices",
+      "claimant": {
+        "name": "A. Fixture",
+        "role": "Fixture minister of prices (synthetic)",
+        "party": "none"
+      },
+      "said_on": "2025-12-11",
+      "venue": "A fixture press conference (synthetic)",
+      "sources": [
+        {
+          "name": "Fixture broadcaster (synthetic)",
+          "url": "https://video.example.org/fixture-briefing",
+          "archive_url": "https://example.org/archive/2026/fixture-briefing",
+          "locator": "at 12:40",
+          "kind": "recording"
+        },
+        {
+          "name": "Fixture gazette (synthetic)",
+          "url": "https://example.org/fixture-gazette/briefing",
+          "archive_url": "https://example.org/archive/2026/fixture-gazette-briefing",
+          "locator": "paragraph 9",
+          "kind": "transcript"
+        }
+      ],
+      "quote": "The fixture price index stood at 109.5 in November, up about five percent since January.",
+      "readings": [
+        {
+          "id": "index-in-november",
+          "series": "fx_price_index",
+          "transform": "lin",
+          "measure": "value_at",
+          "period": "2025-11"
+        },
+        {
+          "id": "rise-since-january",
+          "series": "fx_price_index",
+          "transform": "lin",
+          "measure": "change",
+          "window": {
+            "from": "2025-01-01",
+            "to": "2025-11-30"
+          },
+          "alternative_windows": [
+            {
+              "from": "2024-11-01",
+              "to": "2025-11-30"
+            },
+            {
+              "from": "2025-06-01",
+              "to": "2025-11-30"
+            }
+          ]
+        },
+        {
+          "id": "from-a-year-earlier",
+          "series": "fx_price_index_yoy",
+          "transform": "lin",
+          "measure": "value_at",
+          "period": "2025-11"
+        }
+      ],
+      "readings_not_measured": [
+        "The index with fixture food and fuel left out."
+      ],
+      "selection_note": "Kept in the fixture so that a Claim, its lock and its latest rows can be read in tests.",
+      "checked_on": "2025-12-31",
+      "corrections": [
+        {
+          "date": "2026-01-01",
+          "reason": "The venue was first entered without its city (synthetic)."
+        }
+      ],
+      "topics": [
+        "inflation"
+      ],
+      "status": "public",
+      "locks": [
+        {
+          "version": 1,
+          "locked_at": "2026-01-01T00:30:00Z",
+          "reason": null,
+          "record_sha256": "0d17588bfc45adfed1ab7c96269d33e3881160cc92238c1e5bd024f968459cff",
+          "state": "in_release",
+          "sha256": "85491bc39bafda481a34ae0ea7a37b246197467280dad516211646eb94133021"
+        }
+      ]
+    }
+  ]
+}

@@ -85,7 +85,18 @@ refuses is left out and named by the check `content: hand-entered layers`. A pub
 whose text has a word of the list refuses the release. A local Release holds the drafts too,
 and v1's bands and recessions for every set no hand-entered file provides.
 
-**Not written yet.** Search and bulk files (M22, M25), Claims (M20) and Topics (M23). A local
+**Claims** (M20, ADR 0034; `docs/method/claims.md`). `content/claims.json` holds the `public`
+Claims (a draft is in no file of a public Release), each with its locks by name;
+`locks/{id}.v{n}.lock.json` are the locks, as the bytes written, read from the repository only.
+A lock whose numbers the gate no longer permits (display and redistribute), or that rests on a
+withdrawn Series, is named without its file. `evidence/latest.json` is the Node step's: the
+latest Evidence row of every locked Reading and the drift, computed at every release, on
+`--reuse-data` too. Drift warns (`claims: drift`, and a `DRIFT` line) and fails nothing. A Claim
+edited after it was locked, an edited lock, or a public Claim without a lock refuses the
+release. A local Release holds the drafts, and the local root's own locks (`{root}/locks/`) for
+a Claim the repository has none for.
+
+**Not written yet.** Search and bulk files (M22, M25) and Topics (M23). A local
 Release carries v1's Derived series as the legacy converter writes them.
 
 ## Derived series and the Node step

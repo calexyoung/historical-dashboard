@@ -34,6 +34,11 @@ Three Series carry a vintage file (`vintages/`), each version written out by han
 `node scripts/as-of.mjs fx_price_index 2025-12-13` prints an as-of answer from it
 (`docs/method/vintage-resolution.md`).
 
+It holds one invented Claim (`make_fixture.py`, `CLAIM`) with its lock and its latest rows,
+which are the engine's own answers on the fixture's Series, kept in `claims/` and written by
+`python fixtures/claims/make_claim.py` (run it, then `make_fixture.py`, when the engine's
+semantics change; a test says when).
+
 To change it, edit the literals in `make_fixture.py`, run `python fixtures/make_fixture.py` and
 commit the result. A test fails if the committed files and the script disagree.
 

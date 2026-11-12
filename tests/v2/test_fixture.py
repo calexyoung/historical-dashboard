@@ -37,3 +37,38 @@ def test_the_fixture_holds_only_synthetic_data():
     text = "".join(p.read_text().lower() for p in release.rglob("*.json"))
     for word in ("fred", "yahoo", "stlouisfed", "legacy_monthly_rounded"):
         assert word not in text
+
+
+def _module(name: str, path: Path):
+    spec = importlib.util.spec_from_file_location(name, path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_the_fixture_claim_is_a_claim_and_its_lock_is_the_lock_of_it():
+    # M20: the fixture's one Claim is invented; its lock must still be a real lock of it.
+    from atlas.content import claims as K
+
+    make = _module("make_fixture", ROOT / "fixtures" / "make_fixture.py")
+    claim, problems = K.read_claim(K.serialise(make.CLAIM).encode("utf-8"), f"{make.CLAIM_ID}.md")
+    assert problems == [] and claim == make.CLAIM
+    assert K.own_terms(claim) == {}
+    path = ROOT / "fixtures" / "claims" / "locks" / make.LOCK_NAME
+    lock, problems = K.read_lock(path.read_bytes(), path.name)
+    assert problems == [] and K.stale(claim, [lock]) is None
+    assert make.RECORD_FIELDS == K.RECORD_FIELDS and make.canonical(claim) == K.canonical(claim)
+    assert K.new_york_day(lock["locked_at"]) == claim["checked_on"]
+
+
+def test_the_fixture_lock_and_latest_rows_are_what_the_engine_answers_today():
+    # The numbers in the fixture are the engine's, not typed in: if the engine's semantics
+    # change, this says so, and `python fixtures/claims/make_claim.py` writes them again.
+    generator = _module("make_claim", ROOT / "fixtures" / "claims" / "make_claim.py")
+    lock, latest = generator.documents()
+    make = generator.fixture_module()
+    assert lock == (ROOT / "fixtures" / "claims" / "locks" / make.LOCK_NAME).read_bytes()
+    assert latest == (ROOT / "fixtures" / "claims" / "latest.json").read_bytes()
+    # What was public then is not what the Release holds: November was 109.5 preliminary, and is 109.3.
+    first = json.loads(lock)["readings"][0]
+    assert first["then"]["figures"][0]["value"] == 109.5 and first["now_when_checked"]["figures"][0]["value"] == 109.3

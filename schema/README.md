@@ -2,10 +2,10 @@
 
 `release.schema.json` is the contract between whatever writes a Release and everything that reads
 one (PLAN 4.2). Words in capitals are defined in `/CONTEXT.md`. This is **v0**
-(`schema_version` `0.2.0`; M10 added `vintages/`): it already carries what tracks A to D need, and later milestones add
+(`schema_version` `0.4.0`; M10 added `vintages/`, M19 Events, M20 Claims, locks and latest rows): it already carries what tracks A to D need, and later milestones add
 to it (locks, search, downloads) by raising the version. A reader refuses a version it does
 not know. It still reads 0.1.0, the contract before vintages: such a Release holds no
-`vintages/` file, so every Release kept in a root stays readable (ADR 0024). Writers write 0.2.0.
+`vintages/` file, so every Release kept in a root stays readable (ADR 0024). Writers write the newest.
 
 `series.schema.json` is a different contract: one entry of the Catalog, the file
 `catalog/series/{key}.json` that a person edits (ADR 0026, `docs/method/catalog.md`). It shares
@@ -42,6 +42,9 @@ TypeScript's types and its copy of the schema are generated: `npm run gen` after
   vintages/{key}.json                what was held for a stored Series over time (optional)
   content/annotations.json           every Annotation, one shape
   content/events.json                the Events, whole (0.3.0; a 0.1.0 or 0.2.0 Release has none)
+  content/claims.json                the Claims, each with its locks by name (0.4.0)
+  locks/{claim_id}.v{n}.lock.json    a Claim lock, as the bytes it was written as (0.4.0)
+  evidence/latest.json               each locked Reading's latest Evidence row, and the drift (0.4.0)
 ```
 
 Beside `CURRENT` and `releases/` a root written by the release writer (M9) also holds `LOCK`,
@@ -157,13 +160,27 @@ public-profile Release holds no draft Event. `schema/event.schema.json` is the a
 
 ## Rules beyond the schema
 
+**Claims** (0.4.0, M20; ADR 0011, ADR 0034; `docs/method/claims.md`). `content/claims.json`
+holds each Claim as its file does, with the quote, and lists its locks, oldest first: each is
+`in_release` with the hash of its file's bytes, or named without its numbers (`withdrawn`,
+`not_carried`) with the reason. `locks/{claim_id}.v{n}.lock.json` is a Claim lock: the frozen
+record, the Release it was computed against, the lineage of its numbers, and each Reading's
+*then* and *now when checked* Evidence rows with their Window sensitivity. `evidence/latest.json`
+is there exactly when a lock has a latest row: for the newest lock of each Claim whose newest
+lock is in the Release, the *latest* row of every Reading and the drift entries. No shape among
+these has a field for a finding, a rating or a label, and a figure's value is a number or null.
+A public-profile Release holds no draft Claim, no public Claim without a lock, and no lock
+computed on a local-profile Release. The hash a lock carries of itself (`lock_sha256`) is the
+writer's own and is checked by `atlas check`, not here. `schema/claim.schema.json` is the
+authoring form (the front matter of `content/claims/{id}.md`).
+
 Checks run in stages and stop at the first stage that reports something. Vintage files are
 the last stage: they are judged against Series files already known to be sound.
 
 | Stage | Code | Meaning |
 |---|---|---|
 | files | `unknown_file` | a file the contract does not name |
-| files | `missing_file` | `manifest.json`, `catalog.json` or `content/annotations.json` is absent; or, in a 0.3.0 Release, `content/events.json` |
+| files | `missing_file` | `manifest.json`, `catalog.json` or `content/annotations.json` is absent; or, from 0.3.0, `content/events.json`; or, from 0.4.0, `content/claims.json` |
 | JSON | `invalid_json` | a file is not JSON |
 | version | `unsupported_schema_version` | the reader does not know this `schema_version` |
 | schema | `schema` | a file breaks `release.schema.json` |
@@ -186,7 +203,10 @@ the last stage: they are judged against Series files already known to be sound.
 | rules | `duplicate_annotation_id`, `unknown_series_ref`, `bad_anchor` | Annotations |
 | rules | `duplicate_event_id`, `bad_event_date` | two Events share an id; an Event's date or end is not a day, month or year of the calendar as its precision says, or it ends before it starts |
 | rules | `event_projection` | an Event has no Annotation, or its Annotation does not say what it says; an Annotation of kind `event` is the projection of no Event |
-| rules | `unsigned_register`, `legacy_in_public`, `draft_in_public` | a public Release must name a signed rights register and hold no legacy data (a Series, or an Annotation that is v1's) and no drafts (a Series or an Event) |
+| rules | `duplicate_claim_id` | two Claims share an id |
+| rules | `claim_lock` | a lock file that no Claim lists, is not named for what it holds, or is not the bytes or the record the Claim lists; a Claim whose locks are not listed whole from 1, or that lists one as in the Release when it is not (or the other way round); a public Claim with no lock; a lock computed on a local-profile Release in a public one |
+| rules | `claim_evidence` | `evidence/latest.json` is not exactly the newest in-release lock of each Claim, once each, with that lock's Readings in order; or it is missing, or there with nothing in it |
+| rules | `unsigned_register`, `legacy_in_public`, `draft_in_public` | a public Release must name a signed rights register and hold no legacy data (a Series, or an Annotation that is v1's) and no drafts (a Series, an Event or a Claim) |
 | vintages | `orphan_vintage_file` | a vintage file for a key with no file under `series/` |
 | vintages | `withheld_present` | a withheld Series has a vintage file |
 | vintages | `manifest_mismatch`, `hash_mismatch` | a vintage file and the manifest's `vintages_sha256` do not match one to one, or the bytes differ |

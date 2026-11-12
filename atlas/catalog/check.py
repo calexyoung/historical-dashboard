@@ -379,7 +379,8 @@ def check(directory: Path | None = None, register: Path | None = None, content: 
     def own_content() -> list[Problem]:
         from ..content.check import check_content
 
-        found, report.notes = check_content(set(entries), content, notes)
+        found, report.notes = check_content(entries, content, notes,
+                                            gate=RightsGate(table) if table is not None else None)
         return found
 
     steps = (references,

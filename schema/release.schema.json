@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://mydashboards.co/macro-atlas/schema/release.schema.json",
   "title": "Release",
-  "description": "Macro Atlas release contract, v0 (schema_version 0.3.0). A Release is a directory; this schema describes it gathered into one object: manifest.json, catalog.json, series/{key}.json, derived/{key}.json, vintages/{key}.json, content/annotations.json and content/events.json. It is the seam between the writer and every reader (PLAN 4.2). Conventions the schema cannot express, and the cross-file rules, are in schema/README.md. Structural validity is not authorisation: whether a series may appear on a Surface is decided by permits() and the rights register.",
+  "description": "Macro Atlas release contract, v0 (schema_version 0.4.0). A Release is a directory; this schema describes it gathered into one object: manifest.json, catalog.json, series/{key}.json, derived/{key}.json, vintages/{key}.json, content/annotations.json, content/events.json, content/claims.json, locks/{claim_id}.v{n}.lock.json and evidence/latest.json. It is the seam between the writer and every reader (PLAN 4.2). Conventions the schema cannot express, and the cross-file rules, are in schema/README.md. Structural validity is not authorisation: whether a series may appear on a Surface is decided by permits() and the rights register.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -55,6 +55,22 @@
     },
     "events": {
       "$ref": "#/$defs/eventsFile"
+    },
+    "claims": {
+      "$ref": "#/$defs/claimsFile"
+    },
+    "locks": {
+      "description": "locks/{claim_id}.v{n}.lock.json, by file name without .lock.json.",
+      "type": "object",
+      "propertyNames": {
+        "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}-[a-z0-9]+(-[a-z0-9]+)*\\.v[1-9][0-9]{0,3}$"
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/claimLock"
+      }
+    },
+    "latest": {
+      "$ref": "#/$defs/latestFile"
     }
   },
   "$defs": {
@@ -161,11 +177,12 @@
       ],
       "properties": {
         "schema_version": {
-          "description": "Version of this contract. Readers refuse a version they do not know. 0.2.0 added vintages/ and vintages_sha256; a 0.1.0 Release holds neither. 0.3.0 (M19) added content/events.json, which a 0.3.0 Release must have and an earlier one may not, and the rule that every Event is one Annotation. Writers write the last one listed.",
+          "description": "Version of this contract. Readers refuse a version they do not know. 0.2.0 added vintages/ and vintages_sha256; a 0.1.0 Release holds neither. 0.3.0 (M19) added content/events.json, which a 0.3.0 Release must have and an earlier one may not, and the rule that every Event is one Annotation. 0.4.0 (M20) added content/claims.json, which a 0.4.0 Release must have, locks/ and evidence/latest.json. Writers write the last one listed.",
           "enum": [
             "0.1.0",
             "0.2.0",
-            "0.3.0"
+            "0.3.0",
+            "0.4.0"
           ]
         },
         "semantics_version": {
@@ -1678,6 +1695,1278 @@
           }
         }
       }
+    },
+    "claimWindow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "from",
+        "to"
+      ],
+      "properties": {
+        "from": {
+          "type": "string",
+          "pattern": "^(?!0000)[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+        },
+        "to": {
+          "type": "string",
+          "pattern": "^(?!0000)[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+        }
+      },
+      "title": "ClaimWindow",
+      "description": "Calendar dates, both inclusive."
+    },
+    "claimReading": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "series",
+        "transform",
+        "measure"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+          "maxLength": 40,
+          "description": "Names the Reading within its Claim. Permanent once locked."
+        },
+        "series": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]{0,63}$"
+        },
+        "freq": {
+          "description": "A slower frequency to bring the Series to before anything else. Absent: the Series' own.",
+          "enum": [
+            "weekly",
+            "monthly",
+            "quarterly",
+            "annual"
+          ]
+        },
+        "transform": {
+          "description": "One of the engine's Transforms (docs/method/transforms.md). rebase, z and drawdown depend on a window and go only with a measure that has one.",
+          "enum": [
+            "lin",
+            "chg",
+            "ch1",
+            "pch",
+            "pc1",
+            "pca",
+            "log",
+            "rebase",
+            "z",
+            "drawdown"
+          ]
+        },
+        "measure": {
+          "description": "The closed list (PLAN 4.5). Each returns numbers, never true or false.",
+          "enum": [
+            "value_at",
+            "change",
+            "extreme",
+            "rank",
+            "difference"
+          ]
+        },
+        "period": {
+          "description": "value_at, rank: the Period measured, as a label at the Reading's frequency.",
+          "type": "string",
+          "minLength": 4,
+          "maxLength": 10
+        },
+        "periods": {
+          "description": "difference: two Periods; the answer is the second less the first.",
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": {
+            "type": "string",
+            "minLength": 4,
+            "maxLength": 10
+          }
+        },
+        "window": {
+          "$ref": "#/$defs/claimWindow"
+        },
+        "which": {
+          "description": "extreme: the largest or the smallest value.",
+          "enum": [
+            "max",
+            "min"
+          ]
+        },
+        "order": {
+          "description": "rank: whether 1 is the highest value or the lowest.",
+          "enum": [
+            "highest",
+            "lowest"
+          ]
+        },
+        "alternative_windows": {
+          "description": "Other windows the same measure is taken over, so a reader sees how much the declared one matters (Window sensitivity). Only with change, extreme or rank.",
+          "type": "array",
+          "maxItems": 12,
+          "items": {
+            "$ref": "#/$defs/claimWindow"
+          }
+        }
+      },
+      "title": "ClaimReading",
+      "description": "One way to turn a Claim's words into something measurable (CONTEXT.md, Reading). Which fields go with which measure is in docs/method/claims.md; both atlas check and the engine hold a Reading to it. There is no field for what the figures show."
+    },
+    "claimSource": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "url",
+        "archive_url",
+        "locator",
+        "kind"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300,
+          "pattern": "^\\S(.*\\S)?$"
+        },
+        "url": {
+          "type": "string",
+          "pattern": "^https://\\S+$"
+        },
+        "archive_url": {
+          "type": "string",
+          "pattern": "^https://\\S+$",
+          "description": "An archived copy of the address. A Claim's source has no exception."
+        },
+        "locator": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300,
+          "pattern": "^\\S(.*\\S)?$",
+          "description": "Where in the source the words are: a time in a recording, a page, a paragraph."
+        },
+        "kind": {
+          "description": "What kind of record it is. Two sources of one Claim are different records of the statement.",
+          "enum": [
+            "recording",
+            "transcript",
+            "own_publication",
+            "report"
+          ]
+        }
+      },
+      "title": "ClaimSource"
+    },
+    "claimant": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "role",
+        "party"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300,
+          "pattern": "^\\S(.*\\S)?$"
+        },
+        "role": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300,
+          "pattern": "^\\S(.*\\S)?$",
+          "description": "The office or position held when the Claim was made."
+        },
+        "party": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300,
+          "pattern": "^\\S(.*\\S)?$",
+          "description": "The party at the time; \"none\" for a person with no party."
+        }
+      },
+      "title": "Claimant"
+    },
+    "claimCorrection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "date",
+        "reason"
+      ],
+      "properties": {
+        "date": {
+          "type": "string",
+          "pattern": "^(?!0000)[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^\\S([\\s\\S]*\\S)?$"
+        }
+      },
+      "title": "ClaimCorrection",
+      "description": "A dated, public change to the Claim after publication, with the reason (CONTEXT.md, Correction)."
+    },
+    "evidenceUnavailable": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "reason",
+        "message"
+      ],
+      "properties": {
+        "reason": {
+          "type": "string",
+          "pattern": "^[a-z_]+$"
+        },
+        "message": {
+          "type": "string"
+        }
+      },
+      "title": "EvidenceUnavailable",
+      "description": "Why there is no answer. A reason code and a sentence written by the engine; it states what is missing and judges nothing."
+    },
+    "evidenceFigure": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "value"
+      ],
+      "properties": {
+        "name": {
+          "enum": [
+            "value",
+            "start",
+            "end",
+            "change",
+            "pct_change",
+            "extreme",
+            "n",
+            "rank",
+            "of",
+            "a",
+            "b",
+            "difference"
+          ]
+        },
+        "value": {
+          "description": "A number, or null with `empty`. Never true or false.",
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "period": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "empty": {
+          "description": "Why the figure has no value.",
+          "type": "string",
+          "pattern": "^[a-z_]+$"
+        }
+      },
+      "title": "EvidenceFigure",
+      "description": "One number a Measure returned (CONTEXT.md, Measure)."
+    },
+    "rightsLineage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "origin",
+        "dataset",
+        "channel",
+        "representation"
+      ],
+      "properties": {
+        "origin": {
+          "type": "string",
+          "minLength": 1
+        },
+        "dataset": {
+          "type": "string",
+          "minLength": 1
+        },
+        "channel": {
+          "type": "string",
+          "minLength": 1
+        },
+        "representation": {
+          "$ref": "#/$defs/representation"
+        }
+      },
+      "title": "RightsLineage",
+      "description": "One Origin, dataset and Channel that values came through: a row for the rights gate."
+    },
+    "evidenceInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "key",
+        "basis",
+        "capture_gap",
+        "same_day_release",
+        "unit",
+        "last_capture"
+      ],
+      "properties": {
+        "key": {
+          "$ref": "#/$defs/key"
+        },
+        "basis": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "enum": [
+                "provider",
+                "atlas_observed",
+                "legacy",
+                "uncertain",
+                "unavailable"
+              ]
+            }
+          ]
+        },
+        "capture_gap": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "from",
+                "to",
+                "missed_days",
+                "changed_across"
+              ],
+              "properties": {
+                "from": {
+                  "$ref": "#/$defs/datetime"
+                },
+                "to": {
+                  "oneOf": [
+                    {
+                      "type": "null"
+                    },
+                    {
+                      "$ref": "#/$defs/datetime"
+                    }
+                  ]
+                },
+                "missed_days": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "changed_across": {
+                  "type": [
+                    "boolean",
+                    "null"
+                  ]
+                }
+              },
+              "title": "EvidenceCaptureGap"
+            }
+          ]
+        },
+        "same_day_release": {
+          "type": "boolean"
+        },
+        "unit": {
+          "type": "string"
+        },
+        "last_capture": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/datetime"
+            }
+          ]
+        }
+      },
+      "title": "EvidenceInput",
+      "description": "One stored Series an Evidence row rests on, as it was resolved."
+    },
+    "evidenceSensitivity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "from",
+        "to",
+        "figures"
+      ],
+      "properties": {
+        "from": {
+          "$ref": "#/$defs/date"
+        },
+        "to": {
+          "$ref": "#/$defs/date"
+        },
+        "figures": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/evidenceFigure"
+          }
+        },
+        "unavailable": {
+          "$ref": "#/$defs/evidenceUnavailable"
+        }
+      },
+      "title": "EvidenceSensitivity",
+      "description": "The same Measure over one alternative window (CONTEXT.md, Window sensitivity)."
+    },
+    "evidenceRow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "state",
+        "as_of",
+        "cutoff",
+        "basis",
+        "same_day_release",
+        "inputs",
+        "unit",
+        "figures",
+        "window_sensitivity",
+        "release_id",
+        "semantics_version"
+      ],
+      "properties": {
+        "state": {
+          "enum": [
+            "then",
+            "now_when_checked",
+            "latest"
+          ]
+        },
+        "as_of": {
+          "description": "The day or instant asked about (then); null for a Release's own state.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "cutoff": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "instant",
+                "day",
+                "precision",
+                "zone"
+              ],
+              "properties": {
+                "instant": {
+                  "$ref": "#/$defs/datetime"
+                },
+                "day": {
+                  "$ref": "#/$defs/date"
+                },
+                "precision": {
+                  "enum": [
+                    "date",
+                    "datetime"
+                  ]
+                },
+                "zone": {
+                  "const": "America/New_York"
+                }
+              },
+              "title": "EvidenceCutoff"
+            }
+          ]
+        },
+        "basis": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "enum": [
+                "provider",
+                "atlas_observed",
+                "legacy",
+                "uncertain",
+                "unavailable"
+              ]
+            }
+          ]
+        },
+        "unavailable": {
+          "$ref": "#/$defs/evidenceUnavailable"
+        },
+        "same_day_release": {
+          "type": "boolean"
+        },
+        "inputs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/evidenceInput"
+          }
+        },
+        "unit": {
+          "description": "The Series' unit in force for this row, before the Transform.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "figures": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/evidenceFigure"
+          }
+        },
+        "window_sensitivity": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/evidenceSensitivity"
+          }
+        },
+        "release_id": {
+          "type": "string"
+        },
+        "semantics_version": {
+          "type": "string"
+        }
+      },
+      "title": "EvidenceRow",
+      "description": "The result of one Reading against one state of the data (CONTEXT.md, Evidence row): then, now when checked, or latest. Numbers and where they came from; no field says what they show about the Claim."
+    },
+    "resolvedPeriod": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "period",
+        "start",
+        "end"
+      ],
+      "properties": {
+        "period": {
+          "type": "string"
+        },
+        "start": {
+          "$ref": "#/$defs/date"
+        },
+        "end": {
+          "$ref": "#/$defs/date"
+        }
+      },
+      "title": "ResolvedPeriod"
+    },
+    "resolvedWindow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "from",
+        "to",
+        "periods"
+      ],
+      "properties": {
+        "from": {
+          "$ref": "#/$defs/date"
+        },
+        "to": {
+          "$ref": "#/$defs/date"
+        },
+        "periods": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/resolvedPeriod"
+          }
+        }
+      },
+      "title": "ResolvedWindow",
+      "description": "A window, and for a change the first and last Period that start inside it, fixed by the calendar before any value is looked at."
+    },
+    "lockedReading": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "series",
+        "freq",
+        "unit",
+        "transform",
+        "measure",
+        "recipe",
+        "periods",
+        "window",
+        "alternative_windows",
+        "then",
+        "now_when_checked"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+          "maxLength": 40,
+          "description": "Names the Reading within its Claim. Permanent once locked."
+        },
+        "series": {
+          "$ref": "#/$defs/key"
+        },
+        "freq": {
+          "$ref": "#/$defs/frequency"
+        },
+        "unit": {
+          "type": "string"
+        },
+        "transform": {
+          "description": "One of the engine's Transforms (docs/method/transforms.md). rebase, z and drawdown depend on a window and go only with a measure that has one.",
+          "enum": [
+            "lin",
+            "chg",
+            "ch1",
+            "pch",
+            "pc1",
+            "pca",
+            "log",
+            "rebase",
+            "z",
+            "drawdown"
+          ]
+        },
+        "measure": {
+          "description": "The closed list (PLAN 4.5). Each returns numbers, never true or false.",
+          "enum": [
+            "value_at",
+            "change",
+            "extreme",
+            "rank",
+            "difference"
+          ]
+        },
+        "recipe": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "key",
+                "recipe",
+                "rests_on"
+              ],
+              "properties": {
+                "key": {
+                  "$ref": "#/$defs/key"
+                },
+                "recipe": {
+                  "$ref": "#/$defs/recipe"
+                },
+                "rests_on": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/$defs/key"
+                  }
+                }
+              },
+              "title": "RecipeIdentity"
+            }
+          ]
+        },
+        "periods": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/resolvedPeriod"
+          }
+        },
+        "window": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/resolvedWindow"
+            }
+          ]
+        },
+        "alternative_windows": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/resolvedWindow"
+          }
+        },
+        "then": {
+          "$ref": "#/$defs/evidenceRow"
+        },
+        "now_when_checked": {
+          "$ref": "#/$defs/evidenceRow"
+        }
+      },
+      "title": "LockedReading",
+      "description": "What one Reading resolved to and its two locked Evidence rows."
+    },
+    "claimRecord": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "claimant",
+        "said_on",
+        "venue",
+        "sources",
+        "readings",
+        "readings_not_measured",
+        "selection_note",
+        "checked_on",
+        "quote"
+      ],
+      "properties": {
+        "claimant": {
+          "$ref": "#/$defs/claimant"
+        },
+        "said_on": {
+          "type": "string",
+          "pattern": "^(?!0000)[0-9]{4}-[0-9]{2}-[0-9]{2}$",
+          "description": "The New York calendar day the statement was made."
+        },
+        "said_at": {
+          "type": "string",
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$",
+          "description": "The instant it was made, in UTC, when known. It falls on said_on in New York. With it the Cutoff is that instant; without it, 00:00 New York on said_on (D7)."
+        },
+        "venue": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300,
+          "pattern": "^\\S(.*\\S)?$"
+        },
+        "sources": {
+          "description": "Two or more records of the statement, each archived (ADR 0011).",
+          "type": "array",
+          "minItems": 2,
+          "items": {
+            "$ref": "#/$defs/claimSource"
+          }
+        },
+        "readings": {
+          "type": "array",
+          "maxItems": 12,
+          "items": {
+            "$ref": "#/$defs/claimReading"
+          }
+        },
+        "readings_not_measured": {
+          "description": "Other ways the words could be read that this record does not measure, each in a line.",
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 300,
+            "pattern": "^\\S(.*\\S)?$"
+          }
+        },
+        "selection_note": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^\\S([\\s\\S]*\\S)?$",
+          "description": "Why this statement was recorded."
+        },
+        "checked_on": {
+          "type": "string",
+          "pattern": "^(?!0000)[0-9]{4}-[0-9]{2}-[0-9]{2}$",
+          "description": "The New York calendar day the Claim was recorded and its figures computed (now when checked)."
+        },
+        "quote": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^\\S([\\s\\S]*\\S)?$",
+          "description": "The statement, verbatim."
+        }
+      },
+      "title": "ClaimRecord",
+      "description": "The part of a Claim a lock freezes: the statement, who made it, where it can be checked, and how it is read. Its status, topics and corrections are not frozen."
+    },
+    "claimLock": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "format",
+        "claim_id",
+        "version",
+        "locked_at",
+        "reason",
+        "supersedes",
+        "record",
+        "record_sha256",
+        "release",
+        "semantics_version",
+        "rights_used",
+        "readings",
+        "lock_sha256"
+      ],
+      "properties": {
+        "format": {
+          "const": 1
+        },
+        "claim_id": {
+          "type": "string",
+          "maxLength": 100,
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}-[a-z0-9]+(-[a-z0-9]+)*$"
+        },
+        "version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "locked_at": {
+          "$ref": "#/$defs/datetime",
+          "description": "The instant the figures were computed: when the Claim was checked."
+        },
+        "reason": {
+          "description": "Why the Claim was recorded afresh; null for the first lock.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "supersedes": {
+          "description": "The version this one follows; null for the first.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1
+        },
+        "record": {
+          "$ref": "#/$defs/claimRecord"
+        },
+        "record_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "release": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "release_id",
+            "created",
+            "profile"
+          ],
+          "properties": {
+            "release_id": {
+              "type": "string"
+            },
+            "created": {
+              "$ref": "#/$defs/datetime"
+            },
+            "profile": {
+              "$ref": "#/$defs/profile"
+            }
+          },
+          "title": "LockRelease",
+          "description": "The Release the rows were computed against. Retention keeps it."
+        },
+        "semantics_version": {
+          "type": "string"
+        },
+        "rights_used": {
+          "description": "Every Origin, dataset and Channel the locked numbers came through, history included.",
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/rightsLineage"
+          }
+        },
+        "readings": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/lockedReading"
+          }
+        },
+        "lock_sha256": {
+          "$ref": "#/$defs/sha256",
+          "description": "The hash of the rest of the file as the writer serialises it. A lock is never edited."
+        }
+      },
+      "title": "ClaimLock",
+      "description": "locks/{claim_id}.v{n}.lock.json (0.4.0): the frozen record of a Claim's then and now-when-checked Evidence rows and its Window sensitivity (CONTEXT.md, Claim lock; PLAN 4.5). Append-only: recording the Claim afresh adds a version with a reason. No field holds a finding, a rating or a label."
+    },
+    "claimLockListed": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "version",
+        "locked_at",
+        "reason",
+        "record_sha256",
+        "state"
+      ],
+      "properties": {
+        "version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "locked_at": {
+          "$ref": "#/$defs/datetime"
+        },
+        "reason": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "record_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "state": {
+          "description": "in_release: the lock's file is in this Release. withdrawn: its numbers may not be shown now (a permission went, or a Series was withdrawn); the lock is named and its file is absent. not_carried: the writer of this Release computes no latest row, so it carries no lock.",
+          "enum": [
+            "in_release",
+            "withdrawn",
+            "not_carried"
+          ]
+        },
+        "sha256": {
+          "$ref": "#/$defs/sha256",
+          "description": "The hash of the lock's file. Present exactly when it is in the Release."
+        },
+        "why": {
+          "description": "Why the lock's file is absent.",
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "title": "ClaimLockListed"
+    },
+    "claim": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "claimant",
+        "said_on",
+        "venue",
+        "sources",
+        "readings",
+        "readings_not_measured",
+        "selection_note",
+        "checked_on",
+        "quote",
+        "corrections",
+        "topics",
+        "status",
+        "locks"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "maxLength": 100,
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}-[a-z0-9]+(-[a-z0-9]+)*$",
+          "description": "Permanent: said_on, then a slug. The file is named for it."
+        },
+        "claimant": {
+          "$ref": "#/$defs/claimant"
+        },
+        "said_on": {
+          "type": "string",
+          "pattern": "^(?!0000)[0-9]{4}-[0-9]{2}-[0-9]{2}$",
+          "description": "The New York calendar day the statement was made."
+        },
+        "said_at": {
+          "type": "string",
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$",
+          "description": "The instant it was made, in UTC, when known. It falls on said_on in New York. With it the Cutoff is that instant; without it, 00:00 New York on said_on (D7)."
+        },
+        "venue": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300,
+          "pattern": "^\\S(.*\\S)?$"
+        },
+        "sources": {
+          "description": "Two or more records of the statement, each archived (ADR 0011).",
+          "type": "array",
+          "minItems": 2,
+          "items": {
+            "$ref": "#/$defs/claimSource"
+          }
+        },
+        "readings": {
+          "type": "array",
+          "maxItems": 12,
+          "items": {
+            "$ref": "#/$defs/claimReading"
+          }
+        },
+        "readings_not_measured": {
+          "description": "Other ways the words could be read that this record does not measure, each in a line.",
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 300,
+            "pattern": "^\\S(.*\\S)?$"
+          }
+        },
+        "selection_note": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^\\S([\\s\\S]*\\S)?$",
+          "description": "Why this statement was recorded."
+        },
+        "checked_on": {
+          "type": "string",
+          "pattern": "^(?!0000)[0-9]{4}-[0-9]{2}-[0-9]{2}$",
+          "description": "The New York calendar day the Claim was recorded and its figures computed (now when checked)."
+        },
+        "corrections": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/claimCorrection"
+          }
+        },
+        "topics": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+          }
+        },
+        "status": {
+          "description": "A draft is never in a public-profile Release. Only a person makes a Claim public (D7).",
+          "enum": [
+            "draft",
+            "public"
+          ]
+        },
+        "quote": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^\\S([\\s\\S]*\\S)?$",
+          "description": "The statement, verbatim."
+        },
+        "locks": {
+          "description": "Every lock of the Claim, oldest first.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/claimLockListed"
+          }
+        }
+      },
+      "title": "Claim",
+      "description": "A Claim in a Release (CONTEXT.md): the record as its file holds it, the quote, and its locks by name. No field for a finding, a rating, a label or a context flag."
+    },
+    "claimsFile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "claims"
+      ],
+      "properties": {
+        "claims": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/claim"
+          }
+        }
+      },
+      "title": "ClaimsFile",
+      "description": "content/claims.json (0.4.0): the Claims, oldest first. A public-profile Release holds no draft."
+    },
+    "driftEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "window",
+        "figure",
+        "field",
+        "locked",
+        "now"
+      ],
+      "properties": {
+        "kind": {
+          "description": "latest_differs: the latest row is not the locked now-when-checked row. then_differs: the then row, computed again on this Release, is not the locked one.",
+          "enum": [
+            "latest_differs",
+            "then_differs"
+          ]
+        },
+        "window": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/claimWindow"
+            }
+          ]
+        },
+        "figure": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "enum": [
+                "value",
+                "start",
+                "end",
+                "change",
+                "pct_change",
+                "extreme",
+                "n",
+                "rank",
+                "of",
+                "a",
+                "b",
+                "difference"
+              ]
+            }
+          ]
+        },
+        "field": {
+          "enum": [
+            "value",
+            "period",
+            "status",
+            "empty",
+            "unit",
+            "availability"
+          ]
+        },
+        "locked": {
+          "type": [
+            "number",
+            "string",
+            "null"
+          ]
+        },
+        "now": {
+          "type": [
+            "number",
+            "string",
+            "null"
+          ]
+        }
+      },
+      "title": "DriftEntry",
+      "description": "One place where a row computed on this Release is not the locked one. It states the difference and names no cause; only a person re-locks."
+    },
+    "latestReading": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "latest",
+        "refused",
+        "drift"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+          "maxLength": 40,
+          "description": "Names the Reading within its Claim. Permanent once locked."
+        },
+        "latest": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/evidenceRow"
+            }
+          ]
+        },
+        "refused": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/evidenceUnavailable"
+            }
+          ]
+        },
+        "drift": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/driftEntry"
+          }
+        }
+      },
+      "title": "LatestReading",
+      "description": "One locked Reading on this Release: its latest row, or why this Release cannot measure it, and the drift."
+    },
+    "latestClaim": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "claim_id",
+        "lock_version",
+        "rights_used",
+        "readings"
+      ],
+      "properties": {
+        "claim_id": {
+          "type": "string",
+          "maxLength": 100,
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}-[a-z0-9]+(-[a-z0-9]+)*$"
+        },
+        "lock_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "rights_used": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/rightsLineage"
+          }
+        },
+        "readings": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/latestReading"
+          }
+        }
+      },
+      "title": "LatestClaim"
+    },
+    "latestFile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "semantics_version",
+        "claims"
+      ],
+      "properties": {
+        "semantics_version": {
+          "type": "string"
+        },
+        "claims": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/latestClaim"
+          }
+        }
+      },
+      "title": "LatestFile",
+      "description": "evidence/latest.json (0.4.0): for the newest lock of each Claim whose lock is in the Release, the latest Evidence row of every Reading, recomputed by the engine on this Release, and the drift report. Present exactly when the Release holds a lock."
     }
   }
 }

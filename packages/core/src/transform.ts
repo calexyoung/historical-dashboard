@@ -13,7 +13,7 @@ import { aggregate, type AggregateMethod } from "./aggregate";
 import type { Frequency } from "./period";
 
 /** Raised by any change in what a Transform returns (PLAN 4.5). */
-export const SEMANTICS_VERSION = "0.6.0";
+export const SEMANTICS_VERSION = "0.7.0";
 
 /** The allowlist (PLAN 4.5): FRED's names, plus v1's drawdown. */
 export const TRANSFORMS = ["lin", "chg", "ch1", "pch", "pc1", "pca", "log", "rebase", "z", "drawdown"] as const;

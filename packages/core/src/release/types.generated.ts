@@ -102,9 +102,21 @@ export type ObservationStatus =
  * via the `definition` "anchor".
  */
 export type Anchor = DateAnchor | SpanAnchor | PeriodAnchor;
+/**
+ * The hash of the lock's file. Present exactly when it is in the Release.
+ */
+export type Sha2561 = string;
+/**
+ * An instant in UTC, written exactly as YYYY-MM-DDTHH:MM:SS, an optional fraction of up to nine digits, then Z. No offsets, no leap seconds, no lower case.
+ */
+export type Instant1 = string;
+/**
+ * The hash of the rest of the file as the writer serialises it. A lock is never edited.
+ */
+export type Sha2562 = string;
 
 /**
- * Macro Atlas release contract, v0 (schema_version 0.3.0). A Release is a directory; this schema describes it gathered into one object: manifest.json, catalog.json, series/{key}.json, derived/{key}.json, vintages/{key}.json, content/annotations.json and content/events.json. It is the seam between the writer and every reader (PLAN 4.2). Conventions the schema cannot express, and the cross-file rules, are in schema/README.md. Structural validity is not authorisation: whether a series may appear on a Surface is decided by permits() and the rights register.
+ * Macro Atlas release contract, v0 (schema_version 0.4.0). A Release is a directory; this schema describes it gathered into one object: manifest.json, catalog.json, series/{key}.json, derived/{key}.json, vintages/{key}.json, content/annotations.json, content/events.json, content/claims.json, locks/{claim_id}.v{n}.lock.json and evidence/latest.json. It is the seam between the writer and every reader (PLAN 4.2). Conventions the schema cannot express, and the cross-file rules, are in schema/README.md. Structural validity is not authorisation: whether a series may appear on a Surface is decided by permits() and the rights register.
  */
 export interface Release {
   manifest: Manifest;
@@ -129,6 +141,14 @@ export interface Release {
   };
   annotations: AnnotationsFile;
   events?: EventsFile;
+  claims?: ClaimsFile;
+  /**
+   * locks/{claim_id}.v{n}.lock.json, by file name without .lock.json.
+   */
+  locks?: {
+    [k: string]: ClaimLock;
+  };
+  latest?: LatestFile;
 }
 /**
  * manifest.json: what this Release is and what it holds. created is when the Release was written, and is also the fixed date against which staleness (max_lag) is judged, so a Release never changes state as the clock moves.
@@ -138,9 +158,9 @@ export interface Release {
  */
 export interface Manifest {
   /**
-   * Version of this contract. Readers refuse a version they do not know. 0.2.0 added vintages/ and vintages_sha256; a 0.1.0 Release holds neither. 0.3.0 (M19) added content/events.json, which a 0.3.0 Release must have and an earlier one may not, and the rule that every Event is one Annotation. Writers write the last one listed.
+   * Version of this contract. Readers refuse a version they do not know. 0.2.0 added vintages/ and vintages_sha256; a 0.1.0 Release holds neither. 0.3.0 (M19) added content/events.json, which a 0.3.0 Release must have and an earlier one may not, and the rule that every Event is one Annotation. 0.4.0 (M20) added content/claims.json, which a 0.4.0 Release must have, locks/ and evidence/latest.json. Writers write the last one listed.
    */
-  schema_version: "0.1.0" | "0.2.0" | "0.3.0";
+  schema_version: "0.1.0" | "0.2.0" | "0.3.0" | "0.4.0";
   /**
    * Version of the engine's behaviour that wrote derived/ (ADR 0003).
    */
@@ -665,4 +685,741 @@ export interface EventCitation {
   url: string;
   archive_url?: string;
   no_archive?: string;
+}
+/**
+ * content/claims.json (0.4.0): the Claims, oldest first. A public-profile Release holds no draft.
+ *
+ * This interface was referenced by `Release`'s JSON-Schema
+ * via the `definition` "claimsFile".
+ */
+export interface ClaimsFile {
+  claims: Claim[];
+}
+/**
+ * A Claim in a Release (CONTEXT.md): the record as its file holds it, the quote, and its locks by name. No field for a finding, a rating, a label or a context flag.
+ *
+ * This interface was referenced by `Release`'s JSON-Schema
+ * via the `definition` "claim".
+ */
+export interface Claim {
+  /**
+   * Permanent: said_on, then a slug. The file is named for it.
+   */
+  id: string;
+  claimant: Claimant;
+  /**
+   * The New York calendar day the statement was made.
+   */
+  said_on: string;
+  /**
+   * The instant it was made, in UTC, when known. It falls on said_on in New York. With it the Cutoff is that instant; without it, 00:00 New York on said_on (D7).
+   */
+  said_at?: string;
+  venue: string;
+  /**
+   * Two or more records of the statement, each archived (ADR 0011).
+   *
+   * @minItems 2
+   */
+  sources: [ClaimSource, ClaimSource, ...ClaimSource[]];
+  /**
+   * @maxItems 12
+   */
+  readings:
+    | []
+    | [ClaimReading]
+    | [ClaimReading, ClaimReading]
+    | [ClaimReading, ClaimReading, ClaimReading]
+    | [ClaimReading, ClaimReading, ClaimReading, ClaimReading]
+    | [ClaimReading, ClaimReading, ClaimReading, ClaimReading, ClaimReading]
+    | [ClaimReading, ClaimReading, ClaimReading, ClaimReading, ClaimReading, ClaimReading]
+    | [
+        ClaimReading,
+        ClaimReading,
+        ClaimReading,
+        ClaimReading,
+        ClaimReading,
+        ClaimReading,
+        ClaimReading
+      ]
+    | [
+        ClaimReading,
+        ClaimReading,
+        ClaimReading,
+        ClaimReading,
+        ClaimReading,
+        ClaimReading,
+        ClaimReading,
+        ClaimReading
+      ]
+    | [
+        ClaimReading,
+        ClaimReading,
+        ClaimReading,
+        ClaimReading,
+        ClaimReading,
+        ClaimReading,
+        ClaimReading,
+        ClaimReading,
+        ClaimReading
+      ]
+    | [
+        ClaimReading,
+        ClaimReading,
+        ClaimReading,
+        ClaimReading,
+        ClaimReading,
+        ClaimReading,
+        ClaimReading,
+        ClaimReading,
+        ClaimReading,
+        ClaimReading
+      ]
+    | [
+        ClaimReading,
+        ClaimReading,
+        ClaimReading,
+        ClaimReading,
+        ClaimReading,
+        ClaimReading,
+        ClaimReading,
+        ClaimReading,
+        ClaimReading,
+        ClaimReading,
+        ClaimReading
+      ]
+    | [
+        ClaimReading,
+        ClaimReading,
+        ClaimReading,
+        ClaimReading,
+        ClaimReading,
+        ClaimReading,
+        ClaimReading,
+        ClaimReading,
+        ClaimReading,
+        ClaimReading,
+        ClaimReading,
+        ClaimReading
+      ];
+  /**
+   * Other ways the words could be read that this record does not measure, each in a line.
+   */
+  readings_not_measured: string[];
+  /**
+   * Why this statement was recorded.
+   */
+  selection_note: string;
+  /**
+   * The New York calendar day the Claim was recorded and its figures computed (now when checked).
+   */
+  checked_on: string;
+  corrections: ClaimCorrection[];
+  topics: string[];
+  /**
+   * A draft is never in a public-profile Release. Only a person makes a Claim public (D7).
+   */
+  status: "draft" | "public";
+  /**
+   * The statement, verbatim.
+   */
+  quote: string;
+  /**
+   * Every lock of the Claim, oldest first.
+   */
+  locks: ClaimLockListed[];
+}
+/**
+ * This interface was referenced by `Release`'s JSON-Schema
+ * via the `definition` "claimant".
+ */
+export interface Claimant {
+  name: string;
+  /**
+   * The office or position held when the Claim was made.
+   */
+  role: string;
+  /**
+   * The party at the time; "none" for a person with no party.
+   */
+  party: string;
+}
+/**
+ * This interface was referenced by `Release`'s JSON-Schema
+ * via the `definition` "claimSource".
+ */
+export interface ClaimSource {
+  name?: string;
+  url: string;
+  /**
+   * An archived copy of the address. A Claim's source has no exception.
+   */
+  archive_url: string;
+  /**
+   * Where in the source the words are: a time in a recording, a page, a paragraph.
+   */
+  locator: string;
+  /**
+   * What kind of record it is. Two sources of one Claim are different records of the statement.
+   */
+  kind: "recording" | "transcript" | "own_publication" | "report";
+}
+/**
+ * One way to turn a Claim's words into something measurable (CONTEXT.md, Reading). Which fields go with which measure is in docs/method/claims.md; both atlas check and the engine hold a Reading to it. There is no field for what the figures show.
+ *
+ * This interface was referenced by `Release`'s JSON-Schema
+ * via the `definition` "claimReading".
+ */
+export interface ClaimReading {
+  /**
+   * Names the Reading within its Claim. Permanent once locked.
+   */
+  id: string;
+  series: string;
+  /**
+   * A slower frequency to bring the Series to before anything else. Absent: the Series' own.
+   */
+  freq?: "weekly" | "monthly" | "quarterly" | "annual";
+  /**
+   * One of the engine's Transforms (docs/method/transforms.md). rebase, z and drawdown depend on a window and go only with a measure that has one.
+   */
+  transform: "lin" | "chg" | "ch1" | "pch" | "pc1" | "pca" | "log" | "rebase" | "z" | "drawdown";
+  /**
+   * The closed list (PLAN 4.5). Each returns numbers, never true or false.
+   */
+  measure: "value_at" | "change" | "extreme" | "rank" | "difference";
+  /**
+   * value_at, rank: the Period measured, as a label at the Reading's frequency.
+   */
+  period?: string;
+  /**
+   * difference: two Periods; the answer is the second less the first.
+   *
+   * @minItems 2
+   * @maxItems 2
+   */
+  periods?: [string, string];
+  window?: ClaimWindow;
+  /**
+   * extreme: the largest or the smallest value.
+   */
+  which?: "max" | "min";
+  /**
+   * rank: whether 1 is the highest value or the lowest.
+   */
+  order?: "highest" | "lowest";
+  /**
+   * Other windows the same measure is taken over, so a reader sees how much the declared one matters (Window sensitivity). Only with change, extreme or rank.
+   *
+   * @maxItems 12
+   */
+  alternative_windows?:
+    | []
+    | [ClaimWindow]
+    | [ClaimWindow, ClaimWindow]
+    | [ClaimWindow, ClaimWindow, ClaimWindow]
+    | [ClaimWindow, ClaimWindow, ClaimWindow, ClaimWindow]
+    | [ClaimWindow, ClaimWindow, ClaimWindow, ClaimWindow, ClaimWindow]
+    | [ClaimWindow, ClaimWindow, ClaimWindow, ClaimWindow, ClaimWindow, ClaimWindow]
+    | [ClaimWindow, ClaimWindow, ClaimWindow, ClaimWindow, ClaimWindow, ClaimWindow, ClaimWindow]
+    | [
+        ClaimWindow,
+        ClaimWindow,
+        ClaimWindow,
+        ClaimWindow,
+        ClaimWindow,
+        ClaimWindow,
+        ClaimWindow,
+        ClaimWindow
+      ]
+    | [
+        ClaimWindow,
+        ClaimWindow,
+        ClaimWindow,
+        ClaimWindow,
+        ClaimWindow,
+        ClaimWindow,
+        ClaimWindow,
+        ClaimWindow,
+        ClaimWindow
+      ]
+    | [
+        ClaimWindow,
+        ClaimWindow,
+        ClaimWindow,
+        ClaimWindow,
+        ClaimWindow,
+        ClaimWindow,
+        ClaimWindow,
+        ClaimWindow,
+        ClaimWindow,
+        ClaimWindow
+      ]
+    | [
+        ClaimWindow,
+        ClaimWindow,
+        ClaimWindow,
+        ClaimWindow,
+        ClaimWindow,
+        ClaimWindow,
+        ClaimWindow,
+        ClaimWindow,
+        ClaimWindow,
+        ClaimWindow,
+        ClaimWindow
+      ]
+    | [
+        ClaimWindow,
+        ClaimWindow,
+        ClaimWindow,
+        ClaimWindow,
+        ClaimWindow,
+        ClaimWindow,
+        ClaimWindow,
+        ClaimWindow,
+        ClaimWindow,
+        ClaimWindow,
+        ClaimWindow,
+        ClaimWindow
+      ];
+}
+/**
+ * Calendar dates, both inclusive.
+ *
+ * This interface was referenced by `Release`'s JSON-Schema
+ * via the `definition` "claimWindow".
+ */
+export interface ClaimWindow {
+  from: string;
+  to: string;
+}
+/**
+ * A dated, public change to the Claim after publication, with the reason (CONTEXT.md, Correction).
+ *
+ * This interface was referenced by `Release`'s JSON-Schema
+ * via the `definition` "claimCorrection".
+ */
+export interface ClaimCorrection {
+  date: string;
+  reason: string;
+}
+/**
+ * This interface was referenced by `Release`'s JSON-Schema
+ * via the `definition` "claimLockListed".
+ */
+export interface ClaimLockListed {
+  version: number;
+  locked_at: Instant;
+  reason: string | null;
+  record_sha256: Sha256;
+  /**
+   * in_release: the lock's file is in this Release. withdrawn: its numbers may not be shown now (a permission went, or a Series was withdrawn); the lock is named and its file is absent. not_carried: the writer of this Release computes no latest row, so it carries no lock.
+   */
+  state: "in_release" | "withdrawn" | "not_carried";
+  sha256?: Sha2561;
+  /**
+   * Why the lock's file is absent.
+   */
+  why?: string;
+}
+/**
+ * locks/{claim_id}.v{n}.lock.json (0.4.0): the frozen record of a Claim's then and now-when-checked Evidence rows and its Window sensitivity (CONTEXT.md, Claim lock; PLAN 4.5). Append-only: recording the Claim afresh adds a version with a reason. No field holds a finding, a rating or a label.
+ *
+ * This interface was referenced by `Release`'s JSON-Schema
+ * via the `definition` "claimLock".
+ */
+export interface ClaimLock {
+  format: 1;
+  claim_id: string;
+  version: number;
+  locked_at: Instant1;
+  /**
+   * Why the Claim was recorded afresh; null for the first lock.
+   */
+  reason: string | null;
+  /**
+   * The version this one follows; null for the first.
+   */
+  supersedes: number | null;
+  record: ClaimRecord;
+  record_sha256: Sha256;
+  release: LockRelease;
+  semantics_version: string;
+  /**
+   * Every Origin, dataset and Channel the locked numbers came through, history included.
+   *
+   * @minItems 1
+   */
+  rights_used: [RightsLineage, ...RightsLineage[]];
+  /**
+   * @minItems 1
+   */
+  readings: [LockedReading, ...LockedReading[]];
+  lock_sha256: Sha2562;
+}
+/**
+ * The part of a Claim a lock freezes: the statement, who made it, where it can be checked, and how it is read. Its status, topics and corrections are not frozen.
+ *
+ * This interface was referenced by `Release`'s JSON-Schema
+ * via the `definition` "claimRecord".
+ */
+export interface ClaimRecord {
+  claimant: Claimant;
+  /**
+   * The New York calendar day the statement was made.
+   */
+  said_on: string;
+  /**
+   * The instant it was made, in UTC, when known. It falls on said_on in New York. With it the Cutoff is that instant; without it, 00:00 New York on said_on (D7).
+   */
+  said_at?: string;
+  venue: string;
+  /**
+   * Two or more records of the statement, each archived (ADR 0011).
+   *
+   * @minItems 2
+   */
+  sources: [ClaimSource, ClaimSource, ...ClaimSource[]];
+  /**
+   * @maxItems 12
+   */
+  readings:
+    | []
+    | [ClaimReading]
+    | [ClaimReading, ClaimReading]
+    | [ClaimReading, ClaimReading, ClaimReading]
+    | [ClaimReading, ClaimReading, ClaimReading, ClaimReading]
+    | [ClaimReading, ClaimReading, ClaimReading, ClaimReading, ClaimReading]
+    | [ClaimReading, ClaimReading, ClaimReading, ClaimReading, ClaimReading, ClaimReading]
+    | [
+        ClaimReading,
+        ClaimReading,
+        ClaimReading,
+        ClaimReading,
+        ClaimReading,
+        ClaimReading,
+        ClaimReading
+      ]
+    | [
+        ClaimReading,
+        ClaimReading,
+        ClaimReading,
+        ClaimReading,
+        ClaimReading,
+        ClaimReading,
+        ClaimReading,
+        ClaimReading
+      ]
+    | [
+        ClaimReading,
+        ClaimReading,
+        ClaimReading,
+        ClaimReading,
+        ClaimReading,
+        ClaimReading,
+        ClaimReading,
+        ClaimReading,
+        ClaimReading
+      ]
+    | [
+        ClaimReading,
+        ClaimReading,
+        ClaimReading,
+        ClaimReading,
+        ClaimReading,
+        ClaimReading,
+        ClaimReading,
+        ClaimReading,
+        ClaimReading,
+        ClaimReading
+      ]
+    | [
+        ClaimReading,
+        ClaimReading,
+        ClaimReading,
+        ClaimReading,
+        ClaimReading,
+        ClaimReading,
+        ClaimReading,
+        ClaimReading,
+        ClaimReading,
+        ClaimReading,
+        ClaimReading
+      ]
+    | [
+        ClaimReading,
+        ClaimReading,
+        ClaimReading,
+        ClaimReading,
+        ClaimReading,
+        ClaimReading,
+        ClaimReading,
+        ClaimReading,
+        ClaimReading,
+        ClaimReading,
+        ClaimReading,
+        ClaimReading
+      ];
+  /**
+   * Other ways the words could be read that this record does not measure, each in a line.
+   */
+  readings_not_measured: string[];
+  /**
+   * Why this statement was recorded.
+   */
+  selection_note: string;
+  /**
+   * The New York calendar day the Claim was recorded and its figures computed (now when checked).
+   */
+  checked_on: string;
+  /**
+   * The statement, verbatim.
+   */
+  quote: string;
+}
+/**
+ * The Release the rows were computed against. Retention keeps it.
+ */
+export interface LockRelease {
+  release_id: string;
+  created: Instant;
+  profile: Profile;
+}
+/**
+ * One Origin, dataset and Channel that values came through: a row for the rights gate.
+ *
+ * This interface was referenced by `Release`'s JSON-Schema
+ * via the `definition` "rightsLineage".
+ */
+export interface RightsLineage {
+  origin: string;
+  dataset: string;
+  channel: string;
+  representation: Representation;
+}
+/**
+ * What one Reading resolved to and its two locked Evidence rows.
+ *
+ * This interface was referenced by `Release`'s JSON-Schema
+ * via the `definition` "lockedReading".
+ */
+export interface LockedReading {
+  /**
+   * Names the Reading within its Claim. Permanent once locked.
+   */
+  id: string;
+  series: SeriesKey;
+  freq: Frequency;
+  unit: string;
+  /**
+   * One of the engine's Transforms (docs/method/transforms.md). rebase, z and drawdown depend on a window and go only with a measure that has one.
+   */
+  transform: "lin" | "chg" | "ch1" | "pch" | "pc1" | "pca" | "log" | "rebase" | "z" | "drawdown";
+  /**
+   * The closed list (PLAN 4.5). Each returns numbers, never true or false.
+   */
+  measure: "value_at" | "change" | "extreme" | "rank" | "difference";
+  recipe: null | RecipeIdentity;
+  periods: ResolvedPeriod[];
+  window: null | ResolvedWindow;
+  alternative_windows: ResolvedWindow[];
+  then: EvidenceRow;
+  now_when_checked: EvidenceRow;
+}
+export interface RecipeIdentity {
+  key: SeriesKey;
+  recipe: Recipe;
+  rests_on: SeriesKey[];
+}
+/**
+ * This interface was referenced by `Release`'s JSON-Schema
+ * via the `definition` "resolvedPeriod".
+ */
+export interface ResolvedPeriod {
+  period: string;
+  start: CalendarDate;
+  end: CalendarDate;
+}
+/**
+ * A window, and for a change the first and last Period that start inside it, fixed by the calendar before any value is looked at.
+ *
+ * This interface was referenced by `Release`'s JSON-Schema
+ * via the `definition` "resolvedWindow".
+ */
+export interface ResolvedWindow {
+  from: CalendarDate;
+  to: CalendarDate;
+  periods: ResolvedPeriod[];
+}
+/**
+ * The result of one Reading against one state of the data (CONTEXT.md, Evidence row): then, now when checked, or latest. Numbers and where they came from; no field says what they show about the Claim.
+ *
+ * This interface was referenced by `Release`'s JSON-Schema
+ * via the `definition` "evidenceRow".
+ */
+export interface EvidenceRow {
+  state: "then" | "now_when_checked" | "latest";
+  /**
+   * The day or instant asked about (then); null for a Release's own state.
+   */
+  as_of: string | null;
+  cutoff: null | EvidenceCutoff;
+  basis: null | ("provider" | "atlas_observed" | "legacy" | "uncertain" | "unavailable");
+  unavailable?: EvidenceUnavailable;
+  same_day_release: boolean;
+  inputs: EvidenceInput[];
+  /**
+   * The Series' unit in force for this row, before the Transform.
+   */
+  unit: string | null;
+  figures: EvidenceFigure[];
+  window_sensitivity: EvidenceSensitivity[];
+  release_id: string;
+  semantics_version: string;
+}
+export interface EvidenceCutoff {
+  instant: Instant;
+  day: CalendarDate;
+  precision: "date" | "datetime";
+  zone: "America/New_York";
+}
+/**
+ * Why there is no answer. A reason code and a sentence written by the engine; it states what is missing and judges nothing.
+ *
+ * This interface was referenced by `Release`'s JSON-Schema
+ * via the `definition` "evidenceUnavailable".
+ */
+export interface EvidenceUnavailable {
+  reason: string;
+  message: string;
+}
+/**
+ * One stored Series an Evidence row rests on, as it was resolved.
+ *
+ * This interface was referenced by `Release`'s JSON-Schema
+ * via the `definition` "evidenceInput".
+ */
+export interface EvidenceInput {
+  key: SeriesKey;
+  basis: null | ("provider" | "atlas_observed" | "legacy" | "uncertain" | "unavailable");
+  capture_gap: null | EvidenceCaptureGap;
+  same_day_release: boolean;
+  unit: string;
+  last_capture: null | Instant;
+}
+export interface EvidenceCaptureGap {
+  from: Instant;
+  to: null | Instant;
+  missed_days: number;
+  changed_across: boolean | null;
+}
+/**
+ * One number a Measure returned (CONTEXT.md, Measure).
+ *
+ * This interface was referenced by `Release`'s JSON-Schema
+ * via the `definition` "evidenceFigure".
+ */
+export interface EvidenceFigure {
+  name:
+    | "value"
+    | "start"
+    | "end"
+    | "change"
+    | "pct_change"
+    | "extreme"
+    | "n"
+    | "rank"
+    | "of"
+    | "a"
+    | "b"
+    | "difference";
+  /**
+   * A number, or null with `empty`. Never true or false.
+   */
+  value: number | null;
+  period?: string;
+  status?: string;
+  /**
+   * Why the figure has no value.
+   */
+  empty?: string;
+}
+/**
+ * The same Measure over one alternative window (CONTEXT.md, Window sensitivity).
+ *
+ * This interface was referenced by `Release`'s JSON-Schema
+ * via the `definition` "evidenceSensitivity".
+ */
+export interface EvidenceSensitivity {
+  from: CalendarDate;
+  to: CalendarDate;
+  figures: EvidenceFigure[];
+  unavailable?: EvidenceUnavailable;
+}
+/**
+ * evidence/latest.json (0.4.0): for the newest lock of each Claim whose lock is in the Release, the latest Evidence row of every Reading, recomputed by the engine on this Release, and the drift report. Present exactly when the Release holds a lock.
+ *
+ * This interface was referenced by `Release`'s JSON-Schema
+ * via the `definition` "latestFile".
+ */
+export interface LatestFile {
+  semantics_version: string;
+  claims: LatestClaim[];
+}
+/**
+ * This interface was referenced by `Release`'s JSON-Schema
+ * via the `definition` "latestClaim".
+ */
+export interface LatestClaim {
+  claim_id: string;
+  lock_version: number;
+  rights_used: RightsLineage[];
+  readings: LatestReading[];
+}
+/**
+ * One locked Reading on this Release: its latest row, or why this Release cannot measure it, and the drift.
+ *
+ * This interface was referenced by `Release`'s JSON-Schema
+ * via the `definition` "latestReading".
+ */
+export interface LatestReading {
+  /**
+   * Names the Reading within its Claim. Permanent once locked.
+   */
+  id: string;
+  latest: null | EvidenceRow;
+  refused: null | EvidenceUnavailable;
+  drift: DriftEntry[];
+}
+/**
+ * One place where a row computed on this Release is not the locked one. It states the difference and names no cause; only a person re-locks.
+ *
+ * This interface was referenced by `Release`'s JSON-Schema
+ * via the `definition` "driftEntry".
+ */
+export interface DriftEntry {
+  /**
+   * latest_differs: the latest row is not the locked now-when-checked row. then_differs: the then row, computed again on this Release, is not the locked one.
+   */
+  kind: "latest_differs" | "then_differs";
+  window: null | ClaimWindow;
+  figure:
+    | null
+    | (
+        | "value"
+        | "start"
+        | "end"
+        | "change"
+        | "pct_change"
+        | "extreme"
+        | "n"
+        | "rank"
+        | "of"
+        | "a"
+        | "b"
+        | "difference"
+      );
+  field: "value" | "period" | "status" | "empty" | "unit" | "availability";
+  locked: number | string | null;
+  now: number | string | null;
 }

@@ -25,7 +25,7 @@ import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from ..release import CATALOG
+from ..release import CATALOG, LATEST
 
 REPO = Path(__file__).resolve().parents[2]
 CLI = REPO / "packages" / "core" / "bin" / "atlas-core.mjs"
@@ -46,6 +46,8 @@ class Outcome:
     empty: dict[str, str] = field(default_factory=dict)        # key -> why its Recipe gave no value
     semantics_version: str = ""
     checks: list[dict] = field(default_factory=list)           # the step's own check lines
+    latest: bytes | None = None                                # evidence/latest.json, when asked for
+    drift: list[dict] = field(default_factory=list)            # {claim_id, lock_version, differences}
 
 
 def node() -> str:
@@ -59,15 +61,24 @@ def _timeout() -> float:
         return TIMEOUT
 
 
-def run(staging: Path, files: dict[str, bytes], keys: list[str], *, spot: Path | None = None) -> Outcome:
-    """Compute the Derived series ``keys`` from the Catalog and stored Series in ``files``.
-    ``staging`` is the root's staging area; the work is done in a new directory inside it.
-    Raises ``EngineError``; the work directory is gone either way."""
+def run(staging: Path, files: dict[str, bytes], keys: list[str], *, spot: Path | None = None,
+        claims: list[str] | None = None) -> Outcome:
+    """Compute the Derived series ``keys`` from the Catalog and stored Series in ``files``,
+    and for the Claim locks ``claims`` (paths in ``files``) the latest Evidence rows and their
+    drift (``evidence/latest.json``; ADR 0034). ``staging`` is the root's staging area; the
+    work is done in a new directory inside it. Raises ``EngineError``; the work directory is
+    gone either way."""
+    claims = list(claims or [])
     staging.mkdir(parents=True, exist_ok=True)
     work = Path(tempfile.mkdtemp(prefix="engine-", dir=staging))
     try:
-        handed = {path: data for path, data in files.items() if path == CATALOG or path.startswith("series/")}
-        handed[REQUEST] = (json.dumps({"format": 1, "materialise": keys}) + "\n").encode()
+        # A latest row is the Release's own state; the then row is computed again from the
+        # vintage files, so those are handed over too when a lock is.
+        folders = ("series/", "vintages/") if claims else ("series/",)
+        handed = {path: data for path, data in files.items()
+                  if path == CATALOG or path.startswith(folders) or path in claims}
+        handed[REQUEST] = (json.dumps({"format": 1, "materialise": keys,
+                                       **({"claims": claims} if claims else {})}) + "\n").encode()
         for path, data in handed.items():
             target = work / path
             target.parent.mkdir(parents=True, exist_ok=True)
@@ -85,20 +96,21 @@ def run(staging: Path, files: dict[str, bytes], keys: list[str], *, spot: Path |
         if done.returncode != 0:
             said = "; ".join(line.strip() for line in done.stderr.splitlines() if line.strip())[:1500]
             raise EngineError(said or f"the engine step ended with status {done.returncode} and said nothing")
-        return _read_back(work, handed, keys)
+        return _read_back(work, handed, keys, bool(claims))
     finally:
         shutil.rmtree(work, ignore_errors=True)
 
 
-def _read_back(work: Path, handed: dict[str, bytes], keys: list[str]) -> Outcome:
+def _read_back(work: Path, handed: dict[str, bytes], keys: list[str], latest: bool = False) -> Outcome:
     wanted = {f"derived/{key}.json": key for key in keys}
+    extra = (LATEST,) if latest else ()
     left: dict[str, bytes] = {}
     for path in sorted(work.rglob("*")):
         name = path.relative_to(work).as_posix()
         if path.is_symlink():
             raise EngineError(f"the engine step left a link at {name}; nothing is read through a link")
         if path.is_dir():
-            if name not in {str(Path(known).parent) for known in (*handed, *wanted)}:
+            if name not in {str(Path(known).parent) for known in (*handed, *wanted, *extra)}:
                 raise EngineError(f"the engine step left {name}/, which it was not asked for")
             continue
         if not path.is_file() or path.stat().st_nlink != 1:
@@ -106,7 +118,7 @@ def _read_back(work: Path, handed: dict[str, bytes], keys: list[str]) -> Outcome
         if name in handed:
             if path.read_bytes() != handed[name]:
                 raise EngineError(f"the engine step changed {name}, which it was only to read")
-        elif name in wanted or name == REPORT:
+        elif name in wanted or name == REPORT or name in extra:
             left[name] = path.read_bytes()
         else:
             raise EngineError(f"the engine step left {name}, which it was not asked for")
@@ -128,6 +140,13 @@ def _read_back(work: Path, handed: dict[str, bytes], keys: list[str]) -> Outcome
                            **({"detail": str(c["detail"])} if c.get("detail") else {}),
                            **({"reason": str(c["reason"])} if c.get("reason") else {})} for c in checks]
         hashes = {key: row["sha256"] for key, row in described.items()}
+        if latest:
+            said = report["latest"]
+            outcome.drift = [{"claim_id": str(row["claim_id"]), "lock_version": int(row["lock_version"]),
+                              "differences": int(row["differences"])} for row in said["drift"]]
+            if left.get(LATEST) is None or said["sha256"] != hashlib.sha256(left[LATEST]).hexdigest():
+                raise EngineError(f"{LATEST} is missing, or is not the file the report describes")
+            outcome.latest = left.pop(LATEST)
     except (ValueError, KeyError, TypeError, AttributeError):
         raise EngineError("the engine step's report cannot be read") from None
     if any(c["outcome"] == "fail" for c in outcome.checks):
@@ -143,3 +162,38 @@ def _read_back(work: Path, handed: dict[str, bytes], keys: list[str]) -> Outcome
                 raise EngineError(f"{key}: derived/{key}.json is not the file the report describes")
             outcome.files[path] = left[path]
     return outcome
+
+
+def claim_evidence(release: Path, release_id: str, spec: dict) -> dict:
+    """The rows a Claim lock freezes, computed by the engine on the Release in ``release``
+    (``atlas-core claim``; ADR 0003, ADR 0034). Python hands over the part of the Claim the
+    engine reads and gets back numbers; it computes none. The command reads the Release and
+    writes no file. Returns the engine's answer: ``{"ok": True, ...}`` or ``{"ok": False,
+    "reason", "message"}``. Raises ``EngineError`` when there is no answer to read."""
+    with tempfile.TemporaryDirectory(prefix="atlas-claim-") as work:
+        request = Path(work) / "request.json"
+        request.write_text(json.dumps({"format": 1, "release_id": release_id, "spec": spec}), encoding="utf-8")
+        command = [node(), str(CLI), "claim", "--release", str(release), "--request", str(request)]
+        try:
+            done = subprocess.run(command, cwd=work, capture_output=True, text=True, timeout=_timeout(),
+                                  check=False, stdin=subprocess.DEVNULL)
+        except FileNotFoundError:
+            raise EngineError(f"Node is needed to compute a Claim's evidence and was not found ({command[0]})") from None
+        except subprocess.TimeoutExpired:
+            raise EngineError(f"the engine did not finish in {_timeout():g} seconds") from None
+        except OSError as error:
+            raise EngineError(f"Node could not be run ({command[0]}): {error}") from None
+    if done.returncode != 0:
+        said = "; ".join(line.strip() for line in done.stderr.splitlines() if line.strip())[:1500]
+        raise EngineError(said or f"the engine ended with status {done.returncode} and said nothing")
+    try:
+        answer = json.loads(done.stdout, parse_constant=_not_json)
+        if not isinstance(answer, dict) or not isinstance(answer.get("ok"), bool):
+            raise ValueError
+    except ValueError:
+        raise EngineError("the engine's answer cannot be read") from None
+    return answer
+
+
+def _not_json(name: str):
+    raise ValueError(name)
