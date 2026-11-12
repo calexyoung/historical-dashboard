@@ -61,7 +61,8 @@ Macro Atlas v2 is being built on the long-lived `v2` branch (`docs/v2/PLAN.md`, 
 | `schema/` | the release contract, `release.schema.json`, and its README |
 | `fixtures/` | the synthetic fixture release |
 | `checks/` | shared tables both languages are tested against |
-| `content/`, `deploy/` | content files and the deploy kit (later milestones) |
+| `content/` | Macro Atlas's own content as files: Events (`docs/method/content.md`); Claims and Topics later |
+| `deploy/` | the deploy kit (later milestones) |
 | `var/` | generated releases and the store; git-ignored, never in a Docker build context |
 
 `make v2-setup` installs both toolchains; `make v2-check` runs everything CI runs.

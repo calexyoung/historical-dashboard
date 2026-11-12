@@ -77,9 +77,16 @@ numbers exactly as above, and the manifest row's `vintages_sha256`. Past values 
 The check over a Release's files (`atlas doctor --surface production`, rollback, pin, reuse)
 reads the lineage of every vintage file too, against today's register.
 
-**Not written yet.** Search and bulk files (M22, M25), and content other than an empty
-Annotations list (M19). A local Release carries v1's Derived series and Annotations as the
-legacy converter writes them.
+**Content** (M19, ADR 0033; `docs/method/content.md`). `content/events.json` and
+`content/annotations.json` are written by the content compiler from the repository's files:
+the `public` Events (a draft is in no file of a public Release), and each hand-entered layer
+(terms of government, recessions) whose Origin the gate permits for display. A layer it
+refuses is left out and named by the check `content: hand-entered layers`. A public Event
+whose text has a word of the list refuses the release. A local Release holds the drafts too,
+and v1's bands and recessions for every set no hand-entered file provides.
+
+**Not written yet.** Search and bulk files (M22, M25), Claims (M20) and Topics (M23). A local
+Release carries v1's Derived series as the legacy converter writes them.
 
 ## Derived series and the Node step
 
@@ -157,7 +164,9 @@ kept in `$ATLAS_STORE/rejected/{release_id}.json`.
 | Check | Outcome when it finds something |
 |---|---|
 | Release contract (`schema/release.schema.json` and its cross-file rules) | fail |
-| Rights, public Profile: every Series in the staged files, and every input of every Derived series to any depth, is native and permitted by the gate for display on production | fail |
+| Rights, public Profile: every Series in the staged files, and every input of every Derived series to any depth, is native and permitted by the gate for display on production; so is the Origin of every Annotation typed in from a record, and none is v1's | fail |
+| Content: the Events compiled, and how many drafts were left out | pass (content that cannot be compiled refuses the run); warn when the writer has no `content/events` directory at all, as in the ingest image until M26 lets it in |
+| Content: hand-entered layers the gate refused | warn |
 | No Observation whose Period begins after the Release was written, unless projected | fail |
 | Values within the Catalog's `range` | fail |
 | No file for a withdrawn Series | fail |
@@ -247,8 +256,9 @@ everything in it. A local-profile Release cannot be brought into a public root b
 three.
 
 `python -m atlas release --profile P --reuse-data` writes a new Release that hard-links the
-current one's data files and writes its content afresh. Until M19 the only content is the
-Annotations file. A reuse does not read the store: each source's `fetched` time, and a `failed`
+current one's data files and writes its content afresh from the repository's files (the
+content compiler, above): that is how an edited Event reaches the site. `--content DIR` and
+`--manual DIR` name other directories. A reuse does not read the store: each source's `fetched` time, and a `failed`
 outcome, are carried over from the Release it reuses, while `stale` is judged afresh over the
 Series the new Release holds and against its own date.
 
@@ -299,7 +309,8 @@ did not finish, an unfinished withdrawal, the trash.
 
 - is public-profile, with a manifest that names a signed register;
 - holds no Series in v1's legacy representation;
-- has every Series, and every input of every Derived series, permitted for display on
+- has every Series, every input of every Derived series, and the Origin of every Annotation
+  typed in from a record, permitted for display on
   production by the **committed** rights register as it reads today. There is no option to
   name another register, and what the Release's own manifest says is not asked;
 - holds no withdrawn Series;

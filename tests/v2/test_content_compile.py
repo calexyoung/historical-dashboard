@@ -104,6 +104,13 @@ def test_the_report_counts_what_was_left_out(tmp_path):
     assert line["outcome"] == "pass" and "1 Event" in line["detail"] and "1 draft left out" in line["detail"]
 
 
+def test_a_writer_that_cannot_see_the_content_says_so_in_the_report(tmp_path):
+    result = compile_content(profile="public", content=tmp_path / "nowhere", manual=None, gate=gate())
+    assert read(result, "events") == [] and read(result, "annotations") == []
+    (line,) = result.report
+    assert line["outcome"] == "warn" and "no Event is in this Release" in line["detail"]
+
+
 def test_a_file_that_is_not_an_event_stops_the_compiler_and_is_named(tmp_path):
     directory = content(tmp_path, DAY)
     (directory / "events" / "2031-05-05-broken.md").write_text("not an event\n", encoding="utf-8")

@@ -22,6 +22,7 @@ import {
   validateRelease,
   type AnnotationsFile,
   type Catalog,
+  type EventsFile,
   type Manifest,
   type Release,
   type ReleaseFiles,
@@ -35,6 +36,8 @@ export type OpenedRelease = {
   manifest: Manifest;
   catalog: Catalog;
   annotations: AnnotationsFile;
+  /** `content/events.json`: the Events, whole. A Release written before there were any (0.2.0) has none. */
+  events: EventsFile;
   series: Record<string, SeriesFile>;
   derived: Record<string, SeriesFile>;
   /** `vintages/{key}.json`: what was held for a stored Series over time. Not every Series has one. */
@@ -98,7 +101,7 @@ const RETRY_MS = 5_000; // how long a failure to open is remembered before the d
  * Why `release` may not be served on `surface`, or null if it may. Each condition is checked on
  * its own, whatever the validator already promised about public-profile Releases.
  */
-export function refusal(release: Pick<Release, "manifest" | "catalog" | "series" | "derived">, surface: Surface): string | null {
+export function refusal(release: Pick<Release, "manifest" | "catalog" | "series" | "derived"> & Partial<Pick<Release, "annotations">>, surface: Surface): string | null {
   if (surface === "local") return null;
   const { manifest, catalog } = release;
   if (manifest.profile !== "public") {
@@ -115,6 +118,11 @@ export function refusal(release: Pick<Release, "manifest" | "catalog" | "series"
   }
   if (legacy.size > 0) {
     return `the ${surface} surface never serves v1's legacy representation (${[...legacy].sort().slice(0, 3).join(", ")})`;
+  }
+  // v1's own bands and recessions (M19): a local-profile Release may carry them, no other may.
+  const v1 = (release.annotations?.annotations ?? []).filter((a) => a.provenance?.representation === LEGACY).map((a) => a.id);
+  if (v1.length > 0) {
+    return `the ${surface} surface never serves an Annotation that is v1's (${v1.slice(0, 3).join(", ")})`;
   }
   return null;
 }
@@ -198,6 +206,7 @@ export function createReleaseReader(options: {
       manifest: parse<Manifest>("manifest.json"),
       catalog: parse<Catalog>("catalog.json"),
       annotations: parse<AnnotationsFile>("content/annotations.json"),
+      events: files["content/events.json"] ? parse<EventsFile>("content/events.json") : { events: [] },
       series: folder("series"),
       derived: folder("derived"),
       vintages: folder<VintageFile>("vintages"),

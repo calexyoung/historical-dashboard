@@ -41,6 +41,7 @@ TypeScript's types and its copy of the schema are generated: `npm run gen` after
   derived/{key}.json                 outputs of Recipes
   vintages/{key}.json                what was held for a stored Series over time (optional)
   content/annotations.json           every Annotation, one shape
+  content/events.json                the Events, whole (0.3.0; a 0.1.0 or 0.2.0 Release has none)
 ```
 
 Beside `CURRENT` and `releases/` a root written by the release writer (M9) also holds `LOCK`,
@@ -139,7 +140,20 @@ an as-of question from it (`docs/method/vintage-resolution.md`).
 **Annotations.** One shape for every layer. `category` is the layer within a kind (an Event's
 category); `attributes` holds named facts a layer needs to draw itself (the party of a term of
 government). There is no field for a judgment, on an Annotation or anywhere else in the contract
-(ADR 0011), and unknown fields are refused.
+(ADR 0011), and unknown fields are refused. An Annotation typed in from somebody's record (a
+term of government, a recession) says where from in `provenance` (0.3.0), so the rights check of
+a Release can ask the gate about it; one that is v1's is never in a public-profile Release.
+
+**Events** (0.3.0, M19; ADR 0033). `content/events.json` holds each Event whole: id, date and
+its precision (a day, a month or a year), an optional end, title, category, status, topics,
+related Series, an optional magnitude, its citations (each with an archived copy or the reason
+there is none) and its description. Every Event is drawn as exactly one Annotation of kind
+`event`, with the id `event-{id}`, `ref: content/events/{id}.md`, the Event's title, category
+and first citation, and an anchor as precise as the Event's date: a day is a date, a month or a
+year is that Period, an Event with an end is a span of whole days. `related_series` is not
+checked against the Release's catalog: a Release may name a Series it does not hold. A
+public-profile Release holds no draft Event. `schema/event.schema.json` is the authoring form
+(the front matter of `content/events/{id}.md`).
 
 ## Rules beyond the schema
 
@@ -149,7 +163,7 @@ the last stage: they are judged against Series files already known to be sound.
 | Stage | Code | Meaning |
 |---|---|---|
 | files | `unknown_file` | a file the contract does not name |
-| files | `missing_file` | `manifest.json`, `catalog.json` or `content/annotations.json` is absent |
+| files | `missing_file` | `manifest.json`, `catalog.json` or `content/annotations.json` is absent; or, in a 0.3.0 Release, `content/events.json` |
 | JSON | `invalid_json` | a file is not JSON |
 | version | `unsupported_schema_version` | the reader does not know this `schema_version` |
 | schema | `schema` | a file breaks `release.schema.json` |
@@ -170,7 +184,9 @@ the last stage: they are judged against Series files already known to be sound.
 | rules | `bounds_mismatch` | the file's bounds are not its first and last Observation |
 | rules | `unknown_recipe_input`, `recipe_cycle`, `withheld_input` | Recipe structure |
 | rules | `duplicate_annotation_id`, `unknown_series_ref`, `bad_anchor` | Annotations |
-| rules | `unsigned_register`, `legacy_in_public`, `draft_in_public` | a public Release must name a signed rights register and hold no legacy data and no drafts |
+| rules | `duplicate_event_id`, `bad_event_date` | two Events share an id; an Event's date or end is not a day, month or year of the calendar as its precision says, or it ends before it starts |
+| rules | `event_projection` | an Event has no Annotation, or its Annotation does not say what it says; an Annotation of kind `event` is the projection of no Event |
+| rules | `unsigned_register`, `legacy_in_public`, `draft_in_public` | a public Release must name a signed rights register and hold no legacy data (a Series, or an Annotation that is v1's) and no drafts (a Series or an Event) |
 | vintages | `orphan_vintage_file` | a vintage file for a key with no file under `series/` |
 | vintages | `withheld_present` | a withheld Series has a vintage file |
 | vintages | `manifest_mismatch`, `hash_mismatch` | a vintage file and the manifest's `vintages_sha256` do not match one to one, or the bytes differ |

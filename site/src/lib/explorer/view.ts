@@ -13,10 +13,11 @@
  * Annotations offer and how each is named; the readout's model; v1's presets; and every address
  * the page links to.
  */
-import { permits, weakestBasis, type Frequency, type RightsGate, type Surface, type TransformAggregation, type TransformedObservation, type VintageBasis } from "@macro-atlas/core";
+import { periodBounds, permits, weakestBasis, type Frequency, type RightsGate, type Surface, type TransformAggregation, type TransformedObservation, type VintageBasis } from "@macro-atlas/core";
 import type { Annotation, CatalogEntry } from "@macro-atlas/core/release";
 import { FREQUENCIES, SEGMENTS } from "../catalog";
 import { CATALOG_NAMES } from "../catalog-names.generated";
+import { eventPath } from "../event-address";
 import { NO_ANSWER, renderFigure, type Figure, type Layers, type SeriesStyle, type ShownSeries } from "../figure";
 import { dayWords, fixed, labelStart, periodWords, readingDecimals } from "../figure/words";
 import { latestValue, MAX_ROWS, MAX_SERIES, query, type QueryFailure, type VintageInfo } from "../query";
@@ -48,7 +49,7 @@ export type Selected = {
   removeQuery: string;
 };
 
-export type EventRow = { id: string; date: string; when: string; category: string; label: string; url: string | null; chosen: boolean; /** Chooses it, or lets it go. */ query: string };
+export type EventRow = { id: string; date: string; when: string; category: string; label: string; url: string | null; chosen: boolean; /** Chooses it, or lets it go. */ query: string; /** Its own page (`/events/{id}`), when the Release holds the Event behind the Annotation. */ page: string | null };
 export type PickerRow = { key: string; name: string; detail: string; checked: boolean; available: boolean };
 
 export type ExplorerView = {
@@ -177,7 +178,8 @@ const freqWords = (freq: string): string => (FREQUENCIES[freq] ?? freq).toLowerC
 /** The rungs two Series can be compared at (the engine's `pairFrame`). */
 const RUNGS = ["monthly", "quarterly", "annual"] as const;
 
-const EVENT_LABELS: Record<string, string> = { political: "Political", financial: "Financial", geopolitical: "Geopolitical", health: "Health & disaster", policy: "Economic policy" };
+/** v1's five, by v1's names, then the three M19 added. */
+export const EVENT_LABELS: Record<string, string> = { political: "Political", financial: "Financial", geopolitical: "Geopolitical", health: "Health & disaster", policy: "Economic policy", disaster: "Disaster", infrastructure: "Infrastructure", legislation: "Legislation" };
 const BAND_LABELS: Record<string, string> = {
   pres: "Presidential terms",
   house: "House control",
@@ -218,14 +220,22 @@ function ordered(found: Iterable<string>, known: readonly string[]): string[] {
 function anchorDate(a: Annotation): string | null {
   if (a.anchor.type === "date") return a.anchor.date;
   if (a.anchor.type === "span") return a.anchor.start;
-  return labelStart("monthly", a.anchor.period)?.period_start ?? null;
+  return periodOf(a.anchor.period)?.period_start ?? null;
+}
+/** An Annotation on a Period is on a month or, since M19, a year: never on a day made up for it. */
+const periodOf = (label: string) => labelStart(/^\d{4}$/.test(label) ? "annual" : "monthly", label);
+/** The last day an Annotation covers: a day is itself, a Period its last day, a span its end (null: still running). */
+function anchorEnd(a: Annotation): string | null {
+  if (a.anchor.type === "date") return a.anchor.date;
+  if (a.anchor.type === "span") return a.anchor.end;
+  return periodBounds(/^\d{4}$/.test(a.anchor.period) ? "annual" : "monthly", a.anchor.period)?.end ?? null;
 }
 function anchorWords(a: Annotation): string {
   const monthly = a.attributes?.date_precision === "month";
   const day = (date: string) => (monthly ? stopWords(`${date.slice(0, 7)}-01`) : dayWords(date, "short"));
   if (a.anchor.type === "date") return day(a.anchor.date);
   if (a.anchor.type === "span") return a.anchor.end === null ? `${day(a.anchor.start)} on` : a.anchor.start.slice(0, monthly ? 7 : 10) === a.anchor.end.slice(0, monthly ? 7 : 10) ? day(a.anchor.start) : `${day(a.anchor.start)} to ${day(a.anchor.end)}`;
-  const at = labelStart("monthly", a.anchor.period);
+  const at = periodOf(a.anchor.period);
   return at ? periodWords(at.freq, at, "short") : a.anchor.period;
 }
 const layerToken = (a: Annotation): string | null =>
@@ -436,7 +446,12 @@ export function explorerView(release: OpenedRelease, surface: Surface, state: Ex
   if (state.event !== null && !allEvents.some((a) => a.id === state.event)) notes.push("The event named in the address is not in this release.");
   const shownEvents = allEvents
     .map((a) => ({ a, date: anchorDate(a), token: layerToken(a)! }))
-    .filter((e): e is { a: Annotation; date: string; token: string } => e.date !== null && on.has(e.token) && inWindow(e.date))
+    // In the window when any part of it is: a day, a Period, or (M19) an Event that spans time.
+    .filter((e): e is { a: Annotation; date: string; token: string } => {
+      if (e.date === null || !on.has(e.token) || start === null || end === null) return false;
+      const last = anchorEnd(e.a);
+      return e.date <= end && (last === null || last >= start);
+    })
     .sort((x, y) => x.date.localeCompare(y.date));
   const chosen = shownEvents.find((e) => e.a.id === chosenId) ?? null;
 
@@ -715,6 +730,7 @@ export function explorerView(release: OpenedRelease, surface: Surface, state: Ex
     url: e.a.source && /^https:\/\//.test(e.a.source.url) ? e.a.source.url : null,
     chosen: e.a.id === chosenId,
     query: queryWith({ event: e.a.id === chosenId ? null : e.a.id }),
+    page: eventPath(e.a.ref),
   }));
 
   const selectedEntries = keys.map((k) => entries.get(k)!);

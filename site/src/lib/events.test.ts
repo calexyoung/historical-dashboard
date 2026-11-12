@@ -10,6 +10,7 @@ import { eventPageView, eventsIndexView, parseEventFilters } from "./events";
 import { createReleaseReader, refusal, type OpenedRelease } from "./release/reader";
 import { addRelease, FIXTURE_ROOT, tempRoot } from "./release/testing";
 import { breadcrumb, tabsFor } from "./nav";
+import { seriesPageView } from "./series-page";
 
 let fixture: OpenedRelease;
 beforeAll(async () => {
@@ -20,7 +21,7 @@ beforeAll(async () => {
 
 const RATE = "2024-09-18-fixture-rate-decision";
 const CITE = { url: "https://example.org/x", archive_url: "https://example.org/archive/x" };
-const base = { topics: [], related_series: [], sources: [CITE], description: "", status: "public" as const };
+const base = { topics: [], related_series: [], sources: [CITE] as [typeof CITE], description: "", status: "public" as const };
 const STATUTE: Event = { ...base, id: "2025-03-fixture-statute", date: "2025-03", date_precision: "month", title: "Fixture statute takes effect", category: "legislation" };
 const BRIDGES: Event = { ...base, id: "2023-fixture-bridges", date: "2023", date_precision: "year", title: "Fixture bridge programme begins", category: "infrastructure" };
 const STORM: Event = { ...base, id: "2025-08-04-fixture-storm", date: "2025-08-04", end: "2025-08-09", date_precision: "day", title: "Fixture storm crosses the coast", category: "disaster" };
@@ -122,12 +123,12 @@ describe("the events index", () => {
 
 describe("an event page", () => {
   it("is not found for an id the Release does not hold", () => {
-    expect(eventPageView(fixture, "production", "2020-01-01-nothing")).toBeNull();
-    expect(eventPageView(fixture, "production", "../../etc")).toBeNull();
+    expect(eventPageView(fixture, "local", "2020-01-01-nothing")).toBeNull();
+    expect(eventPageView(fixture, "local", "../../etc")).toBeNull();
   });
 
   it("states what happened, when, and where it can be checked", () => {
-    const v = eventPageView(fixture, "production", RATE)!;
+    const v = eventPageView(fixture, "local", RATE)!;
     expect(v).toMatchObject({ title: "Fixture central bank changes its rate", when: "18 September 2024", category: "Economic policy", draft: false });
     expect(v.description).toEqual(["The fixture central bank announced a new policy rate on 18 September 2024.", "The announcement was published in the fixture gazette the same day."]);
     expect(v.sources).toEqual([
@@ -139,7 +140,7 @@ describe("an event page", () => {
   });
 
   it("names each related Series: a door where the Release shows it, the reason where it does not", () => {
-    const v = eventPageView(fixture, "production", RATE)!;
+    const v = eventPageView(fixture, "local", RATE)!;
     expect(v.related).toEqual([
       { key: "fx_price_index", name: "Fixture price index", href: "/data/fx_price_index", state: null },
       { key: "fx_exchange_index", name: "Fixture exchange index", href: "/data/fx_exchange_index", state: "Withheld: The licence does not allow redistribution." },
@@ -148,7 +149,7 @@ describe("an event page", () => {
   });
 
   it("opens the Explorer on its Series around its date, with its layer on and itself marked", () => {
-    const v = eventPageView(fixture, "production", RATE)!;
+    const v = eventPageView(fixture, "local", RATE)!;
     expect(v.explorer).toBe("s=fx_price_index&from=2022-09&to=2026-09&layers=ev.policy&event=event-2024-09-18-fixture-rate-decision");
     const explorer = explorerView(fixture, "local", parseExplorerParams(new URLSearchParams(v.explorer!)));
     expect(explorer.events.find((e) => e.chosen)?.label).toBe("Fixture central bank changes its rate");
@@ -200,6 +201,19 @@ describe("the Explorer and the new ways an Event is dated", () => {
 
   it("each listed Event is a door to its page", () => {
     expect(view(fixture, "s=fx_price_index").events[0]!.page).toBe(`/events/${RATE}`);
+  });
+});
+
+describe("a series page", () => {
+  it("lists the Events an editor set beside the Series, each a door, and none for a Series with none", () => {
+    const page = (key: string) => {
+      const found = seriesPageView(fixture, "local", key, { search: new URLSearchParams(), address: "https://example.org/macro-atlas" });
+      if (found.kind !== "page") throw new Error(found.kind);
+      return found.view;
+    };
+    expect(page("fx_price_index").events).toEqual([{ id: RATE, when: "18 Sep 2024", title: "Fixture central bank changes its rate", href: `/events/${RATE}` }]);
+    expect(page("fx_exchange_index").events).toHaveLength(1); // withheld: the Event is still a fact of the record
+    expect(page("fx_output_quarterly").events).toEqual([]);
   });
 });
 

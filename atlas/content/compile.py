@@ -169,8 +169,14 @@ def compile_content(*, profile: str, content: Path | None = None, manual: Path |
     compiled_events = [{name: event[name] for name in EVENT_FIELDS if name in event} for event in events]
     annotations = [event_annotation(event) for event in events]
     left_out = f"; {len(drafts)} draft{'' if len(drafts) == 1 else 's'} left out" if profile == "public" and drafts else ""
-    out.report.append({"check": "content", "outcome": "pass",
-                       "detail": f"{len(events)} Event{'' if len(events) == 1 else 's'}{left_out}"})
+    if (content / "events").is_dir():
+        out.report.append({"check": "content", "outcome": "pass",
+                           "detail": f"{len(events)} Event{'' if len(events) == 1 else 's'}{left_out}"})
+    else:
+        # Never silently: a writer that cannot see the content (an image built without it)
+        # publishes a Release with no Event, and its check report says why.
+        out.report.append({"check": "content", "outcome": "warn",
+                           "detail": f"there is no directory {content / 'events'}: no Event is in this Release"})
 
     # --- hand-entered layers ---
     refused, taken = [], set()

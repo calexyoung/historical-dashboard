@@ -3,10 +3,11 @@
  * nothing in the bar leads to a page that is not built. Paths are without the base path.
  *
  * In the plan's order: Topics · Claims · Explore · Events · Data. Still to come: Topics (M23),
- * Claims (M21, once the first claim is public), Events (M19).
+ * Claims (M21, once the first claim is public).
  */
 export const TABS: readonly { href: string; label: string }[] = [
   { href: "/explore", label: "Explore" },
+  { href: "/events", label: "Events" },
   { href: "/data", label: "Data" },
 ];
 

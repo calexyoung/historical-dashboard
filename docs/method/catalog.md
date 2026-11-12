@@ -75,8 +75,10 @@ output shows a problem and never its consequences. Each error names the file. Ex
 | **semantics** | `agg` is not one the Measure kind allows (the engine's own table: a stock by last or mean, a flow by sum, a rate by mean, an index by mean or last, an annualized figure by mean; `none` always). The Recipes go round in a circle (the cycle is named). A Derived series is finer than an input, or takes an irregular one. A difference or sum takes inputs that are not in one unit (the engine's rule), or gives a result in another kind of unit; the difference of two percentages is not in percentage points; a percent change is not in percent. An active stored Series names no Endpoint; a Derived series that is not a draft has an input that is a draft or is not bound to an Endpoint. A range is upside down. The dated metadata versions do not start from the start or are out of order |
 | **rights** | The rights register is one the gate cannot trust. A Series that is not a draft comes through an intermediary Channel that no amendment to ADR 0006 has cleared (PLAN 6.1: nothing is fetched through FRED or Yahoo). A hand-entered file is in the repository and its Origin's row is not signed for `store` and `redistribute`: a committed file is a public copy (M16) |
 
+| **content** (M19) | A file under `content/events` is not an Event (`schema/event.schema.json`; real dates; named for its id) and is not the review record. A citation has neither an archived copy nor the reason there is none. An Event names a Series that is not in the Catalog. A `public` Event's title or description has a word of the list of causal and evaluative terms that the Event does not carry as accepted (a draft with one is a NOTE). A file under `notes/` is not one user's note in that user's folder (`docs/method/content.md`) |
+
 `python -m atlas check --v1` is v1's data check on `data/atlas.json`, which this name ran
-before M12; `make check` calls it. Events and Claims add layers of their own (M19, M20).
+before M12; `make check` calls it. Claims add rules of their own (M20).
 
 `make v2-check` runs `atlas check` and `atlas catalog --check`, and the pytest suite holds the
 committed Catalog to every layer.

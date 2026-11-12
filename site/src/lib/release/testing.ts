@@ -18,6 +18,8 @@ export type Variant = {
   id: string;
   profile?: "public" | "local";
   signed?: boolean;
+  /** Write it as a Release of the contract before Events (M19): no content/events.json. */
+  schema?: "0.2.0";
   /** Mark this stored series as v1's legacy representation, consistently in every file. */
   legacy?: string;
   /** Rename this series (catalog `name` only), so two releases can be told apart on a page. */
@@ -47,6 +49,10 @@ export function addRelease(root: string, variant: Variant): string {
   manifest.release_id = variant.id;
   if (variant.profile) manifest.profile = variant.profile;
   if (variant.signed !== undefined) manifest.rights_register.signed = variant.signed;
+  if (variant.schema) {
+    manifest.schema_version = variant.schema;
+    rmSync(join(dir, "content", "events.json"), { force: true });
+  }
   // A Series whose file is changed here no longer has the history the fixture wrote for it,
   // and a legacy Series never has one: its vintage file goes.
   for (const key of [...(variant.legacy ? [variant.legacy] : []), ...Object.keys(variant.edit ?? {})]) {
