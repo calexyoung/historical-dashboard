@@ -70,7 +70,7 @@ Variables the kit reads, and where each is set:
 | `ATLAS_STAGING_USER`, `ATLAS_STAGING_PASSWORD_HASH` | Caddy's own environment | The staging account. Never in this repository |
 | `ATLAS_PRODUCTION_UPSTREAM`, `ATLAS_STAGING_UPSTREAM` | nowhere on the server | Only `smoke.sh` sets them. Unset, Caddy dials `127.0.0.1:3101` and `:3102` |
 | `ATLAS_STAGING_PASSWORD` | your shell, for one command | Only for `check-staging-auth.sh`'s second half |
-| `ATLAS_INGEST_TAG` | nowhere; `deploy.sh` sets it for itself | Which writer image compose names: `candidate` during a deploy, otherwise `latest`, which the timers run |
+| `ATLAS_INGEST_TAG` | nowhere; `deploy.sh` and `restore.sh` set it for themselves | Which writer image compose names: `candidate` during a deploy or a restore, otherwise `latest`, which the timers run and only a deploy that succeeded replaces |
 | `ATLAS_WAIT_SECONDS` | nowhere, normally | How long a refresh or a backup waits for the other (default 1800) |
 | `ATLAS_PROJECT`, `HEADROOM_*` | nowhere on the server | Test overrides |
 
@@ -215,7 +215,11 @@ exists (M27).
     and wait for a run in progress (`systemctl status macro-atlas-ingest@staging.service`).
 22. **[ALEX]** Stop the web app: `docker compose -p macro-atlas-staging down`. A running
     container keeps the directory it was started on and would go on serving the old one;
-    `restore.sh` refuses while it runs.
+    `restore.sh` refuses while it runs. The command names the project and no compose file on
+    purpose: Compose finds a project's containers by their labels, so it works from any
+    directory and needs none of the Surface's settings. That is Docker Compose v2's behaviour
+    (the `docker compose` plugin; `smoke.sh` runs the command that way on every pull request).
+    The old standalone `docker-compose` v1 is not supported by this kit.
 23. **[ALEX]** Move what is there aside, and make the parent writable by the writer:
 
     ```

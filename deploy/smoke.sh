@@ -10,7 +10,8 @@
 #      staging build; staging answers 401 without the password on a page, a twin, a static
 #      asset and the API, and 200 with it; a path that only looks like one of them is neither;
 #   4. the writer promotes a Release and both web apps serve it with no restart;
-#   5. deploy/backup.sh then deploy/restore.sh give back the same store and root elsewhere.
+#   5. deploy/backup.sh then deploy/restore.sh give back the same store and root elsewhere;
+#   6. the runbook's stop command (docker compose -p <project> down, no -f) stops one web app.
 #
 # Every value is invented: the store and the roots are written inside the writer's image by
 # fixtures/release/demo.py from the recorded fixture exchanges. Nothing is asked of any
@@ -193,5 +194,21 @@ echo "ok  the restored store and root are the ones backed up, and doctor passes 
 
 echo "== what the two web apps use (for deploy/headroom.sh's budget)"
 docker stats --no-stream --format '{{.Name}}  {{.MemUsage}}' "$PRODUCTION_ID" "$STAGING_ID" || true
+
+echo "== the runbook's stop command, as it is written there: the project's name and no compose file"
+# RUNBOOK steps 22, 30 and 36, and restore.sh's refusal, say `docker compose -p <project> down`
+# (or `logs web`).
+# Compose finds a project's containers by their labels, so the command needs neither -f nor
+# the Surface's settings. Run from a directory that holds no compose file, it must stop the
+# web app, and restore.sh must then go past its "is running" refusal.
+mkdir -p "$WORK/elsewhere"
+(cd "$WORK/elsewhere" && docker compose -p macro-atlas-smoke-staging logs --tail 1 web >/dev/null 2>&1) \
+  || fail "docker compose -p macro-atlas-smoke-staging logs web failed without a compose file"
+(cd "$WORK/elsewhere" && docker compose -p macro-atlas-smoke-staging down >/dev/null 2>&1) \
+  || fail "docker compose -p macro-atlas-smoke-staging down failed without a compose file"
+[ -z "$(docker ps -aq --filter "label=com.docker.compose.project=macro-atlas-smoke-staging")" ] \
+  || fail "the staging web app is still there after the runbook's stop command"
+[ -n "$(dc production ps -q web)" ] || fail "stopping staging stopped production"
+echo "ok  docker compose -p <project> down stops that Surface's web app and no other"
 
 echo "SMOKE OK"
