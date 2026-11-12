@@ -105,8 +105,9 @@ def test_a_register_with_no_signed_row_clears_nothing_so_capture_refuses_and_fet
     assert "is not signed" in out
 
 
-def test_the_committed_register_clears_exactly_the_rows_alex_has_signed(tmp_path, capsys):
+def test_the_committed_register_clears_exactly_the_rows_alex_has_signed(tmp_path, capsys, monkeypatch):
     """The one test here of the committed register. It is a dry run: nothing is fetched."""
+    monkeypatch.delenv("GITHUB_ACTIONS", raising=False)  # the lines as printed, not as annotations
     table, signed = load_register(), signed_in_committed()
     gate = RightsGate(table)
     endpoints = endpoints_from_register(table)
