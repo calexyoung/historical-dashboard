@@ -75,6 +75,11 @@ export type ReleaseReader = {
    */
   pinned?(id: string): Promise<Opened>;
   /**
+   * The text of the root's `saved.json` (saved queries, a local root only), or null when there
+   * is none that can be read. The caller reads it as a fixed selection (lib/explorer/saved.ts).
+   */
+  savedText?(): Promise<string | null>;
+  /**
    * How the writer's last run in this root ended (`STATUS.json`), as a fixed selection; null
    * when there is no record, or none that can be read. It may name a Release other than the
    * one being served: a run that was rejected leaves CURRENT as it was.
@@ -302,6 +307,17 @@ export function createReleaseReader(options: {
     return open(id);
   }
 
+  async function savedText(): Promise<string | null> {
+    try {
+      const path = join(root, "saved.json");
+      const info = await lstat(path);
+      if (!info.isFile() || info.size > 1_000_000) return null;
+      return await readFile(path, "utf8");
+    } catch {
+      return null;
+    }
+  }
+
   async function lastRun(): Promise<LastRun | null> {
     try {
       const doc = JSON.parse(await readFile(join(root, "STATUS.json"), "utf8")) as Record<string, unknown> | null;
@@ -320,5 +336,5 @@ export function createReleaseReader(options: {
     }
   }
 
-  return { current, open, pinned, lastRun };
+  return { current, open, pinned, savedText, lastRun };
 }

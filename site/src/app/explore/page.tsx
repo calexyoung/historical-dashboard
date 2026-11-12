@@ -20,7 +20,8 @@ import { MAX_SERIES } from "@/lib/query";
 import { BASIS_INFO } from "@/lib/series-words";
 import { SEMANTICS_VERSION } from "@macro-atlas/core";
 import { dayWords } from "@/lib/figure/words";
-import { releaseForRequest } from "@/lib/release/server";
+import { savedAddress, savedQueries } from "@/lib/explorer/saved";
+import { getReader, releaseForRequest } from "@/lib/release/server";
 
 export const metadata: Metadata = { title: "Explore" };
 
@@ -46,7 +47,7 @@ const NOT_DRAWN: Record<Exclude<Selected["state"], "drawn">, string> = { not_dra
  * each one is a whole drawing for the server.
  */
 export default async function ExplorePage({ searchParams }: PageProps<"/explore">) {
-  const { release, pinnedFrom } = await releaseForRequest();
+  const { release, pinnedFrom, address } = await releaseForRequest();
   const state = parseExplorerParams(await searchParams);
   const view = explorerView(release, SURFACE, state);
   const here = `${BASE_PATH}/explore`;
@@ -80,6 +81,9 @@ export default async function ExplorePage({ searchParams }: PageProps<"/explore"
     ...table,
     ...held,
   ];
+  // Saved queries carry a person's own note: they are shown on the local Surface only (ADR 0032).
+  const saved = SURFACE === "local" ? savedQueries((await getReader().savedText?.()) ?? "") : [];
+  const saveable = SURFACE === "local" && release.manifest.profile === "local" ? savedAddress(view.resolvedQuery.replace(/&(table|pick)=1/g, "")) : null;
   const drawnSeries = view.selection.filter((s) => s.state === "drawn");
   const kept = view.selection.filter((s) => s.state !== "drawn");
   const drawn = view.selection.filter((s) => s.state === "drawn").length;
@@ -119,6 +123,24 @@ export default async function ExplorePage({ searchParams }: PageProps<"/explore"
         )}
       </Panel>
 
+      {saved.length > 0 && (
+        <Panel id="saved" title="Saved views" meta="Each is pinned to the release it was saved on, and kept with it." bodyClassName="p-0">
+          <ul data-saved className="max-h-72 overflow-y-auto">
+            {saved.map((q) => (
+              <li key={q.id} data-saved-query={q.id} className="grid gap-x-3 border-b border-line px-4 py-1.5 text-sm last:border-b-0 sm:grid-cols-[7rem_minmax(0,1fr)]">
+                <span className="num text-ink-2">{dayWords(q.savedAt.slice(0, 10), "short")}</span>
+                <span className="min-w-0">
+                  <a href={`${BASE_PATH}/explore?${q.query}`} className={`${link} inline-flex min-h-6 items-center`}>
+                    {q.note}
+                  </a>
+                  <span className="num block truncate text-xs text-ink-3">release {q.releaseId}</span>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </Panel>
+      )}
+
       <Panel id="view" title="View" bodyClassName="flex flex-col gap-4 p-4">
         <div className="flex flex-wrap items-center gap-2">
           <SeriesPicker
@@ -155,6 +177,15 @@ export default async function ExplorePage({ searchParams }: PageProps<"/explore"
               Every series in this release as one CSV
             </a>
           </p>
+        )}
+        {saveable !== null && view.figure && (
+          <details data-save className="-mt-2 text-xs text-ink-3">
+            <summary className={summary.replace("text-sm", "text-xs")}>Save this view</summary>
+            <p className="mt-1 max-w-[80ch]">
+              A saved view is this address pinned to {resolved.pin ? "its release" : "the current release"}, with a note; the release is kept for as long as the view is. Run this where the release root is, with your own note:
+            </p>
+            <pre tabIndex={0} className="num mt-1 max-w-full overflow-x-auto rounded border border-line bg-raised p-2 text-ink">{`python -m atlas save '${address}/explore?${saveable}' --profile local --note "what this view is for"`}</pre>
+          </details>
         )}
         {view.figure && exporting.allowed && exporting.leftOut.length > 0 && (
           <p data-export-left-out className="-mt-2 max-w-[80ch] text-xs text-ink-3">

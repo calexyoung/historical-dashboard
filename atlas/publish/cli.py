@@ -6,6 +6,8 @@
     python -m atlas rollback ID --profile P          name an earlier Release in CURRENT
     python -m atlas pin ID --profile P --reason WHY  keep a Release through retention
     python -m atlas unpin ID --profile P
+    python -m atlas save ADDRESS --profile local --note WHY   keep an Explorer view, pinned
+    python -m atlas save --list | --remove ID --profile local
     python -m atlas withdraw KEY --profile P --reason WHY
                                                      take a Series down and retire what held it
     python -m atlas doctor                           the health of the roots and the store
@@ -22,11 +24,11 @@ import argparse
 import sys
 from pathlib import Path
 
-from . import pin, release, rollback, unpin, withdraw
+from . import pin, release, rollback, save, unpin, unsave, withdraw
 from . import root as R
 from .doctor import SURFACES, doctor
 
-COMMANDS = ("release", "rollback", "pin", "unpin", "withdraw", "doctor")
+COMMANDS = ("release", "rollback", "pin", "unpin", "save", "withdraw", "doctor")
 
 
 def _common(parser: argparse.ArgumentParser) -> None:
@@ -58,6 +60,12 @@ def main(argv: list[str] | None = None) -> int:
         _common(p)
         if name == "pin":
             p.add_argument("--reason", required=True, help="what names this Release")
+    p = sub.add_parser("save", help="keep an Explorer view with a Pin and a note (a saved query); local root only")
+    p.add_argument("address", nargs="?", help="the link the Explorer's \"Copy link\" gives, or its query string")
+    _common(p)
+    p.add_argument("--note", help="what the view is for: one line")
+    p.add_argument("--list", action="store_true", help="list the root's saved queries")
+    p.add_argument("--remove", metavar="ID", help="remove a saved query; its Release is then kept only if something else names it")
     p = sub.add_parser("withdraw", help="take a Series down and retire the Releases that held it")
     p.add_argument("key")
     _common(p)
@@ -89,6 +97,19 @@ def main(argv: list[str] | None = None) -> int:
         result = pin(release_id=args.release_id, reason=args.reason, **common)
     elif args.command == "unpin":
         result = unpin(release_id=args.release_id, **common)
+    elif args.command == "save":
+        if args.list:
+            entries = R.saved(common["root"])
+            for entry in entries:
+                print(f"{entry.get('id')}  {entry.get('saved_at')}  {entry.get('release_id')}\n  {entry.get('note')}\n  /explore?{entry.get('query')}")
+            print(f"{len(entries)} saved {'query' if len(entries) == 1 else 'queries'} in {common['root']}")
+            return 0
+        if args.remove:
+            result = unsave(saved_id=args.remove, **common)
+        elif not args.address or not args.note:
+            parser.error("save needs an address and --note (or --list, or --remove ID)")
+        else:
+            result = save(address=args.address, note=args.note, **common)
     else:
         result = withdraw(key=args.key, reason=args.reason, **common)
     print("\n".join(result.lines))
