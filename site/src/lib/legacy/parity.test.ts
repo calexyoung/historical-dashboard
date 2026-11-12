@@ -11,7 +11,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { beforeAll, describe, expect, it } from "vitest";
-import { transform, TRANSFORMS, type TransformName, type TransformResult } from "@macro-atlas/core";
+import { transform, type TransformName, type TransformResult } from "@macro-atlas/core";
 import type { CatalogEntry, SeriesFile } from "@macro-atlas/core/release";
 import { createReleaseReader, type OpenedRelease } from "../release/reader";
 import { catalogView, parseCatalogFilters, releaseHoldsLegacy } from "../catalog";
@@ -21,7 +21,9 @@ import { buildLegacyRelease, REPO, v1Page, v1Stats, type LegacyFixture, type V1D
 type Arr = (number | null)[];
 type WindowSpec = { name: string; from: string; to: string };
 const WINDOWS = (JSON.parse(readFileSync(join(REPO, "checks", "v1-parity-windows.json"), "utf8")) as { windows: WindowSpec[] }).windows;
-const V1_MODE: Record<TransformName, string> = { lin: "raw", log: "log", rebase: "rebase", z: "z", pc1: "yoy", drawdown: "dd" };
+/** The six Transforms v1 had, under its own names. The four M11 added have nothing in v1 to match. */
+const V1_MODE = { lin: "raw", log: "log", rebase: "rebase", z: "z", pc1: "yoy", drawdown: "dd" } as const satisfies Partial<Record<TransformName, string>>;
+const V1_TRANSFORMS = Object.keys(V1_MODE) as (keyof typeof V1_MODE)[];
 
 const same = (a: number | null, b: number | null): boolean => {
   if (a === null || b === null) return a === b;
@@ -104,7 +106,7 @@ function compare(release: OpenedRelease, DB: V1Data, Stats: V1Stats): Tally {
       tally.windows++;
       const onQuarters = [1, 4, 7, 10].includes(Number(w.from.slice(5))) && [3, 6, 9, 12].includes(Number(w.to.slice(5)));
 
-      for (const name of TRANSFORMS) {
+      for (const name of V1_TRANSFORMS) {
         const v1 = page.transformV1(key, V1_MODE[name], i0, i1);
         const v2: TransformResult = transform(input, name, window);
         const v2Values = v2.ok ? v2.observations.map((o) => o.value) : native.map(() => null);

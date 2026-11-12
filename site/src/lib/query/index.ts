@@ -198,7 +198,7 @@ export function query(
     const entry = entries.get(key)!;
     const file = fileOf(release, key);
     if (!file) return fail(404, "unknown_series", `this release holds no values for ${key}`);
-    const result = transform({ freq: file.freq, continuity: entry.continuity, observations: file.observations, allowed: entry.allowed_transforms }, request.transform, window);
+    const result = transform({ freq: file.freq, continuity: entry.continuity, observations: file.observations, allowed: entry.allowed_transforms, measure_kind: entry.measure_kind, agg: entry.agg }, request.transform, window);
     if (result.ok) rows += result.observations.length;
     if (rows > maxRows) {
       return fail(422, "too_large", `the answer would hold more than ${maxRows} observations; ask for fewer series or a shorter window`);

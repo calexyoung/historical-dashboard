@@ -14,14 +14,18 @@
  * Pure, with no knowledge of any Release: which Series, layers and Events exist is the view's
  * business (view.ts). Safe to load in a browser.
  */
-import { TRANSFORMS, type TransformName } from "@macro-atlas/core";
 
-export const MODES: readonly TransformName[] = TRANSFORMS;
+/**
+ * The Transforms the Explorer offers: v1's six modes. The engine's allowlist is longer since
+ * M11 (`chg`, `ch1`, `pch`, `pca`); they are answered by Query and reach the Explorer with M18.
+ */
+export const MODES = ["lin", "log", "rebase", "z", "pc1", "drawdown"] as const;
+export type ExplorerMode = (typeof MODES)[number];
 
 export type ExplorerState = {
   /** Series keys in the order asked. Null: the address does not say. Empty: it says none. */
   series: string[] | null;
-  mode: TransformName | null;
+  mode: ExplorerMode | null;
   /** Months, YYYY-MM: the window runs from the first day of `from` to the last day of `to`. */
   from: string | null;
   to: string | null;
@@ -93,10 +97,10 @@ export function parseExplorerParams(input: URLSearchParams | Record<string, stri
     if (series.length < asked.length) notes.push("Part of the list of series is not a series key and was left out.");
   }
 
-  let mode: TransformName | null = null;
+  let mode: ExplorerMode | null = null;
   const askedMode = params.get("mode");
   if (askedMode !== null && askedMode !== "") {
-    if ((MODES as readonly string[]).includes(askedMode)) mode = askedMode as TransformName;
+    if ((MODES as readonly string[]).includes(askedMode)) mode = askedMode as ExplorerMode;
     else notes.push(`The mode in the address is not one of ${MODES.join(", ")}.`);
   }
 
@@ -208,7 +212,7 @@ export function explorerQuery(state: Omit<ExplorerState, "notes">): string {
 
 // --- v1 ---------------------------------------------------------------------------------------
 
-const V1_MODE: Record<string, TransformName> = { raw: "lin", log: "log", rebase: "rebase", z: "z", yoy: "pc1", dd: "drawdown" };
+const V1_MODE: Record<string, ExplorerMode> = { raw: "lin", log: "log", rebase: "rebase", z: "z", yoy: "pc1", dd: "drawdown" };
 /** v1's five Event categories, in the order of its chips, and its six band sets. */
 export const V1_EVENT_CATEGORIES = ["political", "financial", "geopolitical", "health", "policy"] as const;
 export const V1_BAND_SETS = ["pres", "house", "senate", "fed_chair", "treasury", "shutdowns"] as const;
