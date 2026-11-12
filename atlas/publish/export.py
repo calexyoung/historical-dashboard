@@ -344,7 +344,8 @@ def lag_limit(period_end: str, max_lag: str | None) -> str | None:
 def _freshness(store: Path, vintages: VintageStore, published: list[tuple[dict, dict, dict]],
                created: datetime) -> list[dict]:
     """One line per Origin and Channel published from: when its last recorded Capture was
-    retrieved, and whether the last fetch failed or its newest Period is older than allowed."""
+    retrieved, and whether the last fetch failed or its newest Period is older than allowed.
+    A source that was not asked for want of its key is stale, and says when it was last fetched."""
     fetches = S.read_fetch_log(store)
     groups: dict[tuple[str, str], dict] = {}
     for spec, entry, document in published:
@@ -357,7 +358,13 @@ def _freshness(store: Path, vintages: VintageStore, published: list[tuple[dict, 
         attempts = [line for line in fetches if line.get("endpoint") == spec["endpoint"]]
         if attempts:
             newest = attempts[-1]
-            if newest.get("outcome") != "captured":
+            if newest.get("outcome") == "no_key":
+                # The source wants a key and the run had none, so it was not asked (M15). What
+                # is published is the last state recorded from it: stale, not failed. The
+                # time is this Series' own last recorded Capture, not the source's newest.
+                group["stale"].append(f"{spec['endpoint']}: {S.stale_phrase(last)} (not asked on "
+                                      f"{newest.get('started_at')}: {newest.get('error')})")
+            elif newest.get("outcome") != "captured":
                 group["failed"].append(f"the last fetch of {spec['endpoint']} "
                                        f"({newest.get('started_at')}) was {newest.get('outcome')}")
             elif newest["capture_id"] not in {line["capture_id"] for line in caplog}:

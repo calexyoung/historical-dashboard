@@ -5,8 +5,10 @@ makes the requests through a ``Fetch`` and returns the *completeness evidence*: 
 for (the scope), what came back (the checks) and every reason the answer is not whole (the
 problems). ``examine`` is the same judgement made from kept bytes alone, so a replay can make it
 again. An adapter raises ``CaptureError`` when a fetch fails and never calls a partial answer
-complete. Parsing for Treasury Fiscal Data and the Federal Reserve Board arrives in M13 and
-replays the captures made from here on.
+complete. Parsing for Treasury Fiscal Data and the Federal Reserve Board arrived in M13, the
+IMF's SDMX API in M14, and the two sources that want an API key, the BEA and the EIA, in M15.
+An adapter never holds a key: it says which one a request wants (``key``) and the Session
+adds it as the request is sent (ADR 0029).
 
 Structure and freshness are different questions. "Complete" here means the source answered the
 whole of what was asked, in the shape expected. Whether the newest value is recent is not

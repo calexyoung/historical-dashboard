@@ -60,6 +60,12 @@ jobs:
           # "bls treasury-fiscal-data fed-board"). Empty means every endpoint the register lists.
           # It selects; it clears nothing: a selected row that is not signed still fails the run.
           ATLAS_CAPTURE_ONLY: ${{ vars.ATLAS_CAPTURE_ONLY }}
+          # Optional (M15): the two free API keys, as secrets of the capture repository. The job
+          # adds a key to a request as it is sent and keeps it nowhere: not in a URL, a log line
+          # or a kept answer. Without a key its source is not asked: the run says STALE for
+          # each of its endpoints, fetches the rest and ends red.
+          BEA_API_KEY: ${{ secrets.BEA_API_KEY }}
+          EIA_API_KEY: ${{ secrets.EIA_API_KEY }}
         run: |
           set -f
           only=""

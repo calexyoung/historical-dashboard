@@ -44,8 +44,8 @@ a signed row (ADR 0020). Nothing typed into the Catalog can grant anything.
 ## Draft, active, retired
 
 A **draft** is a declaration. Nothing is captured, replayed, computed or released for it, and
-a local Release keeps v1's own Series, with v1's own provenance, for its key. 86 of the
-Catalog's 179 Series are drafts today.
+a local Release keeps v1's own Series, with v1's own provenance, for its key. 77 of the
+Catalog's 185 Series are drafts today.
 
 A stored Series becomes **active** when an adapter fetches it: its `source.channel` names the
 Endpoint (an id from the rights register's capture lists) and its Origin's identifier. From
