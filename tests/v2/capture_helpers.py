@@ -78,3 +78,10 @@ class Scripted:
 
 def refused(message="connection reset"):
     return TransportError(message)
+
+
+class LiveScripted(Scripted):
+    """A scripted transport that calls itself live: keys are sent through it, as they would be
+    to a source. The bytes are still invented and nothing leaves the machine."""
+
+    kind = "live"

@@ -144,7 +144,7 @@ The first is `cpi_yoy` for June 2022: 9.1, within 0.05.
 | `rights_register` | The register's `version` and the SHA-256 of the file's bytes, read once at the start of the run. `signed` is true when that register can be trusted and every Series published is permitted by it for display on production. It is false for any Release that holds a legacy Series. It authorises nothing: readers ask their own gate |
 | `series` | One row per file: kind, hash, State hash, Channel, rights status, representation |
 | `withheld` | Key and reason |
-| `sources` | One line per Origin and Channel published from: the time of its last recorded Capture, and `ok`, `failed` (the last fetch of its Endpoint did not come back whole) or `stale` (a Capture not yet replayed, or a last Period older than `max_lag`) |
+| `sources` | One line per Origin and Channel published from: the time of its last recorded Capture, and `ok`, `failed` (the last fetch of its Endpoint did not come back whole) or `stale` (a Capture not yet replayed, a last Period older than `max_lag`, or a source that was not asked because the run had no API key for it: the detail then reads "stale, last fetched TIME", the time being that Series' own last recorded Capture) |
 | `checks` | The report below |
 | `inputs` | A local Release: v1's files, as the legacy converter records them |
 | `reused_data_from` | A `--reuse-data` Release: the Release whose data files it links |
@@ -219,7 +219,10 @@ a rejection.
 A provider that answers with an empty body or a page of HTML never reaches a Release: the
 capture kit flags the answer, replay records nothing from it, and the Release is written from
 the last good state with the source marked `failed`. A provider that goes on serving old data
-gives a Release whose source is `stale`.
+gives a Release whose source is `stale`. So does a source that wants an API key when the capture run had
+none (M15): it was not asked, the Release holds the last state recorded from it, and the
+manifest says when that was. The site does not show per-source status yet (M17's status page). Where one
+source has both a failed fetch and a stale note, the line says `failed` and gives the failure.
 
 ## Retention, pins, rollback
 

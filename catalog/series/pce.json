@@ -1,0 +1,39 @@
+{
+  "key": "pce",
+  "name": "US personal consumption expenditures",
+  "description": "Monthly, seasonally adjusted at annual rates, current dollars.",
+  "unit": "millions of U.S. dollars, annual rate",
+  "unit_kind": "currency",
+  "measure_kind": "annualized",
+  "agg": "mean",
+  "freq": "monthly",
+  "continuity": "discrete",
+  "seasonal_adjustment": "saar",
+  "price_basis": "nominal",
+  "country": "USA",
+  "segment": "economy_jobs",
+  "topics": [
+    "us-economy"
+  ],
+  "source": {
+    "origin": {
+      "producer": "U.S. Bureau of Economic Analysis",
+      "dataset": "National Income and Product Accounts, Table 2.6",
+      "origin_id": "DPCERC",
+      "url": "https://www.bea.gov/data/consumer-spending/main"
+    },
+    "channel": {
+      "via": "direct",
+      "adapter": "bea",
+      "endpoint": "bea-nipa-t20600",
+      "auth": "api_key"
+    }
+  },
+  "refresh": "monthly",
+  "max_lag": "P3M",
+  "range": [
+    100000,
+    80000000
+  ],
+  "status": "active"
+}

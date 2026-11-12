@@ -19,6 +19,9 @@ its terms reserve. A run can leave a source out: `--only bls --only treasury-fis
 --only fed-board` fetches the first three and does not ask about the IMF's row (on the host:
 the variable `ATLAS_CAPTURE_ONLY`, below).
 
+The BEA's and the EIA's endpoints (M15) are on the `bea` and `eia` rows, wait for them in the
+same way, and each wants a free API key besides (D8; "API keys" below).
+
 Every day between the day both are answered and the day the job starts is a day of
 Atlas-observed history that cannot be recovered.
 
@@ -33,7 +36,8 @@ fetchlog.ndjson                         one line per capture: time, request, hea
 runs.ndjson                             one line per run
 ```
 
-It needs Python 3.11 or later and `requests`. No Node, no pandas, no API key, no secret.
+It needs Python 3.11 or later and `requests`. No Node, no pandas. The first four sources need no
+key and no secret; the BEA and the EIA need one key each ("API keys" below).
 
 | Endpoint | Row | What one run asks for | Size on 2026-11-11 |
 |---|---|---|---|
@@ -53,6 +57,16 @@ It needs Python 3.11 or later and `requests`. No Node, no pandas, no API key, no
 | `fed-chgdel-delinquency` | `fed-board` | one GET: delinquency rates, all commercial banks | 23 KB |
 | `imf-cpi-g20` | `imf` | one GET: the consumer price index of the nineteen G20 countries, monthly, whole history | 0.6 MB |
 | `imf-er-g20` | `imf` | one GET: national currency per U.S. dollar, monthly average, sixteen currencies, whole history | 0.4 MB |
+| `bea-nipa-t10101` | `bea` | one GET, with a key: NIPA table 1.1.1 (percent change in real GDP), quarterly, every year | 2.0 MB |
+| `bea-nipa-t10105` | `bea` | one GET, with a key: NIPA table 1.1.5 (GDP, current dollars), quarterly, every year | 1.9 MB |
+| `bea-nipa-t10106` | `bea` | one GET, with a key: NIPA table 1.1.6 (real GDP, chained dollars), quarterly, every year | 1.1 MB |
+| `bea-nipa-t11200` | `bea` | one GET, with a key: NIPA table 1.12 (national income by type), quarterly, every year | 3.7 MB |
+| `bea-nipa-t20600` | `bea` | one GET, with a key: NIPA table 2.6 (personal income and its disposition), monthly, every year | 8.6 MB (0.26 MB gzipped) |
+| `bea-ita-balance` | `bea` | one GET, with a key: the balance on goods and services, quarterly, every year | 0.1 MB |
+| `eia-petroleum-spot` | `eia` | one GET, with a key: WTI and Brent spot prices, monthly | 0.3 MB |
+| `eia-natgas-spot` | `eia` | one GET, with a key: Henry Hub spot price, monthly | 0.1 MB |
+| `eia-gasoline-retail` | `eia` | one GET, with a key: U.S. regular gasoline, retail, weekly | 0.6 MB |
+| `eia-generation-us` | `eia` | one GET, with a key: net electricity generation, all fuels, monthly | 0.1 MB |
 
 A run of the first three sources is 20 requests, at least a second apart per host, and took
 37 seconds on 2026-11-11; the IMF's two endpoints (M14) add two requests and about 1 MB.
@@ -60,6 +74,42 @@ The answers come to about 11 MB before compression. Two runs a day add
 at most that much when every source changes; a response that has not changed since earlier
 the same day adds a log line and no blob, and git stores identical bytes once however many
 days they recur. Most of these files change monthly or quarterly.
+
+The BEA's six endpoints and the EIA's four (M15) add ten requests and about 18 MB a run
+before compression, 0.6 MB after it. The BEA stamps every answer with the time it was made, so
+its answers are never the same bytes twice and each run keeps all six: about 1.1 MB a day
+compressed at two runs.
+
+## API keys
+
+Two sources want a free key: the BEA (`BEA_API_KEY`) and the EIA (`EIA_API_KEY`). The job reads
+them from its environment and from nowhere else. A key is added to a request as it is sent. It
+is not in the register, not in the request the fetch log records, and not in a kept answer: the
+BEA repeats the key in every answer, and the job replaces each copy with the word `REDACTED`
+before anything is hashed or written (`key_removed` on the log line counts them). A key is
+letters, digits and hyphens, 16 to 128 of them; anything else is not sent.
+
+Without its key a source is not asked. Each of its endpoints is reported as
+
+```
+STALE bea-nipa-t10106: stale, last fetched 2026-11-11T15:50:03Z (BEA_API_KEY is not set; nothing was asked)
+```
+
+the other endpoints are fetched as usual, and the run ends red (exit status 1), because not
+everything selected was captured. A Release written afterwards publishes the last state
+recorded from that source and marks the source `stale`, with the same words in its manifest.
+To run without the two sources and end green, leave their rows out of `ATLAS_CAPTURE_ONLY`.
+
+On the GitHub host the keys are two **secrets** of the capture repository (Settings → Secrets
+and variables → Actions → New repository secret), named exactly `BEA_API_KEY` and
+`EIA_API_KEY`; the workflow hands them to the Capture step and to no other. Creating them is
+Alex's step. On this machine they live in a file outside the repository and are loaded into
+the shell that runs the job:
+
+```
+set -a; . ~/.config/macro-atlas/keys.env; set +a
+.venv/bin/python -m atlas capture --dry-run     # says whether each key is set, never what it is
+```
 
 BLS without a key: ten years per request (a longer range is cut, with a message, and the job
 flags that as incomplete), and a daily limit on requests that is believed to be 25 and has not
@@ -78,8 +128,9 @@ program will send: add a year to that endpoint's `from_years` in the register.
 Steps 1 to 5 are Alex's; the builder does not create repositories, variables or schedules.
 
 1. Sign the rows of the sources the job is to fetch (D2), merge that change into `v2`, and note
-   the commit's full SHA. The register lists endpoints on four rows: `bls`,
-   `treasury-fiscal-data`, `fed-board` and, since M14, `imf`.
+   the commit's full SHA. The register lists endpoints on six rows: `bls`,
+   `treasury-fiscal-data`, `fed-board`, since M14 `imf`, and since M15 `bea` and `eia`. For the
+   last two, also add the two secrets ("API keys" above).
 2. Create a **private** repository, for example `macro-atlas-captures`, with a README so it has a
    default branch. Add a `.gitignore` containing the one line `LOCK`.
 3. In that repository's settings, under Actions → Variables, add `ATLAS_REF` with the SHA from
@@ -113,6 +164,7 @@ clearing any.
 | `CAPTURED id` | The source answered the whole of what was asked | Nothing |
 | `INCOMPLETE id: …` | It answered, but not the whole (a BLS message, a page missing, a column gone). The bytes are kept and flagged; `atlas replay` never treats them as the state of a series | Read the reason. Usually the next run is whole; if the source changed shape, the adapter needs a fix |
 | `FAILED id: …` | No usable answer after four tries | Usually the next run succeeds. A day with no whole capture becomes a missed day |
+| `STALE id: stale, last fetched … (KEY is not set; nothing was asked)` | The source wants an API key and the run had none. It was not asked; what was kept before stands | Add the key ("API keys"), or leave the row out of `ATLAS_CAPTURE_ONLY` |
 | `MISSED id: dates` | Finished days (New York time) with no whole capture of that endpoint, counted from the first run that selected it | Nothing can recover them. They become Capture gaps, and as-of answers across them are marked uncertain |
 | `REFUSED …` | The rights gate, the register or the store lock stopped the run before any request | Fix what it names |
 

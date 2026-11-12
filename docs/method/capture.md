@@ -1,7 +1,7 @@
 # Capture
 
 How Macro Atlas keeps what a source served, before anything is parsed (PLAN 4.3, 4.7 and M7;
-ADR 0012, ADR 0021, ADR 0027). The code is `atlas/capture/`; the host kit is `deploy/capture/`.
+ADR 0012, ADR 0021, ADR 0027, ADR 0029). The code is `atlas/capture/`; the host kit is `deploy/capture/`.
 
 ## What a Capture is
 
@@ -22,11 +22,13 @@ and a Provider vintage (CONTEXT.md).
 3. Locks the store. A second run started meanwhile exits at once.
 4. Reports missed days: finished New York days, since the first run that selected an endpoint,
    with no whole capture of it.
-5. Fetches each endpoint in turn, one request at a time, at least a second apart per host,
+5. On a live run, passes over each endpoint whose source wants an API key the run does not
+   have ("API keys" below): it is not asked, and is reported stale.
+6. Fetches each endpoint in turn, one request at a time, at least a second apart per host,
    retrying a 5xx, a 429 or a network error three times with a growing wait, and leaving a host
    alone for the rest of the run once two requests to it have ended in 429.
-6. Writes each response body to `raw/`, then one line to `fetchlog.ndjson`.
-7. Writes its finishing line to `runs.ndjson` (the starting line was written before the first
+7. Writes each response body to `raw/`, then one line to `fetchlog.ndjson`.
+8. Writes its finishing line to `runs.ndjson` (the starting line was written before the first
    request) and exits 0 only if every endpoint was captured whole.
 
 Redirects are not followed: a 3xx fails the fetch.
@@ -38,6 +40,7 @@ Redirects are not followed: a 3xx fails the fetch.
 | `captured` | Every completeness check passed | Bytes, evidence |
 | `incomplete` | The source answered 200 but not with the whole of what was asked | Bytes, evidence with the reasons. Never treated as the state of a Series |
 | `failed` | No usable answer: a status other than 200 after retries, or no answer at all | Whatever did arrive, including an error page, and the error |
+| `no_key` | The source wants an API key and the run had none, or one of the wrong shape. Nothing was asked | A log line that says which key, and nothing else. What was captured before stands |
 
 What "whole" means per source:
 
@@ -61,10 +64,26 @@ What "whole" means per source:
   the ones the endpoint expects; a column that is read has at least one entry; and a package
   asked for in spans answers each span with rows, all inside it.
 
+- **BEA** (`bea`): the answer is JSON with no `Error` (the Bureau reports an error under HTTP
+  200); it repeats the data set, table (or indicator and area), frequency and `Year=ALL` it
+  was asked for; it has rows, all of that table; each series read has rows on the line the
+  endpoint pins, labelled with the unit, multiplier and metric it pins; where a `basis` is
+  pinned ("chained (2017) dollars"), the line's description or the table's note holds that
+  text; no Period is given twice, each is a Period of the table's frequency and none had not
+  begun on the day asked; every value on a line that is read is a number.
+- **EIA** (`eia`): no `error` and no `warnings`; the answer says it is the route and frequency
+  asked for; every page gives the same `total`, the rows add up to it, each page but the last
+  is full and begins where it should; rows are in order of period and series with none
+  repeated; every row is of a series asked for, with the other facets as asked and the units
+  the endpoint pins; every value is a number in text or `null`; no value is for a Period that
+  had not begun; every series asked for has at least one number. At most forty pages are read.
+  The order and the totals show data that grew or shrank while it was paged. A figure revised
+  between two pages would not show; the next capture sees it.
+
 The evidence records its *scope*. BLS is asked for the thirty years ending this year, ten
 years to a request, so a year that has rolled out of the window was not asked about, and its
-absence says nothing. A Board package and a Treasury table are asked for whole, so a Period
-that has left one is gone.
+absence says nothing. A Board package, a Treasury table, an IMF dataflow, a BEA table and an
+EIA route are asked for whole, so a Period that has left one is gone.
 
 An answer of 200 with an empty body is asked for again, like a 5xx: the Board's download
 program gives one the first time it is asked for a file it has not built (verified
@@ -88,6 +107,8 @@ store as `missing`); a Period the source does not list is not an Observation.
 | Board, by week (`period: week`) | the ISO week of the date (`2026-11-04` → `2026-W45`) | the cell: the level on that day | the same |
 | Board, by month or quarter | `2026-10`; `2026Q2` → `2026-Q2` | the cell | the same |
 | IMF (SDMX 3.0) | `2026-M09` → `2026-09`; `2026-Q3`; `2026` | `OBS_VALUE`, the Fund's text. `observed`, `estimate` or `projected` by the Fund's own derivation code | `null` after the series' first number |
+| BEA | `2026M09` → `2026-09`; `2026Q3` → `2026-Q3`; `2026` | `DataValue` with its thousands commas taken out (`23,650,213` → `23650213`) and nothing else changed. Always `observed` | not seen; anything that is not a number makes the capture incomplete |
+| EIA | `2026-10`; a weekly row's date names its ISO week (`2026-11-09` → `2026-W46`); a day; `2026-Q3`; `2026` | the data column's text. A figure printed without a zero before its point is given one (`.995` → `0.995`); nothing else changes | `null` |
 
 **The Monthly Treasury Statement.** Each statement (one `record_date`, the last day of its
 month) lists the months of the last fiscal year and of this one: a header row per fiscal year
@@ -148,6 +169,69 @@ series asked for, each with a number.
   their decimals; rates from before a redenomination are printed in today's unit and are very
   small (ten zeros after the point, then a dozen digits).
 
+**The BEA's API.** One request asks for one whole thing, every year (`Year=ALL`): a table of
+the National Income and Product Accounts with all its lines, or one indicator of the
+International Transactions Accounts. A series is the Bureau's code (`A191RX`); because one code
+can sit on two lines of a table, it is read from the line the endpoint pins.
+
+- **Units.** The API gives dollar figures in millions (`UNIT_MULT` 6) where the table's own
+  note says "Billions of dollars". The multiplier is pinned and the Catalog says millions:
+  the figure kept is the one the API printed.
+- **The reference year.** Nothing in a row says which year's dollars a chained series is in.
+  The table's note does ("Billions of chained (2017) dollars"), as does the line's description
+  for real disposable income. The endpoint pins that text (`basis`), so a rebase stops the
+  capture until the pin and the Series are changed, as a changed IMF reference period does.
+- **Preliminary figures.** The Bureau's advance, second and third estimates of a quarter are
+  not marked in the data. Every value is `observed`; a later estimate is a revision, and the
+  vintage store records it as one. The note's "LastRevised" date and the time the answer was
+  produced are kept in the capture's checks.
+- **Every answer is different bytes.** The answer carries the time it was produced, so two
+  fetches of an unchanged table never share a blob. The vintage store compares Observations,
+  not bytes, and records the second as a capture confirmation.
+- **The monthly trade balance is not here.** The international accounts are quarterly and
+  annual in this API. `trade_q` is the quarterly balance on goods and services, a quarterly
+  rate, not annualized. The monthly FT-900 figure v1 showed waits for the Census files (M16).
+
+**The EIA's API v2.** An endpoint is one route (`petroleum/pri/spt`) at one frequency, one
+column of data and the series one facet names. Where rows have a series id that facet is
+`series` (`RWTC`); the electricity route has none, so the fuel type names the series (`ALL`)
+and the endpoint holds location and sector to one value each. Every Period is asked for, 5,000
+rows to a page, sorted by period and then by the facet. The units printed on each row are
+pinned. The answer is read so that a number is kept as the characters it was sent in, whether
+the Administration quotes it or not.
+
+## API keys
+
+Two sources want a free key, sent as a query parameter: the BEA (`UserID`, from the environment
+variable `BEA_API_KEY`) and the EIA (`api_key`, from `EIA_API_KEY`). ADR 0029 has the reasons.
+
+- **Where a key is.** In the environment of a live run, and in the one request as it leaves.
+  An adapter builds its URLs without the key and says only which key the request wants. The
+  Session adds it as it sends. The request that is recorded, in the fetch log and in an
+  exported fixture, is the one without it.
+- **Where a key is not.** In anything kept. The BEA repeats the key in every answer, so the
+  Session replaces every copy of every key of the run, in the body, the headers and the text
+  of a network error, with `REDACTED`, before the bytes are hashed, stored or examined. This
+  is the one exception to "the exact bytes": the blob, its hash and its length are of the
+  answer with that replacement and no other change. Nothing is parsed and written out again.
+  The search ignores letter case, because the BEA repeats what it was asked in capitals. An
+  answer that repeats a key in an encoded spelling (a JSON `\u` escape, a percent-encoding)
+  cannot be cleaned that way, so it is refused whole: the fetch fails and nothing of the
+  answer is kept or printed.
+  The fetch-log part says how many copies were replaced (`key_removed`), and the line names
+  the key it needed (`key`), never its value.
+- **What a key looks like.** Letters, digits and hyphens, 16 to 128 of them. Such text is the
+  same in a URL, in a header and inside JSON, so one literal search finds every copy. A value
+  of any other shape is not sent, and its endpoint is treated as having no key.
+- **Without a key.** The endpoint is not asked. Its line has the outcome `no_key`, the run
+  prints `STALE id: stale, last fetched TIME (KEY is not set; nothing was asked)`, or `never
+  fetched`, goes on to the other endpoints, and ends with exit status 1, because not everything
+  selected was captured. The rights gate comes first all the same: a selected row that is not
+  signed stops the run whether or not its key is there. The release writer marks such a source
+  `stale`, not `failed` (`docs/method/release-writer.md`).
+- **A replay needs none.** `--replay` sends each request as it was recorded and takes no key
+  from the environment. The committed fixtures were made without one, and CI has none.
+
 ## What is written
 
 ```
@@ -162,10 +246,10 @@ A fetch-log line holds `capture_id`, `run_id`, `endpoint`, `source` (the registe
 hash), `rights` (what the register row said then: licence class, attribution and the four
 grants; the vintage store keeps Rights over time from it), `transport` (`live` or `replay`), `real_bytes` (whether a source served them, now or when
 they were recorded), `started_at`, `retrieved_at` (when the last part
-arrived; null if the fetch failed), `outcome`, `evidence` (`complete`, `scope`, `checks`,
+arrived; null if the fetch failed), `key` (the name of the API key the endpoint wants, when it wants one), `outcome`, `evidence` (`complete`, `scope`, `checks`,
 `problems`), `error`, and `parts`. Each part holds the request (method, URL, headers, body),
-the status, the response headers, `received_at`, `sha256`, `bytes`, the `blob` path, and why
-any earlier try was repeated.
+the status, the response headers, `received_at`, `sha256`, `bytes`, the `blob` path, why
+any earlier try was repeated, and `key_removed` when copies of a key were taken out of the answer.
 
 Times are UTC, whole seconds, rounded up. Cookie values are replaced with `(not kept)`. The
 files are append-only; a line cut short by a crash is passed over, reported, and the next line
@@ -186,7 +270,8 @@ Observation; such a state is never recorded.
 ## Commands
 
 ```
-python -m atlas capture --dry-run             what would be fetched, and the gate's answer
+python -m atlas capture --dry-run             what would be fetched, the gate's answer, and
+                                              whether each key an endpoint needs is set
 python -m atlas capture                       a run into $ATLAS_STORE (default var/store)
 python -m atlas capture --only bls            only that row's endpoints
 python -m atlas capture --status              last whole capture and missed days per endpoint

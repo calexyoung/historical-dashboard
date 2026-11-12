@@ -1,0 +1,39 @@
+{
+  "key": "elec_gen",
+  "name": "US net electricity generation, all fuels",
+  "description": "All sectors, United States, monthly. Not seasonally adjusted.",
+  "unit": "thousand megawatthours",
+  "unit_kind": "physical",
+  "measure_kind": "flow",
+  "agg": "sum",
+  "freq": "monthly",
+  "continuity": "discrete",
+  "seasonal_adjustment": "nsa",
+  "price_basis": "not_applicable",
+  "country": "USA",
+  "segment": "infrastructure",
+  "topics": [
+    "commodities-energy"
+  ],
+  "source": {
+    "origin": {
+      "producer": "U.S. Energy Information Administration",
+      "dataset": "Electric Power Operations (Form EIA-923)",
+      "origin_id": "ALL",
+      "url": "https://www.eia.gov/electricity/data/browser/"
+    },
+    "channel": {
+      "via": "direct",
+      "adapter": "eia",
+      "endpoint": "eia-generation-us",
+      "auth": "api_key"
+    }
+  },
+  "refresh": "monthly",
+  "max_lag": "P5M",
+  "range": [
+    100000,
+    1000000
+  ],
+  "status": "active"
+}

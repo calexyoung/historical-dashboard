@@ -1,7 +1,7 @@
 {
   "$schema": "./rights-register.schema.json",
   "format": 1,
-  "version": "2026-11-11.draft-4",
+  "version": "2026-11-11.draft-5",
   "about": "The rights register (CONTEXT.md; PLAN 6 and 6.1; ADR 0006, ADR 0020): one row per Origin and per intermediary Channel, with the terms read, a proposal, and Alex's decision. This file is the single table. docs/v2/rights-register.md and packages/core/src/rights-register.generated.ts are generated from it (npm run gen); atlas/rights.py reads it. A row permits something on a public Surface only when its decision is signed by Alex. The builder proposes and never fills in a decision.",
   "cleared_intermediaries": [],
   "rows": [
@@ -101,7 +101,180 @@
         "U.S. Bureau of Economic Analysis"
       ],
       "datasets": "*",
-      "used_for": "GDP, PCE, income, profits, trade balance. v2.0 (M15). Needs a free API key from Alex.",
+      "used_for": "GDP, PCE, income, profits, trade balance. v2.0 (M15): six requests a run, with a free API key (BEA_API_KEY) kept outside the repository.",
+      "capture": [
+        {
+          "id": "bea-nipa-t10101",
+          "adapter": "bea",
+          "datasets": [
+            "National Income and Product Accounts, Table 1.1.1"
+          ],
+          "params": {
+            "read": "nipa",
+            "dataset": "NIPA",
+            "table": "T10101",
+            "frequency": "Q",
+            "series": [
+              "A191RL"
+            ],
+            "labels": {
+              "A191RL": {
+                "line": "1",
+                "unit": "Percent change, annual rate",
+                "multiplier": "0",
+                "metric": "Fisher Quantity Index"
+              }
+            }
+          },
+          "note": "Table 1.1.1, percent change from the preceding period in real gross domestic product, quarterly, every year and every line in one request (about 2.0 MB on 2026-11-11). Line 1 is read."
+        },
+        {
+          "id": "bea-nipa-t10105",
+          "adapter": "bea",
+          "datasets": [
+            "National Income and Product Accounts, Table 1.1.5"
+          ],
+          "params": {
+            "read": "nipa",
+            "dataset": "NIPA",
+            "table": "T10105",
+            "frequency": "Q",
+            "series": [
+              "A191RC"
+            ],
+            "labels": {
+              "A191RC": {
+                "line": "1",
+                "unit": "Level",
+                "multiplier": "6",
+                "metric": "Current Dollars"
+              }
+            }
+          },
+          "note": "Table 1.1.5, gross domestic product in current dollars, quarterly, every year and every line in one request (about 1.9 MB on 2026-11-11). Line 1 is read. The API gives the figures in millions of dollars (UNIT_MULT 6) though the table's note says billions; the multiplier is pinned."
+        },
+        {
+          "id": "bea-nipa-t10106",
+          "adapter": "bea",
+          "datasets": [
+            "National Income and Product Accounts, Table 1.1.6"
+          ],
+          "params": {
+            "read": "nipa",
+            "dataset": "NIPA",
+            "table": "T10106",
+            "frequency": "Q",
+            "series": [
+              "A191RX"
+            ],
+            "labels": {
+              "A191RX": {
+                "line": "1",
+                "unit": "Level",
+                "multiplier": "6",
+                "metric": "Chained Dollars",
+                "basis": "chained (2017) dollars"
+              }
+            }
+          },
+          "note": "Table 1.1.6, real gross domestic product in chained dollars, quarterly, every year and every line in one request (about 1.1 MB on 2026-11-11). Line 1 is read, in millions of chained (2017) dollars. The reference year is pinned as a text the table's note must hold: a rebase keeps the capture from being whole until the pin and the Series are changed."
+        },
+        {
+          "id": "bea-nipa-t11200",
+          "adapter": "bea",
+          "datasets": [
+            "National Income and Product Accounts, Table 1.12"
+          ],
+          "params": {
+            "read": "nipa",
+            "dataset": "NIPA",
+            "table": "T11200",
+            "frequency": "Q",
+            "series": [
+              "A055RC"
+            ],
+            "labels": {
+              "A055RC": {
+                "line": "45",
+                "unit": "Level",
+                "multiplier": "6",
+                "metric": "Current Dollars"
+              }
+            }
+          },
+          "note": "Table 1.12, national income by type of income, quarterly, every year and every line in one request (about 3.7 MB on 2026-11-11). Line 45 is read: corporate profits after tax without inventory valuation and capital consumption adjustments. Profits are published a release later than GDP, so the line ends a quarter earlier than the table."
+        },
+        {
+          "id": "bea-nipa-t20600",
+          "adapter": "bea",
+          "datasets": [
+            "National Income and Product Accounts, Table 2.6"
+          ],
+          "params": {
+            "read": "nipa",
+            "dataset": "NIPA",
+            "table": "T20600",
+            "frequency": "M",
+            "series": [
+              "A065RC",
+              "DPCERC",
+              "A072RC",
+              "A067RX"
+            ],
+            "labels": {
+              "A065RC": {
+                "line": "1",
+                "unit": "Level",
+                "multiplier": "6",
+                "metric": "Current Dollars"
+              },
+              "DPCERC": {
+                "line": "29",
+                "unit": "Level",
+                "multiplier": "6",
+                "metric": "Current Dollars"
+              },
+              "A072RC": {
+                "line": "35",
+                "unit": "Level",
+                "multiplier": "0",
+                "metric": "Ratio"
+              },
+              "A067RX": {
+                "line": "37",
+                "unit": "Level",
+                "multiplier": "6",
+                "metric": "Chained Dollars",
+                "basis": "chained (2017) dollars"
+              }
+            }
+          },
+          "note": "Table 2.6, personal income and its disposition, monthly, every year and every line in one request (about 8.6 MB on 2026-11-11, 0.3 MB compressed). Four lines are read: personal income, personal consumption expenditures, the personal saving rate and real disposable personal income."
+        },
+        {
+          "id": "bea-ita-balance",
+          "adapter": "bea",
+          "datasets": [
+            "International Transactions Accounts"
+          ],
+          "params": {
+            "read": "ita",
+            "indicator": "BalGdsServ",
+            "area": "AllCountries",
+            "frequency": "QSA",
+            "series": [
+              "TSI_ItaBalGdsServ_QSA"
+            ],
+            "labels": {
+              "TSI_ItaBalGdsServ_QSA": {
+                "unit": "USD",
+                "multiplier": "6"
+              }
+            }
+          },
+          "note": "International Transactions Accounts: the balance on goods and services, all countries, quarterly, seasonally adjusted, every year in one request (about 0.1 MB on 2026-11-11). Quarterly rates, not annualized. The API has no monthly frequency for these accounts; the monthly balance of the FT-900 release is not in it."
+        }
+      ],
       "terms": [
         {
           "url": "https://www.bea.gov/help/guidelines-for-citing-bea",
@@ -129,7 +302,10 @@
         "note": "U.S. federal works are not subject to copyright in the United States (17 U.S.C. 105). That is the basis proposed here; the pages read do not themselves state a licence. Cite the Bureau."
       },
       "open_questions": [
-        "Read the API terms of service when the key is requested, and record any required notice or request limit here before M15."
+        "The API terms of service were not read: the sign-up page asks for agreement to them and M15 did not fetch the document. Read them before signing, and record any required notice here.",
+        "Request limits, as the API's user guide gives them and M15 did not test: 100 requests a minute, 100 MB a minute, 30 errors a minute, and an hour's lock-out (HTTP 429) beyond them. The capture job makes six requests a run, about 17 MB, two runs a day.",
+        "The API repeats the key it was asked with in every answer. The capture kit replaces every copy before anything is kept, so the bytes kept are the answer with that one change (ADR 0029). Confirm that keeping them so is acceptable.",
+        "The monthly trade balance v1 showed is the FT-900 release, compiled with the Census Bureau, and is not in this API. The quarterly balance from the International Transactions Accounts is captured here under a new key; the monthly figure waits for the Census files (M16)."
       ],
       "decision": null
     },
@@ -880,7 +1056,89 @@
         "U.S. Energy Information Administration"
       ],
       "datasets": "*",
-      "used_for": "Energy prices; generation and capacity. v2.0 headline (M15); depth in v2.1. Needs a free API key from Alex.",
+      "used_for": "Energy prices; generation and capacity. v2.0 headline (M15): four requests a run, with a free API key (EIA_API_KEY) kept outside the repository. Depth in v2.1.",
+      "capture": [
+        {
+          "id": "eia-petroleum-spot",
+          "adapter": "eia",
+          "datasets": [
+            "Petroleum and Other Liquids: Spot Prices"
+          ],
+          "params": {
+            "route": "petroleum/pri/spt",
+            "frequency": "monthly",
+            "series": [
+              "RBRTE",
+              "RWTC"
+            ],
+            "units": {
+              "RBRTE": "$/BBL",
+              "RWTC": "$/BBL"
+            }
+          },
+          "note": "Spot prices of West Texas Intermediate at Cushing and of Brent, the month's average as the Administration computes it, every month in one request (about 0.3 MB on 2026-11-11)."
+        },
+        {
+          "id": "eia-natgas-spot",
+          "adapter": "eia",
+          "datasets": [
+            "Natural Gas Spot and Futures Prices"
+          ],
+          "params": {
+            "route": "natural-gas/pri/fut",
+            "frequency": "monthly",
+            "series": [
+              "RNGWHHD"
+            ],
+            "units": {
+              "RNGWHHD": "$/MMBTU"
+            }
+          },
+          "note": "The Henry Hub natural gas spot price, the month's average, every month in one request (about 0.1 MB on 2026-11-11)."
+        },
+        {
+          "id": "eia-gasoline-retail",
+          "adapter": "eia",
+          "datasets": [
+            "Gasoline and Diesel Fuel Update"
+          ],
+          "params": {
+            "route": "petroleum/pri/gnd",
+            "frequency": "weekly",
+            "series": [
+              "EMM_EPMR_PTE_NUS_DPG"
+            ],
+            "units": {
+              "EMM_EPMR_PTE_NUS_DPG": "$/GAL"
+            }
+          },
+          "note": "U.S. regular gasoline, all formulations, retail, weekly (dated Monday), every week in one request (about 0.6 MB on 2026-11-11). Six weeks of December 1990 and January 1991 are listed with no number. Prices under a dollar are printed without a zero before the point."
+        },
+        {
+          "id": "eia-generation-us",
+          "adapter": "eia",
+          "datasets": [
+            "Electric Power Operations (Form EIA-923)"
+          ],
+          "params": {
+            "route": "electricity/electric-power-operational-data",
+            "frequency": "monthly",
+            "column": "generation",
+            "facet": "fueltypeid",
+            "series": [
+              "ALL"
+            ],
+            "facets": {
+              "location": "US",
+              "sectorid": "99"
+            },
+            "units": {
+              "ALL": "thousand megawatthours"
+            }
+          },
+          "note": "Net generation of electricity, all fuels, all sectors, United States, monthly from 2001, in one request (about 0.1 MB on 2026-11-11). The rows have no series id; the fuel type names the series, with location and sector held."
+        }
+      ],
       "terms": [
         {
           "url": "https://www.eia.gov/about/copyrights_reuse.php",
@@ -903,7 +1161,8 @@
         "note": "Public domain by the Administration's own statement. The acknowledgement carries the publication date."
       },
       "open_questions": [
-        "API rate limits are still unverified (PLAN 6)."
+        "API rate limits were not found stated and were not tested. The capture job makes four requests a run, one at a time, a second apart, two runs a day; none was refused on 2026-11-11.",
+        "The spot prices of crude oil and natural gas are published by the Administration with a commercial provider named as their source on its pages. Whether the statement that the Administration's data are public domain covers them is for Alex to weigh before signing; if not, wti, brent and natgas need a decision of their own."
       ],
       "decision": null
     },

@@ -23,6 +23,8 @@ from pathlib import Path
 
 from ..rights import REGISTER_PATH
 from . import store as S
+from .adapters import key_of
+from .http import usable_key
 from .run import RegisterError, refusals, run_capture, select
 
 DEFAULT_STORE = Path(__file__).resolve().parents[2] / "var" / "store"
@@ -47,7 +49,14 @@ def _dry_run(table: object, only: list[str] | None) -> int:
         if endpoint.id in refused:
             _say(f"REFUSED {what}: {refused[endpoint.id]}")
         else:
-            _say(f"{what}: cleared for storage")
+            wanted = key_of(endpoint)
+            if wanted is None:
+                _say(f"{what}: cleared for storage")
+            elif usable_key(os.environ.get(wanted[1])):
+                _say(f"{what}: cleared for storage; needs {wanted[1]}, which is set")
+            else:
+                _say(f"{what}: cleared for storage; needs {wanted[1]}, which is not set: "
+                     "it would not be asked")
     if refused:
         _say(f"{len(refused)} of {len(endpoints)} endpoints are not cleared. A run would fetch nothing.")
     return 1 if refused else 0
@@ -67,6 +76,10 @@ def _status(store: Path, table: object, only: list[str] | None, now: datetime) -
                 if line.get("endpoint") == endpoint and line.get("outcome") == "captured"]
         _say(f"{endpoint}: last complete capture {last[-1]}" if last
              else f"{endpoint}: no complete capture in {store}")
+        attempts = [line for line in fetches if line.get("endpoint") == endpoint]
+        if attempts and attempts[-1].get("outcome") == "no_key":
+            _say(f"STALE {endpoint}: {S.stale_phrase(last[-1] if last else None)} "
+                 f"({attempts[-1].get('error')})")
         if endpoint in missed:
             _say(f"MISSED {endpoint}: {', '.join(missed[endpoint])}")
     return 0
@@ -163,7 +176,11 @@ def main(argv: list[str] | None = None) -> int:
         _say(f"REFUSED: {error}. Nothing was fetched.")
         return 1
     # The pause between requests to one host is manners towards a source. A replay asks no one.
-    result = run_capture(store, table, transport, only=args.only,
+    # Keys are read from the environment, by the names the selected endpoints ask for, for a
+    # live run only. They are handed to the run and printed nowhere.
+    keys = {} if args.replay else {wanted[1]: os.environ[wanted[1]] for wanted in map(key_of, endpoints)
+                                   if wanted is not None and os.environ.get(wanted[1])}
+    result = run_capture(store, table, transport, only=args.only, keys=keys,
                          sleep=(lambda seconds: None) if args.replay else None,
                          register_sha256=hashlib.sha256(data).hexdigest(),
                          user_agent=os.environ.get("ATLAS_CAPTURE_USER_AGENT") or None)

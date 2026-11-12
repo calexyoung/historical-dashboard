@@ -3,6 +3,8 @@
 The workflow is a file for Alex to copy into a separate private repository. Nothing here may
 start a schedule in this repository: scheduled workflows run only from a default branch, and
 where capture runs is Alex's to decide."""
+import json
+import re
 from pathlib import Path
 
 import yaml
@@ -43,10 +45,15 @@ def test_the_code_is_checked_out_at_a_pinned_commit_beside_the_store():
     assert checkouts[1]["with"]["ref"] == "${{ vars.ATLAS_REF }}"  # a commit Alex names; no branch
 
 
-def test_the_capture_step_needs_requests_only_and_no_secret():
+def test_the_capture_step_needs_requests_only_and_no_secret_but_the_two_api_keys():
     text = (KIT / "capture.yml").read_text()
     assert text.count(" install ") == 1 and "install requests==" in text  # nothing else
-    assert "secrets." not in text
+    # M15: two sources want a free API key. The host hands the job those two secrets and no
+    # other; the job itself keeps a key nowhere (tests/v2/test_capture_keys.py).
+    assert sorted(set(re.findall(r"secrets\.(\w+)", text))) == ["BEA_API_KEY", "EIA_API_KEY"]
+    assert step("Capture")["env"]["BEA_API_KEY"] == "${{ secrets.BEA_API_KEY }}"
+    assert step("Capture")["env"]["EIA_API_KEY"] == "${{ secrets.EIA_API_KEY }}"
+    assert all("secrets." not in json.dumps(s) for s in STEPS if s is not step("Capture"))
     run = step("Capture")["run"].strip()
     assert run.endswith("-m atlas.capture $only")
     # The one thing the host may choose: which signed rows to fetch (M14: a source whose row is

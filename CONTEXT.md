@@ -136,6 +136,7 @@ _Avoid_: First print, snapshot
 
 **Capture**:
 One successful fetch of a Source's exact bytes, kept as evidence whether or not anything changed.
+The one thing ever taken out of them is an API key the Source repeated in its answer.
 _Avoid_: Scrape, download, cache
 
 **Endpoint**:

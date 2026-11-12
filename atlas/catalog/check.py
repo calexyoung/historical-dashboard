@@ -24,6 +24,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from ..capture import store as S
+from ..capture.adapters import ADAPTERS
 from ..rights import DIRECT, OWN_CHANNELS, RightsGate, load_register
 from ..vintage.replay import recipe_cycle
 from .coverage import coverage_references, read_coverage
@@ -134,6 +135,17 @@ def _references(entries: dict[str, dict], directory: Path, table: object) -> lis
             if entry["unit_kind"] == "index" and origin["origin_id"] not in endpoint.params.get("reference", {}):
                 problem(key, f"the endpoint {name} does not pin the reference period the Fund gives "
                              f"{origin['origin_id']} (its reference)")
+        elif endpoint.adapter in ("bea", "eia") and origin["origin_id"] is not None:
+            # The labels or units of every series an endpoint asks for are pinned, or the
+            # register could not list it (the adapters' own check). What is left is the frequency.
+            adapter = ADAPTERS[endpoint.adapter]
+            asked = endpoint.params["frequency"]
+            frequency = asked if endpoint.adapter == "eia" else \
+                adapter.READS[endpoint.params["read"]]["frequencies"][asked]
+            agency = "Bureau" if endpoint.adapter == "bea" else "Administration"
+            if entry["freq"] != frequency:
+                problem(key, f"it is {entry['freq']}, and the endpoint {name} asks the {agency} for "
+                             f"{frequency} figures")
         binding = (name, origin["origin_id"])
         if binding in bound:
             problem(key, f"{origin['origin_id']} of {name} is already bound to {bound[binding]}")

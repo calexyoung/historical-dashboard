@@ -31,7 +31,7 @@ is the rights gate's answer, from rows Alex has signed; that answer for today is
 | South Africa | `za_cpi` | `za_infl` | `za_fx` | — | — | — | — |
 | Turkey | `tr_cpi` | `tr_infl` | `tryusd` | `tr_rate` (draft) | — | — | — |
 | United Kingdom | `uk_cpi_imf` | `uk_infl_imf` | `uk_fx` | `boe` (draft) | `uk_unemp` (draft) | — | `ftse` (withheld) |
-| United States | `us_cpi` | `us_infl` | — | `fedfunds` | `unrate` | `gdp_yoy` (draft) | `spx` (withheld) |
+| United States | `us_cpi` | `us_infl` | — | `fedfunds` | `unrate` | `gdp_yoy` | `spx` (withheld) |
 | Euro area | `ez_hicp` (draft) | `ez_infl` (draft) | `ez_fx` | `ecb` (draft) | `ez_unemp` (draft) | `ez_gdp_yoy` (draft) | `stoxx` (withheld) |
 
 How to read a cell:
@@ -50,12 +50,12 @@ How to read a cell:
 | Currency per U.S. dollar (monthly) | 19 | 0 | 0 | 1 |
 | Policy or short-term interest rate | 1 | 9 | 0 | 10 |
 | Unemployment rate | 1 | 7 | 0 | 12 |
-| GDP growth | 0 | 3 | 0 | 17 |
+| GDP growth | 1 | 2 | 0 | 17 |
 | Main stock index | 0 | 0 | 9 | 11 |
 
 ## In the pipeline, and what the rights gate says today
 
-The rights gate would show 0 of the 56 Series in the pipeline on production today.
+The rights gate would show 0 of the 57 Series in the pipeline on production today.
 A Series is shown only when the register row of every Origin it rests on is signed and allows display.
 
 | Origin | Register row | Decision | Series of this matrix resting on it |
@@ -63,6 +63,7 @@ A Series is shown only when the register row of every Origin it rests on is sign
 | International Monetary Fund | `imf` | not signed | 54 |
 | Federal Reserve Board | `fed-board` | not signed | 1 |
 | Bureau of Labor Statistics | `bls` | not signed | 1 |
+| Bureau of Economic Analysis | `bea` | not signed | 1 |
 
 ## Why a cell is not live
 
@@ -106,7 +107,6 @@ A Series is shown only when the register row of every Origin it rests on is sign
 ### GDP growth
 
 - **China**, `cn_gdp_yoy` (draft): re-source from World Bank (computed from cn_gdp). Still open: cn_gdp: adapter not built (planned for v2.2); cn_gdp: 1 open question on the register row.
-- **United States**, `gdp_yoy` (draft): re-source from Bureau of Economic Analysis (computed from gdp). Still open: gdp: adapter not built (planned for M15); gdp: 1 open question on the register row.
 - **Euro area**, `ez_gdp_yoy` (draft): re-source from Eurostat (computed from ez_gdp). Still open: ez_gdp: adapter not built (planned for v2.2); ez_gdp: identifier not settled; ez_gdp: 1 open question on the register row.
 - **Argentina, Australia, Brazil, Canada, France, Germany, India, Indonesia, Italy, Japan, South Korea, Mexico, Russia, Saudi Arabia, South Africa, Turkey, United Kingdom**: no Series. Planned from the IMF World Economic Outlook, annual, with observed and projected values kept apart. Waits for M37.
 
