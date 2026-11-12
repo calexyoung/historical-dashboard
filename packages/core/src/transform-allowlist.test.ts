@@ -36,7 +36,7 @@ function workingDays(first: string, last: string, valueOf: (month: string) => nu
 describe("the allowlist", () => {
   it("is FRED's names plus v1's drawdown, and adding to it raised the semantics version", () => {
     expect(TRANSFORMS).toEqual(["lin", "chg", "ch1", "pch", "pc1", "pca", "log", "rebase", "z", "drawdown"]);
-    expect(SEMANTICS_VERSION).toBe("0.7.0");
+    expect(SEMANTICS_VERSION).toBe("0.8.0");
   });
 });
 

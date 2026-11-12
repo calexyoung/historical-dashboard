@@ -44,6 +44,7 @@ from ..rights import REGISTER_PATH, RightsGate
 from ..staging import STAGING, PromotionRefused, _no_links, _write_current, promote, stage
 from ..vintage.replay import SeriesTableError, load_derived, load_series
 from ..vintage.store import VintageStore
+from ..content.compile import add_reading_files
 from . import engine
 from . import root as R
 from . import saved as saved_queries
@@ -288,6 +289,10 @@ def _publish(run: _Run, built: Built, write: Callable[[Path, bytes], None],
             add_latest(built, outcome)
         except engine.EngineError as error:
             stopped = {"check": engine.CHECK, "outcome": "fail", "detail": str(error)[:2000]}
+    if stopped is None:
+        # Last of all, when the Catalog and the content are what the Release will hold: the
+        # headline Series and the search index, both projections of them (M22; ADR 0036).
+        built.report.extend(add_reading_files(built.files, built.withheld, built.highlights))
     release_id = built.release_id(created)
     if stopped is not None:
         report = [stopped]      # nothing else is worth checking in a Release that lacks files

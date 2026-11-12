@@ -1,15 +1,15 @@
 // GENERATED from schema/release.schema.json by scripts/gen-schema.mjs. Do not edit.
 
-export const SCHEMA_VERSION = "0.4.0";
+export const SCHEMA_VERSION = "0.5.0";
 
 /** Every version this reader knows; a writer writes the last. */
-export const SCHEMA_VERSIONS: readonly string[] = ["0.1.0","0.2.0","0.3.0","0.4.0"];
+export const SCHEMA_VERSIONS: readonly string[] = ["0.1.0","0.2.0","0.3.0","0.4.0","0.5.0"];
 
 export const releaseSchema: Record<string, unknown> = {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://mydashboards.co/macro-atlas/schema/release.schema.json",
   "title": "Release",
-  "description": "Macro Atlas release contract, v0 (schema_version 0.4.0). A Release is a directory; this schema describes it gathered into one object: manifest.json, catalog.json, series/{key}.json, derived/{key}.json, vintages/{key}.json, content/annotations.json, content/events.json, content/claims.json, locks/{claim_id}.v{n}.lock.json and evidence/latest.json. It is the seam between the writer and every reader (PLAN 4.2). Conventions the schema cannot express, and the cross-file rules, are in schema/README.md. Structural validity is not authorisation: whether a series may appear on a Surface is decided by permits() and the rights register.",
+  "description": "Macro Atlas release contract, v0 (schema_version 0.5.0). A Release is a directory; this schema describes it gathered into one object: manifest.json, catalog.json, series/{key}.json, derived/{key}.json, vintages/{key}.json, content/annotations.json, content/events.json, content/claims.json, locks/{claim_id}.v{n}.lock.json, evidence/latest.json, content/highlights.json and search.json. It is the seam between the writer and every reader (PLAN 4.2). Conventions the schema cannot express, and the cross-file rules, are in schema/README.md. Structural validity is not authorisation: whether a series may appear on a Surface is decided by permits() and the rights register.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -78,6 +78,12 @@ export const releaseSchema: Record<string, unknown> = {
     },
     "latest": {
       "$ref": "#/$defs/latestFile"
+    },
+    "highlights": {
+      "$ref": "#/$defs/highlightsFile"
+    },
+    "search": {
+      "$ref": "#/$defs/searchFile"
     }
   },
   "$defs": {
@@ -184,12 +190,13 @@ export const releaseSchema: Record<string, unknown> = {
       ],
       "properties": {
         "schema_version": {
-          "description": "Version of this contract. Readers refuse a version they do not know. 0.2.0 added vintages/ and vintages_sha256; a 0.1.0 Release holds neither. 0.3.0 (M19) added content/events.json, which a 0.3.0 Release must have and an earlier one may not, and the rule that every Event is one Annotation. 0.4.0 (M20) added content/claims.json, which a 0.4.0 Release must have, locks/ and evidence/latest.json. Writers write the last one listed.",
+          "description": "Version of this contract. Readers refuse a version they do not know. 0.2.0 added vintages/ and vintages_sha256; a 0.1.0 Release holds neither. 0.3.0 (M19) added content/events.json, which a 0.3.0 Release must have and an earlier one may not, and the rule that every Event is one Annotation. 0.4.0 (M20) added content/claims.json, which a 0.4.0 Release must have, locks/ and evidence/latest.json. 0.5.0 (M22) added content/highlights.json and search.json, both of which a 0.5.0 Release must have. Writers write the last one listed.",
           "enum": [
             "0.1.0",
             "0.2.0",
             "0.3.0",
-            "0.4.0"
+            "0.4.0",
+            "0.5.0"
           ]
         },
         "semantics_version": {
@@ -2974,6 +2981,114 @@ export const releaseSchema: Record<string, unknown> = {
       },
       "title": "LatestFile",
       "description": "evidence/latest.json (0.4.0): for the newest lock of each Claim whose lock is in the Release, the latest Evidence row of every Reading, recomputed by the engine on this Release, and the drift report. Present exactly when the Release holds a lock."
+    },
+    "highlightsFile": {
+      "title": "HighlightsFile",
+      "description": "content/highlights.json (0.5.0): the headline Series of each Segment, chosen by an editor (CONTEXT.md, Highlights, Overview). All six Segments, once each, in the order of the Overview. The first Series of a Segment is its row of the Overview; all of them are rows of Highlights. Every key is a Series of this Release's catalog.json in that Segment. It names Series and holds no value; a Withheld Series may be named.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "segments"
+      ],
+      "properties": {
+        "segments": {
+          "type": "array",
+          "minItems": 6,
+          "maxItems": 6,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "segment",
+              "series"
+            ],
+            "properties": {
+              "segment": {
+                "enum": [
+                  "economy_jobs",
+                  "markets_money",
+                  "infrastructure",
+                  "governance_politics",
+                  "disasters_health",
+                  "us_in_the_world"
+                ]
+              },
+              "series": {
+                "type": "array",
+                "uniqueItems": true,
+                "maxItems": 24,
+                "items": {
+                  "$ref": "#/$defs/key"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "searchEntry": {
+      "title": "SearchEntry",
+      "description": "One thing a reader can search for: a Series, an Event or a Claim of this Release. Words only: a name, the text that describes it, and keywords. No field holds an Observation's value, and both validators hold every entry to the projection of the Release's own catalog.json, content/events.json and content/claims.json (schema/README.md).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "id",
+        "title",
+        "text",
+        "keywords"
+      ],
+      "properties": {
+        "kind": {
+          "enum": [
+            "series",
+            "event",
+            "claim"
+          ]
+        },
+        "id": {
+          "description": "The Series key, the Event id or the Claim id: what the page's address ends in.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "text": {
+          "description": "A Series' description, an Event's description, a Claim's quote. Empty when there is none.",
+          "type": "string"
+        },
+        "keywords": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "withheld": {
+          "description": "A Series only: it is Withheld in this Release (listed by name, no values anywhere).",
+          "const": true
+        }
+      }
+    },
+    "searchFile": {
+      "title": "SearchFile",
+      "description": "search.json (0.5.0): one entry for every Series of catalog.json, then every Event of content/events.json, then every Claim of content/claims.json, each in that file's order. A public-profile Release holds no draft, so its index names none.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "entries"
+      ],
+      "properties": {
+        "entries": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/searchEntry"
+          }
+        }
+      }
     }
   }
 };

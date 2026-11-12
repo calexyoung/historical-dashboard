@@ -7,6 +7,7 @@ import { cpSync, mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, write
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { searchDocument } from "@macro-atlas/core/release";
 
 export const FIXTURE_ROOT = fileURLToPath(new URL("../../../../fixtures/public", import.meta.url));
 export const FIXTURE_ID = readFileSync(join(FIXTURE_ROOT, "CURRENT"), "utf8").trim();
@@ -18,8 +19,16 @@ export type Variant = {
   id: string;
   profile?: "public" | "local";
   signed?: boolean;
-  /** Write it as a Release of the contract before Events (M19): no content/events.json. */
-  schema?: "0.2.0";
+  /**
+   * Write it as a Release of an earlier contract. "0.2.0": before Events (M19), so no
+   * content/events.json, Claims, locks or latest rows. "0.4.0": before headline Series and the
+   * search index (M22), so neither file.
+   */
+  schema?: "0.2.0" | "0.4.0";
+  /** The headline Series of these Segments, in place of the fixture's. */
+  highlights?: Record<string, string[]>;
+  /** Change the Events in place (content/events.json and its Annotations are the caller's to keep in step). */
+  events?: (events: Json[]) => void;
   /** Mark this stored series as v1's legacy representation, consistently in every file. */
   legacy?: string;
   /** Rename this series (catalog `name` only), so two releases can be told apart on a page. */
@@ -51,6 +60,10 @@ export function addRelease(root: string, variant: Variant): string {
   if (variant.signed !== undefined) manifest.rights_register.signed = variant.signed;
   if (variant.schema) {
     manifest.schema_version = variant.schema;
+    rmSync(join(dir, "content", "highlights.json"), { force: true });
+    rmSync(join(dir, "search.json"), { force: true });
+  }
+  if (variant.schema === "0.2.0") {
     rmSync(join(dir, "content", "events.json"), { force: true });
     // A Release written before 0.4.0 holds no Claim, lock or latest Evidence row either.
     rmSync(join(dir, "content", "claims.json"), { force: true });
@@ -86,6 +99,21 @@ export function addRelease(root: string, variant: Variant): string {
   }
   writeJson(join(dir, "manifest.json"), manifest);
   writeJson(join(dir, "catalog.json"), catalog);
+  if (!variant.schema) {
+    if (variant.highlights) {
+      const held = readJson(join(dir, "content", "highlights.json"));
+      for (const row of held.segments) if (variant.highlights[row.segment]) row.series = variant.highlights[row.segment];
+      writeJson(join(dir, "content", "highlights.json"), held);
+    }
+    const events = readJson(join(dir, "content", "events.json"));
+    if (variant.events) {
+      variant.events(events.events);
+      writeJson(join(dir, "content", "events.json"), events);
+    }
+    // The search index is a projection of the files above: written again, as a writer would.
+    const claims = readJson(join(dir, "content", "claims.json"));
+    writeJson(join(dir, "search.json"), searchDocument({ catalog, manifest, events, claims } as Parameters<typeof searchDocument>[0]));
+  }
   return dir;
 }
 

@@ -5,7 +5,7 @@ import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { validateRelease, type Release, type ReleaseFiles } from "./index";
+import { searchDocument, validateRelease, type Release, type ReleaseFiles } from "./index";
 
 const repo = fileURLToPath(new URL("../../../../", import.meta.url));
 const fixtureRoot = join(repo, "fixtures", "public");
@@ -29,7 +29,9 @@ type Step =
   | { op: "remove_file"; file: string }
   | { op: "copy_file" | "move_file"; from: string; to: string }
   | { op: "raw"; file: string; text: string }
-  | { op: "rename_release"; id: string };
+  | { op: "rename_release"; id: string }
+  /** search.json written again as the projection: for a case about another rule that changes what the index is made from. */
+  | { op: "project_search" };
 type Case = { name: string; steps: Step[]; expect: string[]; rehash?: boolean };
 
 const cases = (
@@ -75,6 +77,12 @@ function applyCase(c: Pick<Case, "steps" | "rehash">): { id: string; files: Rele
       case "rename_release":
         id = step.id;
         break;
+      case "project_search": {
+        const read = (path: string) => (files[path] ? parse(files[path]!) : undefined);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        files["search.json"] = bytes(searchDocument({ catalog: read("catalog.json"), manifest: read("manifest.json"), events: read("content/events.json"), claims: read("content/claims.json") } as any));
+        break;
+      }
     }
   }
   if (c.rehash !== false && files["manifest.json"]) {

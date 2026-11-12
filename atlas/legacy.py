@@ -30,7 +30,7 @@ from pathlib import Path
 import yaml
 
 from atlas.capture.store import StoreLocked, locked
-from atlas.content.compile import ContentError, compile_content
+from atlas.content.compile import ContentError, add_reading_files, compile_content
 from atlas.period import next_period, period_bounds
 from atlas.release import LEGACY, SCHEMA_VERSION
 from atlas.staging import promote, stage
@@ -583,6 +583,8 @@ def build_release(repo: Path = ROOT, now: datetime | None = None) -> tuple[str, 
         raise LegacyRefused(f"the content cannot be compiled: {error}") from None
     out["catalog.json"] = _dump({"series": entries})
     out.update(content.files)
+    # The headline Series and the search index: projections of the Catalog and content above.
+    reading_report = add_reading_files(out, [], content.highlights)
     n_events = len(json.loads(content.files["content/events.json"])["events"])
 
     generated = data.get("generated")
@@ -619,7 +621,8 @@ def build_release(repo: Path = ROOT, now: datetime | None = None) -> tuple[str, 
                         "outcome": "pass",
                         "detail": f"{len(entries)} series carried over from v1's committed output; "
                                   f"{n_events} events compiled from {CONTENT_EVENTS}",
-                    }
+                    },
+                    *reading_report,
                 ],
             },
             "inputs": inputs,

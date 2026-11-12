@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from atlas.release import load_release, validate_files, validate_release
+from atlas.release import load_release, search_document, validate_files, validate_release
 
 ROOT = Path(__file__).resolve().parents[2]
 FIXTURE_ROOT = ROOT / "fixtures" / "public"
@@ -48,6 +48,13 @@ def apply_case(case, files, release_id):
             files[step["file"]] = step["text"].encode()
         elif op == "rename_release":
             release_id = step["id"]
+        elif op == "project_search":
+            # search.json written again as the projection: for a case about another rule that
+            # changes what the index is made from.
+            read = lambda path: json.loads(files[path]) if path in files else None  # noqa: E731
+            files["search.json"] = json.dumps(search_document(
+                read("catalog.json"), read("manifest.json")["withheld"], read("content/events.json"),
+                read("content/claims.json"))).encode()
         else:
             raise AssertionError(f"unknown step {op}")
     if case.get("rehash", True) and "manifest.json" in files:

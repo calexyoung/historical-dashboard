@@ -115,7 +115,7 @@ def test_compute_writes_a_lock_with_everything_plan_4_5_lists(world):
     assert lock["locked_at"] == "2026-03-11T16:00:00Z"
     assert lock["release"] == {"release_id": first, "created": "2026-03-11T15:00:00Z", "profile": "public"}
     assert lock["record"] == K.record(record()) and lock["record_sha256"] == K.record_sha256(record())
-    assert lock["semantics_version"] == "0.7.0"
+    assert lock["semantics_version"] == "0.8.0"
     assert lock["rights_used"] == [
         {"origin": MAKE.ORIGIN, "dataset": "fixture jobs", "channel": "computed", "representation": "native"},
         {"origin": MAKE.ORIGIN, "dataset": "fixture jobs", "channel": "fixture", "representation": "native"},
@@ -322,7 +322,7 @@ def test_a_release_whose_only_engine_work_is_a_claim_says_the_engines_version_an
     assert validate_release(directory(world, "local")) == []
     manifest = read_json(directory(world, "local") / "manifest.json")
     assert {row["kind"] for row in manifest["series"].values()} == {"stored"}
-    assert manifest["semantics_version"] == "0.7.0"
+    assert manifest["semantics_version"] == "0.8.0"
     (entry,) = read_json(directory(world, "local") / "evidence" / "latest.json")["claims"]
     jobs, ratio, _rise = entry["readings"]
     assert jobs["drift"] == [] and ratio["latest"] is None and ratio["refused"]["reason"] == "unknown_series"

@@ -1,0 +1,10 @@
+{
+  "segments": {
+    "economy_jobs": ["unrate", "cpi_yoy", "payems", "gdp", "wages_yoy", "real_wages", "debt"],
+    "markets_money": ["fedfunds", "gs10", "usd_broad", "wti", "gas", "m2"],
+    "infrastructure": ["construction_total", "construction_public", "elec_gen"],
+    "governance_politics": ["approval", "usepu"],
+    "disasters_health": [],
+    "us_in_the_world": ["us_infl", "ez_infl", "cn_infl", "jp_infl", "uk_infl"]
+  }
+}
