@@ -31,19 +31,38 @@ It needs Python 3.11 or later and `requests`. No Node, no pandas, no API key, no
 
 | Endpoint | Row | What one run asks for | Size on 2026-11-11 |
 |---|---|---|---|
-| `bls-headline` | `bls` | one POST: CPI-U (adjusted and not), unemployment rate, payrolls, last ten years | 42 KB |
+| `bls-headline` | `bls` | three POSTs: CPI-U (adjusted and not), unemployment rate, payrolls, the last thirty years | 125 KB |
+| `bls-coverage` | `bls` | three POSTs: participation, core CPI, rent, hourly earnings, eggs, labor share, real weekly earnings, the last thirty years | 179 KB |
 | `treasury-debt-to-penny` | `treasury-fiscal-data` | one GET: the whole Debt to the Penny table | 2.8 MB (0.26 MB gzipped) |
+| `treasury-mts-summary` | `treasury-fiscal-data` | one GET: table 1 of the Monthly Treasury Statement, every statement | 1.9 MB |
 | `fed-h15-treasury-yields` | `fed-board` | one GET: the H.15 Treasury yields package, whole history | 1.0 MB (0.25 MB gzipped) |
+| `fed-h15-monthly` | `fed-board` | one GET: H.15 monthly averages | 115 KB |
+| `fed-h10-daily-rates` | `fed-board` | three GETs: H.10 daily exchange rates, in spans from 1971, 1990 and 2010 | 2.3 MB |
+| `fed-h10-daily-indexes` | `fed-board` | one GET: H.10 daily dollar indexes | 0.2 MB |
+| `fed-h41-table5` | `fed-board` | one GET: H.4.1 table 5, Wednesday levels since 2002 | 0.8 MB |
+| `fed-z1-households` | `fed-board` | one GET: Z.1 balance sheet of households and nonprofits | 127 KB |
+| `fed-g17-major` | `fed-board` | one GET: G.17 major aggregates | 79 KB |
+| `fed-g19-credit` | `fed-board` | one GET: G.19 consumer credit, seasonally adjusted | 74 KB |
+| `fed-h6-monthly` | `fed-board` | one GET: H.6 monthly money stock | 138 KB |
+| `fed-chgdel-delinquency` | `fed-board` | one GET: delinquency rates, all commercial banks | 23 KB |
 
-Two runs a day add about 0.5 MB a day when the sources change daily, a few hundred MB a year.
-A response that has not changed since earlier the same day adds a log line and no blob, and git
-stores identical bytes once however many days they recur.
+A run is 20 requests, at least a second apart per host, and took 37 seconds on 2026-11-11.
+The answers come to about 10 MB before compression (about 2 MB gzipped). Two runs a day add
+at most that much when every source changes; a response that has not changed since earlier
+the same day adds a log line and no blob, and git stores identical bytes once however many
+days they recur. Most of these files change monthly or quarterly.
 
 BLS without a key: ten years per request (a longer range is cut, with a message, and the job
 flags that as incomplete), and a daily limit on requests that is believed to be 25 and has not
-been confirmed from BLS's page, which refuses automated readers. The job makes one request per
-run. If Alex registers a BLS key later, adding it to the adapter is a small change; nothing
-needs it now.
+been confirmed from BLS's page, which refuses automated readers. The job makes six requests per
+run, twelve a day at two runs. A third run on the same day would pass the believed limit: wait
+for the next day. If Alex registers a BLS key later, adding it to the adapter is a small
+change; nothing needs it now.
+
+The Board's download program sometimes answers 200 with an empty body (a file it has not built
+yet). The job asks again, up to three times. An `INCOMPLETE fed-h10-daily-rates` that says a
+part "does not begin with the six label rows" on every run means a span has outgrown what the
+program will send: add a year to that endpoint's `from_years` in the register.
 
 ## Starting it (GitHub, the recommended host)
 

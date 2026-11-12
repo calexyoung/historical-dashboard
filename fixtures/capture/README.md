@@ -1,11 +1,12 @@
 # Capture fixtures
 
-One recorded exchange for one endpoint of each of the first three sources, in the form
+One recorded exchange for every endpoint the rights register lists (14 since M13: two of BLS,
+two of Treasury Fiscal Data, ten of the Federal Reserve Board), in the form
 `atlas capture --replay` reads (ADR 0021):
 
 ```
 {register row}/{endpoint}/exchange.json   requests, statuses, headers, times, provenance
-{register row}/{endpoint}/part-1.*        the body, byte for byte
+{register row}/{endpoint}/part-N.*        the body of the Nth request, byte for byte
 ```
 
 **Every value in them is invented.** `provenance.synthetic` is true in each. The shape of each

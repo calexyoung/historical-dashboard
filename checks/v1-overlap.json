@@ -56,7 +56,7 @@
     {
       "key": "debt",
       "abs": 5.0,
-      "why": "v1 held the quarter-end total in millions of dollars from FRED's GFDEBTN; here the last business day of the quarter from Debt to the Penny, in dollars, is divided by a million. FRED's figures are whole millions and come from another Treasury publication. 93 of the 106 quarters agree to within $1 million and five more to within $3.6 million; $5 million (under a millionth of the total) is allowed, and the seven quarters beyond it are explained one by one.",
+      "why": "v1 held the quarter-end total in millions of dollars from FRED's GFDEBTN; here the last business day of the quarter from Debt to the Penny, in dollars, is divided by a million. FRED's figures are whole millions and come from another Treasury publication. 93 of the 106 quarters agree to within $1 million and six more to within $3.6 million; $5 million (under a millionth of the total) is allowed, and the seven quarters beyond it are explained one by one.",
       "factor": 1e-06,
       "exceptions": {
         "2020-Q1": "v1's figure is the total of 31 January 2020 (to $0.12 million), not of 31 March: about $463 billion less than the quarter's end.",
