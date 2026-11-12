@@ -1,0 +1,21 @@
+{
+  "about": "Two invented Derived series over the vintage fixture's two Series, for the release writer's tests and fixtures/release/demo.py. Merged into fixtures/vintage/series.json's table as its \"derived\" list by tests/v2/release_helpers.py; kept apart so that the store-only tests of M8 and M9 read the table they always did.",
+  "derived": [
+    {
+      "key": "fx_price_change",
+      "freq": "monthly",
+      "name": "Fixture price index, change from the month before",
+      "unit": "percent change from the month before",
+      "recipe": {"op": "pct_change", "inputs": ["fx_price"], "order": "aggregate_then_compute", "params": {"lag": 1}},
+      "catalog": {"measure_kind": "rate", "unit_kind": "percent", "segment": "economy_jobs", "continuity": "discrete", "agg": "none", "range": [-50, 50]}
+    },
+    {
+      "key": "fx_jobs_per_price",
+      "freq": "monthly",
+      "name": "Fixture jobs per point of the fixture price index",
+      "unit": "thousands of persons per index point",
+      "recipe": {"op": "ratio", "inputs": ["fx_jobs", "fx_price"], "order": "aggregate_then_compute"},
+      "catalog": {"measure_kind": "rate", "unit_kind": "ratio", "segment": "economy_jobs", "continuity": "discrete", "agg": "none"}
+    }
+  ]
+}

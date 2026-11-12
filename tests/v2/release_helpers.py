@@ -72,3 +72,16 @@ def all_bytes(directory: Path) -> bytes:
     """Every byte of every file under a directory, with the file names, for grep tests."""
     return b"\n".join(path.relative_to(directory).as_posix().encode() + b"\n" + path.read_bytes()
                       for path in sorted(Path(directory).rglob("*")) if path.is_file())
+
+
+RECIPES = FIXTURE / "recipes.json"
+
+
+def series_with_recipes(path: Path, derived: list[dict] | None = None, drop: tuple[str, ...] = ()) -> Path:
+    """The fixture's series table with a ``derived`` list: the committed two recipes
+    (fixtures/vintage/recipes.json) unless others are given."""
+    table = read_json(SERIES)
+    table["derived"] = [entry for entry in (derived if derived is not None else read_json(RECIPES)["derived"])
+                        if entry["key"] not in drop]
+    path.write_text(json.dumps(table))
+    return path
