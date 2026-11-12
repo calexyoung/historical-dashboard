@@ -218,6 +218,9 @@ def test_a_two_digit_year_is_read_from_the_day_of_the_fetch_and_then_counted_bac
     (c30([MONTHS[0], ("Aug-26r", ["n/a", 1, 2])]), "Total Construction has a value that is not a number for 2026-08: 'n/a'"),
     (c30(MONTHS, after=("p Preliminary", "May-26")), "'May-26' is a month below the end of the table"),
     (workbook([[TITLE], [UNITS], [None], ["Month", "Total\r\n_x000D_Construction"]]), "it has no row of column headings"),
+    # A row of figures with a name that is not a month is not taken for a note under the table.
+    (c30([*MONTHS[:3], ("Jun-26x", [1, 2, 3])]), "row 8 holds numbers and is not named for a month ('Jun-26x')"),
+    (c30([*MONTHS[:2], (None, [1, 2, 3]), MONTHS[3]]), "row 7 holds numbers and is not named for a month (None)"),
 ])
 def test_what_makes_the_workbook_incomplete(body, said):
     assert said in c30_problems(body)
@@ -227,6 +230,14 @@ def test_a_sheet_too_large_to_be_the_table_is_not_opened():
     body = zipped({"xl/workbook.xml": b"<workbook/>", "xl/sharedStrings.xml": b"<sst/>",
                    "xl/worksheets/sheet1.xml": b" " * (C30.MAX_BYTES + 1)})
     assert "xl/worksheets/sheet1.xml is larger than" in c30_problems(body)
+
+
+def test_xml_that_declares_an_entity_is_not_read():
+    bomb = (b'<?xml version="1.0"?><!DOCTYPE sst [<!ENTITY a "aaaaaaaaaa"><!ENTITY b "&a;&a;&a;&a;">]>'
+            b'<sst xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><si><t>&b;</t></si></sst>')
+    sheet = b'<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData/></worksheet>'
+    body = zipped({"xl/workbook.xml": b"<workbook/>", "xl/sharedStrings.xml": bomb, "xl/worksheets/sheet1.xml": sheet})
+    assert "declares a document type or an entity; it was not read" in c30_problems(body)
 
 
 @pytest.mark.parametrize("params, said", [

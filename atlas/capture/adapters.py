@@ -1936,6 +1936,11 @@ class CensusC30Adapter:
         shared = _member(archive, self.STRINGS, self.MAX_BYTES, problems) if sheet is not None else None
         if sheet is None or problems:
             return None
+        if any(b"<!DOCTYPE" in part or b"<!ENTITY" in part for part in (sheet, shared or b"")):
+            # A spreadsheet's XML declares no document type. One that does is not read: an
+            # entity is the one way XML of this size could be made to expand without end.
+            problems.append("the workbook's XML declares a document type or an entity; it was not read")
+            return None
         try:
             strings = [] if shared is None else [
                 "".join(t.text or "" for t in item.iter(f"{self._NS}t"))
@@ -2014,6 +2019,11 @@ class CensusC30Adapter:
                 table.append((row, match))
             else:
                 ended = True
+                if any(kind == "number" for kind, _ in cells[row].values()):
+                    # A row of figures whose first cell is not a month is not a note: read
+                    # as one, the months from it down would silently leave the Series.
+                    problems.append(f"row {row} holds numbers and is not named for a month "
+                                    f"({text(row, 'A')!r})")
         if not table:
             problems.append("the table has no rows")
             return {}, checks

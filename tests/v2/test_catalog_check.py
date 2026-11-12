@@ -539,6 +539,18 @@ def test_a_hand_entered_file_is_held_to_its_endpoint_and_to_its_format(tmp_path)
     assert [Path(p.path).name for p in report.layers[1].problems] == ["invented-margins.json", "stray.json", "invented-office.json"]
 
 
+def test_nothing_else_is_kept_under_catalog_manual(tmp_path):
+    """A file the checks do not read could hold what no check has seen."""
+    directory = _with_files(tmp_path)
+    (tmp_path / "manual" / "results.csv").write_text("2020,5200,4800\n")
+    (tmp_path / "manual" / "archive").mkdir()
+    (tmp_path / "manual" / "archive" / "old.json").write_text("{}")
+    (tmp_path / "manual" / "terms" / "notes.txt").write_text("x")
+    report = run_in(directory, _margin(), register=_manual_register(tmp_path))
+    assert [Path(p.path).name for p in report.layers[1].problems] == ["old.json", "results.csv", "notes.txt"]
+    assert all("nothing else is kept there" in p.message for p in report.layers[1].problems)
+
+
 def test_a_hand_entered_file_may_be_in_the_repository_only_when_its_origins_row_allows_a_public_copy(tmp_path):
     """No value is typed into the repository ahead of a decision: a committed file is a copy
     anyone can read, so its Origin's row must be signed for store and for redistribute."""

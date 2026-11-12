@@ -98,8 +98,17 @@ def test_a_series_through_an_intermediary_is_live_only_once_the_channel_is_clear
     rows = account(entries, table)
     assert rows["a"].klass == WITHHELD and "fred is an intermediary Channel that is not cleared" in rows["a"].reason
     assert rows["b"].klass == WITHHELD and rows["b"].reason.startswith("it is computed from `a`, which is withheld")
-    cleared = copy.deepcopy(table)
-    cleared["cleared_intermediaries"] = [{"channel": "fred", "adr_0006_amendment": "2026-12-01", "approved_by": "Alex"}]
+    # An amendment alone is half of it: the channel's own row must be signed and allow display.
+    amended = copy.deepcopy(table)
+    amended["cleared_intermediaries"] = [{"channel": "fred", "adr_0006_amendment": "2026-12-01", "approved_by": "Alex"}]
+    assert account(entries, amended)["a"].klass == WITHHELD
+    decision = {"display": True, "redistribute": True, "store": True, "ml_use": False,
+                "signed_by": "Alex", "signed_on": "2026-12-01"}
+    refused = copy.deepcopy(amended)
+    next(r for r in refused["rows"] if r["id"] == "fred")["decision"] = {**decision, "display": False}
+    assert account(entries, refused)["a"].klass == WITHHELD
+    cleared = copy.deepcopy(amended)
+    next(r for r in cleared["rows"] if r["id"] == "fred")["decision"] = decision
     rows = account(entries, cleared)
     assert rows["a"].klass == CLEARED and rows["a"].reads.endswith("through fred")
     assert rows["b"].klass == CLEARED  # the least direct route among what it rests on

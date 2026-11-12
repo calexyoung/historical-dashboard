@@ -139,6 +139,11 @@ def test_the_working_checks_the_value_and_never_replaces_it():
     assert manual.working_problem("1", {"formula": "two_party_margin", "democratic": "1005", "republican": "995"}) is None
     assert manual.working_problem("-1", {"formula": "two_party_margin", "democratic": "995", "republican": "1005"}) is None
     assert manual.working_problem("0", {"formula": "two_party_margin", "democratic": "1005", "republican": "995"}) is not None
+    # A value too long to check is a problem with the file, never an error in the reader.
+    third = {"formula": "two_party_margin", "democratic": "2", "republican": "1"}
+    assert "more than 6 decimals" in manual.working_problem("33." + "3" * 28, third)
+    assert manual.working_problem("33.333333", third) is None
+    assert "its working gives 100" in manual.working_problem("1", {**third, "democratic": "9" * 40})
 
 
 # --- where the bytes come from ----------------------------------------------------------------------

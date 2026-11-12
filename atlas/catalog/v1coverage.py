@@ -41,7 +41,14 @@ class Row:
 
 
 def _cleared(table: object, gate: RightsGate) -> set[str]:
-    return {e["channel"] for e in table["cleared_intermediaries"]} if gate.problem is None else set()
+    """The intermediary Channels cleared in both of the two places PLAN 6.1 asks for: a row of
+    their own that is signed and allows display, and a dated amendment to ADR 0006."""
+    if gate.problem is not None:
+        return set()
+    amended = {e["channel"] for e in table["cleared_intermediaries"]}
+    return {row["channel"] for row in table["rows"]
+            if row["kind"] == "channel" and row["channel"] in amended
+            and row["decision"] is not None and row["decision"]["display"] is True}
 
 
 def _stored(entry: dict, table: object, gate: RightsGate) -> tuple[str, str]:
@@ -55,8 +62,8 @@ def _stored(entry: dict, table: object, gate: RightsGate) -> tuple[str, str]:
     via = channel["via"]
     intermediary = via != DIRECT and via not in OWN_CHANNELS
     if intermediary and via not in _cleared(table, gate):
-        return CLASSES[2], (f"{via} is an intermediary Channel that is not cleared (no signed row with an "
-                            "amendment to ADR 0006): nothing is fetched through it")
+        return CLASSES[2], (f"{via} is an intermediary Channel that is not cleared (it needs a signed row "
+                            "of its own and an amendment to ADR 0006): nothing is fetched through it")
     row = register_row(table, gate, origin["producer"], origin["dataset"])
     if entry["status"] != "draft" and channel.get("endpoint"):
         where = f"{origin['producer']}: {origin['dataset']}"

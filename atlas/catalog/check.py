@@ -195,6 +195,10 @@ def _manual_files(directory: Path, table: object) -> tuple[list[Problem], list[t
         out.extend(Problem("references", str(path), said) for said in evidence.problems)
         for dataset in endpoint.datasets:
             held.append((path, "values", endpoint.origin, dataset))
+    for path in manual.stray_files(directory):
+        out.append(Problem("references", str(path), "it is under catalog/manual and is neither a series file "
+                                                    "(catalog/manual/NAME.json) nor a terms file "
+                                                    "(catalog/manual/terms/NAME.json): nothing else is kept there"))
     for path in manual.terms_files(directory):
         problems: list[str] = []
         document = manual.read_terms_file(path.read_bytes(), problems, today)

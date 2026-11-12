@@ -40,6 +40,8 @@ _NUMBER = re.compile(r"-?[0-9]+(\.[0-9]+)?")
 _COUNT = re.compile(r"[0-9]+")
 _NAME = re.compile(r"[a-z0-9][a-z0-9_]{0,63}")
 PARTIES = ("D", "R", "I")
+#: A value checked against its working is written with at most this many decimals.
+MAX_PLACES = 6
 
 
 def _strict(pairs):
@@ -127,12 +129,14 @@ def working_problem(value: str, working: object) -> str | None:
     if democratic + republican == 0:
         return "has working with no votes at all"
     places = len(value.partition(".")[2])
-    margin = ((democratic - republican) / (democratic + republican) * 100).quantize(
-        Decimal(1).scaleb(-places), rounding=ROUND_HALF_UP)
+    if places > MAX_PLACES:
+        return f"has a value with more than {MAX_PLACES} decimals, which no working is checked to"
     try:
+        margin = ((democratic - republican) / (democratic + republican) * 100).quantize(
+            Decimal(1).scaleb(-places), rounding=ROUND_HALF_UP)
         same = Decimal(value) == margin
     except InvalidOperation:
-        same = False
+        return "has working that cannot be worked out (the figures are too long)"
     return None if same else (f"has the value {value}, and its working gives {margin} "
                               f"(the two-party margin of {votes[0]} and {votes[1]})")
 
@@ -300,6 +304,17 @@ def terms_files(directory: Path | None = None) -> list[Path]:
     return sorted(directory.glob("*.json")) if directory.is_dir() else []
 
 
+def stray_files(directory: Path | None = None) -> list[Path]:
+    """Everything under ``catalog/manual`` that is neither a series file nor a terms file:
+    a file of another kind, or in another directory. Nothing else belongs there, and a file
+    that no check reads could hold what no check has seen."""
+    directory = MANUAL_DIR if directory is None else Path(directory)
+    if not directory.is_dir():
+        return []
+    known = {*series_files(directory), *terms_files(directory)}
+    return sorted(path for path in directory.rglob("*") if not path.is_dir() and path not in known)
+
+
 def load_terms(directory: Path | None = None) -> list[dict]:
     """Every terms file under ``catalog/manual/terms``, checked. Raises ``ValueError`` naming
     the first file that is not whole. This is what M19's annotation projection reads."""
@@ -314,4 +329,4 @@ def load_terms(directory: Path | None = None) -> list[dict]:
 
 
 __all__ = ["FILE", "FORMAT", "FREQUENCIES", "MANUAL_DIR", "citation_problem", "cited", "load_terms",
-           "read_series_file", "read_terms_file", "series_files", "terms_files", "working_problem"]
+           "read_series_file", "read_terms_file", "series_files", "stray_files", "terms_files", "working_problem"]
