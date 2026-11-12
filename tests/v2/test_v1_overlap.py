@@ -155,3 +155,30 @@ def test_the_committed_statement_covers_every_series_the_three_adapters_read():
         else:
             assert key in v1 and item["abs"] > 0, key
     assert statement["min_overlap"] >= 100
+
+
+def test_a_period_v1_holds_and_the_origin_does_not_inside_the_common_span_is_a_gap(tmp_path):
+    values = months(2020, 24, lambda n: 4.0)
+    holed = {period: value for period, value in values.items() if period != "2020-09"}
+    code, lines, _ = run(tmp_path, {"a": {"freq": "monthly", "values": holed}},
+                         {"a": {"freq": "monthly", "values": values}}, [{"key": "a", "abs": 0.005}])
+    assert code == 1 and "FAILED: 1 Periods have a value on one side only" in lines["a"]
+    # Before the Origin's first Period and after its last, v1 is simply longer: not a gap.
+    shorter = {period: value for period, value in values.items() if "2020-06" <= period <= "2021-09"}
+    code, lines, _ = run(tmp_path / "shorter", {"a": {"freq": "monthly", "values": shorter}},
+                         {"a": {"freq": "monthly", "values": values}}, [{"key": "a", "abs": 0.005}])
+    assert code == 0 and "n=16" in lines["a"]
+
+
+def test_the_tolerance_is_not_widened_for_a_large_figure(tmp_path):
+    # 0.004 beyond v1 on a figure of five million is beyond a tolerance of 0.0005.
+    native = {"a": {"freq": "monthly", "values": months(2020, 24, lambda n: 5_000_000.004)}}
+    legacy = {"a": {"freq": "monthly", "values": months(2020, 24, lambda n: 5_000_000.0)}}
+    code, lines, _ = run(tmp_path, native, legacy, [{"key": "a", "abs": 0.0005}])
+    assert code == 1 and "FAILED: 24 Periods are further from v1" in lines["a"]
+
+
+def test_a_new_series_that_is_not_in_the_native_release_is_not_passed_over(tmp_path):
+    other = {"b": {"freq": "monthly", "values": months(2020, 24, lambda n: 1.0)}}
+    code, lines, _ = run(tmp_path, other, {}, [{"key": "new", "v1": None}])
+    assert code == 1 and "not in the native release" in lines["new"]

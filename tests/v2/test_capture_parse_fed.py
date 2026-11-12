@@ -12,8 +12,13 @@ FED = ADAPTERS["fed_board"]
 BASE = "https://www.federalreserve.gov/datadownload/Output.aspx"
 
 
+READ = {"unit": "Percent:_Per_Year", "multiplier": "1", "currency": "NA"}
+
+
 def endpoint(expect, rel="H15", period=None, **params):
-    params = {"rel": rel, "series": "abc", "expect": expect, **params}
+    # Every column is read unless a test says otherwise: a column is read only if its labels
+    # are pinned.
+    params = {"rel": rel, "series": "abc", "expect": expect, "labels": {name: READ for name in expect}, **params}
     if period:
         params["period"] = period
     return Endpoint("fed-x", "fed-board", "fed_board", "Board of Governors of the Federal Reserve System",
@@ -185,3 +190,36 @@ def test_an_empty_answer_is_asked_for_again_and_then_kept_as_not_whole():
 ])
 def test_params_the_adapter_cannot_use_are_refused_when_the_register_is_read(params, problem):
     assert FED.problem({"rel": "H15", "series": "abc", "expect": ["A"], **params}) == problem
+
+
+def test_a_column_is_read_only_if_its_labels_were_pinned_when_it_was_captured():
+    # A capture made before labels were pinned (adapter version 1) says nothing of units, so
+    # nothing is read from it: replay then refuses the Series bound to it instead of trusting
+    # today's Catalog about yesterday's file.
+    body = csv(["A.B", "C.B"], ["2026-11-05,4.10,3.5"])
+    raw, _ = fetch(endpoint(["A.B", "C.B"], labels={"A.B": READ}), {url(): [(200, body)]})
+    assert raw.evidence.complete
+    assert sorted(FED.parse(raw).series) == ["A.B"]
+    raw, _ = fetch(endpoint(["A.B", "C.B"], labels={}), {url(): [(200, body)]})
+    assert raw.evidence.complete and FED.parse(raw).series == {}
+
+
+def test_a_span_that_answers_with_labels_and_no_rows_is_not_whole():
+    # Otherwise every Period of that span would be read as gone from the file.
+    spec = endpoint(["A.B"], rel="H10", from_years=[1990, 2010])
+    answers = {
+        url("H10", "01%2F01%2F1990", "12%2F31%2F2009"): [(200, csv(["A.B"], [], rel="H10"))],
+        url("H10", "01%2F01%2F2010", "12%2F31%2F2026"): [(200, csv(["A.B"], ["2010-01-04,1"], rel="H10"))],
+    }
+    raw, _ = fetch(spec, answers)
+    assert "part 1: the file has no data rows" in raw.evidence.problems
+    assert FED.parse(raw).complete is False
+
+
+def test_a_column_that_is_read_and_has_no_entry_at_all_is_not_whole():
+    body = csv(["A.B", "C.B"], ["2026-11-05,4.10,", "2026-11-06,4.11,"])
+    raw, _ = fetch(endpoint(["A.B", "C.B"]), {url(): [(200, body)]})
+    assert raw.evidence.problems == ["C.B is read and the file has no entry for it"]
+    # A column nobody reads may be empty: the Board keeps discontinued series in its packages.
+    raw, _ = fetch(endpoint(["A.B", "C.B"], labels={"A.B": READ}), {url(): [(200, body)]})
+    assert raw.evidence.complete

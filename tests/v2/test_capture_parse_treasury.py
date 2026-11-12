@@ -171,3 +171,18 @@ def test_a_month_the_statement_gives_null_for_is_listed_with_no_number():
 ])
 def test_params_the_adapter_cannot_use_are_refused_when_the_register_is_read(params, problem):
     assert TREASURY.problem({"path": "v1/x", "key": ["record_date", "src_line_nbr"], **params}) == problem
+
+
+def test_a_statement_with_no_month_rows_or_a_table_with_no_figure_is_not_whole():
+    # A table cut down to its headers would otherwise read as every month withdrawn.
+    rows = [row for row in statement("2025-10-31", {2026: {"October": ("404.37", "688.72")}}, 100)
+            if row["record_type_cd"] != "MTH"]
+    raw = fetch(MTS, rows)
+    assert "the statement of 2025-10-31 lists no month" in raw.evidence.problems
+    assert f"{RECEIPTS} is read and the table has no entry for it" in raw.evidence.problems
+    assert TREASURY.parse(raw).complete is False
+
+
+def test_a_statement_dated_on_the_last_day_of_the_calendar_is_read_not_crashed_on():
+    raw = fetch(MTS, statement("9999-12-31", {9999: {"October": ("1.00", "2.00")}}, 100))
+    assert isinstance(TREASURY.parse(raw).complete, bool)
