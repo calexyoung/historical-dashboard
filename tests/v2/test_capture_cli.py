@@ -52,7 +52,9 @@ ENDPOINTS = {
     # M15: the two sources that want a key. A replay of their fixtures asks for none.
     "bea": ["bea-nipa-t10101", "bea-nipa-t10105", "bea-nipa-t10106", "bea-nipa-t11200", "bea-nipa-t20600",
             "bea-ita-balance"],
-    "eia": ["eia-petroleum-spot", "eia-natgas-spot", "eia-gasoline-retail", "eia-generation-us"],
+    "eia": ["eia-gasoline-retail", "eia-generation-us"],
+    # The spot prices the Administration credits to a commercial provider, on a row of their own.
+    "eia-spot-prices": ["eia-petroleum-spot", "eia-natgas-spot"],
     # M16: three flat files of the Census Bureau's Economic Indicators and its construction workbook.
     "census": ["census-marts", "census-resconst", "census-ftd", "census-c30-total"],
 }

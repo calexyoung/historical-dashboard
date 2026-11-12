@@ -19,8 +19,14 @@ its terms reserve. A run can leave a source out: `--only bls --only treasury-fis
 --only fed-board` fetches the first three and does not ask about the IMF's row (on the host:
 the variable `ATLAS_CAPTURE_ONLY`, below).
 
-The BEA's and the EIA's endpoints (M15) are on the `bea` and `eia` rows, wait for them in the
-same way, and each wants a free API key besides (D8; "API keys" below).
+The BEA's and the EIA's endpoints (M15) are on the `bea`, `eia` and `eia-spot-prices` rows,
+wait for them in the same way, and each wants a free API key besides (D8; "API keys" below).
+The EIA's four are on two rows since 2026-11-12: `eia` (retail gasoline and electricity
+generation, signed) and `eia-spot-prices` (the crude oil and natural gas spot prices the
+Administration credits to a commercial provider, not signed). `--only eia` no longer selects the
+spot prices. A run that selects an unsigned row fetches nothing, and a run with no `--only`
+selects every row, so name the signed rows: today `--only bls --only treasury-fiscal-data
+--only fed-board --only bea --only eia --only census`.
 
 The Census Bureau's endpoints (M16) are on the `census` row and wait for it in the same way.
 They are published files and want no key.
@@ -66,8 +72,8 @@ key and no secret; the BEA and the EIA need one key each ("API keys" below).
 | `bea-nipa-t11200` | `bea` | one GET, with a key: NIPA table 1.12 (national income by type), quarterly, every year | 3.7 MB |
 | `bea-nipa-t20600` | `bea` | one GET, with a key: NIPA table 2.6 (personal income and its disposition), monthly, every year | 8.6 MB (0.26 MB gzipped) |
 | `bea-ita-balance` | `bea` | one GET, with a key: the balance on goods and services, quarterly, every year | 0.1 MB |
-| `eia-petroleum-spot` | `eia` | one GET, with a key: WTI and Brent spot prices, monthly | 0.3 MB |
-| `eia-natgas-spot` | `eia` | one GET, with a key: Henry Hub spot price, monthly | 0.1 MB |
+| `eia-petroleum-spot` | `eia-spot-prices` | one GET, with a key: WTI and Brent spot prices, monthly | 0.3 MB |
+| `eia-natgas-spot` | `eia-spot-prices` | one GET, with a key: Henry Hub spot price, monthly | 0.1 MB |
 | `eia-gasoline-retail` | `eia` | one GET, with a key: U.S. regular gasoline, retail, weekly | 0.6 MB |
 | `eia-generation-us` | `eia` | one GET, with a key: net electricity generation, all fuels, monthly | 0.1 MB |
 | `census-marts` | `census` | one GET: the flat file of the advance monthly retail report, a zip | 0.2 MB |
@@ -144,9 +150,10 @@ program will send: add a year to that endpoint's `from_years` in the register.
 Steps 1 to 5 are Alex's; the builder does not create repositories, variables or schedules.
 
 1. Sign the rows of the sources the job is to fetch (D2), merge that change into `v2`, and note
-   the commit's full SHA. The register lists endpoints on six rows: `bls`,
-   `treasury-fiscal-data`, `fed-board`, since M14 `imf`, and since M15 `bea` and `eia`. For the
-   last two, also add the two secrets ("API keys" above).
+   the commit's full SHA. The register lists endpoints on these rows: `bls`,
+   `treasury-fiscal-data`, `fed-board`, since M14 `imf`, since M15 `bea`, `eia` and
+   `eia-spot-prices`, and since M16 `census`. For the BEA's and the EIA's, also add the two
+   secrets ("API keys" above).
 2. Create a **private** repository, for example `macro-atlas-captures`, with a README so it has a
    default branch. Add a `.gitignore` containing the one line `LOCK`.
 3. In that repository's settings, under Actions → Variables, add `ATLAS_REF` with the SHA from

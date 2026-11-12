@@ -193,12 +193,12 @@ PROPOSALS: dict[str, dict] = {
                "https://www.eia.gov/dnav/pet/pet_pri_spt_s1_m.htm", sa="not_applicable", pb="nominal",
                country="USA", milestone="M15",
                note="The EIA publishes spot prices it takes from a commercial provider; whether "
-                    "the EIA row covers them is a question for the EIA row of the register."),
+                    "the EIA's terms cover them is a question for the eia-spot-prices row of the register."),
     "brent": src(EIA, "Petroleum and Other Liquids: Spot Prices", "RBRTE",
                  "https://www.eia.gov/dnav/pet/pet_pri_spt_s1_m.htm", sa="not_applicable", pb="nominal",
                  country="WLD", milestone="M15",
                  note="The EIA publishes spot prices it takes from a commercial provider; whether "
-                      "the EIA row covers them is a question for the EIA row of the register."),
+                      "the EIA's terms cover them is a question for the eia-spot-prices row of the register."),
     "gas": src(EIA, "Gasoline and Diesel Fuel Update", "EMM_EPMR_PTE_NUS_DPG",
                "https://www.eia.gov/petroleum/gasdiesel/", sa="not_applicable", pb="nominal",
                country="USA", milestone="M15", description="U.S. regular, all formulations, retail, weekly."),
@@ -206,7 +206,7 @@ PROPOSALS: dict[str, dict] = {
                   "https://www.eia.gov/dnav/ng/ng_pri_fut_s1_m.htm", sa="not_applicable", pb="nominal",
                   country="USA", milestone="M15",
                   note="The EIA publishes spot prices it takes from a commercial provider; whether "
-                       "the EIA row covers them is a question for the EIA row of the register."),
+                       "the EIA's terms cover them is a question for the eia-spot-prices row of the register."),
     "eggs": bls("Average Price Data", "APU0000708111", sa="nsa", pb="nominal", country="USA"),
     "food": src(IMF, "Primary Commodity Price System", None, "https://www.imf.org/en/Research/commodity-prices",
                 sa="not_applicable", pb="nominal", country="WLD", milestone="v2.2", note=UNSETTLED),
