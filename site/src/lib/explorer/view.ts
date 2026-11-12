@@ -149,8 +149,6 @@ export const MODE_LABELS: Record<ExplorerMode, string> = {
 };
 
 /** The unit of what is drawn, and how a drawn value is written in the readout. */
-/** Modes whose values stay in each Series' own unit: one plot per unit. The rest share one unit. */
-const OWN_UNIT: readonly ExplorerMode[] = ["lin", "log", "chg", "ch1"];
 const DRAWN: Record<Exclude<ExplorerMode, "lin" | "log">, { unit: string; suffix: string; decimals: number }> = {
   chg: { unit: "change from the period before", suffix: " change", decimals: 2 },
   ch1: { unit: "change from a year earlier", suffix: " change on the year", decimals: 2 },
