@@ -21,7 +21,7 @@ export const distDir = (name: VariantName): string => `.builds/${name}`;
 /** The environment for a child process: ours, minus anything that would configure the app. */
 function cleanEnv(extra: Record<string, string>): NodeJS.ProcessEnv {
   const env: NodeJS.ProcessEnv = { ...process.env };
-  for (const key of ["ATLAS_SURFACE", "BASE_PATH", "ATLAS_RELEASE_ROOT", "ATLAS_DIST_DIR", "NODE_ENV", "PORT", "HOSTNAME"]) delete env[key];
+  for (const key of ["ATLAS_SURFACE", "BASE_PATH", "ATLAS_RELEASE_ROOT", "ATLAS_NOTES_DIR", "ATLAS_DIST_DIR", "NODE_ENV", "PORT", "HOSTNAME"]) delete env[key];
   return { ...env, NEXT_TELEMETRY_DISABLED: "1", ...extra };
 }
 

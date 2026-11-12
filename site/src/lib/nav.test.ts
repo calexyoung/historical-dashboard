@@ -8,6 +8,13 @@ describe("navigation: only tabs whose pages exist are shown (PLAN section 3)", (
     expect(tabsFor("/data/fx_price_index").find((t) => t.current)?.label).toBe("Data");
   });
 
+  it("shows Claims, first, only when the Release being served holds a Claim (M21)", () => {
+    expect(tabsFor("/explore", { claims: true }).map((t) => t.label)).toEqual(["Claims", "Explore", "Events", "Data"]);
+    expect(tabsFor("/claims/2025-12-11-x", { claims: true }).find((t) => t.current)?.label).toBe("Claims");
+    expect(tabsFor("/claims", { claims: false }).map((t) => t.label)).toEqual(["Explore", "Events", "Data"]);
+    expect(breadcrumb("/claims")).toBe("Claims");
+  });
+
   it("marks the tab the reader is under, including deeper pages", () => {
     expect(tabsFor("/explore").find((t) => t.current)?.label).toBe("Explore");
     expect(tabsFor("/explore/anything").find((t) => t.current)?.label).toBe("Explore");

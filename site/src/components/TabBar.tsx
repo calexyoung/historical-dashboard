@@ -5,11 +5,11 @@ import { tabsFor } from "@/lib/nav";
  * current one is marked with aria-current. Only sections that exist are listed (src/lib/nav.ts).
  * Plain links: moving between sections is a full page load, so a page is always one Release.
  */
-export function TabBar({ basePath, pathname }: { basePath: string; pathname: string }) {
+export function TabBar({ basePath, pathname, claims }: { basePath: string; pathname: string; /** The Release being served holds a Claim. */ claims: boolean }) {
   return (
     <nav aria-label="Sections" className="border-b border-line-strong">
       <ul className="mx-auto -mb-px flex max-w-[1400px] gap-1 overflow-x-auto px-4 lg:px-6">
-        {tabsFor(pathname).map((tab) => (
+        {tabsFor(pathname, { claims }).map((tab) => (
           <li key={tab.href} className="shrink-0">
             <a
               href={`${basePath}${tab.href}`}

@@ -2,7 +2,8 @@
  * M1's acceptance criteria, checked against real production builds over HTTP.
  * (PLAN section 10, M1; section 6.1.)
  */
-import { mkdirSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { request } from "node:http";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -12,6 +13,7 @@ import { startVariant, type Running } from "./builds";
 const A = "20260201T000000Z-aaaaaaa";
 const B = "20260202T000000Z-bbbbbbb";
 const LOCAL = "20260203T000000Z-ccccccc";
+const CLAIM = "2025-12-11-a-fixture-official-on-fixture-prices";
 const RELEASE_IDS = /[0-9]{8}T[0-9]{6}Z-[0-9a-f]{7,12}/g;
 
 const get = (url: string, init: RequestInit = {}) => fetch(url, { redirect: "manual", ...init });
@@ -68,7 +70,7 @@ describe("the fixture release is served at both base paths", () => {
   it("shows only tabs whose pages exist, and marks the current one", async () => {
     const html = await (await get(servers[0]!.url("/explore"))).text();
     const nav = html.slice(html.indexOf('<nav aria-label="Sections"'), html.indexOf("</nav>", html.indexOf('<nav aria-label="Sections"')));
-    expect([...nav.matchAll(/<a [^>]*>([^<]+)<\/a>/g)].map((m) => m[1])).toEqual(["Explore", "Events", "Data"]);
+    expect([...nav.matchAll(/<a [^>]*>([^<]+)<\/a>/g)].map((m) => m[1])).toEqual(["Claims", "Explore", "Events", "Data"]); // the fixture holds a Claim (M21)
     expect(nav).toContain('aria-current="page"');
   });
 
@@ -459,7 +461,7 @@ describe("rewriting CURRENT changes the served page with no restart", () => {
 describe("a production-surface build fails closed (PLAN 6.1 point 5, reader)", () => {
   let server: Running;
   const root = tempRoot();
-  const PATHS = ["/", "/explore", "/explore/", "/data", "/data?q=price", "/data/fx_price_index", "/data/fx_exchange_index", "/docs/glossary", "/docs/glossary/stale", "/api/health", "/api/theme", "/icon.svg", "/_next/static/chunks/x.js", "/no/such/page", "/explore/export?format=csv&s=fx_price_index", "/explore/export?format=svg&s=fx_price_index", "/explore/export?format=all", "/data/fx_price_index.csv", "/data/fx_price_index.json?as_of=2025-12-13", "/data/fx_price_index.metadata.json", "/data/fx_price_index.md", "/data/fx_price_index/twin/csv", "/api/v1/status"];
+  const PATHS = ["/", "/explore", "/explore/", "/data", "/data?q=price", "/data/fx_price_index", "/data/fx_exchange_index", "/docs/glossary", "/docs/glossary/stale", "/api/health", "/api/theme", "/icon.svg", "/_next/static/chunks/x.js", "/no/such/page", "/explore/export?format=csv&s=fx_price_index", "/explore/export?format=svg&s=fx_price_index", "/explore/export?format=all", "/data/fx_price_index.csv", "/data/fx_price_index.json?as_of=2025-12-13", "/data/fx_price_index.metadata.json", "/data/fx_price_index.md", "/data/fx_price_index/twin/csv", "/api/v1/status", "/claims", `/claims/${CLAIM}`, `/claims/${CLAIM}.json`, `/claims/${CLAIM}.md`, `/claims/${CLAIM}/evidence.csv`, `/claims/${CLAIM}/lock.json`, `/claims/${CLAIM}/twin/json`, "/docs/method/claims"];
 
   beforeAll(async () => {
     addRelease(root, { id: A });
@@ -780,5 +782,105 @@ describe("the Explorer on agency data (PLAN M18): pinned links, as of a date, sa
     expect(pub).not.toContain("Prices before the revision");
     expect(pub).not.toContain("data-saved");
     expect(pub).not.toContain("atlas save");
+  });
+});
+
+describe("claims (PLAN M21): the page, its twins, the rights gate and User notes", () => {
+  const NOTE = `---\nid: "2026-11-12-my-reading-of-it"\nuser: "alex"\nabout:\n  kind: claim\n  id: "${CLAIM}"\ncreated: "2026-11-12"\nstatus: draft\n---\n\nSEEDED-NOTE: I think this one is misleading.\n`;
+  const TWINS = [`/claims/${CLAIM}.json`, `/claims/${CLAIM}.md`, `/claims/${CLAIM}/evidence.csv`, `/claims/${CLAIM}/lock.json`];
+  const root = tempRoot();
+  const notes = mkdtempSync(join(tmpdir(), "atlas-notes-"));
+  let local: Running;
+  let production: Running;
+  beforeAll(async () => {
+    mkdirSync(join(notes, "alex"));
+    writeFileSync(join(notes, "alex", "2026-11-12-my-reading-of-it.md"), NOTE);
+    addRelease(root, { id: A }); // public-profile, as the fixture is
+    addRelease(root, { id: LOCAL, profile: "local", signed: false });
+    addRelease(root, { id: B, schema: "0.2.0" }); // a Release from before there were Claims
+    promote(root, A);
+    local = await startVariant("local-atlas", { root, env: { ATLAS_NOTES_DIR: notes } });
+    production = await startVariant("production", { root, env: { ATLAS_NOTES_DIR: notes } });
+  });
+  afterAll(() => Promise.all([local.stop(), production.stop()]));
+
+  it("a local build serves the page complete in its HTML, from one release, never stored", async () => {
+    promote(root, A);
+    const response = await get(local.url(`/claims/${CLAIM}`));
+    expect(response.status).toBe(200);
+    expect(response.headers.get("cache-control")).toContain("no-store");
+    const html = await response.text();
+    expect(idsOn(html)).toEqual([A, FIXTURE_ID]); // the release served, and the release the lock was computed on
+    expect(html).toContain("The fixture price index stood at 109.5 in November, up about five percent since January.");
+    expect(html).toMatch(/data-cell="then">.*?109\.5/s);
+    expect(html).toContain("data-claim-drawing");
+    expect(html).toContain(`href="/macro-atlas/claims/${CLAIM}/evidence.csv"`);
+    expect(html).toContain(`type="text/markdown" href="/macro-atlas/claims/${CLAIM}.md"`);
+    const index = await (await get(local.url("/claims"))).text();
+    expect(index).toContain(`href="/macro-atlas/claims/${CLAIM}"`);
+    expect(index).toContain("Recorded, by party:");
+    expect((await get(local.url("/docs/method/claims"))).status).toBe(200);
+  });
+
+  it("AC: a User note renders on a local build of a local-profile release, marked with its author", async () => {
+    promote(root, LOCAL);
+    const html = await (await get(local.url(`/claims/${CLAIM}`))).text();
+    expect(html).toContain('data-note-by="alex"');
+    expect(html.replaceAll("<!-- -->", "")).toContain("Note by alex · 12 November 2026 · alex’s own, not Macro Atlas’s");
+    expect(html).toContain("SEEDED-NOTE: I think this one is misleading.");
+    // ...and in no file: a twin is never given a note.
+    for (const path of TWINS) {
+      const twin = await get(local.url(path));
+      expect(twin.status, path).toBe(200);
+      expect(await twin.text(), path).not.toMatch(/SEEDED-NOTE|Note by/);
+    }
+    promote(root, A);
+  });
+
+  it("AC: the note is absent from a public-profile release, on the local build and on production", async () => {
+    promote(root, A);
+    for (const server of [local, production]) {
+      for (const path of ["/claims", `/claims/${CLAIM}`, ...TWINS, "/explore", "/api/v1/status"]) {
+        expect(await (await get(server.url(path))).text(), `${server.base} ${path}`).not.toMatch(/SEEDED-NOTE|Note by|data-note-by/);
+      }
+    }
+  });
+
+  it("production: the record is shown, and no figure or file of figures while no register row is signed", async () => {
+    promote(root, A);
+    const response = await get(production.url(`/claims/${CLAIM}`));
+    expect(response.status).toBe(200);
+    const html = await response.text();
+    expect(html).toContain("A. Fixture, 11 December 2025");
+    expect(html).toContain("Not shown here");
+    expect(html).not.toMatch(/data-cell|109\.3|data-claim-drawing|evidence\.csv|lock\.json/);
+    for (const path of TWINS) {
+      for (const headers of [{}, { "if-none-match": "*" }, { "x-atlas-twin": "json" }] as Record<string, string>[]) {
+        const twin = await get(production.url(path), { headers });
+        expect(twin.status, path).toBe(403);
+        expect(twin.headers.get("cache-control"), path).toBe("no-store");
+        expect(await twin.text(), path).not.toMatch(/109\.|period/);
+      }
+    }
+    expect((await get(production.url(`/claims/${CLAIM}/twin/json`))).status).toBe(404);
+    expect((await get(production.url(`/claims/${CLAIM}/twin/lock`), { headers: { "x-atlas-twin": "lock" } })).status).toBe(404);
+  });
+
+  it("a Release with no Claim: no tab; hidden on production, explained on a local build", async () => {
+    promote(root, B);
+    const nav = (html: string) => html.slice(html.indexOf('<nav aria-label="Sections"'), html.indexOf("</nav>", html.indexOf('<nav aria-label="Sections"')));
+    expect(nav(await (await get(production.url("/explore"))).text())).not.toContain("Claims");
+    expect((await get(production.url("/claims"))).status).toBe(404);
+    expect((await get(production.url(`/claims/${CLAIM}`))).status).toBe(404);
+    const empty = await get(local.url("/claims"));
+    expect(empty.status).toBe(200);
+    expect(await empty.text()).toContain("This release holds no claims.");
+    promote(root, A);
+  });
+
+  it("a claim id that is not one, or a path that climbs, is not found", async () => {
+    for (const path of ["/claims/2020-01-01-no-such-claim", "/claims/..%2F..%2Fmanifest", "/claims/2020-01-01-no-such-claim.json", `/claims/${CLAIM}.csv`, `/claims/${CLAIM}/evidence.json`]) {
+      expect((await get(local.url(path))).status, path).toBe(404);
+    }
   });
 });
