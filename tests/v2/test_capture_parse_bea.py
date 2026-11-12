@@ -101,11 +101,11 @@ def test_a_code_that_sits_on_two_lines_is_read_from_the_line_the_endpoint_pins()
     (nipa([{"code": "DPCERX", "line": "2", "obs": [("2026Q1", "1")]}]), "A191RX is not on line 1 of the answer"),
     (nipa([gdp([("2026Q1", "1")], line="3")]), "A191RX is not on line 1 of the answer"),
     (nipa([gdp([("2026Q1", "1")], mult="9")]),
-     "A191RX is labelled unit 'Level', multiplier '9', metric 'Chained Dollars'; unit 'Level', multiplier '6', "
-     "metric 'Chained Dollars' was expected"),
+     ("A191RX is labelled unit 'Level', multiplier '9', metric 'Chained Dollars'; unit 'Level', multiplier '6', "
+      "metric 'Chained Dollars' was expected")),
     (nipa([gdp([("2026Q1", "1")])], note="Table 1.1.6. [Billions of chained (2030) dollars]"),
-     "neither the line of A191RX nor the table's note says 'chained (2017) dollars' (a rebase: every figure "
-     "means something else)"),
+     ("neither the line of A191RX nor the table's note says 'chained (2017) dollars' (a rebase: every figure "
+      "means something else)")),
     (nipa([gdp([("2026Q1", "1"), ("2026Q1", "2")])]), "A191RX gives 2026-Q1 twice"),
     (nipa([gdp([("2026M01", "1")])]), "A191RX has a time that is not a quarter: '2026M01'"),
     (nipa([gdp([("2026Q1", "(D)")])]), "A191RX has a value that is not a number for 2026-Q1: '(D)'"),

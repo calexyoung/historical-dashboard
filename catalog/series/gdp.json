@@ -1,8 +1,8 @@
 {
   "key": "gdp",
-  "name": "US real GDP ($bn, 2017$)",
-  "description": "Quarterly.",
-  "unit": "billions of chained 2017 U.S. dollars, annual rate",
+  "name": "US real GDP (chained 2017 dollars)",
+  "description": "Quarterly, seasonally adjusted at annual rates.",
+  "unit": "millions of chained 2017 U.S. dollars, annual rate",
   "unit_kind": "currency",
   "measure_kind": "annualized",
   "agg": "mean",
@@ -24,15 +24,19 @@
       "url": "https://www.bea.gov/data/gdp/gross-domestic-product"
     },
     "channel": {
-      "via": "direct"
+      "via": "direct",
+      "adapter": "bea",
+      "endpoint": "bea-nipa-t10106",
+      "auth": "api_key"
     }
   },
   "refresh": "quarterly",
   "max_lag": "P7M",
-  "status": "draft",
+  "status": "active",
   "migration": {
     "v1_source": "FRED GDPC1",
-    "change": "same",
-    "milestone": "M15"
+    "change": "representation",
+    "milestone": "M15",
+    "note": "v1 showed billions of chained dollars; the Bureau's API gives the same figures in millions."
   }
 }

@@ -1,0 +1,48 @@
+{
+  "format": 1,
+  "source": "eia",
+  "endpoint": "eia-natgas-spot",
+  "recorded_at": "2026-11-11T15:50:00Z",
+  "provenance": {
+    "synthetic": true,
+    "transport": "synthetic",
+    "origin": "U.S. Energy Information Administration",
+    "datasets": [
+      "Natural Gas Spot and Futures Prices"
+    ],
+    "retrieved_at": "2026-11-11T15:50:30Z",
+    "capture_id": null,
+    "note": "Invented values in the shape of the source's answer of 2026-11-11. Not a measurement of anything and not a capture: written by fixtures/capture/make_fixtures.py."
+  },
+  "exchanges": [
+    {
+      "request": {
+        "method": "GET",
+        "url": "https://api.eia.gov/v2/natural-gas/pri/fut/data/?frequency=monthly&data%5B0%5D=value&facets%5Bseries%5D%5B%5D=RNGWHHD&sort%5B0%5D%5Bcolumn%5D=period&sort%5B0%5D%5Bdirection%5D=asc&sort%5B1%5D%5Bcolumn%5D=series&sort%5B1%5D%5Bdirection%5D=asc&offset=0&length=5000",
+        "body": null
+      },
+      "status": 200,
+      "headers": [
+        [
+          "Content-Type",
+          "application/json"
+        ],
+        [
+          "Date",
+          "Wed, 11 Nov 2026 15:50:30 GMT"
+        ],
+        [
+          "Content-Length",
+          "25009"
+        ],
+        [
+          "Set-Cookie",
+          "(not kept)"
+        ]
+      ],
+      "received_at": "2026-11-11T15:50:30Z",
+      "body_file": "part-1.json",
+      "sha256": "a27af425526fa4f010ae614e48210799ed3753dccc5f392717d2d5df8241f9e9"
+    }
+  ]
+}

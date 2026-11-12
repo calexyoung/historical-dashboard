@@ -1,0 +1,39 @@
+{
+  "key": "trade_q",
+  "name": "US balance on goods and services, quarterly",
+  "description": "International transactions accounts, seasonally adjusted. A quarterly rate, not annualized; negative is a deficit. The monthly balance of the FT-900 release is the draft Series trade.",
+  "unit": "millions of U.S. dollars",
+  "unit_kind": "currency",
+  "measure_kind": "flow",
+  "agg": "sum",
+  "freq": "quarterly",
+  "continuity": "discrete",
+  "seasonal_adjustment": "sa",
+  "price_basis": "nominal",
+  "country": "USA",
+  "segment": "economy_jobs",
+  "topics": [
+    "us-economy"
+  ],
+  "source": {
+    "origin": {
+      "producer": "U.S. Bureau of Economic Analysis",
+      "dataset": "International Transactions Accounts",
+      "origin_id": "TSI_ItaBalGdsServ_QSA",
+      "url": "https://www.bea.gov/data/intl-trade-investment/international-transactions"
+    },
+    "channel": {
+      "via": "direct",
+      "adapter": "bea",
+      "endpoint": "bea-ita-balance",
+      "auth": "api_key"
+    }
+  },
+  "refresh": "quarterly",
+  "max_lag": "P7M",
+  "range": [
+    -1000000,
+    100000
+  ],
+  "status": "active"
+}

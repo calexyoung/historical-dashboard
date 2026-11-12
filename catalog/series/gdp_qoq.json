@@ -23,12 +23,15 @@
       "url": "https://www.bea.gov/data/gdp/gross-domestic-product"
     },
     "channel": {
-      "via": "direct"
+      "via": "direct",
+      "adapter": "bea",
+      "endpoint": "bea-nipa-t10101",
+      "auth": "api_key"
     }
   },
   "refresh": "quarterly",
   "max_lag": "P7M",
-  "status": "draft",
+  "status": "active",
   "migration": {
     "v1_source": "FRED A191RL1Q225SBEA",
     "change": "same",

@@ -92,7 +92,7 @@ def test_the_committed_table_is_what_the_command_writes(tmp_path, capsys):
     assert atlas_main(["catalog", "--check"]) == 0
     assert atlas_main(["catalog"]) == 0
     out = capsys.readouterr().out
-    assert "179 Series" in out and "0 the rights gate would show on production today" in out
+    assert "185 Series" in out and "0 the rights gate would show on production today" in out
 
 
 def test_no_proposal_reads_a_decision():

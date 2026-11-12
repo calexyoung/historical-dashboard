@@ -1,0 +1,48 @@
+{
+  "format": 1,
+  "source": "bea",
+  "endpoint": "bea-nipa-t10105",
+  "recorded_at": "2026-11-11T15:50:00Z",
+  "provenance": {
+    "synthetic": true,
+    "transport": "synthetic",
+    "origin": "U.S. Bureau of Economic Analysis",
+    "datasets": [
+      "National Income and Product Accounts, Table 1.1.5"
+    ],
+    "retrieved_at": "2026-11-11T15:50:24Z",
+    "capture_id": null,
+    "note": "Invented values in the shape of the source's answer of 2026-11-11. Not a measurement of anything and not a capture: written by fixtures/capture/make_fixtures.py."
+  },
+  "exchanges": [
+    {
+      "request": {
+        "method": "GET",
+        "url": "https://apps.bea.gov/api/data?method=GetData&DataSetName=NIPA&TableName=T10105&Frequency=Q&Year=ALL&ResultFormat=JSON",
+        "body": null
+      },
+      "status": 200,
+      "headers": [
+        [
+          "Content-Type",
+          "application/json"
+        ],
+        [
+          "Date",
+          "Wed, 11 Nov 2026 15:50:24 GMT"
+        ],
+        [
+          "Content-Length",
+          "18641"
+        ],
+        [
+          "Set-Cookie",
+          "(not kept)"
+        ]
+      ],
+      "received_at": "2026-11-11T15:50:24Z",
+      "body_file": "part-1.json",
+      "sha256": "d9be41001d387413a8b7acac73e719dd63d78a1653b887a89c30d5fc69f9323d"
+    }
+  ]
+}

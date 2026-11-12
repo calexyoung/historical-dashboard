@@ -2,7 +2,7 @@
 
 # Rights register
 
-Version `2026-11-11.draft-4`. 0 of 30 rows signed. Intermediary Channels cleared: none.
+Version `2026-11-11.draft-5`. 0 of 30 rows signed. Intermediary Channels cleared: none.
 
 One row per Origin and per intermediary Channel: the terms that were read, the sentences that
 matter quoted, a proposal, and Alex's decision (CONTEXT.md, Rights register; PLAN 6 and 6.1;
@@ -122,7 +122,7 @@ Decision: **not decided**.
 
 ### Bureau of Economic Analysis
 
-Row `bea`. GDP, PCE, income, profits, trade balance. v2.0 (M15). Needs a free API key from Alex.
+Row `bea`. GDP, PCE, income, profits, trade balance. v2.0 (M15): six requests a run, with a free API key (BEA_API_KEY) kept outside the repository.
 
 - Origin, as a Catalog entry names it: "U.S. Bureau of Economic Analysis"; all datasets.
 - Licence class: public domain.
@@ -134,11 +134,23 @@ Terms: <https://www.bea.gov/help/guidelines-for-citing-bea> (read on 2026-11-11,
 
 Terms: <https://apps.bea.gov/API/signup/> (read on 2026-11-11, from the page's own text). The sign-up form asks for agreement to published terms of service; the terms document itself was not read.
 
+Capture endpoints (fetched by `atlas capture` only once this row is signed and allows store):
+
+- `bea-nipa-t10101`, the `bea` adapter, for "National Income and Product Accounts, Table 1.1.1". Table 1.1.1, percent change from the preceding period in real gross domestic product, quarterly, every year and every line in one request (about 2.0 MB on 2026-11-11). Line 1 is read.
+- `bea-nipa-t10105`, the `bea` adapter, for "National Income and Product Accounts, Table 1.1.5". Table 1.1.5, gross domestic product in current dollars, quarterly, every year and every line in one request (about 1.9 MB on 2026-11-11). Line 1 is read. The API gives the figures in millions of dollars (UNIT_MULT 6) though the table's note says billions; the multiplier is pinned.
+- `bea-nipa-t10106`, the `bea` adapter, for "National Income and Product Accounts, Table 1.1.6". Table 1.1.6, real gross domestic product in chained dollars, quarterly, every year and every line in one request (about 1.1 MB on 2026-11-11). Line 1 is read, in millions of chained (2017) dollars. The reference year is pinned as a text the table's note must hold: a rebase keeps the capture from being whole until the pin and the Series are changed.
+- `bea-nipa-t11200`, the `bea` adapter, for "National Income and Product Accounts, Table 1.12". Table 1.12, national income by type of income, quarterly, every year and every line in one request (about 3.7 MB on 2026-11-11). Line 45 is read: corporate profits after tax without inventory valuation and capital consumption adjustments. Profits are published a release later than GDP, so the line ends a quarter earlier than the table.
+- `bea-nipa-t20600`, the `bea` adapter, for "National Income and Product Accounts, Table 2.6". Table 2.6, personal income and its disposition, monthly, every year and every line in one request (about 8.6 MB on 2026-11-11, 0.3 MB compressed). Four lines are read: personal income, personal consumption expenditures, the personal saving rate and real disposable personal income.
+- `bea-ita-balance`, the `bea` adapter, for "International Transactions Accounts". International Transactions Accounts: the balance on goods and services, all countries, quarterly, seasonally adjusted, every year in one request (about 0.1 MB on 2026-11-11). Quarterly rates, not annualized. The API has no monthly frequency for these accounts; the monthly balance of the FT-900 release is not in it.
+
 Proposal: allow **all four**. U.S. federal works are not subject to copyright in the United States (17 U.S.C. 105). That is the basis proposed here; the pages read do not themselves state a licence. Cite the Bureau.
 
 Open questions:
 
-- Read the API terms of service when the key is requested, and record any required notice or request limit here before M15.
+- The API terms of service were not read: the sign-up page asks for agreement to them and M15 did not fetch the document. Read them before signing, and record any required notice here.
+- Request limits, as the API's user guide gives them and M15 did not test: 100 requests a minute, 100 MB a minute, 30 errors a minute, and an hour's lock-out (HTTP 429) beyond them. The capture job makes six requests a run, about 17 MB, two runs a day.
+- The API repeats the key it was asked with in every answer. The capture kit replaces every copy before anything is kept, so the bytes kept are the answer with that one change (ADR 0029). Confirm that keeping them so is acceptable.
+- The monthly trade balance v1 showed is the FT-900 release, compiled with the Census Bureau, and is not in this API. The quarterly balance from the International Transactions Accounts is captured here under a new key; the monthly figure waits for the Census files (M16).
 
 Decision: **not decided**.
 
@@ -230,7 +242,7 @@ Decision: **not decided**.
 
 ### Energy Information Administration
 
-Row `eia`. Energy prices; generation and capacity. v2.0 headline (M15); depth in v2.1. Needs a free API key from Alex.
+Row `eia`. Energy prices; generation and capacity. v2.0 headline (M15): four requests a run, with a free API key (EIA_API_KEY) kept outside the repository. Depth in v2.1.
 
 - Origin, as a Catalog entry names it: "U.S. Energy Information Administration"; all datasets.
 - Licence class: public domain.
@@ -244,11 +256,19 @@ Terms: <https://www.eia.gov/about/copyrights_reuse.php> (read on 2026-11-11, fro
 
 > you should use an acknowledgment, which includes the publication date
 
+Capture endpoints (fetched by `atlas capture` only once this row is signed and allows store):
+
+- `eia-petroleum-spot`, the `eia` adapter, for "Petroleum and Other Liquids: Spot Prices". Spot prices of West Texas Intermediate at Cushing and of Brent, the month's average as the Administration computes it, every month in one request (about 0.3 MB on 2026-11-11).
+- `eia-natgas-spot`, the `eia` adapter, for "Natural Gas Spot and Futures Prices". The Henry Hub natural gas spot price, the month's average, every month in one request (about 0.1 MB on 2026-11-11).
+- `eia-gasoline-retail`, the `eia` adapter, for "Gasoline and Diesel Fuel Update". U.S. regular gasoline, all formulations, retail, weekly (dated Monday), every week in one request (about 0.6 MB on 2026-11-11). Six weeks of December 1990 and January 1991 are listed with no number. Prices under a dollar are printed without a zero before the point.
+- `eia-generation-us`, the `eia` adapter, for "Electric Power Operations (Form EIA-923)". Net generation of electricity, all fuels, all sectors, United States, monthly from 2001, in one request (about 0.1 MB on 2026-11-11). The rows have no series id; the fuel type names the series, with location and sector held.
+
 Proposal: allow **all four**. Public domain by the Administration's own statement. The acknowledgement carries the publication date.
 
 Open questions:
 
-- API rate limits are still unverified (PLAN 6).
+- API rate limits were not found stated and were not tested. The capture job makes four requests a run, one at a time, a second apart, two runs a day; none was refused on 2026-11-11.
+- The spot prices of crude oil and natural gas are published by the Administration with a commercial provider named as their source on its pages. Whether the statement that the Administration's data are public domain covers them is for Alex to weigh before signing; if not, wti, brent and natgas need a decision of their own.
 
 Decision: **not decided**.
 

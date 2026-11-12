@@ -1,0 +1,48 @@
+{
+  "format": 1,
+  "source": "bea",
+  "endpoint": "bea-ita-balance",
+  "recorded_at": "2026-11-11T15:50:00Z",
+  "provenance": {
+    "synthetic": true,
+    "transport": "synthetic",
+    "origin": "U.S. Bureau of Economic Analysis",
+    "datasets": [
+      "International Transactions Accounts"
+    ],
+    "retrieved_at": "2026-11-11T15:50:28Z",
+    "capture_id": null,
+    "note": "Invented values in the shape of the source's answer of 2026-11-11. Not a measurement of anything and not a capture: written by fixtures/capture/make_fixtures.py."
+  },
+  "exchanges": [
+    {
+      "request": {
+        "method": "GET",
+        "url": "https://apps.bea.gov/api/data?method=GetData&DataSetName=ITA&Indicator=BalGdsServ&AreaOrCountry=AllCountries&Frequency=QSA&Year=ALL&ResultFormat=JSON",
+        "body": null
+      },
+      "status": 200,
+      "headers": [
+        [
+          "Content-Type",
+          "application/json"
+        ],
+        [
+          "Date",
+          "Wed, 11 Nov 2026 15:50:28 GMT"
+        ],
+        [
+          "Content-Length",
+          "11789"
+        ],
+        [
+          "Set-Cookie",
+          "(not kept)"
+        ]
+      ],
+      "received_at": "2026-11-11T15:50:28Z",
+      "body_file": "part-1.json",
+      "sha256": "c2f78eff99dc25f5673487089dfad583f13d42c400c108da0d1336425bdafa38"
+    }
+  ]
+}

@@ -22,7 +22,10 @@
       "url": "https://www.bea.gov/data/income-saving/personal-saving-rate"
     },
     "channel": {
-      "via": "direct"
+      "via": "direct",
+      "adapter": "bea",
+      "endpoint": "bea-nipa-t20600",
+      "auth": "api_key"
     }
   },
   "refresh": "monthly",
@@ -31,7 +34,7 @@
     0.0,
     40.0
   ],
-  "status": "draft",
+  "status": "active",
   "migration": {
     "v1_source": "FRED PSAVERT",
     "change": "same",

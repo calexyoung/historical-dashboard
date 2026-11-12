@@ -1357,7 +1357,8 @@ class EiaAdapter:
     period and then by the facet. The units each series' rows carry are pinned (``units``).
 
     A value is the Administration's own text: the answer is read so that a number printed bare
-    is kept as its characters, not as a float. A Period listed with ``null`` is an Observation
+    is kept as its characters, not as a float. One thing is changed: a figure printed without
+    a zero before its point (".995", as the gasoline price under a dollar is) is given one. A Period listed with ``null`` is an Observation
     with no value. A weekly row is dated by a day, which names its ISO week.
 
     Pages are whole when they agree on the total, add up to it, and their rows are in order
@@ -1373,6 +1374,7 @@ class EiaAdapter:
     FREQUENCIES = MappingProxyType({"daily": "day", "weekly": "week", "monthly": "month",
                                     "quarterly": "quarter", "annual": "year"})
     _ROUTE = re.compile(r"[a-z0-9-]+(/[a-z0-9-]+)*")
+    _BARE = re.compile(r"-?\.[0-9]+")
     _NAME = re.compile(r"[A-Za-z0-9_.-]+")
 
     def key(self, params: dict) -> tuple[str, str]:
@@ -1542,6 +1544,10 @@ class EiaAdapter:
                 found.setdefault(name, []).append(
                     (day, {"period": label, "value": None, "status": "unavailable", "footnotes": []}))
                 continue
+            if isinstance(value, str) and value.isascii() and self._BARE.fullmatch(value):
+                # The Administration prints some figures under one without a zero (".995").
+                # The zero is put before the point, and that is the only change made.
+                value = value.replace(".", "0.", 1)
             if not (isinstance(value, str) and _is_number(value)):
                 problems.append(f"{name} has a value that is not a number or null for {label}: {value!r}")
                 continue

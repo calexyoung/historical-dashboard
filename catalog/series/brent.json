@@ -22,7 +22,10 @@
       "url": "https://www.eia.gov/dnav/pet/pet_pri_spt_s1_m.htm"
     },
     "channel": {
-      "via": "direct"
+      "via": "direct",
+      "adapter": "eia",
+      "endpoint": "eia-petroleum-spot",
+      "auth": "api_key"
     }
   },
   "refresh": "monthly",
@@ -31,7 +34,7 @@
     5.0,
     160.0
   ],
-  "status": "draft",
+  "status": "active",
   "migration": {
     "v1_source": "FRED MCOILBRENTEU",
     "change": "same",

@@ -1,11 +1,15 @@
 """Writes the capture kit's committed fixtures: one recorded exchange for every endpoint the
-rights register lists (BLS, Treasury Fiscal Data, the Federal Reserve Board, the IMF).
+rights register lists (BLS, Treasury Fiscal Data, the Federal Reserve Board, the IMF, the BEA,
+the EIA).
 
 Every value in them is invented. The *shape* of each answer (field names, header rows, the way
 BLS prints an unpublished month or a quarter, the paging block of Fiscal Data, the statements
 of the Monthly Treasury Statement, the Board's label rows, time cells and "ND", the IMF's
-SDMX-JSON with its positions and unordered times) was copied from the answers the four sources
-gave on 2026-11-11; none of their numbers was. The repository is
+SDMX-JSON with its positions and unordered times, the BEA's echo of what it was asked and its
+commas, the EIA's nulls and its prices printed without a leading zero) was copied from the
+answers the six sources gave on 2026-11-11; none of their numbers was. The two sources that
+want a key are asked without one here, as a replay asks them: no key was used to make these
+files and none is in them (where the BEA would repeat it, the file says REDACTED). The repository is
 public and no row of the rights register is signed, so real agency bytes may not be committed
 yet (PLAN 6.1; fixtures/README.md). When Alex has signed a row, a real capture replaces the
 invented one: see "Real captures" in fixtures/capture/README.md.
@@ -343,6 +347,145 @@ def imf_body(params: dict, ranges: dict[str, list]) -> bytes:
     return json.dumps(answer, separators=(",", ":")).encode()
 
 
+def bea_body(params: dict) -> bytes:
+    """One answer of the BEA's API: a whole NIPA table or one indicator of the international
+    accounts. What the real answers of 2026-11-11 showed is here in small: the request
+    repeated in capitals with the key (here the word the capture kit leaves in its place),
+    figures in millions with thousands commas, a code that sits on two lines, a line that is
+    not read and holds no number, a line that ends a quarter before the others (profits), and
+    a note that names the table, its unit and the day it was last revised."""
+    frequency = params["frequency"]
+    if params["read"] == "ita":
+        (series,) = params["series"]
+        pinned = params["labels"][series]
+        quarters = [(year, quarter) for year in range(2018, 2027) for quarter in range(1, 5)
+                    if (year, quarter) <= (2026, 2)]
+        data = [{"Indicator": params["indicator"], "AreaOrCountry": params["area"], "Frequency": frequency,
+                 "Year": str(year), "TimeSeriesId": series,
+                 "TimeSeriesDescription": "Balance on goods and services; quarterly seasonally adjusted",
+                 "TimePeriod": f"{year}Q{quarter}", "CL_UNIT": pinned["unit"], "UNIT_MULT": pinned["multiplier"],
+                 "DataValue": str(-150000 - 1250 * index + (4000 if quarter == 1 else 0)), "NoteRef": "Q"}
+                for index, (year, quarter) in enumerate(quarters)]
+        asked = [("DATASETNAME", "ITA"), ("INDICATOR", params["indicator"].upper()),
+                 ("AREAORCOUNTRY", params["area"].upper()), ("FREQUENCY", frequency), ("YEAR", "ALL")]
+        results = {"TsLastUpdated": "2026-09-24 08:30:00.000",
+                   "Dimensions": [{"Ordinal": str(n), "Name": name, "DataType": "string", "IsValue": "0"}
+                                  for n, name in enumerate(("Indicator", "AreaOrCountry", "Frequency", "Year",
+                                                            "TimeSeriesId", "TimeSeriesDescription", "TimePeriod",
+                                                            "CL_UNIT", "UNIT_MULT", "DataValue"), start=1)],
+                   "Data": data,
+                   "Notes": {"NoteRef": "Q", "NoteText": "Quarterly estimates are not annualized and are "
+                                                         "expressed at quarterly rates."}}
+    else:
+        table = params["table"]
+        if frequency == "M":
+            times = [f"{year}M{month:02d}" for year in range(2018, 2027) for month in range(1, 13)
+                     if (year, month) <= (2026, 9)]
+        else:
+            times = [f"{year}Q{quarter}" for year in range(2018, 2027) for quarter in range(1, 5)
+                     if (year, quarter) <= (2026, 3)]
+        lines = []
+        for position, series in enumerate(params["series"]):
+            pinned = params["labels"][series]
+            chained = "basis" in pinned
+            name = "Total, Billions of chained (2017) dollars" if chained and table != "T10106" \
+                else f"An invented line ({series})"
+            own = times[:-1] if table == "T11200" else times  # profits come a release later
+            lines.append((series, pinned["line"], name, pinned, own, position))
+        first = lines[0]
+        # The same code again further down the table, as the Bureau repeats a line in an
+        # addendum; and a line nobody reads, with a mark where a number would be.
+        lines.append((first[0], str(int(first[1]) + 100), first[2], first[3], first[4], first[5]))
+        lines.append(("ZZ99RC", "200", "An invented line that is not read",
+                      {"unit": "Level", "multiplier": "6", "metric": "Current Dollars"}, times[-2:], 9))
+        data = []
+        for series, line, name, pinned, own, position in sorted(lines, key=lambda item: int(item[1])):
+            for index, time in enumerate(own):
+                if series == "ZZ99RC":
+                    value = "(D)"
+                elif pinned["unit"] != "Level":  # a rate of change: small, sometimes below zero
+                    value = f"{((index * 7 + position) % 13 - 3) / 2:.1f}"
+                elif pinned["multiplier"] == "0":  # a ratio in percent
+                    value = f"{4 + ((index * 5 + position) % 9) / 2:.1f}"
+                else:
+                    value = f"{15_000_000 + 1_500_000 * position + 37_219 * index:,}"
+                data.append({"TableName": table, "SeriesCode": series, "LineNumber": line,
+                             "LineDescription": name, "TimePeriod": time, "METRIC_NAME": pinned["metric"],
+                             "CL_UNIT": pinned["unit"], "UNIT_MULT": pinned["multiplier"], "DataValue": value,
+                             "NoteRef": table})
+        unit = "Billions of chained (2017) dollars" if table == "T10106" else "Billions of dollars"
+        asked = [("DATASETNAME", params["dataset"].upper()), ("TABLENAME", table.upper()),
+                 ("FREQUENCY", frequency), ("YEAR", "ALL")]
+        results = {"Statistic": "NIPA Table", "UTCProductionTime": "2026-11-11T15:50:00.000",
+                   "Dimensions": [{"Ordinal": str(n), "Name": name, "DataType": "string", "IsValue": "0"}
+                                  for n, name in enumerate(("TableName", "SeriesCode", "LineNumber",
+                                                            "LineDescription", "TimePeriod", "CL_UNIT",
+                                                            "UNIT_MULT", "METRIC_NAME", "DataValue"), start=1)],
+                   "Data": data,
+                   "Notes": [{"NoteRef": table, "NoteText": f"Table {table}. An invented table [{unit}] - "
+                                                            "LastRevised: October 29, 2026"}]}
+    echo = [("USERID", "REDACTED"), ("RESULTFORMAT", "JSON"), ("METHOD", "GETDATA"), *asked]
+    answer = {"BEAAPI": {"Request": {"RequestParam": [{"ParameterName": name, "ParameterValue": value}
+                                                      for name, value in echo]},
+                         "Results": results}}
+    return json.dumps(answer, separators=(",", ":")).encode()
+
+
+#: Invented levels for the EIA's series: (level, step per Period, decimals).
+EIA_SHAPE = {"RWTC": (60, 0.11, 2), "RBRTE": (64, 0.09, 2), "RNGWHHD": (2.5, 0.013, 2),
+             "EMM_EPMR_PTE_NUS_DPG": (3.1, 0.004, 3), "ALL": (330000, 410.25, 5)}
+
+
+def eia_body(params: dict, offset: int, length: int) -> bytes:
+    """One page of an answer of the EIA's API v2. In small, what the real answers of
+    2026-11-11 showed: the total and every value as text, rows sorted by period and then by
+    series, a week listed with no number, a price under a dollar printed without its zero,
+    two series that begin at different months, and the request repeated without the key."""
+    column, facet = params.get("column", "value"), params.get("facet", "series")
+    weekly = params["frequency"] == "weekly"
+    if weekly:
+        day, periods = date(2025, 1, 6), []
+        while day <= date(2026, 11, 9):
+            periods.append(day.isoformat())
+            day += timedelta(days=7)
+    else:
+        last = (2026, 8) if column == "generation" else (2026, 10)
+        periods = [f"{year}-{month:02d}" for year in range(2019, 2027) for month in range(1, 13)
+                   if (year, month) <= last]
+    rows = []
+    for index, period in enumerate(periods):
+        for position, series in enumerate(sorted(params["series"])):
+            if position and index < 6:
+                continue  # the second series begins half a year after the first
+            level, step, places = EIA_SHAPE[series]
+            value = f"{level + step * index:.{places}f}"
+            if weekly and index == 3:
+                value = None
+            elif weekly and index == 5:
+                value = ".995"
+            if column == "generation":
+                row = {"period": period, "location": params["facets"]["location"], "stateDescription": "U.S. Total",
+                       "sectorid": params["facets"]["sectorid"], "sectorDescription": "All Sectors",
+                       facet: series, "fuelTypeDescription": "all fuels", column: value,
+                       f"{column}-units": params["units"][series]}
+            else:
+                row = {"period": period, "duoarea": "NUS", "area-name": "NA", "product": "EPX",
+                       "product-name": "An invented product", "process": "PX0", "process-name": "An invented price",
+                       facet: series, "series-description": f"An invented series ({params['units'][series]})",
+                       column: value, "units": params["units"][series]}
+            rows.append(row)
+    facets = {facet: list(params["series"]), **{name: [value] for name, value in sorted(params.get("facets", {}).items())}}
+    answer = {"response": {"total": str(len(rows)), "dateFormat": "YYYY-MM-DD" if weekly else "YYYY-MM",
+                           "frequency": params["frequency"], "data": rows[offset:offset + length]},
+              "request": {"command": f"/v2/{params['route']}/data/",
+                          "params": {"frequency": params["frequency"], "data": [column], "facets": facets,
+                                     "sort": [{"column": "period", "direction": "asc"},
+                                              {"column": facet, "direction": "asc"}],
+                                     "offset": str(offset), "length": str(length)}},
+              "apiVersion": "2.1.14", "ExcelAddInVersion": "2.1.0"}
+    return json.dumps(answer, separators=(",", ":")).encode()
+
+
 class Synthetic:
     """Answers each request of a real adapter with invented bytes of the shape that request
     would get, and remembers nothing else."""
@@ -365,6 +508,15 @@ class Synthetic:
             return "application/json", bls_body(asked["seriesid"], int(asked["startyear"]), int(asked["endyear"]))
         if url.netloc == "api.fiscaldata.treasury.gov":
             return "application/json", mts_body() if url.path.endswith("mts_table_1") else treasury_body()
+        if url.netloc == "apps.bea.gov":
+            named = query.get("TableName", query.get("Indicator"))[0]
+            endpoint = next(e for e in self._endpoints if e.adapter == "bea"
+                            and named in (e.params.get("table"), e.params.get("indicator")))
+            return "application/json", bea_body(endpoint.params)
+        if url.netloc == "api.eia.gov":
+            route = url.path.removeprefix("/v2/").removesuffix("/data/")
+            endpoint = next(e for e in self._endpoints if e.adapter == "eia" and e.params["route"] == route)
+            return "application/json", eia_body(endpoint.params, int(query["offset"][0]), int(query["length"][0]))
         if url.netloc == "api.imf.org":
             agency, flow = url.path.split("/")[-4:-2]
             endpoint = next(e for e in self._endpoints if e.adapter == "imf_sdmx"
@@ -397,7 +549,9 @@ def build(out: Path) -> list[str]:
     endpoints = endpoints_from_register(load_register())
     written = []
     transport = Synthetic(endpoints)
-    for endpoint in endpoints:
+    # The invented clock ticks once a request. The sources that came with M15 are asked last,
+    # so the times recorded for the others are the ones they have always had.
+    for endpoint in sorted(endpoints, key=lambda e: e.adapter in ("bea", "eia")):
         raw = capture(endpoint, Fetch(Session(transport, sleep=lambda seconds: None)))
         assert raw.evidence.complete, (endpoint.id, raw.evidence.problems)
         parts = [{"request": {"method": p.request.method, "url": p.request.url,

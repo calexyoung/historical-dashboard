@@ -1,0 +1,48 @@
+{
+  "format": 1,
+  "source": "eia",
+  "endpoint": "eia-generation-us",
+  "recorded_at": "2026-11-11T15:50:00Z",
+  "provenance": {
+    "synthetic": true,
+    "transport": "synthetic",
+    "origin": "U.S. Energy Information Administration",
+    "datasets": [
+      "Electric Power Operations (Form EIA-923)"
+    ],
+    "retrieved_at": "2026-11-11T15:50:32Z",
+    "capture_id": null,
+    "note": "Invented values in the shape of the source's answer of 2026-11-11. Not a measurement of anything and not a capture: written by fixtures/capture/make_fixtures.py."
+  },
+  "exchanges": [
+    {
+      "request": {
+        "method": "GET",
+        "url": "https://api.eia.gov/v2/electricity/electric-power-operational-data/data/?frequency=monthly&data%5B0%5D=generation&facets%5Bfueltypeid%5D%5B%5D=ALL&facets%5Blocation%5D%5B%5D=US&facets%5Bsectorid%5D%5B%5D=99&sort%5B0%5D%5Bcolumn%5D=period&sort%5B0%5D%5Bdirection%5D=asc&sort%5B1%5D%5Bcolumn%5D=fueltypeid&sort%5B1%5D%5Bdirection%5D=asc&offset=0&length=5000",
+        "body": null
+      },
+      "status": 200,
+      "headers": [
+        [
+          "Content-Type",
+          "application/json"
+        ],
+        [
+          "Date",
+          "Wed, 11 Nov 2026 15:50:32 GMT"
+        ],
+        [
+          "Content-Length",
+          "22898"
+        ],
+        [
+          "Set-Cookie",
+          "(not kept)"
+        ]
+      ],
+      "received_at": "2026-11-11T15:50:32Z",
+      "body_file": "part-1.json",
+      "sha256": "5308615b0e4a0b0248decb09448dd75a82643177c02190e90b7dc87f1ad19499"
+    }
+  ]
+}

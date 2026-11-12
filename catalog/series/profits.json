@@ -1,8 +1,8 @@
 {
   "key": "profits",
-  "name": "US corporate profits ($bn)",
+  "name": "US corporate profits after tax",
   "description": "Corporate profits after tax, without inventory valuation and capital consumption adjustments.",
-  "unit": "billions of U.S. dollars, annual rate",
+  "unit": "millions of U.S. dollars, annual rate",
   "unit_kind": "currency",
   "measure_kind": "annualized",
   "agg": "mean",
@@ -23,15 +23,19 @@
       "url": "https://www.bea.gov/data/income-saving/corporate-profits"
     },
     "channel": {
-      "via": "direct"
+      "via": "direct",
+      "adapter": "bea",
+      "endpoint": "bea-nipa-t11200",
+      "auth": "api_key"
     }
   },
   "refresh": "quarterly",
   "max_lag": "P7M",
-  "status": "draft",
+  "status": "active",
   "migration": {
     "v1_source": "FRED CP",
-    "change": "same",
-    "milestone": "M15"
+    "change": "representation",
+    "milestone": "M15",
+    "note": "v1 showed billions of dollars; the Bureau's API gives the same figures in millions."
   }
 }

@@ -83,6 +83,14 @@ def test_a_bare_number_is_kept_as_the_text_the_administration_sent():
     assert EIA.parse(raw).series["RWTC"][0]["value"] == "68.20"
 
 
+def test_a_figure_printed_without_a_zero_before_its_point_is_given_one_and_nothing_else_changes():
+    rows = [spot("RBRTE", "2026-08", ".995"), spot("RWTC", "2026-08", "-.50"), spot("RBRTE", "2026-09", "1.")]
+    raw, state = read({url(): eia(rows)})
+    assert raw.evidence.problems == ["RBRTE has a value that is not a number or null for 2026-09: '1.'"]
+    raw, state = read({url(): eia(rows[:2])})
+    assert (state.series["RBRTE"][0]["value"], state.series["RWTC"][0]["value"]) == ("0.995", "-0.50")
+
+
 def test_a_long_series_is_read_in_pages_until_the_total_is_reached():
     spec = endpoint(series=["RWTC"], units={"RWTC": "$/BBL"}, page_size=2)
     rows = [spot("RWTC", f"2026-0{m}", f"6{m}.0") for m in range(1, 6)]

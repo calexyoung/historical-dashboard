@@ -51,7 +51,8 @@ def test_every_v1_key_is_a_key_of_the_catalog_unchanged():
     assert [key for key in V1_KEYS if key not in catalog] == []
     new = sorted(set(catalog) - set(V1_KEYS))
     assert [key for key in new if not key.endswith(("_cpi", "_infl", "_fx"))] == [
-        "cpi_nsa", "net_worth", "outlays", "receipts", "uk_cpi_imf", "uk_infl_imf"]
+        "cpi_nsa", "elec_gen", "gdp_nominal", "net_worth", "outlays", "pce", "personal_income",
+        "real_dpi", "receipts", "trade_q", "uk_cpi_imf", "uk_infl_imf"]  # M15 added six
     # M14: the G20 rows. An index and its change for sixteen countries v1 had neither for, and
     # a monthly dollar rate for fifteen currencies (Turkey's is v1's tryusd). The Fund's index
     # for the United Kingdom is not the ONS index v1 showed, so it has a key of its own.
@@ -110,7 +111,7 @@ def test_only_what_an_adapter_is_built_for_is_in_the_pipeline():
     g20 = ["ar", "au", "br", "ca", "cn", "de", "fr", "id", "in", "it", "jp", "kr", "mx", "ru", "sa", "tr",
            "uk", "us", "za"]
     assert [k for k in live if "recipe" in catalog[k]] == sorted([
-        "corecpi_yoy", "cpi_yoy", "m2_yoy", "rent_yoy", "t10y2y", "wages_yoy",
+        "corecpi_yoy", "cpi_yoy", "gdp_yoy", "m2_yoy", "rent_yoy", "t10y2y", "wages_yoy",  # M15: gdp_yoy
         *(f"{c}_infl" for c in g20 if c != "uk"), "uk_infl_imf"])  # M14: inflation in the nineteen
     by_adapter: dict[str, list[str]] = {}
     for key in live:
@@ -128,7 +129,14 @@ def test_only_what_an_adapter_is_built_for_is_in_the_pipeline():
         # currency of their own that is not the dollar, and of the euro.
         "imf_sdmx": sorted([*(f"{c}_cpi" for c in g20 if c != "uk"), "uk_cpi_imf", "tryusd", "ez_fx",
                             *(f"{c}_fx" for c in g20 if c not in ("de", "fr", "it", "us", "tr"))]),
+        # M15: the two sources that want a key.
+        "bea": ["gdp", "gdp_nominal", "gdp_qoq", "pce", "personal_income", "profits", "real_dpi", "saving",
+                "trade_q"],
+        "eia": ["brent", "elec_gen", "gas", "natgas", "wti"],
     }
+    assert all(catalog[key]["source"]["channel"]["auth"] == "api_key" for key in (*by_adapter["bea"], *by_adapter["eia"]))
+    # The monthly balance v1 showed is not in the BEA's API: it waits for the Census files.
+    assert catalog["trade"]["status"] == "draft" and catalog["trade"]["migration"]["milestone"] == "M16"
     # v1's UK index is the ONS's, which the Fund's is not: it stays a draft under its own key.
     assert catalog["uk_cpi"]["status"] == catalog["uk_infl"]["status"] == "draft"
     assert catalog["uk_cpi"]["source"]["origin"]["origin_id"] == "D7BT"
@@ -257,7 +265,7 @@ def test_atlas_check_exits_zero_on_the_committed_catalog_and_names_each_layer(ca
     out = capsys.readouterr().out
     for layer in LAYERS:
         assert f"{layer}: ok" in out
-    assert "179 Series" in out
+    assert "185 Series" in out
 
 
 def test_atlas_check_exits_one_and_names_the_file_and_the_layers_not_run(tmp_path, capsys):
@@ -393,3 +401,29 @@ def test_an_index_read_from_the_imf_has_its_reference_period_pinned(tmp_path):
                       "origin": {**IMF_SOURCE["origin"], "dataset": "Exchange Rates", "origin_id": "JPN.XDC_USD.PA_RT.M"},
                       "channel": {**IMF_SOURCE["channel"], "endpoint": "imf-er-g20"}})
     assert failed(run(tmp_path / "rate", rate)) == {}
+
+
+# --- what a BEA or an EIA endpoint must say of a Series bound to it (M15) ----------------------
+
+
+def _keyed(key, adapter, endpoint, producer, dataset, origin_id, **changes):
+    source = {"origin": {"producer": producer, "dataset": dataset, "origin_id": origin_id, "url": None},
+              "channel": {"via": "direct", "adapter": adapter, "endpoint": endpoint, "auth": "api_key"}}
+    return stored(key, status="active", source=source, **changes)
+
+
+def test_a_series_bound_to_a_bea_table_is_one_of_its_lines_at_the_tables_frequency(tmp_path):
+    bea = ("bea", "bea-nipa-t10106", "U.S. Bureau of Economic Analysis",
+           "National Income and Product Accounts, Table 1.1.6")
+    assert failed(run(tmp_path, _keyed("gdp", *bea, "A191RX", freq="quarterly"))) == {}
+    assert failed(run(tmp_path, _keyed("gdp", *bea, "DPCERX", freq="quarterly"))) == {"references": [
+        "the endpoint bea-nipa-t10106 does not ask for DPCERX"]}
+    assert failed(run(tmp_path, _keyed("gdp", *bea, "A191RX", freq="monthly"))) == {"references": [
+        "it is monthly, and the endpoint bea-nipa-t10106 asks the Bureau for quarterly figures"]}
+
+
+def test_a_series_bound_to_an_eia_route_is_one_of_its_series_at_the_routes_frequency(tmp_path):
+    eia = ("eia", "eia-gasoline-retail", "U.S. Energy Information Administration", "Gasoline and Diesel Fuel Update")
+    assert failed(run(tmp_path, _keyed("gas", *eia, "EMM_EPMR_PTE_NUS_DPG", freq="weekly"))) == {}
+    assert failed(run(tmp_path, _keyed("gas", *eia, "EMM_EPMR_PTE_NUS_DPG", freq="monthly"))) == {"references": [
+        "it is monthly, and the endpoint eia-gasoline-retail asks the Administration for weekly figures"]}
