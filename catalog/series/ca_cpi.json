@@ -1,0 +1,39 @@
+{
+  "key": "ca_cpi",
+  "name": "Canada CPI (index)",
+  "description": "The national all-items consumer price index as the International Monetary Fund publishes it (dataflow IMF.STA:CPI). The Fund labels its reference period 2014M12. The level reads like Statistics Canada's 2002 = 100 index, which the Fund's label does not say; the unit is left as \"index\" until that is settled.",
+  "unit": "index",
+  "unit_kind": "index",
+  "measure_kind": "index",
+  "agg": "mean",
+  "freq": "monthly",
+  "continuity": "discrete",
+  "seasonal_adjustment": "nsa",
+  "price_basis": "not_applicable",
+  "country": "CAN",
+  "segment": "us_in_the_world",
+  "topics": [
+    "asia-other"
+  ],
+  "source": {
+    "origin": {
+      "producer": "International Monetary Fund",
+      "dataset": "Consumer Price Index",
+      "origin_id": "CAN.CPI._T.IX.M",
+      "url": "https://data.imf.org/"
+    },
+    "channel": {
+      "via": "direct",
+      "adapter": "imf_sdmx",
+      "endpoint": "imf-cpi-g20",
+      "auth": "none"
+    }
+  },
+  "refresh": "monthly",
+  "max_lag": "P6M",
+  "range": [
+    0.0,
+    1000.0
+  ],
+  "status": "active"
+}

@@ -10,6 +10,7 @@ from datetime import date, timedelta
 from pathlib import Path
 
 from atlas.catalog import load_catalog
+from atlas.catalog.load import leaves
 from atlas.period import period_bounds
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -145,7 +146,10 @@ def test_the_committed_statement_covers_every_series_the_three_adapters_read():
     agencies = ("bls", "treasury_fiscal_data", "fed_board")
     stored = {key for key, entry in catalog.items() if entry["status"] == "active"
               and (entry.get("source", {}).get("channel") or {}).get("adapter") in agencies}
-    derived = {key for key, entry in catalog.items() if entry["status"] == "active" and "recipe" in entry}
+    # A Derived series belongs to this statement when everything it rests on does. The IMF's
+    # Series (M14) are not M13's to state: what was found for them is in their Catalog notes.
+    derived = {key for key, entry in catalog.items() if entry["status"] == "active" and "recipe" in entry
+               and set(leaves(key, catalog)) <= stored}
     assert set(stated) == stored | derived
     v1 = set(json.loads((ROOT / "data" / "atlas.json").read_text())["series"])
     for key, item in stated.items():

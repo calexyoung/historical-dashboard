@@ -1,0 +1,39 @@
+{
+  "key": "id_fx",
+  "name": "USD/IDR (monthly average)",
+  "description": "The month's average of Indonesian rupiah per U.S. dollar as the International Monetary Fund publishes it (dataflow IMF.STA:ER, period average).",
+  "unit": "Indonesian rupiah per U.S. dollar",
+  "unit_kind": "currency",
+  "measure_kind": "rate",
+  "agg": "mean",
+  "freq": "monthly",
+  "continuity": "discrete",
+  "seasonal_adjustment": "not_applicable",
+  "price_basis": "nominal",
+  "country": "IDN",
+  "segment": "markets_money",
+  "topics": [
+    "currencies"
+  ],
+  "source": {
+    "origin": {
+      "producer": "International Monetary Fund",
+      "dataset": "Exchange Rates",
+      "origin_id": "IDN.XDC_USD.PA_RT.M",
+      "url": "https://data.imf.org/"
+    },
+    "channel": {
+      "via": "direct",
+      "adapter": "imf_sdmx",
+      "endpoint": "imf-er-g20",
+      "auth": "none"
+    }
+  },
+  "refresh": "monthly",
+  "max_lag": "P6M",
+  "range": [
+    0.0,
+    100000.0
+  ],
+  "status": "active"
+}

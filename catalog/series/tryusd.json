@@ -1,7 +1,7 @@
 {
   "key": "tryusd",
   "name": "USD/TRY",
-  "description": "Monthly average (OECD).",
+  "description": "The month's average of Turkish lira per U.S. dollar as the International Monetary Fund publishes it (dataflow IMF.STA:ER, period average). Earlier years are printed in today's currency unit, so the figures from before a redenomination are very small.",
   "unit": "Turkish lira per U.S. dollar",
   "unit_kind": "currency",
   "measure_kind": "rate",
@@ -15,24 +15,30 @@
   "topics": [
     "currencies"
   ],
+  "aliases": [
+    "tr_fx"
+  ],
   "source": {
     "origin": {
       "producer": "International Monetary Fund",
       "dataset": "Exchange Rates",
-      "origin_id": null,
+      "origin_id": "TUR.XDC_USD.PA_RT.M",
       "url": "https://data.imf.org/"
     },
     "channel": {
-      "via": "direct"
+      "via": "direct",
+      "adapter": "imf_sdmx",
+      "endpoint": "imf-er-g20",
+      "auth": "none"
     }
   },
   "refresh": "monthly",
   "max_lag": "P3M",
-  "status": "draft",
+  "status": "active",
   "migration": {
     "v1_source": "FRED CCUSMA02TRM618N",
     "change": "same",
-    "note": "Monthly average, as v1 showed. The agency's identifier for this series is settled, with a captured fixture, by the milestone that builds the adapter.",
+    "note": "The month's average, as v1 showed, from another compiler: v1 read the OECD's figure through FRED. Over the 321 months both hold, the Fund's average is within half a percent of v1's in most, and up to 3.5 percent away in months of sharp moves (2006, 2018, 2021); 304 months differ by more than v1's rounding (compared in memory on 2026-11-11; nothing was kept).",
     "milestone": "M14"
   }
 }

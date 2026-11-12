@@ -13,6 +13,12 @@ schedules nothing. Starting the job takes two decisions that are Alex's and are 
   scheduled workflow commits each day's captures to itself. It has not been created, and whether
   GitHub Actions is billed for private repositories on Alex's account has not been confirmed.
 
+The IMF's endpoints (M14) are on the `imf` row and wait for it in the same way. The row has an
+open question of its own: whether a daily request counts as the "automated bulk downloading"
+its terms reserve. A run can leave a source out: `--only bls --only treasury-fiscal-data
+--only fed-board` fetches the first three and does not ask about the IMF's row (on the host:
+the variable `ATLAS_CAPTURE_ONLY`, below).
+
 Every day between the day both are answered and the day the job starts is a day of
 Atlas-observed history that cannot be recovered.
 
@@ -45,9 +51,12 @@ It needs Python 3.11 or later and `requests`. No Node, no pandas, no API key, no
 | `fed-g19-credit` | `fed-board` | one GET: G.19 consumer credit, seasonally adjusted | 74 KB |
 | `fed-h6-monthly` | `fed-board` | one GET: H.6 monthly money stock | 138 KB |
 | `fed-chgdel-delinquency` | `fed-board` | one GET: delinquency rates, all commercial banks | 23 KB |
+| `imf-cpi-g20` | `imf` | one GET: the consumer price index of the nineteen G20 countries, monthly, whole history | 0.6 MB |
+| `imf-er-g20` | `imf` | one GET: national currency per U.S. dollar, monthly average, sixteen currencies, whole history | 0.4 MB |
 
-A run is 20 requests, at least a second apart per host, and took 37 seconds on 2026-11-11.
-The answers come to about 10 MB before compression (about 2 MB gzipped). Two runs a day add
+A run of the first three sources is 20 requests, at least a second apart per host, and took
+37 seconds on 2026-11-11; the IMF's two endpoints (M14) add two requests and about 1 MB.
+The answers come to about 11 MB before compression. Two runs a day add
 at most that much when every source changes; a response that has not changed since earlier
 the same day adds a log line and no blob, and git stores identical bytes once however many
 days they recur. Most of these files change monthly or quarterly.
@@ -68,16 +77,22 @@ program will send: add a year to that endpoint's `from_years` in the register.
 
 Steps 1 to 5 are Alex's; the builder does not create repositories, variables or schedules.
 
-1. Sign the three rows (D2), merge that change into `v2`, and note the commit's full SHA.
+1. Sign the rows of the sources the job is to fetch (D2), merge that change into `v2`, and note
+   the commit's full SHA. The register lists endpoints on four rows: `bls`,
+   `treasury-fiscal-data`, `fed-board` and, since M14, `imf`.
 2. Create a **private** repository, for example `macro-atlas-captures`, with a README so it has a
    default branch. Add a `.gitignore` containing the one line `LOCK`.
 3. In that repository's settings, under Actions → Variables, add `ATLAS_REF` with the SHA from
    step 1. Optionally add `ATLAS_CAPTURE_USER_AGENT`, for example
    `macro-atlas-capture/1 (contact: you@example.org)`, so an agency can reach a person; without
-   it the job sends a generic name and no contact.
+   it the job sends a generic name and no contact. If a row that lists endpoints is not signed
+   yet (the `imf` row has an open question of its own), add `ATLAS_CAPTURE_ONLY` with the rows
+   that are, separated by spaces: `bls treasury-fiscal-data fed-board`. Without it the job
+   asks for every endpoint the register lists and one unsigned row fails the whole run.
 4. Copy `deploy/capture/capture.yml` to `.github/workflows/capture.yml` there and commit.
 5. Run it once by hand (Actions → capture → Run workflow) and read the Capture step. A clean run
-   prints three `CAPTURED` lines and commits three blobs, three fetch-log lines and two run lines.
+   prints a `CAPTURED` line for each endpoint selected and commits their blobs, a fetch-log
+   line each and two run lines.
 
 To try the rights gate before any of that, on this machine:
 
@@ -87,8 +102,9 @@ To try the rights gate before any of that, on this machine:
 
 `ATLAS_REF` is a pin on purpose: the job obeys the register at that commit and uses the adapters
 at that commit. After signing another row, changing an endpoint or fixing an adapter, move the
-pin. A row that is unsigned at the pinned commit fails the whole run, by design: the list holds
-only what Alex has cleared.
+pin. A selected row that is unsigned at the pinned commit fails the whole run, by design: the
+job fetches only what Alex has cleared, and `ATLAS_CAPTURE_ONLY` chooses among rows without
+clearing any.
 
 ## Reading a run
 

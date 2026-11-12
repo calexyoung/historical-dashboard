@@ -1,0 +1,39 @@
+{
+  "key": "us_cpi",
+  "name": "United States CPI (index)",
+  "description": "The national all-items consumer price index as the International Monetary Fund publishes it (dataflow IMF.STA:CPI). The Fund labels its reference period 2010A. This is the Fund's copy, for a like-for-like G20 row: the Bureau of Labor Statistics' own index is `cpi_nsa`. The Fund's file has no entry for October 2025, which the Bureau did not publish.",
+  "unit": "index",
+  "unit_kind": "index",
+  "measure_kind": "index",
+  "agg": "mean",
+  "freq": "monthly",
+  "continuity": "discrete",
+  "seasonal_adjustment": "nsa",
+  "price_basis": "not_applicable",
+  "country": "USA",
+  "segment": "us_in_the_world",
+  "topics": [
+    "us-economy"
+  ],
+  "source": {
+    "origin": {
+      "producer": "International Monetary Fund",
+      "dataset": "Consumer Price Index",
+      "origin_id": "USA.CPI._T.IX.M",
+      "url": "https://data.imf.org/"
+    },
+    "channel": {
+      "via": "direct",
+      "adapter": "imf_sdmx",
+      "endpoint": "imf-cpi-g20",
+      "auth": "none"
+    }
+  },
+  "refresh": "monthly",
+  "max_lag": "P6M",
+  "range": [
+    0.0,
+    500.0
+  ],
+  "status": "active"
+}

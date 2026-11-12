@@ -1,0 +1,39 @@
+{
+  "key": "kr_fx",
+  "name": "USD/KRW (monthly average)",
+  "description": "The month's average of South Korean won per U.S. dollar as the International Monetary Fund publishes it (dataflow IMF.STA:ER, period average).",
+  "unit": "South Korean won per U.S. dollar",
+  "unit_kind": "currency",
+  "measure_kind": "rate",
+  "agg": "mean",
+  "freq": "monthly",
+  "continuity": "discrete",
+  "seasonal_adjustment": "not_applicable",
+  "price_basis": "nominal",
+  "country": "KOR",
+  "segment": "markets_money",
+  "topics": [
+    "currencies"
+  ],
+  "source": {
+    "origin": {
+      "producer": "International Monetary Fund",
+      "dataset": "Exchange Rates",
+      "origin_id": "KOR.XDC_USD.PA_RT.M",
+      "url": "https://data.imf.org/"
+    },
+    "channel": {
+      "via": "direct",
+      "adapter": "imf_sdmx",
+      "endpoint": "imf-er-g20",
+      "auth": "none"
+    }
+  },
+  "refresh": "monthly",
+  "max_lag": "P6M",
+  "range": [
+    0.0,
+    10000.0
+  ],
+  "status": "active"
+}

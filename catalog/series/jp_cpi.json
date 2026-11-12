@@ -1,8 +1,8 @@
 {
   "key": "jp_cpi",
   "name": "Japan CPI (index)",
-  "description": "Source series ends mid-2021. TODO: e-Stat (needs an appId) or a Statistics Bureau CSV; OECD also ends 2021-06.",
-  "unit": "index",
+  "description": "The national all-items consumer price index as the International Monetary Fund publishes it (dataflow IMF.STA:CPI). The Fund labels its reference period 2020A. It matches the Statistics Bureau of Japan's 2020-base file (e-Stat) for the months compared in docs/v2/japan-cpi-check.md.",
+  "unit": "index, 2020 = 100",
   "unit_kind": "index",
   "measure_kind": "index",
   "agg": "mean",
@@ -10,6 +10,7 @@
   "continuity": "discrete",
   "seasonal_adjustment": "nsa",
   "price_basis": "not_applicable",
+  "base_period": "2020",
   "country": "JPN",
   "segment": "us_in_the_world",
   "topics": [
@@ -19,20 +20,23 @@
     "origin": {
       "producer": "International Monetary Fund",
       "dataset": "Consumer Price Index",
-      "origin_id": null,
+      "origin_id": "JPN.CPI._T.IX.M",
       "url": "https://data.imf.org/"
     },
     "channel": {
-      "via": "direct"
+      "via": "direct",
+      "adapter": "imf_sdmx",
+      "endpoint": "imf-cpi-g20",
+      "auth": "none"
     }
   },
   "refresh": "monthly",
   "max_lag": "P3M",
-  "status": "draft",
+  "status": "active",
   "migration": {
     "v1_source": "FRED JPNCPIALLMINMEI",
     "change": "representation",
-    "note": "v1's series ends in June 2021. The IMF carries the national all-items index to date (research 02 matched it to e-Stat for 25 months); its base period may differ from v1's. The agency's identifier for this series is settled, with a captured fixture, by the milestone that builds the adapter.",
+    "note": "v1's series (OECD, through FRED) ends in June 2021. The Fund carries the national all-items index to date, on the 2020 base where v1's was on 2015: over the 258 months both hold, v1's figure is 1.017 to 1.019 times the Fund's, and the twelve-month changes agree to within 0.14 of a point (compared in memory on 2026-11-11; nothing was kept).",
     "milestone": "M14"
   }
 }

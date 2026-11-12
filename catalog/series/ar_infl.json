@@ -1,0 +1,31 @@
+{
+  "key": "ar_infl",
+  "name": "Argentina inflation (y/y)",
+  "description": "The change of `ar_cpi` from the same month a year earlier, computed by Macro Atlas from the index. A national headline rate computed from an unrounded index can differ from it by a tenth of a point.",
+  "unit": "percent change from a year earlier",
+  "unit_kind": "percent",
+  "measure_kind": "rate",
+  "agg": "none",
+  "freq": "monthly",
+  "continuity": "discrete",
+  "seasonal_adjustment": "nsa",
+  "price_basis": "not_applicable",
+  "country": "ARG",
+  "segment": "us_in_the_world",
+  "topics": [
+    "asia-other"
+  ],
+  "refresh": "monthly",
+  "max_lag": "P6M",
+  "status": "active",
+  "recipe": {
+    "op": "pct_change",
+    "inputs": [
+      "ar_cpi"
+    ],
+    "order": "aggregate_then_compute",
+    "params": {
+      "lag": 12
+    }
+  }
+}

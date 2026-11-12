@@ -26,6 +26,7 @@ from pathlib import Path
 from ..capture import store as S
 from ..rights import DIRECT, OWN_CHANNELS, RightsGate, load_register
 from ..vintage.replay import recipe_cycle
+from .coverage import coverage_references, read_coverage
 from .load import CATALOG_DIR, Problem, read_catalog
 
 LAYERS = ("schema", "references", "semantics", "rights")
@@ -40,6 +41,10 @@ FINENESS = {"daily": 0, "business_daily": 0, "weekly": 1, "monthly": 2, "quarter
 #: The frequencies a Series may have for each way a Board package names time (FedBoardAdapter).
 FED_FREQUENCIES = {"day": ("daily", "business_daily"), "week": ("weekly",), "month": ("monthly",),
                    "quarter": ("quarterly",)}
+
+
+#: The frequency a Series has for the last part of its key in an IMF dataflow (ImfSdmxAdapter).
+IMF_FREQUENCIES = {"M": "monthly", "Q": "quarterly", "A": "annual"}
 
 
 @dataclass
@@ -110,7 +115,7 @@ def _references(entries: dict[str, dict], directory: Path, table: object) -> lis
         if origin["origin_id"] is None:
             problem(key, f"it is bound to the endpoint {name} without the Origin's identifier")
         # What the endpoint asks for by name: BLS series, the value fields of a Treasury table,
-        # the columns of a Board package.
+        # the columns of a Board package, the series keys of an IMF dataflow.
         listed = endpoint.params.get("expect" if endpoint.adapter == "fed_board" else "series")
         if isinstance(listed, list) and origin["origin_id"] not in (None, *listed):
             problem(key, f"the endpoint {name} does not ask for {origin['origin_id']}")
@@ -121,6 +126,14 @@ def _references(entries: dict[str, dict], directory: Path, table: object) -> lis
             kind = endpoint.params.get("period", "day")
             if entry["freq"] not in FED_FREQUENCIES[kind]:
                 problem(key, f"it is {entry['freq']}, and the endpoint {name} is read by {kind}")
+        elif endpoint.adapter == "imf_sdmx" and origin["origin_id"] is not None:
+            frequency = IMF_FREQUENCIES[origin["origin_id"].rsplit(".", 1)[-1]]
+            if entry["freq"] != frequency:
+                problem(key, f"it is {entry['freq']}, and {origin['origin_id']} is a {frequency} "
+                             "series of the Fund's")
+            if entry["unit_kind"] == "index" and origin["origin_id"] not in endpoint.params.get("reference", {}):
+                problem(key, f"the endpoint {name} does not pin the reference period the Fund gives "
+                             f"{origin['origin_id']} (its reference)")
         binding = (name, origin["origin_id"])
         if binding in bound:
             problem(key, f"{origin['origin_id']} of {name} is already bound to {bound[binding]}")
@@ -242,6 +255,10 @@ def check(directory: Path | None = None, register: Path | None = None) -> Report
     entries, problems = read_catalog(directory)
     layers = [Layer(name) for name in LAYERS]
     report = Report(directory, len(entries), layers)
+    # The coverage matrices sit beside the Series (catalog/coverage) and are held to them.
+    coverage_dir = directory.parent / "coverage"
+    matrices, unreadable = read_coverage(coverage_dir)
+    problems = [*problems, *unreadable]
     layers[0].ran, layers[0].problems = True, problems
     if problems:
         return report
@@ -249,7 +266,9 @@ def check(directory: Path | None = None, register: Path | None = None) -> Report
         table = load_register(register)
     except (OSError, ValueError):
         table = None
-    steps = (lambda: _references(entries, directory, table), lambda: _semantics(entries, directory),
+    steps = (lambda: [*_references(entries, directory, table),
+                      *coverage_references(matrices, entries, coverage_dir)],
+             lambda: _semantics(entries, directory),
              lambda: _rights(entries, directory, table, register))
     for layer, step in zip(layers[1:], steps, strict=True):
         layer.ran, layer.problems = True, step()

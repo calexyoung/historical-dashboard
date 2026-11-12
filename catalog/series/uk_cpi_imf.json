@@ -1,0 +1,39 @@
+{
+  "key": "uk_cpi_imf",
+  "name": "UK CPI (index), as the IMF publishes it",
+  "description": "The national all-items consumer price index as the International Monetary Fund publishes it (dataflow IMF.STA:CPI). The Fund labels its reference period 2015A. It is not the Office for National Statistics' CPI (D7BT), which v1 showed and which stays the Series `uk_cpi`: over 2000 to 2026 the two drift apart by up to two percent, and their twelve-month changes by more than a point (compared on 2026-11-11). Which national index the Fund carries here is not established.",
+  "unit": "index",
+  "unit_kind": "index",
+  "measure_kind": "index",
+  "agg": "mean",
+  "freq": "monthly",
+  "continuity": "discrete",
+  "seasonal_adjustment": "nsa",
+  "price_basis": "not_applicable",
+  "country": "GBR",
+  "segment": "us_in_the_world",
+  "topics": [
+    "europe"
+  ],
+  "source": {
+    "origin": {
+      "producer": "International Monetary Fund",
+      "dataset": "Consumer Price Index",
+      "origin_id": "GBR.CPI._T.IX.M",
+      "url": "https://data.imf.org/"
+    },
+    "channel": {
+      "via": "direct",
+      "adapter": "imf_sdmx",
+      "endpoint": "imf-cpi-g20",
+      "auth": "none"
+    }
+  },
+  "refresh": "monthly",
+  "max_lag": "P6M",
+  "range": [
+    0.0,
+    500.0
+  ],
+  "status": "active"
+}

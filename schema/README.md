@@ -13,6 +13,9 @@ the definitions of key, frequency, Origin, Channel and Recipe with the release c
 keeps the copies equal) and has no Rights block: Rights are looked up in the register. The
 release writer turns Catalog entries into a Release's `catalog.json`.
 
+`coverage.schema.json` is a third: a coverage matrix, the file `catalog/coverage/{name}.json`
+(M14, `docs/method/catalog.md`). It names Series by key and holds no data and no Rights.
+
 Three things write a Release: the committed fixture (`fixtures/public`), the legacy converter
 (M2) and the real writer (M9). Two validators read the contract and must agree:
 

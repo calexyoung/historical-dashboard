@@ -87,6 +87,7 @@ store as `missing`); a Period the source does not list is not an Observation.
 | Board, by day | the date | the cell | `ND`, `NA`, `NC` |
 | Board, by week (`period: week`) | the ISO week of the date (`2026-11-04` → `2026-W45`) | the cell: the level on that day | the same |
 | Board, by month or quarter | `2026-10`; `2026Q2` → `2026-Q2` | the cell | the same |
+| IMF (SDMX 3.0) | `2026-M09` → `2026-09`; `2026-Q3`; `2026` | `OBS_VALUE`, the Fund's text. `observed`, `estimate` or `projected` by the Fund's own derivation code | `null` after the series' first number |
 
 **The Monthly Treasury Statement.** Each statement (one `record_date`, the last day of its
 month) lists the months of the last fiscal year and of this one: a header row per fiscal year
@@ -105,6 +106,47 @@ For a Board series the endpoint pins the label rows (`labels`), so a change of m
 stops the capture instead of changing every figure by a thousand. Only a column with pinned
 labels is read, and `atlas check` refuses a Series bound to a Board package whose endpoint
 pins no label for it.
+
+**The IMF's SDMX API.** One request per endpoint asks one dataflow for a named list of series
+(full SDMX keys such as `JPN.CPI._T.IX.M`), whole history. The answer is SDMX-JSON in which a
+series is a string of positions (`11:0:0:0:0`) into the answer's own lists of codes, a time is
+a position into a list that is in no order, and an attribute is a position or a text. It is
+read by name, never by place: a series by the `keyPosition` of each dimension, an attribute by
+its `id`. It is whole when it is one data set of the dataflow asked for and holds exactly the
+series asked for, each with a number.
+
+- **Observed, estimated, projected.** The Fund marks how each value was derived
+  (`DERIVATION_TYPE`; its code list was read on 2026-11-11). `O` (reported official data) and
+  `R` (raw data) are `observed`. `SE`, `SEME`, `SEHI` (IMF staff estimates) are `estimate`.
+  `SP` (IMF staff projections) is `projected`. A value under any other code, or under none,
+  makes the capture incomplete: nothing is guessed. So does a value for a Period that had not
+  begun on the day of the fetch (New York) unless the Fund calls it a projection. The
+  consequence is deliberate and should be known: one value the Fund marks otherwise stops
+  the whole endpoint, all its series, until someone has looked. A dataflow that does not
+  mark its values at all (the World Economic Outlook) cannot be read this way; it needs a
+  contract of its own (M37).
+- **Marks.** `STATUS` is free text with no code list behind it. The exchange-rate dataflow
+  carries `T` on 39 Observations at changes of regime and redenominations (2026-11-11). An
+  endpoint lists the marks someone has looked at (`marks`); a listed mark is carried as a
+  footnote in the parsed state and read as nothing, and any other mark makes the capture
+  incomplete. The footnote is not kept in the vintage store, which holds period, value and
+  status.
+- **Reference periods.** For an index the endpoint pins the reference period the Fund labels
+  each series with (`reference`, such as `2020A`). A rebase changes every figure, so a
+  capture whose label differs is incomplete until the pin and the Series are changed. The pin
+  in force is part of each Capture's scope, so an old Capture is replayed under the base it
+  was fetched on. `atlas check` refuses an index bound to an IMF endpoint that pins none. The
+  label is pinned so that a change is seen; it is not always what the level suggests (Canada's
+  reads like 2002 = 100 under the label `2014M12`), and the Catalog states a base only where
+  it has been checked (Japan, against the Statistics Bureau's file).
+- **Nulls.** The Fund lists some series from 1900 with no number until they begin. A null
+  before a series' first number is padding and no Observation. A null after it is a Period
+  the Fund lists and prints no number for: `missing`. A Period it does not list is nothing.
+  One edge follows: if the first month of a series later becomes a null, it joins the padding
+  and is recorded as withdrawn, not as missing.
+- **Scale.** Every series read must say scale 0 (units). Figures are kept as printed, with all
+  their decimals; rates from before a redenomination are printed in today's unit and are very
+  small (ten zeros after the point, then a dozen digits).
 
 ## What is written
 

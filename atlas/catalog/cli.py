@@ -8,6 +8,7 @@ from pathlib import Path
 from ..rights import RightsGate, load_register
 from . import add as A
 from . import check as C
+from . import coverage as G
 from . import table as T
 from .load import CatalogError, load_catalog
 
@@ -85,9 +86,10 @@ def catalog_main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(
         prog="atlas catalog",
         description="What is proposed for every Series, and what the rights gate would show today. "
-                    "--write regenerates docs/v2/catalog-migration.md.")
-    parser.add_argument("--write", action="store_true", help="write docs/v2/catalog-migration.md")
-    parser.add_argument("--check", action="store_true", help="exit 1 if that file is out of date")
+                    "--write regenerates docs/v2/catalog-migration.md and docs/v2/g20-coverage.md.")
+    parser.add_argument("--write", action="store_true",
+                        help="write docs/v2/catalog-migration.md and docs/v2/g20-coverage.md")
+    parser.add_argument("--check", action="store_true", help="exit 1 if either file is out of date")
     parser.add_argument("--list", action="store_true", help="one line per Series")
     args = parser.parse_args(argv)
     try:
@@ -96,13 +98,23 @@ def catalog_main(argv: list[str]) -> int:
         print(f"atlas catalog: {error}", file=sys.stderr)
         return 1
     table = load_register()
+    try:
+        g20 = G.load_coverage().get("g20")
+    except CatalogError as error:
+        print(f"atlas catalog: {error}", file=sys.stderr)
+        return 1
     if args.write:
         print(f"wrote {T.write_table(entries, table)}")
+        if g20:
+            print(f"wrote {G.write_coverage(entries, table, g20)}")
     if args.check:
-        current = T.TABLE_PATH.read_text(encoding="utf-8") if T.TABLE_PATH.exists() else ""
-        if current != T.render_table(entries, table):
-            print(f"{T.TABLE_PATH} is out of date: run python -m atlas catalog --write", file=sys.stderr)
-            return 1
+        pages = [(T.TABLE_PATH, T.render_table(entries, table))]
+        if g20:
+            pages.append((G.COVERAGE_PAGE, G.render_coverage(entries, table, g20)))
+        for path, text in pages:
+            if (path.read_text(encoding="utf-8") if path.exists() else "") != text:
+                print(f"{path} is out of date: run python -m atlas catalog --write", file=sys.stderr)
+                return 1
     if args.list:
         gate = RightsGate(table)
         for key, entry in entries.items():

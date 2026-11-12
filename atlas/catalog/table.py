@@ -176,7 +176,8 @@ def render_table(entries: dict[str, dict], table: object) -> str:
         "",
         (f"{len(new)} Series were never in v1: {', '.join(f'`{key}`' for key in new)}. `cpi_nsa` (M8) is "
          "what `cpi_yoy` is computed from (ADR 0025); the others arrived with the adapter that "
-         f"reads them (M13, ADR 0027). {len(entries)} Series in all."),
+         "reads them (M13, ADR 0027; the G20 consumer price, inflation and exchange-rate Series "
+         f"with the IMF adapter, M14, ADR 0028). {len(entries)} Series in all."),
         "",
     ]
     if missing:

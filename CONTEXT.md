@@ -57,6 +57,11 @@ _Avoid_: Mode, calculation
 The list of every Series Macro Atlas knows about, with each one's definition, Source and Rights.
 _Avoid_: Registry, config
 
+**Coverage matrix**:
+A table of countries by indicators in which each cell names the Series that fills it or says why
+none does. It is declared beside the Catalog and grants nothing.
+_Avoid_: Availability table, scorecard
+
 **Data state**:
 A condition of a value that a reader must be told about: preliminary, revised, estimate, projected,
 partial period, stale, missing, break, withheld.
