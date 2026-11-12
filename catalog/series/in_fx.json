@@ -1,0 +1,39 @@
+{
+  "key": "in_fx",
+  "name": "USD/INR (monthly average)",
+  "description": "The month's average of Indian rupees per U.S. dollar as the International Monetary Fund publishes it (dataflow IMF.STA:ER, period average). The Federal Reserve Board's daily rate is `inr`.",
+  "unit": "Indian rupees per U.S. dollar",
+  "unit_kind": "currency",
+  "measure_kind": "rate",
+  "agg": "mean",
+  "freq": "monthly",
+  "continuity": "discrete",
+  "seasonal_adjustment": "not_applicable",
+  "price_basis": "nominal",
+  "country": "IND",
+  "segment": "markets_money",
+  "topics": [
+    "currencies"
+  ],
+  "source": {
+    "origin": {
+      "producer": "International Monetary Fund",
+      "dataset": "Exchange Rates",
+      "origin_id": "IND.XDC_USD.PA_RT.M",
+      "url": "https://data.imf.org/"
+    },
+    "channel": {
+      "via": "direct",
+      "adapter": "imf_sdmx",
+      "endpoint": "imf-er-g20",
+      "auth": "none"
+    }
+  },
+  "refresh": "monthly",
+  "max_lag": "P6M",
+  "range": [
+    0.0,
+    500.0
+  ],
+  "status": "active"
+}

@@ -1,7 +1,7 @@
 {
   "$schema": "./rights-register.schema.json",
   "format": 1,
-  "version": "2026-11-11.draft-3",
+  "version": "2026-11-11.draft-4",
   "about": "The rights register (CONTEXT.md; PLAN 6 and 6.1; ADR 0006, ADR 0020): one row per Origin and per intermediary Channel, with the terms read, a proposal, and Alex's decision. This file is the single table. docs/v2/rights-register.md and packages/core/src/rights-register.generated.ts are generated from it (npm run gen); atlas/rights.py reads it. A row permits something on a public Surface only when its decision is signed by Alex. The builder proposes and never fills in a decision.",
   "cleared_intermediaries": [],
   "rows": [
@@ -1040,7 +1040,96 @@
         "International Monetary Fund"
       ],
       "datasets": "*",
-      "used_for": "Japan CPI fix; G20 CPI and exchange rates (SDMX 3.0). v2.0 (M14). Later WEO GDP and commodity prices, v2.2.",
+      "used_for": "Japan CPI fix; G20 CPI and exchange rates (SDMX 3.0), v2.0 (M14): two requests a run. Later WEO GDP and commodity prices, v2.2.",
+      "capture": [
+        {
+          "id": "imf-cpi-g20",
+          "adapter": "imf_sdmx",
+          "datasets": [
+            "Consumer Price Index"
+          ],
+          "params": {
+            "agency": "IMF.STA",
+            "flow": "CPI",
+            "series": [
+              "ARG.CPI._T.IX.M",
+              "AUS.CPI._T.IX.M",
+              "BRA.CPI._T.IX.M",
+              "CAN.CPI._T.IX.M",
+              "CHN.CPI._T.IX.M",
+              "DEU.CPI._T.IX.M",
+              "FRA.CPI._T.IX.M",
+              "GBR.CPI._T.IX.M",
+              "IDN.CPI._T.IX.M",
+              "IND.CPI._T.IX.M",
+              "ITA.CPI._T.IX.M",
+              "JPN.CPI._T.IX.M",
+              "KOR.CPI._T.IX.M",
+              "MEX.CPI._T.IX.M",
+              "RUS.CPI._T.IX.M",
+              "SAU.CPI._T.IX.M",
+              "TUR.CPI._T.IX.M",
+              "USA.CPI._T.IX.M",
+              "ZAF.CPI._T.IX.M"
+            ],
+            "reference": {
+              "ARG.CPI._T.IX.M": "2016M12",
+              "AUS.CPI._T.IX.M": "2025M9",
+              "BRA.CPI._T.IX.M": "1993M12",
+              "CAN.CPI._T.IX.M": "2014M12",
+              "CHN.CPI._T.IX.M": "2020A",
+              "DEU.CPI._T.IX.M": "2020A",
+              "FRA.CPI._T.IX.M": "2025A",
+              "GBR.CPI._T.IX.M": "2015A",
+              "IDN.CPI._T.IX.M": "2022A",
+              "IND.CPI._T.IX.M": "2024A",
+              "ITA.CPI._T.IX.M": "2025A",
+              "JPN.CPI._T.IX.M": "2020A",
+              "KOR.CPI._T.IX.M": "2020A",
+              "MEX.CPI._T.IX.M": "2018M07",
+              "RUS.CPI._T.IX.M": "2010A",
+              "SAU.CPI._T.IX.M": "2023A",
+              "TUR.CPI._T.IX.M": "2025A",
+              "USA.CPI._T.IX.M": "2010A",
+              "ZAF.CPI._T.IX.M": "2024M12"
+            }
+          },
+          "note": "The all-items consumer price index of the nineteen G20 countries, monthly, whole history in one request (about 0.6 MB on 2026-11-11). The reference period of each index is pinned as the Fund labelled it that day: a rebase keeps the capture from being whole until the pin and the Series are changed. One value the Fund does not mark as reported official data keeps the whole answer from being whole."
+        },
+        {
+          "id": "imf-er-g20",
+          "adapter": "imf_sdmx",
+          "datasets": [
+            "Exchange Rates"
+          ],
+          "params": {
+            "agency": "IMF.STA",
+            "flow": "ER",
+            "series": [
+              "ARG.XDC_USD.PA_RT.M",
+              "AUS.XDC_USD.PA_RT.M",
+              "BRA.XDC_USD.PA_RT.M",
+              "CAN.XDC_USD.PA_RT.M",
+              "CHN.XDC_USD.PA_RT.M",
+              "G163.XDC_USD.PA_RT.M",
+              "GBR.XDC_USD.PA_RT.M",
+              "IDN.XDC_USD.PA_RT.M",
+              "IND.XDC_USD.PA_RT.M",
+              "JPN.XDC_USD.PA_RT.M",
+              "KOR.XDC_USD.PA_RT.M",
+              "MEX.XDC_USD.PA_RT.M",
+              "RUS.XDC_USD.PA_RT.M",
+              "SAU.XDC_USD.PA_RT.M",
+              "TUR.XDC_USD.PA_RT.M",
+              "ZAF.XDC_USD.PA_RT.M"
+            ],
+            "marks": [
+              "T"
+            ]
+          },
+          "note": "National currency per U.S. dollar, monthly period average, for the fifteen G20 countries outside the euro area that are not the United States, and for the euro area (the Fund's G163), whole history in one request (about 0.4 MB on 2026-11-11). The mark T sat on 39 Observations that day, at changes of exchange-rate regime and redenominations; the dataflow's structure gives it no meaning, so it is carried as a footnote and read as nothing."
+        }
+      ],
       "terms": [
         {
           "url": "https://www.imf.org/en/About/copyright-and-terms",
@@ -1063,8 +1152,9 @@
         "note": "Allow display, download and storage with attribution, for a non-commercial site. Do not describe as usable for model training: the terms as summarised reserve that."
       },
       "open_questions": [
-        "Does a daily request to the SDMX API for a few dozen series count as automated bulk downloading, which the terms as summarised reserve? Confirm with the page or with the Fund before M14.",
-        "The wording was read through a tool that returns short extracts. Open the page before signing (PLAN 6: IMF reuse wording still unverified)."
+        "Does a daily request to the SDMX API count as automated bulk downloading, which the terms as summarised reserve? What M14 would ask for is two requests a run (35 series, about 1.1 MB, whole history each time). That is a fact about the job, not an answer: confirm with the page or with the Fund before the row is signed for storage.",
+        "The wording was read through a tool that returns short extracts. Open the page before signing (PLAN 6: IMF reuse wording still unverified).",
+        "The Fund republishes national figures. The CPI Observations read here are all marked 'reported official data' and the exchange rates 'raw data'; whether a national statistics office's own terms add anything for its index is not looked into."
       ],
       "decision": null
     },

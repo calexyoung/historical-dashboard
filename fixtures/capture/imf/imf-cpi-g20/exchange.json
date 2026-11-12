@@ -1,0 +1,48 @@
+{
+  "format": 1,
+  "source": "imf",
+  "endpoint": "imf-cpi-g20",
+  "recorded_at": "2026-11-11T15:50:00Z",
+  "provenance": {
+    "synthetic": true,
+    "transport": "synthetic",
+    "origin": "International Monetary Fund",
+    "datasets": [
+      "Consumer Price Index"
+    ],
+    "retrieved_at": "2026-11-11T15:50:21Z",
+    "capture_id": null,
+    "note": "Invented values in the shape of the source's answer of 2026-11-11. Not a measurement of anything and not a capture: written by fixtures/capture/make_fixtures.py."
+  },
+  "exchanges": [
+    {
+      "request": {
+        "method": "GET",
+        "url": "https://api.imf.org/external/sdmx/3.0/data/dataflow/IMF.STA/CPI/+/ARG+AUS+BRA+CAN+CHN+DEU+FRA+GBR+IDN+IND+ITA+JPN+KOR+MEX+RUS+SAU+TUR+USA+ZAF.CPI._T.IX.M?dimensionAtObservation=TIME_PERIOD",
+        "body": null
+      },
+      "status": 200,
+      "headers": [
+        [
+          "Content-Type",
+          "application/json"
+        ],
+        [
+          "Date",
+          "Wed, 11 Nov 2026 15:50:21 GMT"
+        ],
+        [
+          "Content-Length",
+          "29009"
+        ],
+        [
+          "Set-Cookie",
+          "(not kept)"
+        ]
+      ],
+      "received_at": "2026-11-11T15:50:21Z",
+      "body_file": "part-1.json",
+      "sha256": "fc8a228ff0dc09dd8bde04e04f9045c4ae384c09b06c2dd22579c81b83f5f777"
+    }
+  ]
+}

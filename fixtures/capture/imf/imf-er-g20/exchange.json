@@ -1,0 +1,48 @@
+{
+  "format": 1,
+  "source": "imf",
+  "endpoint": "imf-er-g20",
+  "recorded_at": "2026-11-11T15:50:00Z",
+  "provenance": {
+    "synthetic": true,
+    "transport": "synthetic",
+    "origin": "International Monetary Fund",
+    "datasets": [
+      "Exchange Rates"
+    ],
+    "retrieved_at": "2026-11-11T15:50:22Z",
+    "capture_id": null,
+    "note": "Invented values in the shape of the source's answer of 2026-11-11. Not a measurement of anything and not a capture: written by fixtures/capture/make_fixtures.py."
+  },
+  "exchanges": [
+    {
+      "request": {
+        "method": "GET",
+        "url": "https://api.imf.org/external/sdmx/3.0/data/dataflow/IMF.STA/ER/+/ARG+AUS+BRA+CAN+CHN+G163+GBR+IDN+IND+JPN+KOR+MEX+RUS+SAU+TUR+ZAF.XDC_USD.PA_RT.M?dimensionAtObservation=TIME_PERIOD",
+        "body": null
+      },
+      "status": 200,
+      "headers": [
+        [
+          "Content-Type",
+          "application/json"
+        ],
+        [
+          "Date",
+          "Wed, 11 Nov 2026 15:50:22 GMT"
+        ],
+        [
+          "Content-Length",
+          "17394"
+        ],
+        [
+          "Set-Cookie",
+          "(not kept)"
+        ]
+      ],
+      "received_at": "2026-11-11T15:50:22Z",
+      "body_file": "part-1.json",
+      "sha256": "85f46a5e2a81fa908a1a6bc89e9289f014e5d1564d59cd3ed212f3adbbba0a94"
+    }
+  ]
+}

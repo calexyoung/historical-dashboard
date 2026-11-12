@@ -1,0 +1,39 @@
+{
+  "key": "mx_cpi",
+  "name": "Mexico CPI (index)",
+  "description": "The national all-items consumer price index as the International Monetary Fund publishes it (dataflow IMF.STA:CPI). The Fund labels its reference period 2018M07.",
+  "unit": "index",
+  "unit_kind": "index",
+  "measure_kind": "index",
+  "agg": "mean",
+  "freq": "monthly",
+  "continuity": "discrete",
+  "seasonal_adjustment": "nsa",
+  "price_basis": "not_applicable",
+  "country": "MEX",
+  "segment": "us_in_the_world",
+  "topics": [
+    "asia-other"
+  ],
+  "source": {
+    "origin": {
+      "producer": "International Monetary Fund",
+      "dataset": "Consumer Price Index",
+      "origin_id": "MEX.CPI._T.IX.M",
+      "url": "https://data.imf.org/"
+    },
+    "channel": {
+      "via": "direct",
+      "adapter": "imf_sdmx",
+      "endpoint": "imf-cpi-g20",
+      "auth": "none"
+    }
+  },
+  "refresh": "monthly",
+  "max_lag": "P6M",
+  "range": [
+    0.0,
+    500.0
+  ],
+  "status": "active"
+}

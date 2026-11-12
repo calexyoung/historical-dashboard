@@ -42,11 +42,12 @@ ENDPOINTS = {
     "fed-board": ["fed-h15-treasury-yields", "fed-h15-monthly", "fed-h10-daily-rates",
                   "fed-h10-daily-indexes", "fed-h41-table5", "fed-z1-households", "fed-g17-major",
                   "fed-g19-credit", "fed-h6-monthly", "fed-chgdel-delinquency"],
+    "imf": ["imf-cpi-g20", "imf-er-g20"],  # M14
 }
 ALL = {(source, endpoint) for source, listed in ENDPOINTS.items() for endpoint in listed}
 
 
-def signed_register(tmp_path, rows=tuple(FIRST_THREE), **grants) -> Path:
+def signed_register(tmp_path, rows=tuple(ENDPOINTS), **grants) -> Path:
     table = load_register()
     for row in table["rows"]:
         if row["id"] in rows:
@@ -98,7 +99,7 @@ def test_the_endpoint_list_is_the_registers_and_covers_the_first_three_sources()
     assert {e.origin for e in endpoints} == {
         "U.S. Bureau of Labor Statistics",
         "U.S. Department of the Treasury, Bureau of the Fiscal Service",
-        "Board of Governors of the Federal Reserve System"}
+        "Board of Governors of the Federal Reserve System", "International Monetary Fund"}
     assert all(e.channel == "direct" for e in endpoints)
 
 
@@ -252,7 +253,7 @@ def test_verify_checks_every_blob_the_fetch_log_names(tmp_path, capsys):
     store = captured_store(tmp_path)
     capsys.readouterr()
     assert main(["--store", str(store), "--verify"]) == 0
-    assert "14 captures, 20 blobs, all present and unaltered" in capsys.readouterr().out
+    assert "16 captures, 22 blobs, all present and unaltered" in capsys.readouterr().out
 
     lines = read_fetch_log(store)
     (store / lines[0]["parts"][0]["blob"]).unlink()
@@ -352,4 +353,4 @@ def test_a_replay_does_not_write_into_a_store_of_real_captures(tmp_path, capsys)
     result = run_capture(store, json.loads(signed_register(tmp_path).read_text()),
                          ReplayTransport(FIXTURES), sleep=lambda seconds: None)
     assert result.exit_code == 1 and "holds a live run and this run is replay" in result.lines[0]
-    assert len(read_runs(store)) == 2 and len(read_fetch_log(store)) == 14
+    assert len(read_runs(store)) == 2 and len(read_fetch_log(store)) == 16

@@ -2,7 +2,7 @@
 
 # Rights register
 
-Version `2026-11-11.draft-3`. 0 of 30 rows signed. Intermediary Channels cleared: none.
+Version `2026-11-11.draft-4`. 0 of 30 rows signed. Intermediary Channels cleared: none.
 
 One row per Origin and per intermediary Channel: the terms that were read, the sentences that
 matter quoted, a proposal, and Alex's decision (CONTEXT.md, Rights register; PLAN 6 and 6.1;
@@ -333,7 +333,7 @@ Decision: **not decided**.
 
 ### International Monetary Fund
 
-Row `imf`. Japan CPI fix; G20 CPI and exchange rates (SDMX 3.0). v2.0 (M14). Later WEO GDP and commodity prices, v2.2.
+Row `imf`. Japan CPI fix; G20 CPI and exchange rates (SDMX 3.0), v2.0 (M14): two requests a run. Later WEO GDP and commodity prices, v2.2.
 
 - Origin, as a Catalog entry names it: "International Monetary Fund"; all datasets.
 - Licence class: citation required.
@@ -345,12 +345,18 @@ Terms: <https://www.imf.org/en/About/copyright-and-terms> (read on 2026-11-11 th
 
 > Users shall not infringe upon the integrity of the Data
 
+Capture endpoints (fetched by `atlas capture` only once this row is signed and allows store):
+
+- `imf-cpi-g20`, the `imf_sdmx` adapter, for "Consumer Price Index". The all-items consumer price index of the nineteen G20 countries, monthly, whole history in one request (about 0.6 MB on 2026-11-11). The reference period of each index is pinned as the Fund labelled it that day: a rebase keeps the capture from being whole until the pin and the Series are changed. One value the Fund does not mark as reported official data keeps the whole answer from being whole.
+- `imf-er-g20`, the `imf_sdmx` adapter, for "Exchange Rates". National currency per U.S. dollar, monthly period average, for the fifteen G20 countries outside the euro area that are not the United States, and for the euro area (the Fund's G163), whole history in one request (about 0.4 MB on 2026-11-11). The mark T sat on 39 Observations that day, at changes of exchange-rate regime and redenominations; the dataflow's structure gives it no meaning, so it is carried as a footnote and read as nothing.
+
 Proposal: allow **display, redistribute, store**. Allow display, download and storage with attribution, for a non-commercial site. Do not describe as usable for model training: the terms as summarised reserve that.
 
 Open questions:
 
-- Does a daily request to the SDMX API for a few dozen series count as automated bulk downloading, which the terms as summarised reserve? Confirm with the page or with the Fund before M14.
+- Does a daily request to the SDMX API count as automated bulk downloading, which the terms as summarised reserve? What M14 would ask for is two requests a run (35 series, about 1.1 MB, whole history each time). That is a fact about the job, not an answer: confirm with the page or with the Fund before the row is signed for storage.
 - The wording was read through a tool that returns short extracts. Open the page before signing (PLAN 6: IMF reuse wording still unverified).
+- The Fund republishes national figures. The CPI Observations read here are all marked 'reported official data' and the exchange rates 'raw data'; whether a national statistics office's own terms add anything for its index is not looked into.
 
 Decision: **not decided**.
 

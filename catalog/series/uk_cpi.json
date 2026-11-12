@@ -1,8 +1,8 @@
 {
   "key": "uk_cpi",
   "name": "UK CPI (index)",
-  "description": "CPI all items (MM23); replaces OECD GBRCPIALLMINMEI, which ends Mar 2025.",
-  "unit": "index, 2015 = 100",
+  "description": "The national all-items consumer price index as the International Monetary Fund publishes it (dataflow IMF.STA:CPI). The Fund labels its reference period 2015A.",
+  "unit": "index",
   "unit_kind": "index",
   "measure_kind": "index",
   "agg": "mean",
@@ -10,7 +10,6 @@
   "continuity": "discrete",
   "seasonal_adjustment": "nsa",
   "price_basis": "not_applicable",
-  "base_period": "2015",
   "country": "GBR",
   "segment": "us_in_the_world",
   "topics": [
@@ -18,21 +17,39 @@
   ],
   "source": {
     "origin": {
-      "producer": "Office for National Statistics (United Kingdom)",
-      "dataset": "Consumer price inflation (MM23)",
-      "origin_id": "D7BT",
-      "url": "https://www.ons.gov.uk/economy/inflationandpriceindices/timeseries/d7bt/mm23"
+      "producer": "International Monetary Fund",
+      "dataset": "Consumer Price Index",
+      "origin_id": "GBR.CPI._T.IX.M",
+      "url": "https://data.imf.org/"
     },
     "channel": {
-      "via": "direct"
+      "via": "direct",
+      "adapter": "imf_sdmx",
+      "endpoint": "imf-cpi-g20",
+      "auth": "none"
     }
   },
+  "fallback": [
+    {
+      "origin": {
+        "producer": "Office for National Statistics (United Kingdom)",
+        "dataset": "Consumer price inflation (MM23)",
+        "origin_id": "D7BT",
+        "url": "https://www.ons.gov.uk/economy/inflationandpriceindices/timeseries/d7bt/mm23"
+      },
+      "channel": {
+        "via": "direct"
+      },
+      "note": "The Office for National Statistics' own series, which v1 read. No adapter fetches it."
+    }
+  ],
   "refresh": "monthly",
   "max_lag": "P3M",
-  "status": "draft",
+  "status": "active",
   "migration": {
     "v1_source": "ONS D7BT",
-    "change": "same",
-    "milestone": "M14"
+    "change": "representation",
+    "milestone": "M14",
+    "note": "v1 read the Office for National Statistics' series D7BT. This is the Fund's copy of the same index; the ONS series is kept as a fallback."
   }
 }

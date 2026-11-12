@@ -1,6 +1,7 @@
 {
   "key": "uk_infl",
   "name": "UK inflation (y/y)",
+  "description": "The change of `uk_cpi` from the same month a year earlier, computed by Macro Atlas from the index. A national headline rate computed from an unrounded index can differ from it by a tenth of a point.",
   "unit": "percent change from a year earlier",
   "unit_kind": "percent",
   "measure_kind": "rate",
@@ -16,7 +17,7 @@
   ],
   "refresh": "monthly",
   "max_lag": "P3M",
-  "status": "draft",
+  "status": "active",
   "recipe": {
     "op": "pct_change",
     "inputs": [

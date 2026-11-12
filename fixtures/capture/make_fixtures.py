@@ -1,10 +1,11 @@
 """Writes the capture kit's committed fixtures: one recorded exchange for every endpoint the
-rights register lists (BLS, Treasury Fiscal Data, the Federal Reserve Board).
+rights register lists (BLS, Treasury Fiscal Data, the Federal Reserve Board, the IMF).
 
 Every value in them is invented. The *shape* of each answer (field names, header rows, the way
 BLS prints an unpublished month or a quarter, the paging block of Fiscal Data, the statements
-of the Monthly Treasury Statement, the Board's label rows, time cells and "ND") was copied from
-the answers the three sources gave on 2026-11-11; none of their numbers was. The repository is
+of the Monthly Treasury Statement, the Board's label rows, time cells and "ND", the IMF's
+SDMX-JSON with its positions and unordered times) was copied from the answers the four sources
+gave on 2026-11-11; none of their numbers was. The repository is
 public and no row of the rights register is signed, so real agency bytes may not be committed
 yet (PLAN 6.1; fixtures/README.md). When Alex has signed a row, a real capture replaces the
 invented one: see "Real captures" in fixtures/capture/README.md.
@@ -260,6 +261,88 @@ def fed_body(params: dict, span: tuple[date, date] | None, ranges: dict[str, lis
     return ("\n".join(lines) + "\n").encode()
 
 
+def imf_body(params: dict, ranges: dict[str, list]) -> bytes:
+    """One answer of the IMF's SDMX 3.0 data API for an endpoint's series, as SDMX-JSON 2.0 with
+    the time on the observation: series keyed by position in each dimension's list, attributes
+    as positions in theirs, and the times in the order the series first mention them, which is
+    no order at all. What the real answers of 2026-11-11 showed is here in small: a series
+    listed with nulls before it begins (Japan), a month that is not listed (the United States,
+    October 2025), a series that begins late (Australia), series that end at different months,
+    the mark T at a change of regime, and a rate printed in today's unit from before a
+    redenomination, with as many decimals as the Fund prints."""
+    flow, series = params["flow"], params["series"]
+    cpi = flow == "CPI"
+    names = (("COUNTRY", "INDEX_TYPE", "COICOP_1999", "TYPE_OF_TRANSFORMATION", "FREQUENCY") if cpi
+             else ("COUNTRY", "INDICATOR", "TYPE_OF_TRANSFORMATION", "FREQUENCY"))
+    months = [f"{2023 + (n + 9) // 12}-M{(n + 9) % 12 + 1:02d}" for n in range(37)]  # 2023-M10 to 2026-M10
+    values = [list(dict.fromkeys(key.split(".")[position] for key in series)) for position in range(len(names))]
+    times: list[str] = []
+    out = {}
+    for number, key in enumerate(series):
+        country = key.split(".")[0]
+        high = ranges.get(key, [0.0, 300.0])[1]
+        rows = {}
+        for n, month in enumerate(months):
+            # Newest first for every other series: the Fund's lists are in no order.
+            if month < "2024-M01":
+                if country != "JPN":
+                    continue
+                value = None  # listed, with no number, before the series begins
+            elif (country, month) == ("USA", "2025-M10") or (country == "AUS" and month < "2024-M04") \
+                    or month > ("2026-M07", "2026-M09", "2026-M10")[number % 3]:
+                continue
+            elif cpi:
+                value = f"{90 + number * 1.5 + n * 0.25:.{(1, 2, 13)[number % 3]}f}"
+            elif country == "BRA" and month < "2024-M04":
+                value = f"0.00000000000281{n:02d}9852975729"  # before the invented redenomination
+            else:
+                value = f"{high * (0.2 + 0.001 * n):.{(4, 10, 13)[number % 3]}f}".rstrip("0").rstrip(".")
+            mark = "T" if not cpi and (country, month) in (("BRA", "2024-M04"), ("CHN", "2025-M01")) else None
+            rows[month] = [value, None, 0, params["reference"][key], None] if cpi else [value, None, 0, mark]
+        ordered = list(rows) if number % 2 else list(reversed(rows))
+        for month in ordered:
+            if month not in times:
+                times.append(month)
+        index = ":".join(str(values[position].index(part)) for position, part in enumerate(key.split(".")))
+        attributes = [0, None, 0, params["reference"][key], "true"] if cpi else [0, None, 0, "true"]
+        out[index] = {"attributes": attributes,
+                      "observations": {str(times.index(month)): rows[month] for month in ordered}}
+
+    def described(listed, related):
+        return [{"id": name, "roles": [], "isMandatory": False, "relationship": related,
+                 **({"values": [{"id": code}]} if code else {})} for name, code in listed]
+
+    version = "5.0.0" if cpi else "4.0.1"
+    structure = {
+        "dataSets": [0],
+        "links": [{"urn": f"urn:sdmx:org.sdmx.infomodel.datastructure.Dataflow={params['agency']}:{flow}({version})",
+                   "title": "Dataflow"},
+                  {"urn": ("urn:sdmx:org.sdmx.infomodel.datastructure.DataStructure="
+                           f"{params['agency']}:DSD_{flow}{'' if cpi else '_PUB'}({version[:-1]}0)"),
+                   "title": "DataStructureDefinition"}],
+        "dimensions": {
+            "series": [{"id": name, "keyPosition": position, "roles": ["FREQ"] if name == "FREQUENCY" else [],
+                        "values": [{"id": value} for value in values[position]]}
+                       for position, name in enumerate(names)],
+            "observation": [{"id": "TIME_PERIOD", "keyPosition": len(names),
+                             "values": [{"value": time} for time in times]}]},
+        "measures": {"observation": [{"id": "OBS_VALUE", "roles": []}]},
+        "attributes": {
+            "dimensionGroup": described([("TRANSFORMATION", None), ("UNIT", None)],
+                                        {"dimensions": ["TYPE_OF_TRANSFORMATION"]}),
+            "series": described([("SCALE", "0"), ("DECIMALS_DISPLAYED", None), ("OVERLAP", "OL"),
+                                 *([("COMMON_REFERENCE_PERIOD", None)] if cpi else []), ("IFS_FLAG", None)],
+                                {"dimensions": list(names)}),
+            "observation": described([("PRECISION", None), ("DERIVATION_TYPE", "O" if cpi else "R"),
+                                      *([("REFERENCE_PERIOD", None)] if cpi else []), ("STATUS", None)],
+                                     {"observation": {}})},
+        "annotations": [],
+    }
+    answer = {"meta": {}, "data": {"dataSets": [{"structure": 0, "action": "Replace", "series": out}],
+                                   "structures": [structure]}}
+    return json.dumps(answer, separators=(",", ":")).encode()
+
+
 class Synthetic:
     """Answers each request of a real adapter with invented bytes of the shape that request
     would get, and remembers nothing else."""
@@ -282,13 +365,20 @@ class Synthetic:
             return "application/json", bls_body(asked["seriesid"], int(asked["startyear"]), int(asked["endyear"]))
         if url.netloc == "api.fiscaldata.treasury.gov":
             return "application/json", mts_body() if url.path.endswith("mts_table_1") else treasury_body()
-        endpoint = next(e for e in self._endpoints if e.adapter == "fed_board"
-                        and e.params["rel"] == query["rel"][0] and e.params["series"] == query["series"][0])
+        if url.netloc == "api.imf.org":
+            agency, flow = url.path.split("/")[-4:-2]
+            endpoint = next(e for e in self._endpoints if e.adapter == "imf_sdmx"
+                            and (e.params["agency"], e.params["flow"]) == (agency, flow))
+        else:
+            endpoint = next(e for e in self._endpoints if e.adapter == "fed_board"
+                            and e.params["rel"] == query["rel"][0] and e.params["series"] == query["series"][0])
         params = endpoint.params
         ranges = {entry["source"]["origin"]["origin_id"]: entry["range"]
                   for entry in load_catalog().values()
                   if (entry.get("source", {}).get("channel") or {}).get("endpoint") == endpoint.id
                   and "range" in entry}
+        if endpoint.adapter == "imf_sdmx":
+            return "application/json", imf_body(params, ranges)
         span = None
         if query["from"][0]:
             span = tuple(datetime.strptime(query[name][0], "%m/%d/%Y").date() for name in ("from", "to"))

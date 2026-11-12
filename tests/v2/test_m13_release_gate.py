@@ -54,7 +54,10 @@ def released(tmp_path_factory):
     """One run of the whole path, shared: capture the fixtures, replay them, release."""
     tmp = tmp_path_factory.mktemp("m13")
     register, store, root = signed(tmp), tmp / "store", tmp / "public"
-    assert capture_main(["--store", str(store), "--register", str(register), "--replay", str(FIXTURES)]) == 0
+    # The three agencies' endpoints only: the register lists the IMF's too since M14, and a run
+    # that selected a row nobody signed here would stop before its first request.
+    only = [argument for row in ROWS for argument in ("--only", row)]
+    assert capture_main(["--store", str(store), "--register", str(register), "--replay", str(FIXTURES), *only]) == 0
     assert replay_main(["--store", str(store), "--register", str(register)]) == 0
     # The spot values are real published figures (checks/spot.json). Invented values do not
     # meet them, which the last test here shows; this run is given none to meet.

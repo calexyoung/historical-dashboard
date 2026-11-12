@@ -1,0 +1,459 @@
+{
+  "format": 1,
+  "title": "The headline indicators of the nineteen G20 countries and the euro area",
+  "about": "What Macro Atlas holds for each of the nineteen countries of the G20 and for the euro area, indicator by indicator, and why anything is missing. Consumer prices, inflation and exchange rates are M14's (the International Monetary Fund's SDMX API). The other columns show what the Catalog declares today, mostly v1's series as drafts, and what the plan schedules for the rest. The European Union and the African Union are members of the G20 and have no row: the brief's table is of economies with a currency and a price index of their own.",
+  "columns": [
+    {
+      "id": "cpi",
+      "name": "Consumer prices (index)"
+    },
+    {
+      "id": "inflation",
+      "name": "Inflation (y/y)"
+    },
+    {
+      "id": "fx",
+      "name": "Currency per U.S. dollar (monthly)"
+    },
+    {
+      "id": "policy_rate",
+      "name": "Policy or short-term interest rate",
+      "default": {
+        "none": "Planned from the Bank for International Settlements' policy-rate dataset, which carries eighteen G20 economies and the euro area.",
+        "waits_for": "M36"
+      }
+    },
+    {
+      "id": "unemployment",
+      "name": "Unemployment rate",
+      "default": {
+        "none": "Monthly unemployment is planned from the OECD and national statistics offices. The IMF's labour dataflow was stale or absent for several members when it was looked at on 2026-11-11.",
+        "waits_for": "M36"
+      }
+    },
+    {
+      "id": "gdp_growth",
+      "name": "GDP growth",
+      "default": {
+        "none": "Planned from the IMF World Economic Outlook, annual, with observed and projected values kept apart.",
+        "waits_for": "M37"
+      }
+    },
+    {
+      "id": "stock_index",
+      "name": "Main stock index",
+      "default": {
+        "none": "Index levels are licensed by their publishers and no free publishable source is known; the recommendation under decision D5, which is open, is to show the row as withheld with a link to each exchange.",
+        "waits_for": "D5"
+      }
+    }
+  ],
+  "rows": [
+    {
+      "country": "ARG",
+      "name": "Argentina",
+      "cells": {
+        "cpi": {
+          "series": "ar_cpi"
+        },
+        "inflation": {
+          "series": "ar_infl"
+        },
+        "fx": {
+          "series": "ar_fx"
+        },
+        "policy_rate": {
+          "none": "The Bank for International Settlements' policy-rate dataset does not carry Argentina; the rate is planned from its central bank, whose series has not been identified.",
+          "waits_for": "M36"
+        }
+      }
+    },
+    {
+      "country": "AUS",
+      "name": "Australia",
+      "cells": {
+        "cpi": {
+          "series": "au_cpi",
+          "note": "The monthly index begins in April 2024 (as the Fund's file stood on 2026-11-11): Australia published only a quarterly index before, which is not read here."
+        },
+        "inflation": {
+          "series": "au_infl",
+          "note": "Begins in April 2025, twelve months after the monthly index does."
+        },
+        "fx": {
+          "series": "au_fx"
+        }
+      }
+    },
+    {
+      "country": "BRA",
+      "name": "Brazil",
+      "cells": {
+        "cpi": {
+          "series": "br_cpi"
+        },
+        "inflation": {
+          "series": "br_infl"
+        },
+        "fx": {
+          "series": "br_fx"
+        },
+        "policy_rate": {
+          "series": "br_rate"
+        }
+      }
+    },
+    {
+      "country": "CAN",
+      "name": "Canada",
+      "cells": {
+        "cpi": {
+          "series": "ca_cpi",
+          "note": "The Fund labels the reference period 2014M12 while the level reads like Statistics Canada's 2002 = 100 index (as the Fund's file stood on 2026-11-11). The unit is left as \"index\" until that is settled."
+        },
+        "inflation": {
+          "series": "ca_infl"
+        },
+        "fx": {
+          "series": "ca_fx"
+        },
+        "unemployment": {
+          "series": "ca_unemp"
+        },
+        "stock_index": {
+          "series": "tsx"
+        }
+      }
+    },
+    {
+      "country": "CHN",
+      "name": "China",
+      "cells": {
+        "cpi": {
+          "series": "cn_cpi"
+        },
+        "inflation": {
+          "series": "cn_infl"
+        },
+        "fx": {
+          "series": "cn_fx"
+        },
+        "gdp_growth": {
+          "series": "cn_gdp_yoy",
+          "note": "Annual, and of nominal GDP in U.S. dollars: not the real growth rate the other cells of this column are meant to hold."
+        },
+        "stock_index": {
+          "series": "shanghai"
+        }
+      }
+    },
+    {
+      "country": "FRA",
+      "name": "France",
+      "member_of": "EA",
+      "cells": {
+        "cpi": {
+          "series": "fr_cpi"
+        },
+        "inflation": {
+          "series": "fr_infl"
+        },
+        "fx": {
+          "shared": "ez_fx"
+        },
+        "policy_rate": {
+          "shared": "ecb"
+        },
+        "unemployment": {
+          "series": "fr_unemp"
+        }
+      }
+    },
+    {
+      "country": "DEU",
+      "name": "Germany",
+      "member_of": "EA",
+      "cells": {
+        "cpi": {
+          "series": "de_cpi"
+        },
+        "inflation": {
+          "series": "de_infl"
+        },
+        "fx": {
+          "shared": "ez_fx"
+        },
+        "policy_rate": {
+          "shared": "ecb"
+        },
+        "unemployment": {
+          "series": "de_unemp"
+        },
+        "stock_index": {
+          "series": "dax"
+        }
+      }
+    },
+    {
+      "country": "IND",
+      "name": "India",
+      "cells": {
+        "cpi": {
+          "series": "in_cpi"
+        },
+        "inflation": {
+          "series": "in_infl"
+        },
+        "fx": {
+          "series": "in_fx"
+        },
+        "stock_index": {
+          "series": "sensex"
+        }
+      }
+    },
+    {
+      "country": "IDN",
+      "name": "Indonesia",
+      "cells": {
+        "cpi": {
+          "series": "id_cpi"
+        },
+        "inflation": {
+          "series": "id_infl"
+        },
+        "fx": {
+          "series": "id_fx"
+        }
+      }
+    },
+    {
+      "country": "ITA",
+      "name": "Italy",
+      "member_of": "EA",
+      "cells": {
+        "cpi": {
+          "series": "it_cpi"
+        },
+        "inflation": {
+          "series": "it_infl"
+        },
+        "fx": {
+          "shared": "ez_fx"
+        },
+        "policy_rate": {
+          "shared": "ecb"
+        }
+      }
+    },
+    {
+      "country": "JPN",
+      "name": "Japan",
+      "cells": {
+        "cpi": {
+          "series": "jp_cpi",
+          "note": "Replaces v1's series, which ended in June 2021. Checked against the Statistics Bureau of Japan's file: docs/v2/japan-cpi-check.md."
+        },
+        "inflation": {
+          "series": "jp_infl"
+        },
+        "fx": {
+          "series": "jp_fx"
+        },
+        "policy_rate": {
+          "series": "jp_rate"
+        },
+        "unemployment": {
+          "series": "jp_unemp"
+        },
+        "stock_index": {
+          "series": "nikkei"
+        }
+      }
+    },
+    {
+      "country": "KOR",
+      "name": "South Korea",
+      "cells": {
+        "cpi": {
+          "series": "kr_cpi"
+        },
+        "inflation": {
+          "series": "kr_infl"
+        },
+        "fx": {
+          "series": "kr_fx"
+        },
+        "unemployment": {
+          "series": "kr_unemp"
+        },
+        "stock_index": {
+          "series": "kospi"
+        }
+      }
+    },
+    {
+      "country": "MEX",
+      "name": "Mexico",
+      "cells": {
+        "cpi": {
+          "series": "mx_cpi"
+        },
+        "inflation": {
+          "series": "mx_infl"
+        },
+        "fx": {
+          "series": "mx_fx"
+        },
+        "policy_rate": {
+          "series": "mx_rate"
+        }
+      }
+    },
+    {
+      "country": "RUS",
+      "name": "Russia",
+      "cells": {
+        "cpi": {
+          "series": "ru_cpi"
+        },
+        "inflation": {
+          "series": "ru_infl"
+        },
+        "fx": {
+          "series": "ru_fx",
+          "note": "No entries between January 1994 and May 1995 (as the Fund's file stood on 2026-11-11); the release shows those months as missing."
+        }
+      }
+    },
+    {
+      "country": "SAU",
+      "name": "Saudi Arabia",
+      "cells": {
+        "cpi": {
+          "series": "sa_cpi"
+        },
+        "inflation": {
+          "series": "sa_infl"
+        },
+        "fx": {
+          "series": "sa_fx"
+        }
+      }
+    },
+    {
+      "country": "ZAF",
+      "name": "South Africa",
+      "cells": {
+        "cpi": {
+          "series": "za_cpi"
+        },
+        "inflation": {
+          "series": "za_infl"
+        },
+        "fx": {
+          "series": "za_fx"
+        }
+      }
+    },
+    {
+      "country": "TUR",
+      "name": "Turkey",
+      "cells": {
+        "cpi": {
+          "series": "tr_cpi"
+        },
+        "inflation": {
+          "series": "tr_infl"
+        },
+        "fx": {
+          "series": "tryusd"
+        },
+        "policy_rate": {
+          "series": "tr_rate"
+        }
+      }
+    },
+    {
+      "country": "GBR",
+      "name": "United Kingdom",
+      "cells": {
+        "cpi": {
+          "series": "uk_cpi"
+        },
+        "inflation": {
+          "series": "uk_infl"
+        },
+        "fx": {
+          "series": "uk_fx"
+        },
+        "policy_rate": {
+          "series": "boe"
+        },
+        "unemployment": {
+          "series": "uk_unemp"
+        },
+        "stock_index": {
+          "series": "ftse"
+        }
+      }
+    },
+    {
+      "country": "USA",
+      "name": "United States",
+      "cells": {
+        "cpi": {
+          "series": "us_cpi",
+          "note": "The Fund's copy of the U.S. index, read so that the row has one source; the Bureau of Labor Statistics' own index is `cpi_nsa`. It has no entry for October 2025 (as the Fund's file stood on 2026-11-11), which the Bureau did not publish."
+        },
+        "inflation": {
+          "series": "us_infl",
+          "note": "Computed from the Fund's copy, so it has no figure for October 2025 or October 2026. The Bureau of Labor Statistics' figure is `cpi_yoy`."
+        },
+        "fx": {
+          "none": "The U.S. dollar is what every other rate in this column is quoted against. The Federal Reserve Board's broad dollar index is the Series `usd_broad`."
+        },
+        "policy_rate": {
+          "series": "fedfunds"
+        },
+        "unemployment": {
+          "series": "unrate"
+        },
+        "gdp_growth": {
+          "series": "gdp_yoy"
+        },
+        "stock_index": {
+          "series": "spx"
+        }
+      }
+    },
+    {
+      "country": "EA",
+      "name": "Euro area",
+      "cells": {
+        "cpi": {
+          "series": "ez_hicp"
+        },
+        "inflation": {
+          "series": "ez_infl"
+        },
+        "fx": {
+          "series": "ez_fx",
+          "note": "From January 1999, when the euro began."
+        },
+        "policy_rate": {
+          "series": "ecb"
+        },
+        "unemployment": {
+          "series": "ez_unemp"
+        },
+        "gdp_growth": {
+          "series": "ez_gdp_yoy"
+        },
+        "stock_index": {
+          "series": "stoxx"
+        }
+      }
+    }
+  ]
+}

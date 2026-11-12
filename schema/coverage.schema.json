@@ -1,0 +1,94 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mydashboards.co/macro-atlas/schema/coverage.schema.json",
+  "title": "CoverageMatrix",
+  "description": "A coverage matrix (PLAN M14): countries by indicators, each cell naming the Series of the Catalog that fills it or saying why none does. The file catalog/coverage/{name}.json, which a person edits. It grants nothing and holds no data: what exists is read from the Catalog, and what may be shown is the rights gate's answer.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["format", "title", "about", "columns", "rows"],
+  "properties": {
+    "format": { "const": 1 },
+    "title": { "type": "string", "minLength": 1 },
+    "about": { "type": "string", "minLength": 1 },
+    "columns": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "title": "CoverageColumn",
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "name"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-z][a-z0-9_]{0,31}$" },
+          "name": { "type": "string", "minLength": 1 },
+          "default": {
+            "description": "What a row's cell says when the row does not fill it: why no Series exists.",
+            "$ref": "#/$defs/none"
+          }
+        }
+      }
+    },
+    "rows": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "title": "CoverageRow",
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["country", "name", "cells"],
+        "properties": {
+          "country": {
+            "description": "As a Series' country: ISO 3166-1 alpha-3, or a group code.",
+            "anyOf": [{ "type": "string", "pattern": "^[A-Z]{3}$" }, { "enum": ["EA", "EU", "G20", "WLD"] }]
+          },
+          "name": { "type": "string", "minLength": 1 },
+          "member_of": {
+            "description": "A group whose Series a cell of this row may share (a euro-area country and the euro).",
+            "enum": ["EA", "EU"]
+          },
+          "cells": {
+            "type": "object",
+            "additionalProperties": {
+              "oneOf": [{ "$ref": "#/$defs/series" }, { "$ref": "#/$defs/shared" }, { "$ref": "#/$defs/none" }]
+            }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "key": { "type": "string", "pattern": "^[a-z][a-z0-9_]{0,63}$" },
+    "note": {
+      "description": "A dated fact about the Series a reader of the matrix should know, such as where its history begins.",
+      "type": "string",
+      "minLength": 1
+    },
+    "series": {
+      "title": "SeriesCell",
+      "description": "A Series of this row's own country.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["series"],
+      "properties": { "series": { "$ref": "#/$defs/key" }, "note": { "$ref": "#/$defs/note" } }
+    },
+    "shared": {
+      "title": "SharedCell",
+      "description": "A Series of the group the row is a member of.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["shared"],
+      "properties": { "shared": { "$ref": "#/$defs/key" }, "note": { "$ref": "#/$defs/note" } }
+    },
+    "none": {
+      "title": "NoSeriesCell",
+      "description": "No Series fills the cell, and why. waits_for names the milestone, release or decision it waits for.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["none"],
+      "properties": {
+        "none": { "type": "string", "minLength": 1 },
+        "waits_for": { "type": "string", "pattern": "^(M[0-9]{1,2}|D[0-9]{1,2}|v2\\.[0-9])$" }
+      }
+    }
+  }
+}

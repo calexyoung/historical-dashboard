@@ -49,7 +49,12 @@ def test_every_v1_key_is_a_key_of_the_catalog_unchanged():
     catalog = load_catalog()
     assert len(V1_KEYS) == 126
     assert [key for key in V1_KEYS if key not in catalog] == []
-    assert sorted(set(catalog) - set(V1_KEYS)) == ["cpi_nsa", "net_worth", "outlays", "receipts"]
+    new = sorted(set(catalog) - set(V1_KEYS))
+    assert [key for key in new if not key.endswith(("_cpi", "_infl", "_fx"))] == [
+        "cpi_nsa", "net_worth", "outlays", "receipts"]
+    # M14: the G20 rows. An index and its change for sixteen countries v1 had neither for, and
+    # a monthly dollar rate for fifteen currencies (Turkey's is v1's tryusd).
+    assert [len([key for key in new if key.endswith(end)]) for end in ("_cpi", "_infl", "_fx")] == [16, 16, 15]
     recorded = json.loads((ROOT / "checks" / "v1-links.json").read_text())
     selected = {key for group in ("presets", "links") for item in recorded.get(group, [])
                 for key in item["v1"]["sel"]}
@@ -88,7 +93,12 @@ def test_the_fourteen_year_over_year_series_and_the_ratio_are_recipes():
     assert catalog["gold_eur"]["recipe"] == {"op": "ratio", "inputs": ["gold", "eurusd"],
                                              "order": "aggregate_then_compute"}
     assert catalog["gold_eur"]["freq"] == "monthly"  # month-end gold over the month's mean rate
-    assert sorted(k for k, e in catalog.items() if "recipe" in e) == sorted([*expected, "gold_eur", "t10y2y"])
+    m14 = [f"{c}_infl" for c in ("ar", "au", "br", "ca", "de", "fr", "id", "in", "it", "kr", "mx", "ru",
+                                 "sa", "tr", "us", "za")]  # not in v1: the rest of the G20 row
+    for key in m14:
+        assert catalog[key]["recipe"] == {"op": "pct_change", "inputs": [key.replace("_infl", "_cpi")],
+                                          "order": "aggregate_then_compute", "params": {"lag": 12}}, key
+    assert sorted(k for k, e in catalog.items() if "recipe" in e) == sorted([*expected, "gold_eur", "t10y2y", *m14])
 
 
 def test_only_what_an_adapter_is_built_for_is_in_the_pipeline():
@@ -96,8 +106,11 @@ def test_only_what_an_adapter_is_built_for_is_in_the_pipeline():
     keeps v1's own Series, with v1's own provenance, for every key not yet live."""
     catalog = load_catalog()
     live = sorted(k for k, e in catalog.items() if e["status"] != "draft")
-    assert [k for k in live if "recipe" in catalog[k]] == [
-        "corecpi_yoy", "cpi_yoy", "m2_yoy", "rent_yoy", "t10y2y", "wages_yoy"]
+    g20 = ["ar", "au", "br", "ca", "cn", "de", "fr", "id", "in", "it", "jp", "kr", "mx", "ru", "sa", "tr",
+           "uk", "us", "za"]
+    assert [k for k in live if "recipe" in catalog[k]] == sorted([
+        "corecpi_yoy", "cpi_yoy", "m2_yoy", "rent_yoy", "t10y2y", "wages_yoy",
+        *(f"{c}_infl" for c in g20)])  # M14: inflation in the nineteen G20 countries
     by_adapter: dict[str, list[str]] = {}
     for key in live:
         channel = catalog[key].get("source", {}).get("channel")
@@ -110,6 +123,10 @@ def test_only_what_an_adapter_is_built_for_is_in_the_pipeline():
         "fed_board": ["brl", "cad", "cny", "credit", "delinq", "eurusd", "fedassets", "fedfunds",
                       "gbpusd", "gs10", "gs2", "indpro", "inr", "jpy", "m2", "mxn", "net_worth",
                       "usd_broad"],
+        # M14: the index of each of the nineteen, and the dollar rate of the fifteen with a
+        # currency of their own that is not the dollar, and of the euro.
+        "imf_sdmx": sorted([*(f"{c}_cpi" for c in g20), "tryusd", "ez_fx",
+                            *(f"{c}_fx" for c in g20 if c not in ("de", "fr", "it", "us", "tr"))]),
     }
     assert catalog["ted"]["status"] == "retired" and catalog["ted"]["source"]["channel"] is None
     assert all(e["source"]["channel"] is None or "endpoint" not in e["source"]["channel"]
@@ -236,7 +253,7 @@ def test_atlas_check_exits_zero_on_the_committed_catalog_and_names_each_layer(ca
     out = capsys.readouterr().out
     for layer in LAYERS:
         assert f"{layer}: ok" in out
-    assert "130 Series" in out
+    assert "177 Series" in out
 
 
 def test_atlas_check_exits_one_and_names_the_file_and_the_layers_not_run(tmp_path, capsys):
@@ -327,3 +344,48 @@ def test_a_series_read_from_a_board_package_has_its_unit_and_multiplier_pinned(t
 def test_a_series_frequency_is_the_one_its_endpoint_reads_at(tmp_path):
     assert failed(run(tmp_path, _fed("RIFLGFCY10_N.B", freq="monthly"))) == {"references": [
         "it is monthly, and the endpoint fed-h15-treasury-yields is read by day"]}
+
+
+# --- what an IMF endpoint must say of a Series bound to it (M14) ------------------------------
+
+IMF_SOURCE = {"origin": {"producer": "International Monetary Fund", "dataset": "Consumer Price Index",
+                         "origin_id": "JPN.CPI._T.IX.M", "url": None},
+              "channel": {"via": "direct", "adapter": "imf_sdmx", "endpoint": "imf-cpi-g20"}}
+
+
+def _imf(origin_id="JPN.CPI._T.IX.M", **changes):
+    source = {**IMF_SOURCE, "origin": {**IMF_SOURCE["origin"], "origin_id": origin_id}}
+    return stored("jp_cpi", status="active", source=source, **changes)
+
+
+def _register_without_pins(tmp_path) -> Path:
+    table = load_register()
+    row = next(r for r in table["rows"] if r["id"] == "imf")
+    del next(e for e in row["capture"] if e["id"] == "imf-cpi-g20")["params"]["reference"]["JPN.CPI._T.IX.M"]
+    path = tmp_path / "register.json"
+    path.write_text(json.dumps(table))
+    return path
+
+
+def test_a_series_bound_to_an_imf_endpoint_is_one_of_the_series_it_asks_for(tmp_path):
+    assert failed(run(tmp_path, _imf())) == {}
+    assert failed(run(tmp_path, _imf("NZL.CPI._T.IX.M"))) == {"references": [
+        "the endpoint imf-cpi-g20 does not ask for NZL.CPI._T.IX.M"]}
+
+
+def test_a_series_frequency_is_the_one_its_imf_key_ends_in(tmp_path):
+    assert failed(run(tmp_path, _imf(freq="quarterly"))) == {"references": [
+        "it is quarterly, and JPN.CPI._T.IX.M is a monthly series of the Fund's"]}
+
+
+def test_an_index_read_from_the_imf_has_its_reference_period_pinned(tmp_path):
+    # Without the pin a rebase would go unseen and every figure would mean something else.
+    assert failed(run(tmp_path, _imf(), register=_register_without_pins(tmp_path))) == {"references": [
+        "the endpoint imf-cpi-g20 does not pin the reference period the Fund gives "
+        "JPN.CPI._T.IX.M (its reference)"]}
+    # Only an index has a reference period: an exchange rate needs no pin.
+    rate = stored("jp_fx", status="active", unit="Japanese yen per U.S. dollar", unit_kind="currency",
+                  measure_kind="rate", source={
+                      "origin": {**IMF_SOURCE["origin"], "dataset": "Exchange Rates", "origin_id": "JPN.XDC_USD.PA_RT.M"},
+                      "channel": {**IMF_SOURCE["channel"], "endpoint": "imf-er-g20"}})
+    assert failed(run(tmp_path / "rate", rate)) == {}
