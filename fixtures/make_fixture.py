@@ -586,6 +586,68 @@ VINTAGES = {
 }
 
 
+# --- one invented Claim, its lock and its latest rows (M20; ADR 0034) -----------------------------
+#
+# The claimant, the venue and the words are made up. The lock and the latest rows are the
+# engine's answers on this fixture's own Series, kept as files beside this script
+# (fixtures/claims/): `python fixtures/claims/make_claim.py` writes them, and
+# tests/v2/test_fixture.py holds them to what the engine answers today.
+CLAIM_ID = "2025-12-11-a-fixture-official-on-fixture-prices"
+CLAIMS_DIR = Path(__file__).resolve().parent / "claims"
+CLAIM = {
+    "id": CLAIM_ID,
+    "claimant": {"name": "A. Fixture", "role": "Fixture minister of prices (synthetic)", "party": "none"},
+    "said_on": "2025-12-11",
+    "venue": "A fixture press conference (synthetic)",
+    "sources": [
+        {"name": "Fixture broadcaster (synthetic)", "url": "https://video.example.org/fixture-briefing",
+         "archive_url": "https://example.org/archive/2026/fixture-briefing", "locator": "at 12:40", "kind": "recording"},
+        {"name": "Fixture gazette (synthetic)", "url": "https://example.org/fixture-gazette/briefing",
+         "archive_url": "https://example.org/archive/2026/fixture-gazette-briefing", "locator": "paragraph 9",
+         "kind": "transcript"},
+    ],
+    "quote": "The fixture price index stood at 109.5 in November, up about five percent since January.",
+    "readings": [
+        {"id": "index-in-november", "series": "fx_price_index", "transform": "lin", "measure": "value_at",
+         "period": "2025-11"},
+        {"id": "rise-since-january", "series": "fx_price_index", "transform": "lin", "measure": "change",
+         "window": {"from": "2025-01-01", "to": "2025-11-30"},
+         "alternative_windows": [{"from": "2024-11-01", "to": "2025-11-30"}, {"from": "2025-06-01", "to": "2025-11-30"}]},
+        {"id": "from-a-year-earlier", "series": "fx_price_index_yoy", "transform": "lin", "measure": "value_at",
+         "period": "2025-11"},
+    ],
+    "readings_not_measured": ["The index with fixture food and fuel left out."],
+    "selection_note": "Kept in the fixture so that a Claim, its lock and its latest rows can be read in tests.",
+    "checked_on": "2025-12-31",
+    "corrections": [{"date": "2026-01-01", "reason": "The venue was first entered without its city (synthetic)."}],
+    "topics": ["inflation"],
+    "status": "public",
+}
+#: The fields a lock freezes, as atlas/content/claims.py lists them.
+RECORD_FIELDS = ("claimant", "said_on", "said_at", "venue", "sources", "quote", "readings",
+                 "readings_not_measured", "selection_note", "checked_on")
+LOCK_NAME = f"{CLAIM_ID}.v1.lock.json"
+
+
+def canonical(obj) -> bytes:
+    return json.dumps(obj, ensure_ascii=False, sort_keys=True, separators=(",", ":"), allow_nan=False).encode("utf-8")
+
+
+def claims_file() -> tuple[dict, bytes | None, bytes | None]:
+    """content/claims.json, and the bytes of the lock and of the latest rows when the files
+    beside this script exist (they do not while make_claim.py is writing them)."""
+    lock_path, latest_path = CLAIMS_DIR / "locks" / LOCK_NAME, CLAIMS_DIR / "latest.json"
+    lock = lock_path.read_bytes() if lock_path.exists() else None
+    latest = latest_path.read_bytes() if latest_path.exists() and lock is not None else None
+    listed = []
+    if lock is not None:
+        held = json.loads(lock)
+        listed = [{"version": 1, "locked_at": held["locked_at"], "reason": None,
+                   "record_sha256": hashlib.sha256(canonical({k: CLAIM[k] for k in RECORD_FIELDS if k in CLAIM})).hexdigest(),
+                   "state": "in_release", "sha256": hashlib.sha256(lock).hexdigest()}]
+    return {"claims": [{**CLAIM, "locks": listed}] if lock is not None else []}, lock, latest
+
+
 def dump(obj) -> bytes:
     return (json.dumps(obj, indent=2, ensure_ascii=False) + "\n").encode("utf-8")
 
@@ -619,7 +681,7 @@ def build(root: Path) -> Path:
         rows[key]["vintages_sha256"] = hashlib.sha256(data).hexdigest()
 
     manifest = {
-        "schema_version": "0.3.0",
+        "schema_version": "0.4.0",
         "semantics_version": "0",
         "release_id": RELEASE_ID,
         "profile": "public",
@@ -639,6 +701,14 @@ def build(root: Path) -> Path:
     (release / "catalog.json").write_bytes(dump(CATALOG))
     (release / "content" / "annotations.json").write_bytes(dump(ANNOTATIONS))
     (release / "content" / "events.json").write_bytes(dump(EVENTS))
+    claims, lock, latest = claims_file()
+    (release / "content" / "claims.json").write_bytes(dump(claims))
+    if lock is not None:
+        (release / "locks").mkdir()
+        (release / "locks" / LOCK_NAME).write_bytes(lock)
+    if latest is not None:
+        (release / "evidence").mkdir()
+        (release / "evidence" / "latest.json").write_bytes(latest)
     (root / "CURRENT").write_text(RELEASE_ID + "\n")
     return release
 

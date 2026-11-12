@@ -23,8 +23,16 @@ from atlas.release import load_release, validate_release
 from atlas.rights import RightsGate
 
 from .claim_helpers import claim, write_claim
-from .release_helpers import (MAKE, all_bytes, build_store, current, fixture_table, read_json,
-                              series_with_recipes, write_register)
+from .release_helpers import (
+    MAKE,
+    all_bytes,
+    build_store,
+    current,
+    fixture_table,
+    read_json,
+    series_with_recipes,
+    write_register,
+)
 
 RELEASED = datetime(2026, 3, 11, 15, 0, 0, tzinfo=UTC)
 CHECKED = datetime(2026, 3, 11, 16, 0, 0, tzinfo=UTC)
