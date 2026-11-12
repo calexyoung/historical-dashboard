@@ -100,6 +100,10 @@ def main(argv=None) -> int:
         return cmd_publish(argv)
     if argv[:1] and argv[0] in ("add", "catalog") or (argv[:1] == ["check"] and "--v1" not in argv):
         return cmd_catalog(argv)
+    if argv[:1] == ["claims"]:
+        from .publish.claims import main as claims_main  # v2 (PLAN M20): Claim locks; its own options
+
+        return claims_main(argv[1:])
     if argv[:1] == ["crosscheck"]:
         from .crosscheck import main as crosscheck_main  # v2 (PLAN M14): one source against another
 
@@ -135,6 +139,8 @@ def main(argv=None) -> int:
                                    "(see python -m atlas.capture --help)")
     sub.add_parser("crosscheck", help="v2: compare one source with another (japan-cpi: the IMF's index "
                                       "for Japan against the Statistics Bureau's file)")
+    sub.add_parser("claims", help="v2: compute a Claim's evidence and freeze it in a lock; relock; list "
+                                  "(see python -m atlas claims --help)")
     sub.add_parser("replay", help="v2: build the vintage store from kept captures, with their "
                                   "original retrieval times (see python -m atlas replay --help)")
     for name, text in (("release", "write, check and promote a Release from the vintage store"),

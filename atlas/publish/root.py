@@ -27,7 +27,8 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 from ..capture import store as S
-from ..release import ANNOTATIONS, CATALOG, LEGACY, MANIFEST, validate_files
+from ..content import claims as claim_files
+from ..release import ANNOTATIONS, CATALOG, LATEST, LEGACY, MANIFEST, validate_files
 from ..rights import RightsGate
 from ..staging import RELEASE_ID, STAGING
 from .export import history_lineages, lineage
@@ -36,6 +37,8 @@ REPO = Path(__file__).resolve().parents[2]
 FORMAT = 1
 MARKER, STATUS, PINS, WITHDRAWN, TRASH = "root.json", "STATUS.json", "pins.json", "withdrawn.json", "trash"
 SAVED = "saved.json"
+#: A local root's own Claim locks (ADR 0034): computed on its Releases, never committed.
+LOCKS = "locks"
 KEEP = 30
 TRASH_DAYS = 1
 HOMES = {"public": ("ATLAS_PUBLIC", "public"), "local": ("ATLAS_LOCAL", "local"),
@@ -212,7 +215,26 @@ def read_release(root: Path, release_id: str, folder: str = "releases") -> dict[
 
 
 def holds(files: dict[str, bytes], key: str) -> bool:
-    return f"series/{key}.json" in files or f"derived/{key}.json" in files
+    """Whether a Release holds values of a Series: its own file, or a Claim lock or latest
+    Evidence row whose numbers came from it (ADR 0034)."""
+    if f"series/{key}.json" in files or f"derived/{key}.json" in files:
+        return True
+    for path in files:
+        if path.startswith("locks/"):
+            try:
+                if key in claim_files.rests_on(json.loads(files[path])):
+                    return True
+            except (ValueError, KeyError, TypeError, AttributeError):
+                return True     # a lock that cannot be read is not shown to hold nothing
+    if LATEST in files:
+        try:
+            for claim in json.loads(files[LATEST])["claims"]:
+                for reading in claim["readings"]:
+                    if reading["latest"] and key in {item["key"] for item in reading["latest"]["inputs"]}:
+                        return True
+        except (ValueError, KeyError, TypeError, AttributeError):
+            return True
+    return False
 
 
 def rights_problems(files: dict[str, bytes], gate: RightsGate, surface: str = "production") -> list[str]:
@@ -258,6 +280,47 @@ def rights_problems(files: dict[str, bytes], gate: RightsGate, surface: str = "p
         if not decision.allowed:
             problems.append(f"{key}: its history: {decision.reason}")
     problems.extend(annotation_problems(files, gate, surface))
+    problems.extend(claim_problems(files, gate, surface))
+    return problems
+
+
+def claim_problems(files: dict[str, bytes], gate: RightsGate, surface: str = "production") -> list[str]:
+    """Why the Claim locks and latest Evidence rows a Release holds may not all be shown on a
+    public Surface (M20; ADR 0034). A lock is a file of values, so the gate is asked about
+    everything its numbers came through, for display and for redistribution, for as long as
+    the Release is kept; a lock computed on a local-profile Release is never public."""
+    problems = []
+    for path in sorted(p for p in files if p.startswith("locks/")):
+        name = path[len("locks/"):]
+        try:
+            lock = json.loads(files[path])
+            rows, profile = lock["rights_used"], lock["release"]["profile"]
+            if not rows:
+                raise ValueError
+        except (ValueError, KeyError, TypeError, AttributeError):
+            problems.append(f"the lock {name}: does not say where its numbers came from")
+            continue
+        if profile != "public":
+            problems.append(f"the lock {name}: was computed on a local-profile Release, which is never public")
+            continue
+        for permission in ("display", "redistribute"):
+            decision = gate.permits([{**row, "permission": permission} for row in rows], surface)
+            if not decision.allowed:
+                problems.append(f"the lock {name}: {decision.reason}")
+                break
+    if LATEST in files:
+        try:
+            claims = json.loads(files[LATEST])["claims"]
+            for claim in claims:
+                if not any(reading["latest"] for reading in claim["readings"]):
+                    continue
+                if not claim["rights_used"]:
+                    raise ValueError
+                decision = gate.permits([{**row, "permission": "display"} for row in claim["rights_used"]], surface)
+                if not decision.allowed:
+                    problems.append(f"the latest rows of {claim['claim_id']}: {decision.reason}")
+        except (ValueError, KeyError, TypeError, AttributeError):
+            problems.append("its latest Evidence rows do not say where their numbers came from")
     return problems
 
 

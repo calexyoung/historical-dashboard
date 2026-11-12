@@ -3,8 +3,9 @@
     compile_content(profile=..., content=..., manual=..., gate=...) -> Compiled
 
 It reads files of the repository and nothing else: Events (``content/events/*.md``) and the
-hand-entered layers (``catalog/manual/terms`` and ``catalog/manual/spans``). It writes two
-files of the Release:
+hand-entered layers (``catalog/manual/terms`` and ``catalog/manual/spans``). It writes
+these files of the Release (and, since M20, ``content/claims.json`` and the Claim locks: see
+``_compile_claims``):
 
 ``content/events.json``
     The Events, whole and in the order of time. A public-profile Release holds the ``public``
@@ -31,12 +32,14 @@ word list stops a public-profile compile, exactly as ``atlas check`` fails on it
 """
 from __future__ import annotations
 
+import hashlib
 import json
 from dataclasses import dataclass, field
 from pathlib import Path
 
 from .. import manual
-from ..release import ANNOTATIONS, EVENTS, LEGACY
+from ..release import ANNOTATIONS, CLAIMS, EVENTS, LEGACY
+from . import claims as K
 from . import events as E
 from . import wordlist as W
 
@@ -59,6 +62,9 @@ class Compiled:
     report: list[dict] = field(default_factory=list)
     #: Every content file read, as (path below the content or manual directory, bytes).
     read: list[tuple[str, bytes]] = field(default_factory=list)
+    #: The lock files in ``files`` whose Claims need a latest row: the newest lock of each
+    #: Claim, when it is in the Release. The engine step is asked for exactly these.
+    latest_for: list[str] = field(default_factory=list)
 
 
 def dump(document) -> bytes:
@@ -137,13 +143,117 @@ def _layers(manual_dir: Path | None, read: list[tuple[str, bytes]]) -> list[tupl
     return out
 
 
+#: The fields of a Claim a Release carries, in this order; then its locks by name.
+CLAIM_FIELDS = ("id", "claimant", "said_on", "said_at", "venue", "sources", "quote", "readings",
+                "readings_not_measured", "selection_note", "checked_on", "corrections", "topics", "status")
+NOT_CARRIED = ("this Release was written by a writer that computes no latest row (the legacy converter); "
+               "atlas release --profile local carries the lock")
+
+
+def _compile_claims(out: Compiled, *, profile: str, content: Path, gate, local_locks: Path | None,
+                    withdrawn: set[str], carry_locks: bool) -> None:
+    """``content/claims.json`` and the lock files (M20; ADR 0034).
+
+    A public-profile Release holds the ``public`` Claims and reads locks from the repository
+    only (``content/claims/locks``); it never reads a local root's. A local-profile Release
+    holds every Claim; a Claim's locks are the repository's if it has any there, else the
+    local root's. A lock is in the Release as the bytes it was written as, or it is named
+    without its numbers: ``withdrawn`` when the gate no longer permits what they came through
+    or a Series they rest on was withdrawn, ``not_carried`` when this writer computes no
+    latest row. A Claim whose record is no longer the one its newest lock froze, or a lock
+    that was edited, refuses the Release."""
+    directory = content / "claims"
+    claims, problems = K.load_claims(directory)
+    repo_locks, repo_raw, found = K.load_locks(directory / K.LOCKS)
+    problems += found
+    own_locks, own_raw = {}, {}
+    if profile == "local" and local_locks is not None:
+        own_locks, own_raw, found = K.load_locks(local_locks)
+        problems += found
+    if problems:
+        raise ContentError("; ".join(problems[:5]) + (f" (and {len(problems) - 5} more)" if len(problems) > 5 else ""))
+    out.read += [(f"claims/{path.name}", path.read_bytes()) for path in K.claim_files(directory)]
+    # Asked of every Claim, a draft too: a Claim edited after it was locked fails the build.
+    for claim in claims:
+        said = K.stale(claim, repo_locks.get(claim["id"]) or own_locks.get(claim["id"], []))
+        if said:
+            raise ContentError(f"{claim['id']}: {said}")
+    drafts = [claim for claim in claims if claim["status"] == "draft"]
+    if profile == "public":
+        claims = [claim for claim in claims if claim["status"] == "public"]
+    compiled, hidden, taken_down = [], [], []
+    for claim in claims:
+        in_repo = claim["id"] in repo_locks
+        locks = repo_locks.get(claim["id"]) or own_locks.get(claim["id"], [])
+        raw = repo_raw if in_repo else own_raw
+        if in_repo and claim["id"] in own_locks:
+            hidden.append(claim["id"])
+        if profile == "public":
+            if not locks:
+                raise ContentError(f"{claim['id']} is public and has no lock in content/claims/locks: a public "
+                                   "Claim is published with its frozen evidence (atlas claims compute)")
+            if not claim["readings"]:
+                raise ContentError(f"{claim['id']} is public and has no reading")
+            hits = K.own_terms(claim)
+            if hits:
+                raise ContentError(f"{claim['id']}: its own text hits the word list (atlas/content/wordlist.py): "
+                                   + ", ".join(sorted({term for terms in hits.values() for term in terms})))
+        listed = []
+        for lock in locks:
+            row = {"version": lock["version"], "locked_at": lock["locked_at"], "reason": lock["reason"],
+                   "record_sha256": lock["record_sha256"]}
+            why = None
+            gone = sorted(K.rests_on(lock) & withdrawn)
+            if not carry_locks:
+                listed.append({**row, "state": "not_carried", "why": NOT_CARRIED})
+                continue
+            if gone:
+                why = f"{', '.join(gone)} was withdrawn"
+            elif profile == "public":
+                if lock["release"]["profile"] != "public":
+                    raise ContentError(f"{K.lock_name(claim['id'], lock['version'])} was computed on a local-profile "
+                                       "Release and is never part of a public one")
+                for permission in ("display", "redistribute"):
+                    decision = gate.permits(K.lineage_rows(lock, permission), "production")
+                    if not decision.allowed:
+                        why = f"its numbers may not be shown now ({permission}): {decision.reason}"
+                        break
+            if why:
+                listed.append({**row, "state": "withdrawn", "why": why})
+                taken_down.append(K.lock_name(claim["id"], lock["version"]))
+                continue
+            body = raw[(claim["id"], lock["version"])]
+            path = f"locks/{K.lock_name(claim['id'], lock['version'])}"
+            out.files[path] = body
+            listed.append({**row, "state": "in_release", "sha256": hashlib.sha256(body).hexdigest()})
+        if listed and listed[-1]["state"] == "in_release":
+            out.latest_for.append(f"locks/{K.lock_name(claim['id'], listed[-1]['version'])}")
+        compiled.append({**{name: claim[name] for name in CLAIM_FIELDS if name in claim}, "locks": listed})
+    out.files[CLAIMS] = dump({"claims": compiled})
+    left_out = f"; {len(drafts)} draft{'' if len(drafts) == 1 else 's'} left out" if profile == "public" and drafts else ""
+    if directory.is_dir():
+        out.report.append({"check": "content: claims", "outcome": "pass",
+                           "detail": f"{len(compiled)} Claim{'' if len(compiled) == 1 else 's'}{left_out}"})
+    if taken_down:
+        out.report.append({"check": "content: claim locks", "outcome": "warn",
+                           "detail": ("named without their numbers: " + ", ".join(taken_down))[:2000]})
+    if hidden:
+        out.report.append({"check": "content: local claim locks", "outcome": "warn",
+                           "detail": ("the local root's own locks are not read for a Claim that is locked in the "
+                                      "repository: " + ", ".join(hidden))[:2000]})
+
+
 def compile_content(*, profile: str, content: Path | None = None, manual: Path | None = None,
-                    gate=None, legacy_annotations: list[dict] | None = None) -> Compiled:
+                    gate=None, legacy_annotations: list[dict] | None = None,
+                    local_locks: Path | None = None, withdrawn: set[str] | None = None,
+                    carry_locks: bool = True) -> Compiled:
     """The content files of a Release of ``profile``. ``content`` is the directory that holds
     ``events/`` (default the repository's ``content``); ``manual`` the hand-entered directory
     (``catalog/manual``; None: no hand-entered layer is read); ``gate`` the rights gate a
     public Profile asks; ``legacy_annotations`` what the legacy converter projected from v1's
-    bands and its recession series. Raises ``ContentError``."""
+    bands and its recession series; ``local_locks`` a local root's own Claim locks (local
+    Profile only); ``withdrawn`` the Series withdrawn from the root; ``carry_locks`` False for
+    a writer that runs no engine step. Raises ``ContentError``."""
     if profile not in ("public", "local"):
         raise ContentError(f"unknown profile {profile!r}")
     if profile == "public" and legacy_annotations:
@@ -210,6 +320,8 @@ def compile_content(*, profile: str, content: Path | None = None, manual: Path |
         if annotation["id"] in seen:
             raise ContentError(f"two Annotations would share the id {annotation['id']}")
         seen.add(annotation["id"])
+    _compile_claims(out, profile=profile, content=content, gate=gate, local_locks=local_locks,
+                    withdrawn=set(withdrawn or ()), carry_locks=carry_locks)
     out.files[EVENTS] = dump({"events": compiled_events})
     out.files[ANNOTATIONS] = dump({"annotations": annotations})
     return out

@@ -18,7 +18,7 @@ import { Ajv2020, type ErrorObject, type ValidateFunction } from "ajv/dist/2020.
 import addFormats from "ajv-formats";
 import { nextPeriod, periodBounds } from "../period";
 import { releaseSchema, SCHEMA_VERSION, SCHEMA_VERSIONS } from "./schema.generated";
-import type { Anchor, CatalogEntry, Event, Release, SeriesFile, VintageRow } from "./types.generated";
+import type { Anchor, CatalogEntry, Claim, Event, Release, SeriesFile, VintageRow } from "./types.generated";
 
 export type * from "./types.generated";
 export { SCHEMA_VERSION, SCHEMA_VERSIONS };
@@ -59,6 +59,9 @@ export type IssueCode =
   | "duplicate_event_id"
   | "bad_event_date"
   | "event_projection"
+  | "duplicate_claim_id"
+  | "claim_lock"
+  | "claim_evidence"
   | "unsigned_register"
   | "legacy_in_public"
   | "draft_in_public";
@@ -70,6 +73,11 @@ const MANIFEST = "manifest.json";
 const CATALOG = "catalog.json";
 const ANNOTATIONS = "content/annotations.json";
 const EVENTS = "content/events.json";
+const CLAIMS = "content/claims.json";
+const LATEST = "evidence/latest.json";
+/** The versions that have no Claims, locks or latest Evidence rows; from 0.4.0 (M20) a Release must have content/claims.json. */
+const BEFORE_CLAIMS: readonly unknown[] = ["0.1.0", "0.2.0", "0.3.0"];
+const LOCK_FILE = /^locks\/([0-9]{4}-[0-9]{2}-[0-9]{2}-[a-z0-9]+(?:-[a-z0-9]+)*\.v[1-9][0-9]{0,3})\.lock\.json$/;
 const REQUIRED_FILES = [MANIFEST, CATALOG, ANNOTATIONS] as const;
 /** The versions that have no content/events.json; from 0.3.0 (M19) a Release must have it. */
 const BEFORE_EVENTS: readonly unknown[] = ["0.1.0", "0.2.0"];
@@ -160,8 +168,9 @@ function locate(instancePath: string): [string, string] {
   if ((head === "series" || head === "derived" || head === "vintages") && rest.length > 0) {
     return [`${head}/${rest[0]}.json`, "/" + rest.slice(1).join("/")];
   }
-  const file =
-    head === "manifest" ? MANIFEST : head === "catalog" ? CATALOG : head === "annotations" ? ANNOTATIONS : head === "events" ? EVENTS : MANIFEST;
+  if (head === "locks" && rest.length > 0) return [`locks/${rest[0]}.lock.json`, "/" + rest.slice(1).join("/")];
+  const named: Record<string, string> = { manifest: MANIFEST, catalog: CATALOG, annotations: ANNOTATIONS, events: EVENTS, claims: CLAIMS, latest: LATEST };
+  const file = named[head ?? ""] ?? MANIFEST;
   return [file, "/" + rest.join("/")];
 }
 
@@ -177,12 +186,15 @@ export function validateRelease(releaseId: string, files: ReleaseFiles): Issue[]
   const has = (code: IssueCode): boolean => issues.some((i) => i.code === code);
   const seriesPaths: Record<Folder, Map<string, string>> = { series: new Map(), derived: new Map() };
   const vintagePaths = new Map<string, string>();
+  const lockPaths = new Map<string, string>();
 
   for (const path of Object.keys(files).sort()) {
     const match = SERIES_FILE.exec(path);
+    const lock = LOCK_FILE.exec(path);
     if (match && match[1] === "vintages") vintagePaths.set(match[2]!, path);
     else if (match) seriesPaths[match[1] as Folder].set(match[2]!, path);
-    else if (!(REQUIRED_FILES as readonly string[]).includes(path) && path !== EVENTS) {
+    else if (lock) lockPaths.set(lock[1]!, path);
+    else if (!(REQUIRED_FILES as readonly string[]).includes(path) && path !== EVENTS && path !== CLAIMS && path !== LATEST) {
       issues.push({ code: "unknown_file", path, message: "the release contract does not name this file" });
     }
   }
@@ -192,7 +204,10 @@ export function validateRelease(releaseId: string, files: ReleaseFiles): Issue[]
   if (has("missing_file")) return issues;
 
   const parsed = new Map<string, unknown>();
-  const known = [...REQUIRED_FILES, ...FOLDERS.flatMap((f) => [...seriesPaths[f].values()]), ...vintagePaths.values(), ...(files[EVENTS] ? [EVENTS] : [])];
+  const known = [
+    ...REQUIRED_FILES, ...FOLDERS.flatMap((f) => [...seriesPaths[f].values()]), ...vintagePaths.values(),
+    ...[EVENTS, CLAIMS, LATEST].filter((path) => files[path]), ...lockPaths.values(),
+  ];
   for (const path of known) {
     try {
       parsed.set(path, parseStrictJson(decoder.decode(files[path]!)));
@@ -223,8 +238,15 @@ export function validateRelease(releaseId: string, files: ReleaseFiles): Issue[]
   if (BEFORE_EVENTS.includes(version) && files[EVENTS]) {
     issues.push({ code: "unknown_file", path: EVENTS, message: `schema_version ${String(version)} does not name this file` });
   }
-  if (version === SCHEMA_VERSION && !files[EVENTS]) {
+  if (version !== undefined && !BEFORE_EVENTS.includes(version) && !files[EVENTS]) {
     issues.push({ code: "missing_file", path: EVENTS, message: "a release must have this file" });
+  }
+  if (BEFORE_CLAIMS.includes(version)) {
+    for (const path of [CLAIMS, LATEST, ...lockPaths.values()].filter((p) => files[p]).sort()) {
+      issues.push({ code: "unknown_file", path, message: `schema_version ${String(version)} does not name this file` });
+    }
+  } else if (version !== undefined && !files[CLAIMS]) {
+    issues.push({ code: "missing_file", path: CLAIMS, message: "a release must have this file" });
   }
   if (issues.length > 0) return issues;
 
@@ -238,6 +260,8 @@ export function validateRelease(releaseId: string, files: ReleaseFiles): Issue[]
     vintages: Object.fromEntries([...vintagePaths].map(([key, path]) => [key, parsed.get(path)])),
     annotations: parsed.get(ANNOTATIONS),
     ...(parsed.has(EVENTS) ? { events: parsed.get(EVENTS) } : {}),
+    ...(parsed.has(CLAIMS) ? { claims: parsed.get(CLAIMS), locks: Object.fromEntries([...lockPaths].map(([name, path]) => [name, parsed.get(path)])) } : {}),
+    ...(parsed.has(LATEST) ? { latest: parsed.get(LATEST) } : {}),
   };
   const validate = schemaValidator();
   if (!validate(bundle)) {
@@ -249,8 +273,82 @@ export function validateRelease(releaseId: string, files: ReleaseFiles): Issue[]
   }
 
   issues.push(...crossFileRules(releaseId, bundle as Release, files, seriesPaths));
+  issues.push(...claimRules(bundle as Release, files, lockPaths));
   // A last stage: a vintage file is judged against Series files that are sound.
   if (issues.length === 0) issues.push(...vintageRules(bundle as Release, files, vintagePaths));
+  return issues;
+}
+
+/**
+ * 0.4.0 (M20; ADR 0034): Claims, their locks and the latest Evidence rows agree. A lock file is
+ * the lock of a Claim in the Release, listed there with the hash of its bytes; a Claim's locks
+ * are listed whole, 1 to the newest, each in the Release or named without its numbers; and
+ * there is a latest row for the newest lock of exactly the Claims whose newest lock is in the
+ * Release. A public-profile Release holds no draft Claim, no public Claim without a lock, and
+ * no lock computed on a local-profile Release.
+ */
+function claimRules(bundle: Release, files: ReleaseFiles, lockPaths: Map<string, string>): Issue[] {
+  if (!bundle.claims) return [];
+  const issues: Issue[] = [];
+  const add = (code: IssueCode, path: string, message: string): void => void issues.push({ code, path, message });
+  const isPublic = bundle.manifest.profile === "public";
+  const claims = new Map<string, Claim>();
+  for (const claim of bundle.claims.claims) {
+    if (claims.has(claim.id)) add("duplicate_claim_id", CLAIMS, `${claim.id} appears more than once`);
+    claims.set(claim.id, claim);
+    if (isPublic && claim.status === "draft") add("draft_in_public", CLAIMS, `${claim.id} is a draft`);
+    if (isPublic && claim.locks.length === 0) add("claim_lock", CLAIMS, `${claim.id} is public and has no lock`);
+    claim.locks.forEach((row, index) => {
+      const name = `${claim.id}.v${row.version}`;
+      if (row.version !== index + 1) add("claim_lock", CLAIMS, `${claim.id}: its locks are not listed whole, 1 to the newest`);
+      if (row.state === "in_release") {
+        if (row.sha256 === undefined || row.why !== undefined) add("claim_lock", CLAIMS, `${name} is in the release and is not listed with its hash alone`);
+        else if (!lockPaths.has(name)) add("claim_lock", CLAIMS, `${name} is listed as in the release and its file is not`);
+      } else if (row.sha256 !== undefined || row.why === undefined) {
+        add("claim_lock", CLAIMS, `${name} is not in the release and is not listed with the reason alone`);
+      }
+    });
+  }
+  const need = new Map<string, number>();
+  for (const [name, path] of [...lockPaths].sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))) {
+    const lock = bundle.locks![name]!;
+    const claim = claims.get(lock.claim_id);
+    if (name !== `${lock.claim_id}.v${lock.version}`) {
+      add("claim_lock", path, "the file is not named for the Claim and version it holds");
+      continue;
+    }
+    const row = claim?.locks.find((one) => one.version === lock.version);
+    if (!claim || !row) {
+      add("claim_lock", path, "no Claim of the release lists this lock");
+      continue;
+    }
+    if (row.state !== "in_release" || row.sha256 !== sha256(files[path]!)) add("claim_lock", path, "it is not the file the Claim lists (state and sha256)");
+    if (row.record_sha256 !== lock.record_sha256) add("claim_lock", path, "its record_sha256 is not the one the Claim lists");
+    if (isPublic && lock.release.profile !== "public") add("claim_lock", path, "it was computed on a local-profile Release, which is never public");
+    if (lock.version === claim.locks.length) need.set(claim.id, lock.version);
+  }
+  const missing = (ids: string[]): void => {
+    for (const id of ids.sort()) add("claim_evidence", LATEST, `${id} v${need.get(id)} is in the release and has no latest row`);
+  };
+  const held = bundle.latest;
+  if (!held) {
+    missing([...need.keys()]);
+    return issues;
+  }
+  const seen = new Set<string>();
+  for (const entry of held.claims) {
+    if (seen.has(entry.claim_id) || need.get(entry.claim_id) !== entry.lock_version) {
+      add("claim_evidence", LATEST, `${entry.claim_id} v${entry.lock_version} is not the newest lock, in the release, of a Claim of the release, named once`);
+      continue;
+    }
+    seen.add(entry.claim_id);
+    const lock = bundle.locks![`${entry.claim_id}.v${entry.lock_version}`]!;
+    if (JSON.stringify(entry.readings.map((r) => r.id)) !== JSON.stringify(lock.record.readings.map((r) => r.id))) {
+      add("claim_evidence", LATEST, `${entry.claim_id}: its latest rows are not the lock's readings, in order`);
+    }
+  }
+  missing([...need.keys()].filter((id) => !seen.has(id)));
+  if (held.claims.length === 0) add("claim_evidence", LATEST, "the file is there only when a lock has a latest row");
   return issues;
 }
 

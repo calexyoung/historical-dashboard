@@ -161,7 +161,7 @@ def test_compute_refuses_a_claim_that_is_not_one_a_series_the_release_lacks_and_
 
 def test_a_lock_in_the_repository_needs_redistribution_and_a_local_lock_asks_no_signature(world):
     write_register(world["register"], fixture_table(decision={**MAKE.register()["rows"][0]["decision"], "redistribute": False}))
-    assert publish(world, "public").exit_code == 0          # display is enough for a Release
+    assert publish(world, "public", now=CHECKED).exit_code == 0          # display is enough for a Release
     refused = compute(world)
     assert refused.exit_code == 1 and "redistribut" in " ".join(refused.lines) and not lock_path(world).exists()
     write_register(world["register"], fixture_table(decision=None))
@@ -176,15 +176,16 @@ def test_a_claim_cannot_be_locked_on_a_legacy_representation_series(tmp_path):
     # v1's own files, converted: every Series of this Release is legacy_monthly_rounded.
     register = write_register(tmp_path / "register.json")
     store = tmp_path / "store"
+    released, checked = datetime(2026, 11, 12, 15, 0, 0, tzinfo=UTC), datetime(2026, 11, 12, 16, 0, 0, tzinfo=UTC)
     assert release(profile="local", root=tmp_path / "local", store=store, register=register,
-                   now=RELEASED, content=tmp_path / "content", manual=tmp_path / "none").exit_code == 0
+                   now=released, content=tmp_path / "content", manual=tmp_path / "none").exit_code == 0
     catalog = read_json(tmp_path / "local" / "releases" / current(tmp_path / "local") / "catalog.json")["series"]
     assert {entry["representation"] for entry in catalog} == {"legacy_monthly_rounded"}
     for series in ("unrate", "cpi_yoy"):                      # a stored Series, and one v1 derived
-        write_claim(tmp_path / "content", claim(id=ID, said_on="2026-03-11", checked_on="2026-03-11",
+        write_claim(tmp_path / "content", claim(id=ID, said_on="2026-03-11", checked_on="2026-11-12",
                                                 readings=[{**JOBS, "series": series, "period": "2025-01"}]))
         refused = PC.compute(claim_id=ID, profile="local", root=tmp_path / "local", store=store, register=register,
-                             content=tmp_path / "content", now=CHECKED)
+                             content=tmp_path / "content", now=checked)
         said = " ".join(refused.lines)
         assert refused.exit_code == 1 and "legacy representation" in said and series in said
     assert not (tmp_path / "local" / "locks").exists()
@@ -274,11 +275,8 @@ def test_editing_a_locked_reading_fails_the_release(world):
     write_claim(world["content"], moved)
     for profile in ("public", "local"):
         refused = publish(world, profile, reuse_data=True, now=CHECKED)
-        if profile == "public":
-            assert refused.exit_code == 1 and "changed since it was locked" in " ".join(refused.lines)
-            assert current(world["tmp"] / "public") == before
-        else:
-            assert refused.exit_code == 0       # the local root has no lock of its own for this Claim
+        assert refused.exit_code == 1 and "changed since it was locked" in " ".join(refused.lines), profile
+    assert current(world["tmp"] / "public") == before
 
 
 def test_editing_a_number_in_a_lock_fails_the_release(world):
@@ -343,7 +341,8 @@ def test_a_lock_whose_numbers_may_no_longer_be_shown_is_named_without_them(world
     write_register(world["register"], fixture_table(decision={**MAKE.register()["rows"][0]["decision"], "redistribute": False}))
     later = RightsGate(json.loads(world["register"].read_text()))
     assert any(K.lock_name(ID, 1) in problem for problem in R.rights_problems(with_numbers, later))
-    result = publish(world, "public", reuse_data=True, now=LATER)
+    assert publish(world, "public", reuse_data=True, now=LATER).exit_code == 1      # a Release that holds them is not built on
+    result = publish(world, "public", now=LATER)
     assert result.exit_code == 0, result.lines
     assert validate_release(directory(world)) == []
     (held,) = read_json(directory(world) / "content" / "claims.json")["claims"]
@@ -358,7 +357,8 @@ def test_withdrawing_a_series_takes_the_locks_that_rest_on_it_down_with_it(world
     assert publish(world, "public", reuse_data=True, now=CHECKED).exit_code == 0
     holding = current(world["tmp"] / "public")
     result = withdraw(key="fx_price", reason="the permission was wrong", profile="public", root=world["tmp"] / "public",
-                      store=world["store"], register=world["register"], now=LATER)
+                      store=world["store"], register=world["register"], now=LATER, content=world["content"],
+                      manual=world["tmp"] / "no-manual")
     assert result.exit_code == 0, result.lines
     # The replacement names the lock and holds none of its numbers; the Release that held them is retired.
     (held,) = read_json(directory(world) / "content" / "claims.json")["claims"]
@@ -379,5 +379,6 @@ def test_the_commands_from_the_shell(world, capsys):
     assert cli.main(["claims", "list", *common]) == 0
     said = capsys.readouterr().out
     assert ID in said and "draft" in said and "v1" in said
-    assert cli.main(["claims", "relock", ID, *common]) == 2 or True      # argparse: --reason is required
+    with pytest.raises(SystemExit):                                      # argparse: --reason is required
+        cli.main(["claims", "relock", ID, *common])
     capsys.readouterr()

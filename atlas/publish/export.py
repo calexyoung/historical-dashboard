@@ -47,7 +47,7 @@ from ..legacy import offered_transforms
 from ..period import next_period, period_bounds
 from ..content.compile import ContentError, compile_content
 from ..manual import MANUAL_DIR
-from ..release import ANNOTATIONS, CATALOG, LEGACY
+from ..release import ANNOTATIONS, CATALOG, LATEST, LEGACY
 from ..rights import RightsGate
 from ..vintage.store import VintageStore
 from . import engine
@@ -123,6 +123,10 @@ class Built:
     entries: list[dict] = field(default_factory=list)
     #: Derived series the engine is to compute, in key order (``add_derived`` empties it).
     materialise: list[str] = field(default_factory=list)
+    #: Lock files whose Claims the engine is to compute a latest row for (``add_latest``).
+    latest_for: list[str] = field(default_factory=list)
+    #: What the engine step found drifted: {claim_id, lock_version, differences}.
+    drift: list[dict] = field(default_factory=list)
 
     def release_id(self, created: datetime) -> str:
         digest = hashlib.sha256()
@@ -484,7 +488,8 @@ def add_derived(built: Built, outcome: engine.Outcome) -> None:
 def build(*, profile: str, store: Path, table: object, gate: RightsGate, series: list[dict],
           created: datetime, withdrawn: dict[str, dict] | None = None,
           legacy: dict[str, bytes] | None = None, derived: list[dict] | None = None,
-          content: Path | None = None, manual: Path | None = None) -> Built:
+          content: Path | None = None, manual: Path | None = None,
+          local_locks: Path | None = None) -> Built:
     """The files of a Release from what the store holds now, without its Derived series:
     ``Built.materialise`` lists those the engine is to compute (``add_derived``). ``legacy`` is
     the file set of v1's converted Release (local profile only); ``derived`` the series
@@ -580,12 +585,14 @@ def build(*, profile: str, store: Path, table: object, gate: RightsGate, series:
         v1_annotations = _add_legacy(built, entries, legacy, withdrawn)["annotations"]
     built.entries = entries
     built.files[CATALOG] = dump({"series": entries})
-    add_content(built, profile=profile, gate=gate, content=content, manual=manual, v1=v1_annotations)
+    add_content(built, profile=profile, gate=gate, content=content, manual=manual, v1=v1_annotations,
+                local_locks=local_locks, withdrawn=set(withdrawn))
     return built
 
 
 def add_content(built: Built, *, profile: str, gate: RightsGate, content: Path | None = None,
-                manual: Path | None = None, v1: list[dict] | None = None) -> None:
+                manual: Path | None = None, v1: list[dict] | None = None,
+                local_locks: Path | None = None, withdrawn: set[str] | None = None) -> None:
     """Write a Release's content afresh (M19; ADR 0033): Events from their files, the
     hand-entered layers, and on a local Profile v1's bands and recessions out of ``v1`` (the
     Annotations of a converted or an earlier local Release; only those marked as v1's are
@@ -594,11 +601,28 @@ def add_content(built: Built, *, profile: str, gate: RightsGate, content: Path |
     try:
         compiled = compile_content(profile=profile, content=content,
                                    manual=MANUAL_DIR if manual is None else manual, gate=gate,
-                                   legacy_annotations=layers if profile == "local" else None)
+                                   legacy_annotations=layers if profile == "local" else None,
+                                   local_locks=local_locks, withdrawn=withdrawn)
     except ContentError as error:
         raise ExportError(f"the content cannot be compiled: {error}") from None
     built.files.update(compiled.files)
     built.report.extend(compiled.report)
+    built.latest_for = compiled.latest_for
+
+
+def add_latest(built: Built, outcome: engine.Outcome) -> None:
+    """Take in ``evidence/latest.json`` as the engine step left it, and say what drifted."""
+    if not built.latest_for:
+        return
+    built.files[LATEST] = outcome.latest
+    built.latest_for = []
+    if outcome.drift:
+        built.drift = outcome.drift
+        built.report.append({"check": "claims: drift", "outcome": "warn",
+                             "detail": ("a row computed on this Release is no longer the locked one, for a "
+                                        "person to look at and re-lock: " + ", ".join(
+                                            f"{row['claim_id']} v{row['lock_version']} ({row['differences']})"
+                                            for row in outcome.drift))[:2000]})
 
 
 def _add_legacy(built: Built, entries: list[dict], legacy: dict[str, bytes], withdrawn: dict) -> dict:

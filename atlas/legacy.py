@@ -577,7 +577,8 @@ def build_release(repo: Path = ROOT, now: datetime | None = None) -> tuple[str, 
     # v1's bands and recessions for every set no hand-entered file provides.
     try:
         content = compile_content(profile="local", content=repo / "content", manual=repo / "catalog" / "manual",
-                                  legacy_annotations=_annotations(data, politics, approval))
+                                  legacy_annotations=_annotations(data, politics, approval),
+                                  carry_locks=False)
     except ContentError as error:
         raise LegacyRefused(f"the content cannot be compiled: {error}") from None
     out["catalog.json"] = _dump({"series": entries})

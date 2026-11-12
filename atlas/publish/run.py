@@ -47,7 +47,7 @@ from ..vintage.store import VintageStore
 from . import engine
 from . import root as R
 from . import saved as saved_queries
-from .export import AGE_NOTE, Built, ExportError, add_content, add_derived, build, dump, lag_limit
+from .export import AGE_NOTE, Built, ExportError, add_content, add_derived, add_latest, build, dump, lag_limit
 
 REJECTED, RETIRED = "rejected", "retired"
 
@@ -268,12 +268,17 @@ def _publish(run: _Run, built: Built, write: Callable[[Path, bytes], None],
     staging area cleaned up."""
     created = run.now
     stopped = None
-    if built.materialise:
-        # The engine alone computes a Derived value (ADR 0003). It works in a directory of its
-        # own inside the staging area; what it leaves is checked there and read back as bytes.
+    if built.materialise or built.latest_for:
+        # The engine alone computes a Derived value (ADR 0003), and a Claim's latest row (ADR
+        # 0034). It works in a directory of its own inside the staging area; what it leaves is
+        # checked there and read back as bytes.
         _no_links(run.root)
         try:
-            add_derived(built, engine.run(run.root / STAGING, built.files, built.materialise, spot=spot))
+            outcome = engine.run(run.root / STAGING, built.files, built.materialise, spot=spot,
+                                 claims=built.latest_for)
+            if built.materialise:
+                add_derived(built, outcome)
+            add_latest(built, outcome)
         except engine.EngineError as error:
             stopped = {"check": engine.CHECK, "outcome": "fail", "detail": str(error)[:2000]}
     release_id = built.release_id(created)
@@ -304,6 +309,10 @@ def _publish(run: _Run, built: Built, write: Callable[[Path, bytes], None],
     for item in report:
         if item["outcome"] == "warn":
             run.lines.append(f"WARNING {item['check']}: {item.get('detail', '')}")
+    for row in built.drift:
+        run.lines.append(f"DRIFT {row['claim_id']} v{row['lock_version']}: {row['differences']} place(s) where a row "
+                         "computed on this Release is not the locked one (evidence/latest.json). The lock is "
+                         "unchanged; only a person re-locks: atlas claims relock")
     directory = stage(run.root, release_id)
     try:
         for path, data in files.items():
@@ -401,7 +410,8 @@ def _reuse(run: _Run, legacy: dict[str, bytes] | None, drop: dict[str, str] | No
     # The content is written afresh from its files. v1's bands and recessions come from the
     # converter when it ran, else from the Release being reused.
     add_content(built, profile=run.profile, gate=run.gate, content=content, manual=manual,
-                v1=json.loads((legacy or files)[ANNOTATIONS])["annotations"])
+                v1=json.loads((legacy or files)[ANNOTATIONS])["annotations"],
+                local_locks=run.root / R.LOCKS, withdrawn=gone | set(R.withdrawn(run.root)))
     return built
 
 
@@ -460,7 +470,8 @@ def _release(run: _Run, series, legacy, legacy_repo, reuse_data, keep, write, sp
             table = load_series(series)
             built = build(profile=run.profile, store=run.store, table=run.table, gate=run.gate,
                           series=table, created=run.now, withdrawn=R.withdrawn(run.root),
-                          legacy=legacy_files, derived=load_derived(series), content=content, manual=manual)
+                          legacy=legacy_files, derived=load_derived(series), content=content, manual=manual,
+                          local_locks=run.root / R.LOCKS)
         for row in built.withheld:
             run.lines.append(f"WITHHELD {row['key']}: {row['reason']}")
         if not built.rows and not built.materialise and not _may_be_empty(run):
@@ -625,8 +636,11 @@ def unsave(*, saved_id: str, profile: str, root: Path, store: Path, register: Pa
 
 def withdraw(*, key: str, reason: str, profile: str, root: Path, store: Path,
              register: Path | None = None, now: datetime | None = None,
-             write: Callable[[Path, bytes], None] = _write) -> Result:
-    """Take a Series down (PLAN 4.3, ADR 0006): because a permission was wrong.
+             write: Callable[[Path, bytes], None] = _write, content: Path | None = None,
+             manual: Path | None = None) -> Result:
+    """Take a Series down (PLAN 4.3, ADR 0006): because a permission was wrong. ``content``
+    and ``manual`` are the directories the replacement's content is compiled from (default
+    the repository's).
 
     In this order, so that being cut off never leaves the Series looking allowed: the
     withdrawal is written down first (from then on no release, rollback, pin or reuse will
@@ -637,7 +651,7 @@ def withdraw(*, key: str, reason: str, profile: str, root: Path, store: Path,
     Running the command again finishes a withdrawal that was cut off."""
     def command() -> Result:
         with _opened("withdraw", profile=profile, root=root, store=store, register=register, now=now) as run:
-            return _withdraw(run, key, reason, write)
+            return _withdraw(run, key, reason, write, content, manual)
 
     return _guarded(command)
 
@@ -650,7 +664,7 @@ def _derived_from(files: dict[str, bytes], key: str) -> set[str]:
         return {key}
 
 
-def _withdraw(run: _Run, key: str, reason: str, write) -> Result:
+def _withdraw(run: _Run, key: str, reason: str, write, content=None, manual=None) -> Result:
     if not isinstance(key, str) or not key or not reason:
         raise _Refusal("a withdrawal names a Series and gives a reason")
     # Written down before anything else. If this cannot be written, nothing has changed.
@@ -672,7 +686,7 @@ def _withdraw(run: _Run, key: str, reason: str, write) -> Result:
     if isinstance(files, str) or any(R.holds(files, k) for k in _derived_from(files, key)):
         text = f"withdrawn on {record[key]['withdrawn_at'][:10]}: {record[key]['reason']}"
         try:
-            outcome, replacement, _failed = _publish(run, _reuse(run, None, {key: text}), write)
+            outcome, replacement, _failed = _publish(run, _reuse(run, None, {key: text}, content=content, manual=manual), write)
         except (_Refusal, ExportError, PromotionRefused, OSError) as error:
             shutil.rmtree(run.root / STAGING, ignore_errors=True)
             outcome = "failed"

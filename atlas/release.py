@@ -27,20 +27,26 @@ from jsonschema import Draft202012Validator, ValidationError, validators
 from atlas.period import next_period, period_bounds
 
 SCHEMA_PATH = Path(__file__).resolve().parents[1] / "schema" / "release.schema.json"
-SCHEMA_VERSION = "0.3.0"
+SCHEMA_VERSION = "0.4.0"
 #: Every version this reader knows; a writer writes ``SCHEMA_VERSION``. 0.2.0 (M10) added
 #: ``vintages/`` and ``vintages_sha256``, so a 0.1.0 Release is one that holds neither. 0.3.0
 #: (M19) added ``content/events.json``: a 0.3.0 Release must have it, an earlier one may not.
-SCHEMA_VERSIONS = ("0.1.0", "0.2.0", SCHEMA_VERSION)
+#: 0.4.0 (M20) added ``content/claims.json`` (required), ``locks/`` and ``evidence/latest.json``.
+SCHEMA_VERSIONS = ("0.1.0", "0.2.0", "0.3.0", SCHEMA_VERSION)
 #: The versions that have no ``content/events.json``.
 _BEFORE_EVENTS = ("0.1.0", "0.2.0")
+#: The versions that have no Claims, locks or latest Evidence rows.
+_BEFORE_CLAIMS = ("0.1.0", "0.2.0", "0.3.0")
 
 MANIFEST = "manifest.json"
 CATALOG = "catalog.json"
 ANNOTATIONS = "content/annotations.json"
 EVENTS = "content/events.json"
+CLAIMS = "content/claims.json"
+LATEST = "evidence/latest.json"
 REQUIRED_FILES = (MANIFEST, CATALOG, ANNOTATIONS)
 _SERIES_FILE = re.compile(r"(series|derived|vintages)/([a-z][a-z0-9_]{0,63})\.json")
+_LOCK_FILE = re.compile(r"locks/([0-9]{4}-[0-9]{2}-[0-9]{2}-[a-z0-9]+(?:-[a-z0-9]+)*\.v[1-9][0-9]{0,3})\.lock\.json")
 VINTAGES = "vintages"
 _KIND_OF_FOLDER = {"series": "stored", "derived": "derived"}
 LEGACY = "legacy_monthly_rounded"
@@ -112,11 +118,15 @@ def validate_files(release_id: str, files: Mapping[str, bytes]) -> list[Issue]:
     """
     issues: list[Issue] = []
     series_paths: dict[str, dict[str, str]] = {"series": {}, "derived": {}, VINTAGES: {}}  # folder -> key -> path
+    lock_paths: dict[str, str] = {}  # the lock's name (ID.vN) -> path
     for path in sorted(files):
         match = _SERIES_FILE.fullmatch(path)
+        lock = _LOCK_FILE.fullmatch(path)
         if match:
             series_paths[match[1]][match[2]] = path
-        elif path not in REQUIRED_FILES and path != EVENTS:
+        elif lock:
+            lock_paths[lock[1]] = path
+        elif path not in REQUIRED_FILES and path not in (EVENTS, CLAIMS, LATEST):
             issues.append(Issue("unknown_file", path, "the release contract does not name this file"))
     for path in REQUIRED_FILES:
         if path not in files:
@@ -126,8 +136,7 @@ def validate_files(release_id: str, files: Mapping[str, bytes]) -> list[Issue]:
 
     parsed: dict[str, object] = {}
     known = list(REQUIRED_FILES) + [p for folder in series_paths.values() for p in folder.values()]
-    if EVENTS in files:
-        known.append(EVENTS)
+    known += [path for path in (EVENTS, CLAIMS, LATEST) if path in files] + list(lock_paths.values())
     for path in known:
         try:
             parsed[path] = json.loads(
@@ -158,8 +167,13 @@ def validate_files(release_id: str, files: Mapping[str, bytes]) -> list[Issue]:
             issues.append(Issue("unknown_file", path, "schema_version 0.1.0 does not name this file"))
     if version in _BEFORE_EVENTS and EVENTS in files:
         issues.append(Issue("unknown_file", EVENTS, f"schema_version {version} does not name this file"))
-    if version == SCHEMA_VERSION and EVENTS not in files:
+    if version is not None and version not in _BEFORE_EVENTS and EVENTS not in files:
         issues.append(Issue("missing_file", EVENTS, "a release must have this file"))
+    if version in _BEFORE_CLAIMS:
+        for path in sorted(p for p in (CLAIMS, LATEST, *lock_paths.values()) if p in files):
+            issues.append(Issue("unknown_file", path, f"schema_version {version} does not name this file"))
+    elif version is not None and CLAIMS not in files:
+        issues.append(Issue("missing_file", CLAIMS, "a release must have this file"))
     if issues:
         return issues
 
@@ -173,6 +187,11 @@ def validate_files(release_id: str, files: Mapping[str, bytes]) -> list[Issue]:
     }
     if EVENTS in parsed:
         bundle["events"] = parsed[EVENTS]
+    if CLAIMS in parsed:
+        bundle["claims"] = parsed[CLAIMS]
+        bundle["locks"] = {name: parsed[path] for name, path in lock_paths.items()}
+    if LATEST in parsed:
+        bundle["latest"] = parsed[LATEST]
     for error in sorted(_validator().iter_errors(bundle), key=lambda e: list(map(str, e.absolute_path))):
         path, pointer = _locate(list(error.absolute_path))
         issues.append(Issue("schema", path, f"{pointer}: {error.message}"[:400]))
@@ -181,6 +200,7 @@ def validate_files(release_id: str, files: Mapping[str, bytes]) -> list[Issue]:
 
     vintage_paths = series_paths.pop(VINTAGES)
     issues.extend(_cross_file_rules(release_id, bundle, files, series_paths))
+    issues.extend(_claim_rules(bundle, files, lock_paths))
     if not issues:  # a last stage: a vintage file is judged against Series files that are sound
         issues.extend(_vintage_rules(bundle, files, vintage_paths))
     return issues
@@ -223,7 +243,10 @@ def _locate(parts: list) -> tuple:
     head, rest = parts[0], parts[1:]
     if head in ("series", "derived", VINTAGES) and rest:
         return f"{head}/{rest[0]}.json", "/" + "/".join(map(str, rest[1:]))
-    file = {"manifest": MANIFEST, "catalog": CATALOG, "annotations": ANNOTATIONS, "events": EVENTS}.get(head, str(head))
+    if head == "locks" and rest:
+        return f"locks/{rest[0]}.lock.json", "/" + "/".join(map(str, rest[1:]))
+    file = {"manifest": MANIFEST, "catalog": CATALOG, "annotations": ANNOTATIONS, "events": EVENTS,
+            "claims": CLAIMS, "latest": LATEST}.get(head, str(head))
     return file, "/" + "/".join(map(str, rest))
 
 
@@ -353,6 +376,83 @@ def _cross_file_rules(release_id, bundle, files, series_paths) -> list[Issue]:
             if annotation.get("provenance", {}).get("representation") == LEGACY:
                 add("legacy_in_public", ANNOTATIONS,
                     f"{annotation['id']} is v1's, which is never public")
+    return issues
+
+
+def _claim_rules(bundle: dict, files: Mapping[str, bytes], lock_paths: dict[str, str]) -> list[Issue]:
+    """0.4.0 (M20; ADR 0034): Claims, their locks and the latest Evidence rows agree. A lock
+    file is the lock of a Claim in the Release, listed there with the hash of its bytes; a
+    Claim's locks are listed whole, 1 to the newest, each in the Release or named without its
+    numbers; and there is a latest row for the newest lock of exactly the Claims whose newest
+    lock is in the Release. A public-profile Release holds no draft Claim, no public Claim
+    without a lock, and no lock computed on a local-profile Release."""
+    if "claims" not in bundle:
+        return []
+    issues: list[Issue] = []
+
+    def add(code: str, path: str, message: str) -> None:
+        issues.append(Issue(code, path, message))
+
+    public = bundle["manifest"]["profile"] == "public"
+    claims: dict[str, dict] = {}
+    for claim in bundle["claims"]["claims"]:
+        if claim["id"] in claims:
+            add("duplicate_claim_id", CLAIMS, f"{claim['id']} appears more than once")
+        claims[claim["id"]] = claim
+        if public and claim["status"] == "draft":
+            add("draft_in_public", CLAIMS, f"{claim['id']} is a draft")
+        if public and not claim["locks"]:
+            add("claim_lock", CLAIMS, f"{claim['id']} is public and has no lock")
+        for index, row in enumerate(claim["locks"]):
+            name = f"{claim['id']}.v{row['version']}"
+            if row["version"] != index + 1:
+                add("claim_lock", CLAIMS, f"{claim['id']}: its locks are not listed whole, 1 to the newest")
+            if row["state"] == "in_release":
+                if "sha256" not in row or "why" in row:
+                    add("claim_lock", CLAIMS, f"{name} is in the release and is not listed with its hash alone")
+                elif name not in lock_paths:
+                    add("claim_lock", CLAIMS, f"{name} is listed as in the release and its file is not")
+            elif "sha256" in row or "why" not in row:
+                add("claim_lock", CLAIMS, f"{name} is not in the release and is not listed with the reason alone")
+    need: dict[str, int] = {}
+    for name, path in sorted(lock_paths.items()):
+        lock = bundle["locks"][name]
+        claim = claims.get(lock["claim_id"])
+        if name != f"{lock['claim_id']}.v{lock['version']}":
+            add("claim_lock", path, "the file is not named for the Claim and version it holds")
+            continue
+        row = next((r for r in (claim or {}).get("locks", []) if r["version"] == lock["version"]), None)
+        if claim is None or row is None:
+            add("claim_lock", path, "no Claim of the release lists this lock")
+            continue
+        if row.get("state") != "in_release" or row.get("sha256") != hashlib.sha256(files[path]).hexdigest():
+            add("claim_lock", path, "it is not the file the Claim lists (state and sha256)")
+        if row["record_sha256"] != lock["record_sha256"]:
+            add("claim_lock", path, "its record_sha256 is not the one the Claim lists")
+        if public and lock["release"]["profile"] != "public":
+            add("claim_lock", path, "it was computed on a local-profile Release, which is never public")
+        if lock["version"] == len(claim["locks"]):
+            need[claim["id"]] = lock["version"]
+    held = bundle.get("latest")
+    if held is None:
+        for claim_id, version in sorted(need.items()):
+            add("claim_evidence", LATEST, f"{claim_id} v{version} is in the release and has no latest row")
+        return issues
+    seen: set[str] = set()
+    for entry in held["claims"]:
+        claim_id = entry["claim_id"]
+        if claim_id in seen or need.get(claim_id) != entry["lock_version"]:
+            add("claim_evidence", LATEST, f"{claim_id} v{entry['lock_version']} is not the newest lock, in the "
+                                          "release, of a Claim of the release, named once")
+            continue
+        seen.add(claim_id)
+        lock = bundle["locks"][f"{claim_id}.v{entry['lock_version']}"]
+        if [r["id"] for r in entry["readings"]] != [r["id"] for r in lock["record"]["readings"]]:
+            add("claim_evidence", LATEST, f"{claim_id}: its latest rows are not the lock's readings, in order")
+    for claim_id in sorted(set(need) - seen):
+        add("claim_evidence", LATEST, f"{claim_id} v{need[claim_id]} is in the release and has no latest row")
+    if not held["claims"]:
+        add("claim_evidence", LATEST, "the file is there only when a lock has a latest row")
     return issues
 
 

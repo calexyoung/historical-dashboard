@@ -73,6 +73,7 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("key")
     _common(p)
     p.add_argument("--reason", required=True)
+    p.add_argument("--content", help="the content directory the replacement is compiled from (default content)")
     p = sub.add_parser("doctor", help="is a release root fit to serve?")
     p.add_argument("--surface", choices=SURFACES,
                    help="production or staging: the preflight, against the committed rights register")
@@ -116,7 +117,8 @@ def main(argv: list[str] | None = None) -> int:
         else:
             result = save(address=args.address, note=args.note, **common)
     else:
-        result = withdraw(key=args.key, reason=args.reason, **common)
+        result = withdraw(key=args.key, reason=args.reason,
+                          content=Path(args.content) if args.content else None, **common)
     print("\n".join(result.lines))
     if result.outcome == "promoted":
         print(f"  {common['root'] / 'releases' / result.release_id}")
