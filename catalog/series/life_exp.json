@@ -1,0 +1,37 @@
+{
+  "key": "life_exp",
+  "name": "US life expectancy at birth",
+  "description": "Annual (World Bank).",
+  "unit": "years",
+  "unit_kind": "other",
+  "measure_kind": "rate",
+  "agg": "mean",
+  "freq": "annual",
+  "continuity": "discrete",
+  "seasonal_adjustment": "not_applicable",
+  "price_basis": "not_applicable",
+  "country": "USA",
+  "segment": "economy_jobs",
+  "topics": [
+    "us-economy"
+  ],
+  "source": {
+    "origin": {
+      "producer": "World Bank",
+      "dataset": "World Development Indicators",
+      "origin_id": "SP.DYN.LE00.IN",
+      "url": "https://data.worldbank.org/indicator/SP.DYN.LE00.IN?locations=US"
+    },
+    "channel": {
+      "via": "direct"
+    }
+  },
+  "refresh": "annual",
+  "max_lag": "P36M",
+  "status": "draft",
+  "migration": {
+    "v1_source": "FRED SPDYNLE00INUSA",
+    "change": "same",
+    "milestone": "v2.2"
+  }
+}

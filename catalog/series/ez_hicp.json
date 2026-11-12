@@ -1,0 +1,41 @@
+{
+  "key": "ez_hicp",
+  "name": "Euro area HICP (index)",
+  "definition": {
+    "geography": "Euro area of 19 countries, as v1 showed it."
+  },
+  "unit": "index, 2015 = 100",
+  "unit_kind": "index",
+  "measure_kind": "index",
+  "agg": "mean",
+  "freq": "monthly",
+  "continuity": "discrete",
+  "seasonal_adjustment": "nsa",
+  "price_basis": "not_applicable",
+  "base_period": "2015",
+  "country": "EA",
+  "segment": "us_in_the_world",
+  "topics": [
+    "europe"
+  ],
+  "source": {
+    "origin": {
+      "producer": "Eurostat",
+      "dataset": "prc_hicp_midx (Harmonised index of consumer prices, monthly)",
+      "origin_id": null,
+      "url": "https://ec.europa.eu/eurostat/databrowser/view/prc_hicp_midx/default/table"
+    },
+    "channel": {
+      "via": "direct"
+    }
+  },
+  "refresh": "monthly",
+  "max_lag": "P3M",
+  "status": "draft",
+  "migration": {
+    "v1_source": "FRED CP0000EZ19M086NEST",
+    "change": "same",
+    "note": "The agency's identifier for this series is settled, with a captured fixture, by the milestone that builds the adapter. v1's series was the fixed 19-country aggregate; the adapter must name that composition or the change is a different quantity.",
+    "milestone": "v2.2"
+  }
+}

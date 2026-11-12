@@ -1,0 +1,40 @@
+{
+  "key": "civpart",
+  "name": "US labor force participation",
+  "unit": "percent",
+  "unit_kind": "percent",
+  "measure_kind": "rate",
+  "agg": "mean",
+  "freq": "monthly",
+  "continuity": "discrete",
+  "seasonal_adjustment": "sa",
+  "price_basis": "not_applicable",
+  "country": "USA",
+  "segment": "economy_jobs",
+  "topics": [
+    "us-economy"
+  ],
+  "source": {
+    "origin": {
+      "producer": "U.S. Bureau of Labor Statistics",
+      "dataset": "Current Population Survey",
+      "origin_id": "LNS11300000",
+      "url": "https://data.bls.gov/timeseries/LNS11300000"
+    },
+    "channel": {
+      "via": "direct"
+    }
+  },
+  "refresh": "monthly",
+  "max_lag": "P3M",
+  "range": [
+    58.0,
+    70.0
+  ],
+  "status": "draft",
+  "migration": {
+    "v1_source": "FRED CIVPART",
+    "change": "same",
+    "milestone": "M13"
+  }
+}

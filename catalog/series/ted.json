@@ -1,0 +1,38 @@
+{
+  "key": "ted",
+  "name": "TED spread (3m LIBOR − T-bill)",
+  "description": "Discontinued Jan 2022 with LIBOR.",
+  "unit": "percentage points",
+  "unit_kind": "percentage_points",
+  "measure_kind": "rate",
+  "agg": "mean",
+  "freq": "business_daily",
+  "continuity": "discrete",
+  "seasonal_adjustment": "not_applicable",
+  "price_basis": "not_applicable",
+  "country": "USA",
+  "segment": "markets_money",
+  "topics": [
+    "rates-money"
+  ],
+  "source": {
+    "origin": {
+      "producer": "No single Origin (v1 used a spread the Federal Reserve Bank of St. Louis computed)",
+      "dataset": "TED spread: three-month LIBOR less the three-month Treasury bill",
+      "origin_id": "TEDRATE",
+      "url": null
+    },
+    "channel": null,
+    "no_channel": {
+      "kind": "discontinued",
+      "reason": "The series ended in January 2022 with LIBOR."
+    }
+  },
+  "refresh": "none",
+  "max_lag": "P1M",
+  "status": "retired",
+  "migration": {
+    "v1_source": "FRED TEDRATE",
+    "change": "same"
+  }
+}

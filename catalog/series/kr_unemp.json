@@ -1,0 +1,36 @@
+{
+  "key": "kr_unemp",
+  "name": "Korea unemployment",
+  "unit": "percent",
+  "unit_kind": "percent",
+  "measure_kind": "rate",
+  "agg": "mean",
+  "freq": "monthly",
+  "continuity": "discrete",
+  "seasonal_adjustment": "sa",
+  "price_basis": "not_applicable",
+  "country": "KOR",
+  "segment": "us_in_the_world",
+  "topics": [
+    "asia-other"
+  ],
+  "source": {
+    "origin": {
+      "producer": "Organisation for Economic Co-operation and Development",
+      "dataset": "Infra-annual labour statistics: monthly unemployment rate",
+      "origin_id": null,
+      "url": "https://data-explorer.oecd.org/"
+    },
+    "channel": {
+      "via": "direct"
+    }
+  },
+  "refresh": "monthly",
+  "max_lag": "P3M",
+  "status": "draft",
+  "migration": {
+    "v1_source": "FRED LRHUTTTTKRM156S",
+    "change": "same",
+    "milestone": "v2.2"
+  }
+}

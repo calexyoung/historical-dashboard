@@ -1,0 +1,37 @@
+{
+  "key": "eggs",
+  "name": "Eggs, grade A large ($/dozen)",
+  "description": "US city average.",
+  "unit": "U.S. dollars per dozen",
+  "unit_kind": "currency",
+  "measure_kind": "rate",
+  "agg": "mean",
+  "freq": "monthly",
+  "continuity": "discrete",
+  "seasonal_adjustment": "nsa",
+  "price_basis": "nominal",
+  "country": "USA",
+  "segment": "markets_money",
+  "topics": [
+    "commodities-energy"
+  ],
+  "source": {
+    "origin": {
+      "producer": "U.S. Bureau of Labor Statistics",
+      "dataset": "Average Price Data",
+      "origin_id": "APU0000708111",
+      "url": "https://data.bls.gov/timeseries/APU0000708111"
+    },
+    "channel": {
+      "via": "direct"
+    }
+  },
+  "refresh": "monthly",
+  "max_lag": "P3M",
+  "status": "draft",
+  "migration": {
+    "v1_source": "FRED APU0000708111",
+    "change": "same",
+    "milestone": "M13"
+  }
+}

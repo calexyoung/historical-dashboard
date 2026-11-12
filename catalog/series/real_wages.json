@@ -1,0 +1,38 @@
+{
+  "key": "real_wages",
+  "name": "US real median weekly earnings",
+  "description": "Full-time wage and salary workers, quarterly.",
+  "unit": "1982-84 U.S. dollars per week",
+  "unit_kind": "currency",
+  "measure_kind": "rate",
+  "agg": "mean",
+  "freq": "quarterly",
+  "continuity": "discrete",
+  "seasonal_adjustment": "sa",
+  "price_basis": "real",
+  "base_period": "1982-84",
+  "country": "USA",
+  "segment": "economy_jobs",
+  "topics": [
+    "us-economy"
+  ],
+  "source": {
+    "origin": {
+      "producer": "U.S. Bureau of Labor Statistics",
+      "dataset": "Current Population Survey",
+      "origin_id": "LES1252881600",
+      "url": "https://data.bls.gov/timeseries/LES1252881600"
+    },
+    "channel": {
+      "via": "direct"
+    }
+  },
+  "refresh": "quarterly",
+  "max_lag": "P7M",
+  "status": "draft",
+  "migration": {
+    "v1_source": "FRED LES1252881600Q",
+    "change": "same",
+    "milestone": "M13"
+  }
+}

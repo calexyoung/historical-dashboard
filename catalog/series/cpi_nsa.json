@@ -1,0 +1,39 @@
+{
+  "key": "cpi_nsa",
+  "name": "Consumer Price Index for All Urban Consumers: all items, U.S. city average, not seasonally adjusted",
+  "unit": "index, 1982-84 = 100",
+  "unit_kind": "index",
+  "measure_kind": "index",
+  "agg": "mean",
+  "freq": "monthly",
+  "continuity": "discrete",
+  "seasonal_adjustment": "nsa",
+  "price_basis": "not_applicable",
+  "base_period": "1982-84",
+  "country": "USA",
+  "segment": "economy_jobs",
+  "topics": [
+    "us-economy"
+  ],
+  "source": {
+    "origin": {
+      "producer": "U.S. Bureau of Labor Statistics",
+      "dataset": "Consumer Price Index",
+      "origin_id": "CUUR0000SA0",
+      "url": "https://data.bls.gov/timeseries/CUUR0000SA0"
+    },
+    "channel": {
+      "via": "direct",
+      "adapter": "bls",
+      "endpoint": "bls-headline",
+      "auth": "none"
+    }
+  },
+  "refresh": "monthly",
+  "max_lag": "P3M",
+  "range": [
+    100,
+    600
+  ],
+  "status": "active"
+}

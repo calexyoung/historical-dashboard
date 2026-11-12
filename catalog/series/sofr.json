@@ -1,0 +1,40 @@
+{
+  "key": "sofr",
+  "name": "SOFR (secured overnight rate)",
+  "description": "From Apr 2018.",
+  "unit": "percent",
+  "unit_kind": "percent",
+  "measure_kind": "rate",
+  "agg": "mean",
+  "freq": "business_daily",
+  "continuity": "discrete",
+  "seasonal_adjustment": "not_applicable",
+  "price_basis": "nominal",
+  "country": "USA",
+  "segment": "markets_money",
+  "topics": [
+    "rates-money"
+  ],
+  "source": {
+    "origin": {
+      "producer": "Federal Reserve Bank of New York",
+      "dataset": "Secured Overnight Financing Rate",
+      "origin_id": "SOFR",
+      "url": "https://www.newyorkfed.org/markets/reference-rates/sofr"
+    },
+    "channel": {
+      "via": "direct"
+    }
+  },
+  "refresh": "daily",
+  "max_lag": "P1M",
+  "range": [
+    0.0,
+    7.0
+  ],
+  "status": "draft",
+  "migration": {
+    "v1_source": "FRED SOFR",
+    "change": "same"
+  }
+}

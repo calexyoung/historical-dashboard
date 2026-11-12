@@ -1,0 +1,34 @@
+{
+  "key": "wages_yoy",
+  "name": "US wage growth (y/y)",
+  "unit": "percent change from a year earlier",
+  "unit_kind": "percent",
+  "measure_kind": "rate",
+  "agg": "none",
+  "freq": "monthly",
+  "continuity": "discrete",
+  "seasonal_adjustment": "sa",
+  "price_basis": "nominal",
+  "country": "USA",
+  "segment": "economy_jobs",
+  "topics": [
+    "us-economy"
+  ],
+  "refresh": "monthly",
+  "max_lag": "P3M",
+  "status": "draft",
+  "recipe": {
+    "op": "pct_change",
+    "inputs": [
+      "wages"
+    ],
+    "order": "aggregate_then_compute",
+    "params": {
+      "lag": 12
+    }
+  },
+  "migration": {
+    "v1_source": "Computed: wages y/y",
+    "change": "same"
+  }
+}

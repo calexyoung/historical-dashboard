@@ -1,0 +1,41 @@
+{
+  "key": "ez_gdp",
+  "name": "Euro area real GDP (€mn)",
+  "description": "Quarterly.",
+  "definition": {
+    "geography": "Euro area of 19 countries, as v1 showed it."
+  },
+  "unit": "millions of euros",
+  "unit_kind": "currency",
+  "measure_kind": "flow",
+  "agg": "sum",
+  "freq": "quarterly",
+  "continuity": "discrete",
+  "seasonal_adjustment": "sa",
+  "price_basis": "real",
+  "country": "EA",
+  "segment": "us_in_the_world",
+  "topics": [
+    "europe"
+  ],
+  "source": {
+    "origin": {
+      "producer": "Eurostat",
+      "dataset": "namq_10_gdp (Gross domestic product and main components, quarterly)",
+      "origin_id": null,
+      "url": "https://ec.europa.eu/eurostat/databrowser/view/namq_10_gdp/default/table"
+    },
+    "channel": {
+      "via": "direct"
+    }
+  },
+  "refresh": "quarterly",
+  "max_lag": "P7M",
+  "status": "draft",
+  "migration": {
+    "v1_source": "FRED CLVMEURSCAB1GQEA19",
+    "change": "same",
+    "note": "The agency's identifier for this series is settled, with a captured fixture, by the milestone that builds the adapter. v1's series was chain-linked volumes for the fixed 19-country aggregate; the adapter must name the composition and the reference year.",
+    "milestone": "v2.2"
+  }
+}

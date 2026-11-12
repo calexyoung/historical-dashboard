@@ -1,0 +1,37 @@
+{
+  "key": "houst",
+  "name": "US housing starts (thousands, SAAR)",
+  "unit": "thousands of housing units, annual rate",
+  "unit_kind": "count",
+  "measure_kind": "annualized",
+  "agg": "mean",
+  "freq": "monthly",
+  "continuity": "discrete",
+  "seasonal_adjustment": "saar",
+  "price_basis": "not_applicable",
+  "country": "USA",
+  "segment": "economy_jobs",
+  "topics": [
+    "housing"
+  ],
+  "source": {
+    "origin": {
+      "producer": "U.S. Census Bureau",
+      "dataset": "New Residential Construction",
+      "origin_id": null,
+      "url": "https://www.census.gov/construction/nrc/"
+    },
+    "channel": {
+      "via": "direct"
+    }
+  },
+  "refresh": "monthly",
+  "max_lag": "P3M",
+  "status": "draft",
+  "migration": {
+    "v1_source": "FRED HOUST",
+    "change": "same",
+    "note": "The agency's identifier for this series is settled, with a captured fixture, by the milestone that builds the adapter.",
+    "milestone": "M16"
+  }
+}

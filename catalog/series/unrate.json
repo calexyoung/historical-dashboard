@@ -1,0 +1,43 @@
+{
+  "key": "unrate",
+  "name": "Unemployment rate, 16 years and over, seasonally adjusted",
+  "unit": "percent",
+  "unit_kind": "percent",
+  "measure_kind": "rate",
+  "agg": "mean",
+  "freq": "monthly",
+  "continuity": "discrete",
+  "seasonal_adjustment": "sa",
+  "price_basis": "not_applicable",
+  "country": "USA",
+  "segment": "economy_jobs",
+  "topics": [
+    "us-economy"
+  ],
+  "source": {
+    "origin": {
+      "producer": "U.S. Bureau of Labor Statistics",
+      "dataset": "Current Population Survey",
+      "origin_id": "LNS14000000",
+      "url": "https://data.bls.gov/timeseries/LNS14000000"
+    },
+    "channel": {
+      "via": "direct",
+      "adapter": "bls",
+      "endpoint": "bls-headline",
+      "auth": "none"
+    }
+  },
+  "refresh": "monthly",
+  "max_lag": "P3M",
+  "range": [
+    0,
+    30
+  ],
+  "status": "active",
+  "migration": {
+    "v1_source": "FRED UNRATE",
+    "change": "same",
+    "milestone": "M13"
+  }
+}

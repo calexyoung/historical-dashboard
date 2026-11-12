@@ -1,0 +1,37 @@
+{
+  "key": "corecpi",
+  "name": "US core CPI (index)",
+  "unit": "index, 1982-84 = 100",
+  "unit_kind": "index",
+  "measure_kind": "index",
+  "agg": "mean",
+  "freq": "monthly",
+  "continuity": "discrete",
+  "seasonal_adjustment": "sa",
+  "price_basis": "not_applicable",
+  "base_period": "1982-84",
+  "country": "USA",
+  "segment": "economy_jobs",
+  "topics": [
+    "us-economy"
+  ],
+  "source": {
+    "origin": {
+      "producer": "U.S. Bureau of Labor Statistics",
+      "dataset": "Consumer Price Index",
+      "origin_id": "CUSR0000SA0L1E",
+      "url": "https://data.bls.gov/timeseries/CUSR0000SA0L1E"
+    },
+    "channel": {
+      "via": "direct"
+    }
+  },
+  "refresh": "monthly",
+  "max_lag": "P3M",
+  "status": "draft",
+  "migration": {
+    "v1_source": "FRED CPILFESL",
+    "change": "same",
+    "milestone": "M13"
+  }
+}

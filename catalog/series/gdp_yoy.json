@@ -1,0 +1,34 @@
+{
+  "key": "gdp_yoy",
+  "name": "US real GDP growth (y/y)",
+  "unit": "percent change from a year earlier",
+  "unit_kind": "percent",
+  "measure_kind": "rate",
+  "agg": "none",
+  "freq": "quarterly",
+  "continuity": "discrete",
+  "seasonal_adjustment": "saar",
+  "price_basis": "real",
+  "country": "USA",
+  "segment": "economy_jobs",
+  "topics": [
+    "us-economy"
+  ],
+  "refresh": "quarterly",
+  "max_lag": "P7M",
+  "status": "draft",
+  "recipe": {
+    "op": "pct_change",
+    "inputs": [
+      "gdp"
+    ],
+    "order": "aggregate_then_compute",
+    "params": {
+      "lag": 4
+    }
+  },
+  "migration": {
+    "v1_source": "Computed: gdp y/y",
+    "change": "same"
+  }
+}

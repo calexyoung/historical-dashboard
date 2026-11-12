@@ -1,0 +1,37 @@
+{
+  "key": "claims",
+  "name": "Initial jobless claims",
+  "description": "Weekly, averaged.",
+  "unit": "initial claims per week",
+  "unit_kind": "count",
+  "measure_kind": "flow",
+  "agg": "sum",
+  "freq": "weekly",
+  "continuity": "discrete",
+  "seasonal_adjustment": "sa",
+  "price_basis": "not_applicable",
+  "country": "USA",
+  "segment": "economy_jobs",
+  "topics": [
+    "us-economy"
+  ],
+  "source": {
+    "origin": {
+      "producer": "U.S. Department of Labor, Employment and Training Administration",
+      "dataset": "Unemployment Insurance Weekly Claims",
+      "origin_id": null,
+      "url": "https://oui.doleta.gov/unemploy/claims.asp"
+    },
+    "channel": {
+      "via": "direct"
+    }
+  },
+  "refresh": "weekly",
+  "max_lag": "P1M",
+  "status": "draft",
+  "migration": {
+    "v1_source": "FRED ICSA",
+    "change": "same",
+    "note": "The agency's identifier for this series is settled, with a captured fixture, by the milestone that builds the adapter."
+  }
+}

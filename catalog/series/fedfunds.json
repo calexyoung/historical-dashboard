@@ -1,0 +1,41 @@
+{
+  "key": "fedfunds",
+  "name": "Fed funds rate",
+  "unit": "percent",
+  "unit_kind": "percent",
+  "measure_kind": "rate",
+  "agg": "mean",
+  "freq": "monthly",
+  "continuity": "discrete",
+  "seasonal_adjustment": "not_applicable",
+  "price_basis": "nominal",
+  "country": "USA",
+  "segment": "markets_money",
+  "topics": [
+    "rates-money"
+  ],
+  "source": {
+    "origin": {
+      "producer": "Board of Governors of the Federal Reserve System",
+      "dataset": "H.15 Selected Interest Rates",
+      "origin_id": "RIFSPFF_N.M",
+      "url": "https://www.federalreserve.gov/releases/h15/"
+    },
+    "channel": {
+      "via": "direct"
+    }
+  },
+  "refresh": "monthly",
+  "max_lag": "P3M",
+  "range": [
+    0.0,
+    7.0
+  ],
+  "status": "draft",
+  "migration": {
+    "v1_source": "FRED FEDFUNDS",
+    "change": "same",
+    "note": "The identifier is the Data Download Program's as recalled, to be confirmed by M13's captured fixture.",
+    "milestone": "M13"
+  }
+}

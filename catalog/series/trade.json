@@ -1,0 +1,38 @@
+{
+  "key": "trade",
+  "name": "US trade balance ($mn)",
+  "description": "Goods & services.",
+  "unit": "millions of U.S. dollars",
+  "unit_kind": "currency",
+  "measure_kind": "flow",
+  "agg": "sum",
+  "freq": "monthly",
+  "continuity": "discrete",
+  "seasonal_adjustment": "sa",
+  "price_basis": "nominal",
+  "country": "USA",
+  "segment": "economy_jobs",
+  "topics": [
+    "us-economy"
+  ],
+  "source": {
+    "origin": {
+      "producer": "U.S. Bureau of Economic Analysis",
+      "dataset": "U.S. International Trade in Goods and Services (FT-900, with the Census Bureau)",
+      "origin_id": null,
+      "url": "https://www.bea.gov/data/intl-trade-investment/international-trade-goods-and-services"
+    },
+    "channel": {
+      "via": "direct"
+    }
+  },
+  "refresh": "monthly",
+  "max_lag": "P3M",
+  "status": "draft",
+  "migration": {
+    "v1_source": "FRED BOPGSTB",
+    "change": "same",
+    "note": "The agency's identifier for this series is settled, with a captured fixture, by the milestone that builds the adapter.",
+    "milestone": "M15"
+  }
+}

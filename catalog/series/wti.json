@@ -1,0 +1,41 @@
+{
+  "key": "wti",
+  "name": "Crude oil, WTI ($/bbl)",
+  "unit": "U.S. dollars per barrel",
+  "unit_kind": "currency",
+  "measure_kind": "rate",
+  "agg": "mean",
+  "freq": "monthly",
+  "continuity": "discrete",
+  "seasonal_adjustment": "not_applicable",
+  "price_basis": "nominal",
+  "country": "USA",
+  "segment": "markets_money",
+  "topics": [
+    "commodities-energy"
+  ],
+  "source": {
+    "origin": {
+      "producer": "U.S. Energy Information Administration",
+      "dataset": "Petroleum and Other Liquids: Spot Prices",
+      "origin_id": "RWTC",
+      "url": "https://www.eia.gov/dnav/pet/pet_pri_spt_s1_m.htm"
+    },
+    "channel": {
+      "via": "direct"
+    }
+  },
+  "refresh": "monthly",
+  "max_lag": "P3M",
+  "range": [
+    -40.0,
+    160.0
+  ],
+  "status": "draft",
+  "migration": {
+    "v1_source": "FRED MCOILWTICO",
+    "change": "same",
+    "note": "The EIA publishes spot prices it takes from a commercial provider; whether the EIA row covers them is a question for the register before it is signed.",
+    "milestone": "M15"
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "key": "corecpi_yoy",
+  "name": "US core inflation (y/y)",
+  "unit": "percent change from a year earlier",
+  "unit_kind": "percent",
+  "measure_kind": "rate",
+  "agg": "none",
+  "freq": "monthly",
+  "continuity": "discrete",
+  "seasonal_adjustment": "sa",
+  "price_basis": "not_applicable",
+  "country": "USA",
+  "segment": "economy_jobs",
+  "topics": [
+    "us-economy"
+  ],
+  "refresh": "monthly",
+  "max_lag": "P3M",
+  "range": [
+    -1.0,
+    8.0
+  ],
+  "status": "draft",
+  "recipe": {
+    "op": "pct_change",
+    "inputs": [
+      "corecpi"
+    ],
+    "order": "aggregate_then_compute",
+    "params": {
+      "lag": 12
+    }
+  },
+  "migration": {
+    "v1_source": "Computed: corecpi y/y",
+    "change": "same"
+  }
+}

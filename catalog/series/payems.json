@@ -1,0 +1,43 @@
+{
+  "key": "payems",
+  "name": "All employees, total nonfarm, seasonally adjusted",
+  "unit": "thousands of persons",
+  "unit_kind": "count",
+  "measure_kind": "stock",
+  "agg": "mean",
+  "freq": "monthly",
+  "continuity": "discrete",
+  "seasonal_adjustment": "sa",
+  "price_basis": "not_applicable",
+  "country": "USA",
+  "segment": "economy_jobs",
+  "topics": [
+    "us-economy"
+  ],
+  "source": {
+    "origin": {
+      "producer": "U.S. Bureau of Labor Statistics",
+      "dataset": "Current Employment Statistics",
+      "origin_id": "CES0000000001",
+      "url": "https://data.bls.gov/timeseries/CES0000000001"
+    },
+    "channel": {
+      "via": "direct",
+      "adapter": "bls",
+      "endpoint": "bls-headline",
+      "auth": "none"
+    }
+  },
+  "refresh": "monthly",
+  "max_lag": "P3M",
+  "range": [
+    50000,
+    300000
+  ],
+  "status": "active",
+  "migration": {
+    "v1_source": "FRED PAYEMS",
+    "change": "same",
+    "milestone": "M13"
+  }
+}

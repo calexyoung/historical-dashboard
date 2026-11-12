@@ -1,0 +1,37 @@
+{
+  "key": "m2",
+  "name": "US M2 money supply ($bn)",
+  "unit": "billions of U.S. dollars",
+  "unit_kind": "currency",
+  "measure_kind": "stock",
+  "agg": "mean",
+  "freq": "monthly",
+  "continuity": "discrete",
+  "seasonal_adjustment": "sa",
+  "price_basis": "nominal",
+  "country": "USA",
+  "segment": "markets_money",
+  "topics": [
+    "rates-money"
+  ],
+  "source": {
+    "origin": {
+      "producer": "Board of Governors of the Federal Reserve System",
+      "dataset": "H.6 Money Stock Measures",
+      "origin_id": null,
+      "url": "https://www.federalreserve.gov/releases/h6/"
+    },
+    "channel": {
+      "via": "direct"
+    }
+  },
+  "refresh": "monthly",
+  "max_lag": "P3M",
+  "status": "draft",
+  "migration": {
+    "v1_source": "FRED M2SL",
+    "change": "same",
+    "note": "The agency's identifier for this series is settled, with a captured fixture, by the milestone that builds the adapter.",
+    "milestone": "M13"
+  }
+}

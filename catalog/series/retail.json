@@ -1,0 +1,36 @@
+{
+  "key": "retail",
+  "name": "US retail sales ($mn)",
+  "unit": "millions of U.S. dollars",
+  "unit_kind": "currency",
+  "measure_kind": "flow",
+  "agg": "sum",
+  "freq": "monthly",
+  "continuity": "discrete",
+  "seasonal_adjustment": "sa",
+  "price_basis": "nominal",
+  "country": "USA",
+  "segment": "economy_jobs",
+  "topics": [
+    "us-economy"
+  ],
+  "source": {
+    "origin": {
+      "producer": "U.S. Census Bureau",
+      "dataset": "Monthly Retail Trade",
+      "origin_id": "44X72",
+      "url": "https://www.census.gov/retail/sales.html"
+    },
+    "channel": {
+      "via": "direct"
+    }
+  },
+  "refresh": "monthly",
+  "max_lag": "P3M",
+  "status": "draft",
+  "migration": {
+    "v1_source": "FRED RSAFS",
+    "change": "same",
+    "milestone": "M16"
+  }
+}

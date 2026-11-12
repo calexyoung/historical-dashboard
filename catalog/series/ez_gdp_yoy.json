@@ -1,0 +1,34 @@
+{
+  "key": "ez_gdp_yoy",
+  "name": "Euro area GDP growth (y/y)",
+  "unit": "percent change from a year earlier",
+  "unit_kind": "percent",
+  "measure_kind": "rate",
+  "agg": "none",
+  "freq": "quarterly",
+  "continuity": "discrete",
+  "seasonal_adjustment": "sa",
+  "price_basis": "real",
+  "country": "EA",
+  "segment": "us_in_the_world",
+  "topics": [
+    "europe"
+  ],
+  "refresh": "quarterly",
+  "max_lag": "P7M",
+  "status": "draft",
+  "recipe": {
+    "op": "pct_change",
+    "inputs": [
+      "ez_gdp"
+    ],
+    "order": "aggregate_then_compute",
+    "params": {
+      "lag": 4
+    }
+  },
+  "migration": {
+    "v1_source": "Computed: ez_gdp y/y",
+    "change": "same"
+  }
+}

@@ -1,0 +1,37 @@
+{
+  "key": "brl",
+  "name": "USD/BRL",
+  "unit": "Brazilian reais per U.S. dollar",
+  "unit_kind": "currency",
+  "measure_kind": "rate",
+  "agg": "mean",
+  "freq": "business_daily",
+  "continuity": "discrete",
+  "seasonal_adjustment": "not_applicable",
+  "price_basis": "nominal",
+  "country": "BRA",
+  "segment": "markets_money",
+  "topics": [
+    "currencies"
+  ],
+  "source": {
+    "origin": {
+      "producer": "Board of Governors of the Federal Reserve System",
+      "dataset": "H.10 Foreign Exchange Rates",
+      "origin_id": "RXI_N.B.BZ",
+      "url": "https://www.federalreserve.gov/releases/h10/"
+    },
+    "channel": {
+      "via": "direct"
+    }
+  },
+  "refresh": "daily",
+  "max_lag": "P1M",
+  "status": "draft",
+  "migration": {
+    "v1_source": "FRED DEXBZUS",
+    "change": "same",
+    "note": "The identifier is the Data Download Program's as recalled, to be confirmed by M13's captured fixture.",
+    "milestone": "M13"
+  }
+}

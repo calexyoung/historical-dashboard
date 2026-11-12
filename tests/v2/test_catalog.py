@@ -3,6 +3,7 @@ own, and projected into the series table the vintage store replays."""
 from __future__ import annotations
 
 import json
+import shutil
 from pathlib import Path
 
 import pytest
@@ -40,7 +41,7 @@ def test_a_file_must_be_named_for_its_key_and_say_nothing_twice(tmp_path):
     entries, problems = read_catalog(directory)
     assert sorted(entries) == ["fx_price"]
     said = {Path(p.path).name: p.message for p in problems}
-    assert "fx_other" in said["fx_other.json"] and "twice" in said["fx_twice.json"]
+    assert "named for its key" in said["fx_other.json"] and "twice" in said["fx_twice.json"]
     with pytest.raises(CatalogError, match="fx_other.json"):
         load_catalog(directory)
 
@@ -80,7 +81,7 @@ def test_the_rights_of_a_stored_series_are_what_the_register_says_of_its_origin(
     gate = RightsGate(table)
     entries = {"fx_price": stored()}
     block = rights_block(entries["fx_price"], entries, table, gate)
-    assert block["status"] == "public_domain" and block["owner"] and block["reviewed"]
+    assert block["status"] == "public_domain" and block["owner"] == "Macro Atlas, synthetic fixture"
     unknown = stored(source={"origin": {"producer": "Nobody Known", "dataset": "x", "origin_id": None,
                                         "url": None}, "channel": {"via": "direct"}})
     assert rights_block(unknown, entries, table, gate) == {
@@ -188,10 +189,11 @@ def test_a_replay_through_the_catalog_writes_the_store_a_series_table_writes(tmp
     versioned = tmp_path / "series.json"
     versioned.write_text(json.dumps(table))
 
+    captured = tmp_path / "captured"
+    capture(captured, register, "1-initial", "2-revision", "3-withdrawal")
     stores = []
     for name, series in (("by-table", versioned), ("by-catalog", directory)):
-        store = tmp_path / name
-        capture(store, register, "1-initial", "2-revision", "3-withdrawal")
+        store = shutil.copytree(captured, tmp_path / name)
         assert replay_main(["--store", str(store), "--register", str(register), "--series", str(series)]) == 0
         stores.append(vintage_files(store))
     assert stores[0] and stores[0] == stores[1]

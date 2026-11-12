@@ -1,0 +1,40 @@
+{
+  "key": "mortgage",
+  "name": "US 30-year mortgage rate",
+  "unit": "percent",
+  "unit_kind": "percent",
+  "measure_kind": "rate",
+  "agg": "mean",
+  "freq": "weekly",
+  "continuity": "discrete",
+  "seasonal_adjustment": "nsa",
+  "price_basis": "nominal",
+  "country": "USA",
+  "segment": "economy_jobs",
+  "topics": [
+    "housing"
+  ],
+  "source": {
+    "origin": {
+      "producer": "Freddie Mac",
+      "dataset": "Primary Mortgage Market Survey",
+      "origin_id": null,
+      "url": "https://www.freddiemac.com/pmms"
+    },
+    "channel": {
+      "via": "direct"
+    }
+  },
+  "refresh": "weekly",
+  "max_lag": "P1M",
+  "range": [
+    2.0,
+    10.0
+  ],
+  "status": "draft",
+  "migration": {
+    "v1_source": "FRED MORTGAGE30US",
+    "change": "same",
+    "note": "The agency's identifier for this series is settled, with a captured fixture, by the milestone that builds the adapter."
+  }
+}

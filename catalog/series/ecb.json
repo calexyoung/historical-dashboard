@@ -1,0 +1,39 @@
+{
+  "key": "ecb",
+  "name": "ECB deposit rate",
+  "unit": "percent",
+  "unit_kind": "percent",
+  "measure_kind": "rate",
+  "agg": "mean",
+  "freq": "business_daily",
+  "continuity": "discrete",
+  "seasonal_adjustment": "not_applicable",
+  "price_basis": "nominal",
+  "country": "EA",
+  "segment": "us_in_the_world",
+  "topics": [
+    "europe"
+  ],
+  "source": {
+    "origin": {
+      "producer": "European Central Bank",
+      "dataset": "Key ECB interest rates: deposit facility",
+      "origin_id": "FM.D.U2.EUR.4F.KR.DFR.LEV",
+      "url": "https://data.ecb.europa.eu/"
+    },
+    "channel": {
+      "via": "direct"
+    }
+  },
+  "refresh": "daily",
+  "max_lag": "P1M",
+  "range": [
+    -1.0,
+    5.0
+  ],
+  "status": "draft",
+  "migration": {
+    "v1_source": "FRED ECBDFR",
+    "change": "same"
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "key": "gdp",
+  "name": "US real GDP ($bn, 2017$)",
+  "description": "Quarterly.",
+  "unit": "billions of chained 2017 U.S. dollars, annual rate",
+  "unit_kind": "currency",
+  "measure_kind": "annualized",
+  "agg": "mean",
+  "freq": "quarterly",
+  "continuity": "discrete",
+  "seasonal_adjustment": "saar",
+  "price_basis": "real",
+  "base_period": "2017",
+  "country": "USA",
+  "segment": "economy_jobs",
+  "topics": [
+    "us-economy"
+  ],
+  "source": {
+    "origin": {
+      "producer": "U.S. Bureau of Economic Analysis",
+      "dataset": "National Income and Product Accounts, Table 1.1.6",
+      "origin_id": "A191RX",
+      "url": "https://www.bea.gov/data/gdp/gross-domestic-product"
+    },
+    "channel": {
+      "via": "direct"
+    }
+  },
+  "refresh": "quarterly",
+  "max_lag": "P7M",
+  "status": "draft",
+  "migration": {
+    "v1_source": "FRED GDPC1",
+    "change": "same",
+    "milestone": "M15"
+  }
+}

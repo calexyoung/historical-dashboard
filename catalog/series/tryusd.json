@@ -1,0 +1,38 @@
+{
+  "key": "tryusd",
+  "name": "USD/TRY",
+  "description": "Monthly average (OECD).",
+  "unit": "Turkish lira per U.S. dollar",
+  "unit_kind": "currency",
+  "measure_kind": "rate",
+  "agg": "mean",
+  "freq": "monthly",
+  "continuity": "discrete",
+  "seasonal_adjustment": "not_applicable",
+  "price_basis": "nominal",
+  "country": "TUR",
+  "segment": "markets_money",
+  "topics": [
+    "currencies"
+  ],
+  "source": {
+    "origin": {
+      "producer": "International Monetary Fund",
+      "dataset": "Exchange Rates",
+      "origin_id": null,
+      "url": "https://data.imf.org/"
+    },
+    "channel": {
+      "via": "direct"
+    }
+  },
+  "refresh": "monthly",
+  "max_lag": "P3M",
+  "status": "draft",
+  "migration": {
+    "v1_source": "FRED CCUSMA02TRM618N",
+    "change": "same",
+    "note": "Monthly average, as v1 showed. The agency's identifier for this series is settled, with a captured fixture, by the milestone that builds the adapter.",
+    "milestone": "M14"
+  }
+}

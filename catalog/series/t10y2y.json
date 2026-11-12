@@ -1,0 +1,38 @@
+{
+  "key": "t10y2y",
+  "name": "US yield curve (10y–2y spread)",
+  "description": "Negative = inverted.",
+  "unit": "percentage points",
+  "unit_kind": "percentage_points",
+  "measure_kind": "rate",
+  "agg": "mean",
+  "freq": "business_daily",
+  "continuity": "discrete",
+  "seasonal_adjustment": "not_applicable",
+  "price_basis": "nominal",
+  "country": "USA",
+  "segment": "markets_money",
+  "topics": [
+    "rates-money"
+  ],
+  "refresh": "daily",
+  "max_lag": "P1M",
+  "range": [
+    -3.0,
+    4.0
+  ],
+  "status": "draft",
+  "recipe": {
+    "op": "difference",
+    "inputs": [
+      "gs10",
+      "gs2"
+    ],
+    "order": "aggregate_then_compute"
+  },
+  "migration": {
+    "v1_source": "FRED T10Y2Y",
+    "change": "same",
+    "note": "v1 took the spread FRED computes. Here it is the same difference, computed by the engine from the two yields the Board publishes."
+  }
+}
