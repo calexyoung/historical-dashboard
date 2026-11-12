@@ -249,10 +249,10 @@ function relatedEvents(release: OpenedRelease, key: string): SeriesPageView["eve
   return release.events.events.filter((event) => event.related_series.includes(key)).map((event) => ({ id: event.id, when: eventWhen(event, "short"), title: event.title, href: `/events/${event.id}` }));
 }
 
-function notes(release: OpenedRelease, surface: Surface, gate: Pick<RightsGate, "permits"> | undefined, entry: CatalogEntry, labelOf: (period: string) => string): SeriesPageView["notes"] {
+function notes(release: OpenedRelease, surface: Surface, gate: Pick<RightsGate, "permits"> | undefined, permission: "display" | "redistribute", entry: CatalogEntry, labelOf: (period: string) => string): SeriesPageView["notes"] {
   const out: SeriesPageView["notes"] = (entry.breaks ?? []).map((b) => ({ period: labelOf(b.period), kind: "Break", text: b.note }));
   // Through the one door for Annotations: a note that says it came from somebody's record is under the gate.
-  for (const a of annotationsFor(release, surface, gate).annotations) {
+  for (const a of annotationsFor(release, surface, gate, permission).annotations) {
     if (a.kind !== "data_note" || !a.series?.includes(entry.key)) continue;
     const period = a.anchor.type === "period" ? labelOf(a.anchor.period) : a.anchor.type === "date" ? dayWords(a.anchor.date, "short") : `${dayWords(a.anchor.start, "short")} on`;
     out.push({ period, kind: "Data note", text: a.label });
@@ -364,6 +364,11 @@ export type SeriesPageOptions = {
   address?: string;
   /** See `QueryOptions.gate`: only a test passes one. */
   gate?: Pick<RightsGate, "permits">;
+  /**
+   * What the notes are for. Left out, they are shown on the page (`display`). A twin puts them
+   * in a file a reader takes away, so it asks for `redistribute` (ADR 0033).
+   */
+  notes?: "display" | "redistribute";
   /** How many versions the revisions table lists at first (48). */
   revisionRows?: number;
 };
@@ -410,7 +415,7 @@ export function seriesPageView(release: OpenedRelease, surface: Surface, key: st
       asOf: null,
       latest: null,
       figure: renderFigure({ created }, state === "withheld" || state === "not_permitted" ? [{ key: entry.key, name: entry.name, heldBack: state, reason }] : []),
-      notes: notes(release, surface, gate, entry, (period) => period),
+      notes: notes(release, surface, gate, options.notes ?? "display", entry, (period) => period),
       events: relatedEvents(release, entry.key),
       revisions: null,
       ...more,
@@ -500,7 +505,7 @@ export function seriesPageView(release: OpenedRelease, surface: Surface, key: st
       asOf,
       latest,
       figure,
-      notes: notes(release, surface, gate, entry, labelOf),
+      notes: notes(release, surface, gate, options.notes ?? "display", entry, labelOf),
       events: relatedEvents(release, entry.key),
       // Under an as-of question the list of every version, later ones included, is left to the plain page.
       revisions: vintage ? null : revisions(release, surface, entry, gate, options.search?.get("revisions") === "all", options.revisionRows, Number.parseInt(options.search?.get("revisions_page") ?? "1", 10) || 1),

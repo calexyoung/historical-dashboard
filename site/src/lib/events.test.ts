@@ -273,6 +273,14 @@ describe("every other reader of the Annotations asks the gate too", () => {
     expect(twinText(seriesTwin(held(), "production", "fx_price_index", "md", new URLSearchParams(), { address: "https://example.org/macro-atlas/data/fx_price_index", gate: gateWith({ display: false, redistribute: false }) }))).not.toContain("SOMEBODY'S RECORD");
   });
 
+  it("a twin is a file: it leaves out a note that may be displayed and may not be handed out", () => {
+    const displayOnly = gateWith({ display: true, redistribute: false });
+    expect(notesOf("production", displayOnly)).toContain("A NOTE FROM SOMEBODY'S RECORD"); // on the page
+    const twin = seriesTwin(held(), "production", "fx_price_index", "md", new URLSearchParams(), { address: "https://example.org/macro-atlas/data/fx_price_index", gate: displayOnly });
+    expect(twin.status).toBe(200);
+    expect(twinText(twin)).not.toContain("SOMEBODY'S RECORD");
+  });
+
   it("an export leaves out a layer that may be displayed and may not be handed out", () => {
     const query = "s=fx_price_index&from=2023-01&to=2025-12&layers=rec";
     const svg = (gate: ReturnType<typeof createRightsGate>) => {
