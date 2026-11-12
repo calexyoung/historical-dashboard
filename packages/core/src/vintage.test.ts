@@ -106,6 +106,20 @@ describe("no coverage", () => {
     const answer = resolve(native(observed, NOW), "last tuesday", RELEASE);
     expect([answer.basis, answer.reason, answer.cutoff, answer.observations]).toEqual(["unavailable", "bad_as_of", null, []]);
   });
+  it("a question before 1900 has no Cutoff: the floor is the UTC year of what was asked", () => {
+    // docs/method/vintage-resolution.md: New York's clock is taken as four or five hours behind
+    // UTC, which holds from 1883, and no record here reaches back so far.
+    for (const asOf of ["1899-12-31", "1899-12-31T23:59:59Z", "0001-01-01", "0099-06-10"]) {
+      const answer = resolve(native(observed, NOW), asOf, RELEASE);
+      expect([asOf, answer.basis, answer.reason, answer.cutoff, answer.observations]).toEqual([asOf, "unavailable", "bad_as_of", null, []]);
+    }
+    // From 1900 the question is a good one that nothing here covers.
+    const first = resolve(native(observed, NOW), "1900-01-01", RELEASE);
+    expect([first.basis, first.reason, first.cutoff?.instant, first.cutoff?.day]).toEqual(["unavailable", "no_coverage", "1900-01-01T05:00:00Z", "1900-01-01"]);
+    // An instant is judged by its UTC date, so this one is asked although its New York day is in 1899.
+    const instant = resolve(native(observed, NOW), "1900-01-01T00:00:00Z", RELEASE);
+    expect([instant.basis, instant.reason, instant.cutoff?.instant, instant.cutoff?.day]).toEqual(["unavailable", "no_coverage", "1900-01-01T00:00:00Z", "1899-12-31"]);
+  });
   it("every answer echoes the Release and the engine's semantics version", () => {
     const answer = resolve(native(observed, NOW), "2026-06-09", RELEASE);
     expect([answer.key, answer.as_of, answer.release_id, answer.semantics_version]).toEqual(["fx_price", "2026-06-09", RELEASE.releaseId, SEMANTICS_VERSION]);
