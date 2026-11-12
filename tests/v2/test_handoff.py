@@ -7,6 +7,7 @@ import fcntl
 import gzip
 import json
 import os
+import shutil
 
 import pytest
 
@@ -165,3 +166,42 @@ def test_a_lock_that_is_there_and_cannot_be_opened_is_a_refusal_not_a_way_round(
         (clone / "LOCK").chmod(0o644)
     assert "a run holds" in capsys.readouterr().out
     assert not (tmp_path / "store").exists()
+
+
+def test_a_run_log_with_a_line_cut_off_is_not_at_rest(clone, tmp_path, capsys):
+    """A crash can leave half of a run's starting line: that run would not be seen at all."""
+    with open(clone / "runs.ndjson", "a") as handle:
+        handle.write('{"format": 1, "event": "started", "run_id": "r-cut-o')
+
+    assert handoff(clone, tmp_path / "store") == 1
+
+    assert "the run log" in capsys.readouterr().out and not (tmp_path / "store").exists()
+
+
+def test_a_source_no_endpoint_ever_answered_is_handed_over_with_its_logs_alone(clone, tmp_path, capsys):
+    shutil.rmtree(clone / "raw")
+    (clone / "fetchlog.ndjson").write_text("")
+
+    assert handoff(clone, tmp_path / "store") == 0
+
+    assert "handoff: 0 captures and 0 blobs" in capsys.readouterr().out
+    assert (tmp_path / "store" / "runs.ndjson").read_bytes() == (clone / "runs.ndjson").read_bytes()
+    assert not (tmp_path / "store" / "raw").exists()
+
+
+def test_a_copy_that_fails_part_way_leaves_a_store_the_hand_off_can_be_run_into_again(clone, tmp_path, monkeypatch, capsys):
+    store = tmp_path / "store"
+    real = shutil.copyfile
+
+    def full_disk(source, target, **more):
+        if str(target).endswith("runs.ndjson"):
+            raise OSError(28, "No space left on device")
+        return real(source, target, **more)
+
+    monkeypatch.setattr(shutil, "copyfile", full_disk)
+    assert handoff(clone, store) == 1
+    assert "FAILED: the copy" in capsys.readouterr().out
+    assert sorted(path.name for path in store.iterdir()) == ["LOCK"]
+
+    monkeypatch.setattr(shutil, "copyfile", real)
+    assert handoff(clone, store) == 0

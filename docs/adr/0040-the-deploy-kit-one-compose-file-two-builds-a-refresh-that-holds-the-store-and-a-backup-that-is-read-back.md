@@ -35,7 +35,11 @@ The steps themselves are `deploy/RUNBOOK.md`.
 4. **A deploy is a script whose first act is the preflight.** `deploy.sh` builds the writer's
    image from the checkout, so the preflight reads this commit's register and not an older
    image's, runs `atlas doctor --surface <surface>` on the root to be served, and stops
-   there if it refuses. Only then is the web image built and started. Staging goes through
+   there if it refuses. Only then is the web image built and started. The writer is built
+   as a `candidate` tag and becomes `latest`, which the timers run, only when the web app
+   has answered. A refused deploy changes neither the web app nor the writer. One that
+   fails after the preflight has replaced the web app (there is no automatic way back; the
+   runbook's is to deploy the previous commit) and has not replaced the writer. Staging goes through
    the same preflight and is held to production's rule (ADR 0015 point 5). A production
    deploy asks for the word `production`.
 5. **The Caddy snippet is the file Alex imports, and the smoke test loads that file.** Two
@@ -124,8 +128,8 @@ The steps themselves are `deploy/RUNBOOK.md`.
 - The headroom script's minimums (1536 MB of available memory, 10 GB of disk) are budgets
   from one development machine, where a web container used 75 to 120 MB at rest. They are
   not measurements of the VPS.
-- The ingest image is rebuilt by every deploy, and the timers use whatever the last deploy
-  built: code, register, Catalog and content move together, by commit.
+- The timers use the writer of the last deploy that succeeded: code, register, Catalog and
+  content move together, by commit.
 - The preflight had its three refusals since M9. M26 adds a test for each that starts from a
   root the preflight passes and changes one thing, so a refusal for some other reason cannot
   pass for the one named.

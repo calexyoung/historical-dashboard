@@ -106,7 +106,11 @@ def main(argv: list[str] | None = None) -> int:
     made = False
     try:
         with _at_rest(source):
-            unfinished = S.unfinished_runs(S.read_runs(source, []))
+            problems: list[str] = []
+            unfinished = S.unfinished_runs(S.read_runs(source, problems))
+            if problems:
+                # A line cut off part way may be the start of a run that never finished.
+                return refuse(f"the run log of {source} is not whole ({problems[0]})")
             if unfinished:
                 return refuse(f"run {unfinished[0].get('run_id')} of {source} did not finish. Disable "
                               "the capture workflow, let a run end clean, and pull again")
@@ -122,10 +126,24 @@ def main(argv: list[str] | None = None) -> int:
                 if found:
                     return refuse(f"{store} already holds captures or a vintage store ({found}); a "
                                   "hand-off fills an empty store once and never adds to one")
-                shutil.copytree(source / "raw", store / "raw")
-                for name in _COPIED[1:]:
-                    if (source / name).exists():
-                        shutil.copyfile(source / name, store / name)
+                try:
+                    # A source no endpoint ever answered has logs and no raw/ at all.
+                    if (source / "raw").is_dir():
+                        shutil.copytree(source / "raw", store / "raw")
+                    for name in _COPIED[1:]:
+                        if (source / name).exists():
+                            shutil.copyfile(source / name, store / name)
+                except OSError as error:
+                    # The store held nothing when it was locked: what is there now is this
+                    # run's half copy, and it goes, so the hand-off can be run again.
+                    for name in _COPIED:
+                        if (store / name).is_dir():
+                            shutil.rmtree(store / name, ignore_errors=True)
+                        else:
+                            (store / name).unlink(missing_ok=True)
+                    print(f"FAILED: the copy into {store} did not finish ({error}); what it had "
+                          "copied was removed, and the store holds no Capture. Run the hand-off again")
+                    return 1
                 status, copied, arrived = _checked(store)
     except S.StoreLocked:
         if made and store.is_dir() and not _holds_something(store):

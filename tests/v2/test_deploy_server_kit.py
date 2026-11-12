@@ -232,6 +232,7 @@ def host(tmp_path):
     (bin_dir / "docker").write_text(f"""#!/usr/bin/env bash
 echo "docker $*" >> "{log}"
 case " $* " in
+  *" image inspect "*) exit "${{FAKE_NO_WRITER:-0}}" ;;
   *" doctor "*) exit "${{FAKE_PREFLIGHT:-0}}" ;;
   *" ps "*) [ -n "${{FAKE_RUNNING:-}}" ] && echo abc123 ;;
 esac
@@ -275,6 +276,31 @@ def test_a_deploy_runs_the_preflight_first_and_a_refusal_starts_nothing(host):
     assert any(" doctor --surface production" in call for call in calls)
     assert not [call for call in calls if " up " in call or "build web" in call or call.startswith("curl")]
     assert "STOPPED" in done.stdout and "nothing was built for the web app and nothing was started" in done.stdout
+
+
+def test_a_refused_deploy_leaves_the_writer_the_timers_run_as_it_was(host):
+    """The candidate is what is built and asked. It is named `latest`, which refresh.sh runs,
+    only after the web app has answered; a refusal never gets that far."""
+    host("deploy.sh", "production", "--yes", FAKE_PREFLIGHT="1")
+    assert not [call for call in host.calls() if call.startswith("docker tag")]
+    assert "ATLAS_INGEST_TAG" not in (DEPLOY / "refresh.sh").read_text() + (DEPLOY / "atlas.sh").read_text()
+    assert INGEST["image"].endswith("-ingest:${ATLAS_INGEST_TAG:-latest}")
+
+    host("deploy.sh", "production", "--yes")
+    calls = host.calls()
+    tag = "docker tag macro-atlas-production-ingest:candidate macro-atlas-production-ingest:latest"
+    assert calls.count(tag) == 1 and calls.index(tag) > max(i for i, call in enumerate(calls) if call.startswith("curl"))
+
+
+def test_the_first_deploy_has_no_writer_to_protect_so_the_candidate_becomes_it_at_once(host):
+    """The first deploy stops at the preflight (no Release yet) and the runbook's next step,
+    refresh.sh, needs a writer."""
+    done = host("deploy.sh", "staging", "--yes", FAKE_PREFLIGHT="1", FAKE_NO_WRITER="1")
+
+    assert done.returncode == 1
+    calls = host.calls()
+    tag = "docker tag macro-atlas-staging-ingest:candidate macro-atlas-staging-ingest:latest"
+    assert tag in calls and calls.index(tag) < next(i for i, call in enumerate(calls) if " doctor " in call)
 
 
 def test_a_deploy_that_passes_builds_the_writer_asks_it_then_builds_and_starts_the_web_app(host):
@@ -413,7 +439,7 @@ MANUAL = {
     "choosing the off-host backup target": "ATLAS_BACKUP_REMOTE=",
     "stopping the timers for a restore": "systemctl stop",
     "stopping the web app for a restore": "docker compose -p macro-atlas-staging down",
-    "moving the old data aside": "mv store store.before",
+    "moving the old data aside": "mv /srv/macro-atlas/staging/store /srv/macro-atlas/staging/store.before",
     "deciding which surface captures": "One timer captures",
     "the production deploy": "deploy/deploy.sh production",
     "rolling the code back": "previous commit",
@@ -459,6 +485,33 @@ def test_the_runbook_says_what_is_open_and_never_holds_a_secret():
     for decision in ("D2", "D6", "D9"):
         assert f"| {decision} |" in RUNBOOK
     assert not re.search(r"\$2[aby]\$\d\d\$", RUNBOOK) and not re.search(r"API_KEY=\S", RUNBOOK)
+
+
+@pytest.mark.parametrize("address, status", [
+    ("http://example.org/macro-atlas-staging", 1),
+    ("http://127.0.0.1.example.org/macro-atlas-staging", 1),
+    ("http://localhost.example.org:8080/macro-atlas-staging", 1),
+    ("http://127.0.0.1:80@example.org/macro-atlas-staging", 2),      # the host is what follows the @
+    ("https://atlas@example.org/macro-atlas-staging", 2),
+])
+def test_the_staging_check_never_sends_the_password_over_plain_http_to_another_machine(tmp_path, address, status):
+    """Basic auth sends the password as it is. A pretend curl answers 401 to everything, so
+    the first half passes; the second must stop before it gives curl anything."""
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    (bin_dir / "curl").write_text(f'#!/usr/bin/env bash\necho "$*" >> "{tmp_path}/args"\ncat >> "{tmp_path}/stdin"\nprintf 401\n')
+    (bin_dir / "curl").chmod(0o755)
+
+    done = subprocess.run(
+        ["bash", str(DEPLOY / "check-staging-auth.sh"), address], check=False,
+        capture_output=True, text=True, stdin=subprocess.DEVNULL,
+        env={"PATH": f"{bin_dir}:{os.environ['PATH']}", "ATLAS_STAGING_USER": "atlas", "ATLAS_STAGING_PASSWORD": "a-password"})
+
+    assert done.returncode == status, done.stdout + done.stderr
+    assert ("not sent over plain HTTP" in done.stdout) is (status == 1)
+    asked = (tmp_path / "args").read_text() if (tmp_path / "args").exists() else ""
+    given = (tmp_path / "stdin").read_text() if (tmp_path / "stdin").exists() else ""
+    assert "a-password" not in asked + given + done.stdout + done.stderr and " -K " not in asked
 
 
 def test_the_staging_check_gives_curl_the_password_as_it_is_typed_and_never_on_a_command_line(tmp_path):

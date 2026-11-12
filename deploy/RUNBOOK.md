@@ -70,6 +70,7 @@ Variables the kit reads, and where each is set:
 | `ATLAS_STAGING_USER`, `ATLAS_STAGING_PASSWORD_HASH` | Caddy's own environment | The staging account. Never in this repository |
 | `ATLAS_PRODUCTION_UPSTREAM`, `ATLAS_STAGING_UPSTREAM` | nowhere on the server | Only `smoke.sh` sets them. Unset, Caddy dials `127.0.0.1:3101` and `:3102` |
 | `ATLAS_STAGING_PASSWORD` | your shell, for one command | Only for `check-staging-auth.sh`'s second half |
+| `ATLAS_INGEST_TAG` | nowhere; `deploy.sh` sets it for itself | Which writer image compose names: `candidate` during a deploy, otherwise `latest`, which the timers run |
 | `ATLAS_WAIT_SECONDS` | nowhere, normally | How long a refresh or a backup waits for the other (default 1800) |
 | `ATLAS_PROJECT`, `HEADROOM_*` | nowhere on the server | Test overrides |
 
@@ -127,7 +128,8 @@ Variables the kit reads, and where each is set:
 
 10. **[SCRIPT]** `deploy/deploy.sh staging`. The first time it **stops at the preflight, as it
     should**: there is no Release to serve. It has built the writer's image, which the next
-    steps need.
+    steps need. (On every later deploy the writer the timers run is replaced only once the
+    deploy has succeeded.)
 11. **The capture hand-off**, only if a capture repository exists (D6). Captures cannot be
     made again, so none may be lost or doubled:
     1. **[ALEX]** In the capture repository: Actions → capture → Disable workflow. Wait for a
@@ -217,7 +219,8 @@ exists (M27).
 23. **[ALEX]** Move what is there aside, and make the parent writable by the writer:
 
     ```
-    cd /srv/macro-atlas/staging && sudo mv store store.before && sudo mv public public.before
+    sudo mv /srv/macro-atlas/staging/store /srv/macro-atlas/staging/store.before
+    sudo mv /srv/macro-atlas/staging/public /srv/macro-atlas/staging/public.before
     sudo chown 10001:10001 /srv/macro-atlas/staging
     ```
 
@@ -241,9 +244,14 @@ exists (M27).
 ## 7. Updating the code
 
 29. **[ALEX]** `git -C /srv/macro-atlas/checkout fetch` and check out the new commit.
-30. **[SCRIPT]** `deploy/deploy.sh staging`. It rebuilds the writer's image first, so the
-    preflight and every later timer run use the new code and the new rights register, then
-    rebuilds and restarts the web app. The site is down for the seconds the container takes
+30. **[SCRIPT]** `deploy/deploy.sh staging`. It builds the writer's image first, as a
+    candidate, so the preflight reads the new code and the new rights register, then rebuilds
+    and restarts the web app. Only when the web app has answered does the candidate become
+    the writer the timers run. A deploy the preflight refuses changes nothing: the old web
+    app and the old writer stay. A deploy that fails after the preflight (the new web app
+    does not come up healthy, or answers as another build) has already replaced the web app
+    and has not replaced the writer: read `docker compose -p macro-atlas-staging logs web`,
+    and roll the code back (step 35). The site is down for the seconds the container takes
     to start.
 
 ## 8. Production (M28)

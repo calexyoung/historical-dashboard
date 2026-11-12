@@ -34,7 +34,10 @@ services:
   # starts it. It publishes no port. The API keys and the host's choices reach it from a file
   # on the server that is in no repository (deploy/server.env.example says what goes in it).
   ingest:
-    image: macro-atlas-${ATLAS_SURFACE:?set ATLAS_SURFACE}-ingest
+    # The timers run the tag `latest`. deploy.sh builds and asks `candidate`, and names it
+    # `latest` only when the deploy has succeeded: a deploy the preflight refuses leaves the
+    # writer the timers use as it was.
+    image: macro-atlas-${ATLAS_SURFACE:?set ATLAS_SURFACE}-ingest:${ATLAS_INGEST_TAG:-latest}
     profiles: [job]
     build:
       context: ..

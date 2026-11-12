@@ -19,6 +19,17 @@ case "$base" in
   http://*|https://*) base="${base%/}" ;;
   *) echo "usage: $(basename "$0") https://HOST/macro-atlas-staging" >&2; exit 2 ;;
 esac
+# The host is read from the address itself, not guessed from how it begins: a user name in
+# it ("http://127.0.0.1:80@elsewhere/") is refused, since what follows the @ is the host.
+authority="${base#*://}"
+authority="${authority%%/*}"
+case "$authority" in
+  *@*|"") echo "usage: $(basename "$0") https://HOST/macro-atlas-staging   (no user name in the address)" >&2; exit 2 ;;
+esac
+case "$authority" in
+  127.0.0.1|127.0.0.1:*|localhost|localhost:*|"[::1]"|"[::1]:"*) this_machine=1 ;;
+  *) this_machine=0 ;;
+esac
 paths=("/" "/explore" "/data.md" "/llms.txt" "/_next/static/chunks/any.js" "/api/v1/catalog.json" "/api/health")
 
 code() { curl -s -o /dev/null -w '%{http_code}' --max-time 20 "$@" || true; }
@@ -39,6 +50,13 @@ if [ "$open" != 0 ]; then
 fi
 
 if [ -n "${ATLAS_STAGING_USER:-}" ] && [ -n "${ATLAS_STAGING_PASSWORD:-}" ]; then
+  # Basic auth sends the password as it is. Over plain HTTP that is only ever done to this
+  # machine (the smoke test's throwaway Caddy).
+  if [ "${base%%://*}" != https ] && [ "$this_machine" != 1 ]; then
+    echo "STOPPED: the password is not sent over plain HTTP to another machine. Use https://, or leave"
+    echo "         ATLAS_STAGING_PASSWORD unset to check only that every path asks for one."
+    exit 1
+  fi
   # curl reads the pair from a quoted value of its configuration syntax, where a backslash
   # and a double quote must be escaped to mean themselves.
   quoted() { printf '%s' "$1" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g'; }

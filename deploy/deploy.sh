@@ -7,8 +7,11 @@
 # A production deploy is Alex's to start. This script is never run by CI or by the builder
 # against a server.
 #
-#   1. builds the writer's image from this checkout, so the preflight reads this commit's
-#      rights register and not an older image's;
+#   1. builds the writer's image from this checkout as a candidate, so the preflight reads
+#      this commit's rights register and not an older image's. The image the timers run is
+#      not replaced until step 5 has passed: a refused or failed deploy leaves the writer as
+#      it was. (Step 4 does replace the running web app; if the new one does not come up, deploy
+#      the previous commit.) (The first time, when there is no writer yet, the candidate becomes it at once.)
 #   2. the preflight: `atlas doctor --surface <surface>` on the release root to be served.
 #      It refuses a local-profile Release, an unsigned register and a legacy Series, in any
 #      Release a reader could open. If it refuses, the script stops here: nothing is built
@@ -43,8 +46,14 @@ if [ "$SURFACE" = production ] && [ "$confirmed" != "--yes" ]; then
 fi
 
 commit="$(git -C "$REPO_DIR" rev-parse HEAD 2>/dev/null || echo unknown)"
-echo "== 1/5 build the writer's image from this checkout ($commit)"
+writer="macro-atlas-$ATLAS_SURFACE-ingest"
+export ATLAS_INGEST_TAG=candidate
+echo "== 1/5 build the writer's image from this checkout ($commit), as a candidate"
 compose build ingest
+if ! docker image inspect "$writer:latest" >/dev/null 2>&1; then
+  docker tag "$writer:candidate" "$writer:latest"
+  echo "note: there was no writer yet, so this one is it: deploy/refresh.sh $SURFACE can run now"
+fi
 
 echo "== 2/5 preflight: atlas doctor --surface $SURFACE on $ATLAS_DATA_DIR/public"
 if ! compose run --rm --no-deps ingest doctor --surface "$SURFACE"; then
@@ -66,6 +75,8 @@ case "$answer" in
   *"\"status\":\"ok\""*"\"surface\":\"$SURFACE\""*) echo "ok  $answer" ;;
   *) echo "FAILED: $url did not answer as the $SURFACE build: $answer"; exit 1 ;;
 esac
+docker tag "$writer:candidate" "$writer:latest"
+echo "ok  the timers now run the writer built from $commit"
 printf '%s %s %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$SURFACE" "$commit" >> "$ATLAS_DATA_DIR/deploys.log" \
   || echo "note: could not add a line to $ATLAS_DATA_DIR/deploys.log; write the commit down yourself: $commit"
 echo "DEPLOYED $SURFACE at $commit on 127.0.0.1:$ATLAS_WEB_PORT$BASE_PATH"

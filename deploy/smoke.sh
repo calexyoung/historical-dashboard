@@ -37,8 +37,11 @@ fail() { echo "FAIL: $*"; exit 1; }
 
 cleanup() {
   docker rm -f "$CADDY" "$CADDY-unset" >/dev/null 2>&1 || true
-  for surface in production staging drill; do
-    docker compose -p "macro-atlas-smoke-$surface" down --remove-orphans >/dev/null 2>&1 || true
+  for surface in production staging; do
+    dc "$surface" down --remove-orphans >/dev/null 2>&1 || true
+  done
+  for id in $(docker ps -aq --filter "label=com.docker.compose.project=macro-atlas-smoke-drill"); do
+    docker rm -f "$id" >/dev/null 2>&1 || true
   done
   # The writer's container made these files as its own user; remove them the same way.
   docker run --rm --user 0 --entrypoint sh -v "$WORK:/work" macro-atlas-production-ingest \

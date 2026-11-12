@@ -285,6 +285,9 @@ def restore(*, archive: Path, store: Path, public: Path) -> Result:
     sidecar = archive.with_name(archive.name + ".sha256")
     if sidecar.is_file() and sidecar.read_text().split()[:1] != [_sha256(archive)]:
         return result.refuse(f"{archive.name} is not the bytes {sidecar.name} names; nothing was restored")
+    if not hasattr(tarfile, "data_filter"):
+        return result.refuse("this Python cannot unpack an archive safely (tarfile has no extraction "
+                             "filter before 3.11.4); nothing was restored")
     store.parent.mkdir(parents=True, exist_ok=True)
     public.parent.mkdir(parents=True, exist_ok=True)
     # A directory of this run's own making: a second restore beside it never shares it,
