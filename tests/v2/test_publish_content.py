@@ -16,7 +16,17 @@ from atlas.release import load_release, validate_release
 from atlas.rights import RightsGate
 
 from .capture_helpers import origin_row
-from .release_helpers import MAKE, NOW, ROOT, SERIES, all_bytes, build_store, current, read_json, write_register
+from .release_helpers import (
+    MAKE,
+    NOW,
+    ROOT,
+    SERIES,
+    all_bytes,
+    build_store,
+    current,
+    read_json,
+    write_register,
+)
 
 MANUAL = ROOT / "fixtures" / "manual" / "catalog" / "manual"
 OFFICE = "Macro Atlas, from the public record"
@@ -118,7 +128,7 @@ def test_hand_entered_layers_are_published_with_their_origin_and_only_while_it_i
 
 
 def test_a_typed_in_layer_that_does_not_say_where_it_came_from_is_a_rights_problem(tmp_path, store, register):
-    result, root = publish(tmp_path, store, register, write_content(tmp_path / "content", PUBLIC))
+    _result, root = publish(tmp_path, store, register, write_content(tmp_path / "content", PUBLIC))
     files = dict(load_release(root / "releases" / current(root)))
     document = json.loads(files["content/annotations.json"])
     for annotation in document["annotations"]:

@@ -95,7 +95,7 @@ def test_add_event_says_which_of_its_words_are_on_the_list_and_the_draft_still_p
     content = tmp_path / "content"
     status, said = add_event(capsys, content, *SOURCE, title="Markets crash because of an Act")
     assert status == 0 and "because" in said and "crash" in said
-    report, layer = content_layer(content)
+    report, _layer = content_layer(content)
     assert report.ok
     assert any("because" in note and "draft" in note for note in report.notes)
 

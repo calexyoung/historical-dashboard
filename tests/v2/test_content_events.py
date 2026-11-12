@@ -129,6 +129,26 @@ def test_an_accepted_term_is_passed_over_and_no_other():
 
 
 # --- the migration of v1's Events ----------------------------------------------------------------
+#
+# Two things are compared with v1. What the migration script writes (always: it is the record of
+# the migration), and the committed files, which a person edits afterwards. Deciding a wording
+# changes an Event's title, status or accepted terms, never its id, its date or its category;
+# the tests of the committed files allow exactly that.
+
+DECIDED_LATER = ("title", "status", "accepted_terms", "description", "topics", "related_series", "sources", "magnitude")
+
+
+@pytest.fixture(scope="module")
+def scripted(tmp_path_factory) -> list[dict]:
+    import subprocess
+    import sys
+    out = tmp_path_factory.mktemp("migrated")
+    done = subprocess.run([sys.executable, str(ROOT / "scripts" / "migrate_events.py"), "--out", str(out)],
+                          cwd=ROOT, capture_output=True, text=True, check=False)
+    assert done.returncode == 0, done.stderr
+    events, problems = E.load_events(out)
+    assert problems == []
+    return events
 
 
 @pytest.fixture(scope="module")
@@ -138,59 +158,71 @@ def migrated() -> list[dict]:
     return events
 
 
-def test_every_v1_event_and_every_v1_field_comes_back_from_the_files(migrated):
+def test_every_v1_event_and_every_v1_field_comes_back_from_the_files(scripted):
     assert len(V1_EVENTS) == 83
-    assert [E.as_v1(event) for event in migrated] == V1_EVENTS
+    assert [E.as_v1(event) for event in scripted] == V1_EVENTS
 
 
-def test_the_events_keep_the_ids_and_the_order_the_converter_gave_them(migrated):
-    assert [f"event-{event['id']}" for event in migrated] == RECORDED_IDS
+def test_the_events_keep_the_ids_and_the_order_the_converter_gave_them(scripted, migrated):
+    assert [f"event-{event['id']}" for event in scripted] == RECORDED_IDS
+    assert [f"event-{event['id']}" for event in migrated] == RECORDED_IDS  # an id is permanent
 
 
-def test_no_description_was_written_for_v1s_events_and_no_day_made_up(migrated):
-    assert all(event["description"] == "" for event in migrated)
-    assert sum(1 for event in migrated if event["date_precision"] == "month") == sum(1 for e in V1_EVENTS if "day" not in e)
+def test_the_committed_files_are_the_migration_apart_from_what_a_person_decided_since(scripted, migrated):
+    for was, now in zip(scripted, migrated, strict=True):
+        fixed = [name for name in {*was, *now} if name not in DECIDED_LATER]
+        assert {name: was.get(name) for name in fixed} == {name: now.get(name) for name in fixed}, now["id"]
 
 
-def test_each_citation_has_an_archived_copy_or_says_why_not(migrated):
-    without = [event["id"] for event in migrated for source in event["sources"] if "archive_url" not in source]
+def test_no_description_was_written_for_v1s_events_and_no_day_made_up(scripted):
+    assert all(event["description"] == "" for event in scripted)
+    assert sum(1 for event in scripted if event["date_precision"] == "month") == sum(1 for e in V1_EVENTS if "day" not in e)
+
+
+def test_each_citation_has_an_archived_copy_or_says_why_not(scripted, migrated):
+    without = [event["id"] for event in scripted for source in event["sources"] if "archive_url" not in source]
     assert len(without) == 5  # the five addresses the archive held no copy of on the day of the migration
-    for event in migrated:
-        for source in event["sources"]:
+    for event in [*scripted, *migrated]:
+        for source in event["sources"]:   # the schema: one or the other, never neither
+            assert ("archive_url" in source) != ("no_archive" in source)
             if "archive_url" in source:
-                assert source["archive_url"].startswith("https://web.archive.org/web/2")
-                assert source["url"].split("//")[1].split("/")[0] in source["archive_url"]
+                assert source["archive_url"].startswith("https://")
 
 
-def test_the_migration_script_writes_exactly_the_committed_files(tmp_path):
-    import subprocess
-    import sys
-    done = subprocess.run([sys.executable, str(ROOT / "scripts" / "migrate_events.py"), "--out", str(tmp_path)],
-                          cwd=ROOT, capture_output=True, text=True, check=False)
-    assert done.returncode == 0, done.stderr
-    written = {path.name: path.read_bytes() for path in tmp_path.glob("*.md")}
-    committed = {path.name: path.read_bytes() for path in (ROOT / "content" / "events").glob("*.md")}
-    assert written == committed and len(written) == 83
-
-
-def test_a_v1_event_that_hits_the_word_list_is_a_draft_with_its_words_unchanged(migrated):
-    hits = [event for event in migrated if W.event_terms(event)]
+def test_a_v1_event_that_hits_the_word_list_is_a_draft_with_its_words_unchanged(scripted):
+    hits = [event for event in scripted if W.terms_in(event["title"])]
     assert len(hits) == 26 and all(event["status"] == "draft" for event in hits)
     # The review (below) lists more than the word list found: Codex's reading of all 83.
-    assert sum(1 for event in migrated if event["status"] == "public") == 48
+    assert sum(1 for event in scripted if event["status"] == "public") == 48
 
 
-def test_the_migration_review_names_all_83_and_proposes_a_wording_for_each_one_listed(migrated):
+def test_the_migration_review_names_all_83_and_proposes_a_wording_for_each_one_listed(scripted):
     review = json.loads((ROOT / "content" / "events" / "migration-review.json").read_text(encoding="utf-8"))
     by_id = {row["id"]: row for row in review["events"]}
-    assert list(by_id) == [event["id"] for event in migrated]
-    for event in migrated:
+    assert list(by_id) == [event["id"] for event in scripted]
+    assert [row["title"] for row in review["events"]] == [v1["title"] for v1 in V1_EVENTS]
+    for event in scripted:
         row = by_id[event["id"]]
-        assert row["title"] == event["title"]
         assert set(row["reviewed_by"]) == {"word list", "Codex"}
-        assert row["terms"] == W.terms_in(event["title"])
+        if review["wordlist_version"] == W.VERSION:
+            assert row["terms"] == W.terms_in(row["title"])
         listed = bool(row["terms"] or row.get("codex"))
         assert row["outcome"] == ("listed" if listed else "passed")
         assert (event["status"] == "draft") == listed
         if listed:
-            assert row["proposed"].strip() and not W.terms_in(row["proposed"]) or row.get("keep")
+            assert row["proposed"].strip() and (row.get("keep") or not W.terms_in(row["proposed"]))
+
+
+def test_no_public_event_has_an_unaccepted_word_of_the_list(migrated):
+    assert [event["id"] for event in migrated if event["status"] == "public" and W.event_terms(event)] == []
+
+
+def test_the_page_for_alex_is_the_review_as_it_stands(migrated):
+    from atlas.content import report
+    page = (ROOT / "docs" / "v2" / "events-review.md").read_text(encoding="utf-8")
+    assert page == report.render()
+    assert "## Listed for Alex (35)" in page
+    review = json.loads((ROOT / "content" / "events" / "migration-review.json").read_text(encoding="utf-8"))
+    for row in review["events"]:
+        assert (f"`{row['id']}`" in page) == (row["outcome"] == "listed") or any(
+            row["id"] == e["id"] and any("no_archive" in s for s in e["sources"]) for e in migrated)

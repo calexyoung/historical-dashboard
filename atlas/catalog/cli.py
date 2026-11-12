@@ -5,6 +5,7 @@ import argparse
 import sys
 from pathlib import Path
 
+from ..content import add as X
 from ..rights import RightsGate, load_register
 from . import add as A
 from . import check as C
@@ -19,13 +20,18 @@ FREQUENCIES = ("daily", "business_daily", "weekly", "monthly", "quarterly", "ann
 def check_main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(
         prog="atlas check",
-        description="Validate the Catalog in layers: schema, references, semantics, rights. "
-                    "Reads files only. Exits 1 if any layer finds something.")
+        description="Validate the Catalog in layers (schema, references, semantics, rights) and then "
+                    "Macro Atlas's own content (Events and notes). Reads files only. Exits 1 if any "
+                    "layer finds something.")
     parser.add_argument("--catalog", help="a catalog directory (default catalog/series)")
     parser.add_argument("--register", help="a rights register (default schema/rights-register.json)")
+    parser.add_argument("--content", help="the content directory, which holds events/ (default content)")
+    parser.add_argument("--notes", help="the directory of User notes (default notes)")
     args = parser.parse_args(argv)
     report = C.check(Path(args.catalog) if args.catalog else None,
-                     Path(args.register) if args.register else None)
+                     Path(args.register) if args.register else None,
+                     Path(args.content) if args.content else None,
+                     Path(args.notes) if args.notes else None)
     print(C.render(report))
     return 0 if report.ok else 1
 
@@ -69,6 +75,36 @@ def add_main(argv: list[str]) -> int:
                    choices=["aggregate_then_compute", "compute_then_aggregate"])
     p.add_argument("--lag", type=int)
     p.add_argument("--catalog", help="a catalog directory (default catalog/series)")
+    e = kinds.add_parser("event", help="a draft Event in content/events/{date}-{slug}.md")
+    e.add_argument("date", help="the day (YYYY-MM-DD), month (YYYY-MM) or year (YYYY) it happened or began")
+    e.add_argument("title", help="what happened, in a few plain words")
+    e.add_argument("--category", required=True, choices=list(X.CATEGORIES))
+    e.add_argument("--end", help="the last day, month or year of an Event that spans time")
+    e.add_argument("--source", required=True, help="the address where it can be checked (https)")
+    e.add_argument("--archive-url", help="an archived copy of that address")
+    e.add_argument("--no-archive", metavar="REASON", help="why there is no archived copy")
+    e.add_argument("--topic", action="append", help="a topic slug; may be given more than once")
+    e.add_argument("--series", action="append", help="a Series key to show beside it; may be given more than once")
+    e.add_argument("--description", help="what happened and when, from the cited source")
+    e.add_argument("--content", help="the content directory (default content)")
+    n = kinds.add_parser("note", help="one user's own draft note in notes/{user}/{date}-{slug}.md")
+    n.add_argument("text", help="the remark")
+    n.add_argument("--user", required=True, help="whose note it is: a short name in lower case")
+    n.add_argument("--about", required=True, metavar="KIND:ID", help="claim:ID, series:KEY or topic:SLUG")
+    n.add_argument("--date", help="the day it was written (default today)")
+    n.add_argument("--notes", help="the directory of User notes (default notes)")
+    if argv[:1] and argv[0] in ("event", "note"):
+        args = parser.parse_args(argv)   # a mistake in the options exits, as argparse does
+        try:
+            if args.kind == "event":
+                _, said = X.add_event(args)
+            else:
+                _, said = X.add_note(args, set(load_catalog()))
+        except (X.AddRefused, CatalogError) as refused:
+            print(f"atlas add: {refused}", file=sys.stderr)
+            return 1
+        print("\n".join(said))
+        return 0
     try:
         args = parser.parse_args(argv)
     except SystemExit as stop:
