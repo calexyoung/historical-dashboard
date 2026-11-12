@@ -12,6 +12,8 @@
 import { readFileSync } from "node:fs";
 import { beforeAll, describe, expect, it } from "vitest";
 import { buildAgencyRelease, type AgencyFixture } from "../release/agency-testing";
+import { createRightsGate } from "@macro-atlas/core";
+import { exportAllowed, exportView, parseCsv } from "../export";
 import { createReleaseReader, type OpenedRelease } from "../release/reader";
 import { parseExplorerParams, v1HashToQuery } from "./state";
 import { explorerView, V1_PRESETS, type ExplorerView } from "./view";
@@ -165,5 +167,53 @@ describe("native frequency", () => {
     const before = view("s=unrate&as_of=2020-01-01");
     expect(before.selection[0]).toMatchObject({ state: "not_drawn", basis: "unavailable" });
     expect(before.runs).toEqual([]);
+  });
+});
+
+describe("export honours rights, series by series", () => {
+  const ADDRESS = "https://example.invalid/macro-atlas/explore";
+  const state = (query: string) => parseExplorerParams(new URLSearchParams(query));
+  /** The test register with one Origin's row narrowed to display only. */
+  const without = (id: string) => createRightsGate({ ...fixture.register, rows: fixture.register.rows.map((row) => (row.id === id && row.decision ? { ...row, decision: { ...row.decision, redistribute: false } } : row)) });
+
+  it("a display-only release renders and exports nothing, with the gate's reason", () => {
+    const shown = explorerView(release, "production", state("s=unrate,gs10"), { gate: fixture.displayOnly });
+    expect(shown.selection.map((s) => s.state)).toEqual(["drawn", "drawn"]);
+    const result = exportView(release, "production", state("s=unrate,gs10"), "csv", { address: ADDRESS, gate: fixture.displayOnly });
+    expect(result).toMatchObject({ ok: false, status: 403 });
+    expect((result as { message: string }).message).toMatch(/redistribute/);
+  });
+
+  it("a file holds only the series that may be redistributed, and names the rest with the reason", () => {
+    const gate = without("bls");
+    const q = "s=unrate,gs10&from=2026-10&to=2026-11";
+    const whole = explorerView(release, "production", state(q), { gate });
+    const result = exportView(release, "production", state(q), "csv", { address: ADDRESS, gate });
+    if (!result.ok) throw new Error(result.message);
+    const rows = parseCsv(result.body.split("\n").filter((line) => !line.startsWith("#")).join("\n")).slice(1);
+    expect(new Set(rows.map((r) => r[0]))).toEqual(new Set(["gs10"]));
+    expect(rows.map((r) => r[3])).toEqual(whole.runs.find((r) => r.series === "gs10")!.rows.map((r) => r.period));
+    const left = result.body.split("\n").find((line) => line.startsWith("# Not in this file"))!;
+    expect(left).toMatch(/Unemployment rate.*may not be redistributed here.*redistribute/);
+    expect(result.series).toEqual(["gs10"]);
+    const svg = exportView(release, "production", state(q), "svg", { address: ADDRESS, gate });
+    if (!svg.ok) throw new Error(svg.message);
+    expect(svg.body).toMatch(/Not in this picture/);
+    expect(svg.body).toMatch(/Unemployment rate/);
+    // The window is the view's own, not the narrower one the remaining series would open.
+    expect(result.body).toMatch(/from=2026-10&to=2026-11/);
+    const offer = exportAllowed(release, "production", ["unrate", "gs10"], { gate });
+    expect(offer).toMatchObject({ allowed: true, leftOut: [expect.objectContaining({ key: "unrate" })] });
+  });
+
+  it("a derived series is held to the rights of what it is computed from", () => {
+    const result = exportView(release, "production", state("s=cpi_yoy"), "csv", { address: ADDRESS, gate: without("bls") });
+    expect(result).toMatchObject({ ok: false, status: 403 });
+  });
+
+  it("an as-of export asks about the series' past as well", () => {
+    const result = exportView(release, "production", state("s=gs10&as_of=2026-11-12"), "csv", { address: ADDRESS, gate: fixture.gate });
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.rightsUsed.length).toBeGreaterThan(0);
   });
 });

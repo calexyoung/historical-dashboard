@@ -6,13 +6,13 @@
  */
 import { readFileSync } from "node:fs";
 import { beforeAll, describe, expect, it } from "vitest";
-import { SEMANTICS_VERSION } from "@macro-atlas/core";
+import { createRightsGate, SEMANTICS_VERSION } from "@macro-atlas/core";
 import { parseExplorerParams } from "../explorer/state";
 import { explorerView } from "../explorer/view";
 import { PRINT_COLORS } from "../figure/print";
 import { createReleaseReader, type OpenedRelease } from "../release/reader";
-import { addRelease, FIXTURE_ROOT, promote, tempRoot } from "../release/testing";
-import { EXPORT_FORMATS, exportView, parseCsv, type ExportFormat } from "./index";
+import { addRelease, FIXTURE_ROOT, fixtureRegister, promote, tempRoot } from "../release/testing";
+import { EXPORT_FORMATS, exportAllowed, exportView, parseCsv, type ExportFormat } from "./index";
 
 let release: OpenedRelease;
 beforeAll(async () => {
@@ -178,5 +178,51 @@ describe("the gate", () => {
 
   it("an unknown format is refused before anything is read", () => {
     expect(exportView(release, "local", state("s=fx_price_index"), "xlsx" as ExportFormat, { address: ADDRESS })).toMatchObject({ ok: false, status: 400 });
+  });
+});
+
+describe("M18: export honours rights, series by series", () => {
+  const displayOnly = createRightsGate(fixtureRegister({ display: true, redistribute: false }));
+  const both = createRightsGate(fixtureRegister({ display: true, redistribute: true }));
+
+  it("export of a display-only series is refused with the reason, while the page still shows it", () => {
+    const shown = explorerView(release, "production", state("s=fx_price_index"), { gate: displayOnly });
+    expect(shown.selection[0]!.state).toBe("drawn");
+    for (const format of EXPORT_FORMATS) {
+      const result = exportView(release, "production", state("s=fx_price_index"), format, { address: ADDRESS, gate: displayOnly });
+      expect(result).toMatchObject({ ok: false, status: 403 });
+      expect((result as { message: string }).message).toMatch(/redistribute/);
+      expect(JSON.stringify(result)).not.toMatch(/109\.9|100\.4|"body"/);
+    }
+    expect(exportAllowed(release, "production", ["fx_price_index"], { gate: displayOnly })).toMatchObject({ allowed: false, reason: expect.stringMatching(/redistribute/) });
+  });
+
+  it("where redistribution is signed for, a public surface hands the file out without the local stamp", () => {
+    const result = exportView(release, "production", state("s=fx_price_index"), "csv", { address: ADDRESS, gate: both });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.body).not.toMatch(/NOT FOR PUBLICATION/);
+      expect(result.filename).not.toMatch(/not-for-publication/);
+    }
+  });
+
+  it("an as-of view exports what the as-of view shows, and says so", () => {
+    const q = "s=fx_price_index&as_of=2025-12-10";
+    const result = ok(q, "csv");
+    const view = explorerView(release, "local", state(q));
+    const rows = table(result.body).slice(1);
+    expect(rows.map((r) => `${r[3]}|${r[6]}`)).toEqual(view.runs[0]!.rows.map((r) => `${r.period}|${r.value ?? ""}`));
+    expect(rows.at(-1)![3]).toBe("2025-10");
+    expect(result.body).toMatch(/# As known before 10 December 2025.*Basis: Atlas-observed/);
+    expect(ok(q, "svg").body).toContain("As known before 10 December 2025");
+  });
+
+  it("an as-of view with no answer has nothing to export, and today's values are not given in its place", () => {
+    const result = run("s=fx_price_index&as_of=2025-01-01", "csv");
+    expect(result).toMatchObject({ ok: false, status: 422 });
+  });
+
+  it("the whole release as one file is today's: with an as-of date it is refused, not answered with today", () => {
+    expect(run("s=fx_price_index&as_of=2025-12-10", "all")).toMatchObject({ ok: false, status: 400 });
   });
 });
