@@ -108,6 +108,18 @@ def main(argv=None) -> int:
         from .crosscheck import main as crosscheck_main  # v2 (PLAN M14): one source against another
 
         return crosscheck_main(argv[1:])
+    if argv[:1] and argv[0] in ("backup", "restore"):
+        from .backup import main as backup_main  # v2 (PLAN M26): one archive of the store and a root
+
+        return backup_main(argv[0], argv[1:])
+    if argv[:1] == ["handoff"]:
+        from .handoff import main as handoff_main  # v2 (PLAN M26): the interim Captures, moved once
+
+        return handoff_main(argv[1:])
+    if argv[:1] == ["refresh"]:
+        from .refresh import main as refresh_main  # v2 (PLAN M26): capture, replay, release; one job
+
+        return refresh_main(argv[1:])
     if argv[:1] == ["replay"]:
         return cmd_replay(argv[1:])
     if argv[:1] == ["capture"]:
@@ -143,6 +155,12 @@ def main(argv=None) -> int:
                                   "(see python -m atlas claims --help)")
     sub.add_parser("replay", help="v2: build the vintage store from kept captures, with their "
                                   "original retrieval times (see python -m atlas replay --help)")
+    sub.add_parser("refresh", help="v2: capture, replay and release in that order, one run at a time: "
+                                   "the job a timer runs (see python -m atlas refresh --help)")
+    sub.add_parser("handoff", help="v2: move the interim Captures from the capture repository into "
+                                   "an empty store, checked at both ends")
+    sub.add_parser("backup", help="v2: one checked archive of the store and a release root, taken between runs")
+    sub.add_parser("restore", help="v2: put a backup back where nothing is yet, whole or not at all")
     for name, text in (("release", "write, check and promote a Release from the vintage store"),
                        ("rollback", "name an earlier Release in CURRENT"),
                        ("pin", "keep a Release through retention"), ("unpin", "undo a pin"),

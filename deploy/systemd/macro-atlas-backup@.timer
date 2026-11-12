@@ -1,0 +1,11 @@
+# When the backup runs: once a night, well away from both refreshes, by New York's clock.
+[Unit]
+Description=Macro Atlas backup (%i), nightly
+
+[Timer]
+OnCalendar=*-*-* 03:15:00 America/New_York
+Persistent=true
+Unit=macro-atlas-backup@%i.service
+
+[Install]
+WantedBy=timers.target

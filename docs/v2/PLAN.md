@@ -349,6 +349,12 @@ licence class (`observations.{licence}.…`, `vintages.{licence}.parquet`) and `
 A Series is in them only under the Permission to redistribute; the site asks the gate again
 when a file is requested, so production keeps a copy for five minutes, not for good.
 
+As built in M26 (ADR 0040, `deploy/RUNBOOK.md`): the store also holds `REFRESH.LOCK`, held by
+`atlas refresh` (capture, replay, release in one run) and by `atlas backup`. A backup is one
+`macro-atlas-{time}.tar.gz` of the whole store and the whole root (not only the pinned
+Releases), with a list of every file's SHA-256 inside it and a checksum beside it; `atlas
+restore` puts one back only where nothing is. The ingest image holds `content/`.
+
 As built in M20 (ADR 0034, `docs/method/claims.md`): the release contract is 0.4.0;
 `content/claims.json` holds the Claims with their locks by name, `locks/` the locks that may
 be shown, and `evidence/latest.json` each locked Reading's latest row and the drift, written by

@@ -7,8 +7,13 @@
 # FRED- and Yahoo-sourced values (data/, dist/, web/, .git), the fixtures, and v1's
 # hand-entered tables inside the atlas package (the four .yaml files; the ingest job publishes
 # from the store and never runs the legacy converter). The Catalog (catalog/) is let in: it
-# names Series and their Sources and holds no value. tests/v2/test_ignore_rules.py checks
-# this file. Do not add those paths here (build protocol, point 7).
+# names Series and their Sources and holds no value. So is content/ (M26; ADR 0033, ADR 0040):
+# the Events, Claims, Topics and headline list a Release is compiled from, and the Claim locks
+# committed for the public Profile, which are in the repository only where the register
+# allows redistribution. Without it the timer's Releases would hold no Event and no Claim.
+# User notes (notes/) are not content and stay out. tests/v2/test_ignore_rules.py checks this
+# file, and deploy/check-images.sh checks the built image holds exactly the tracked content
+# files. Do not add the paths above here (build protocol, point 7).
 *
 
 !pyproject.toml
@@ -17,6 +22,7 @@
 !schema
 !catalog
 !checks/spot.json
+!content
 !packages/core/package.json
 !packages/core/bin
 !packages/core/src
@@ -26,6 +32,7 @@ atlas/catalog.yaml
 atlas/events.yaml
 atlas/politics.yaml
 **/__pycache__
+**/.DS_Store
 **/*.test.ts
 packages/core/src/testing.ts
 **/node_modules

@@ -1,0 +1,53 @@
+# Macro Atlas on the server (PLAN 4.8 and M26; ADR 0008, ADR 0040): the web app and the writer.
+# One file, two builds of the same commit. Which build is said by the environment file:
+#
+#   docker compose --env-file deploy/production.env -p macro-atlas-production -f deploy/compose.yaml ...
+#   docker compose --env-file deploy/staging.env    -p macro-atlas-staging    -f deploy/compose.yaml ...
+#
+# Do not type those. deploy/deploy.sh, refresh.sh, backup.sh and restore.sh do, and deploy.sh
+# runs the preflight (`atlas doctor --surface ...`) before it builds or starts the web app.
+# The runbook is deploy/RUNBOOK.md. Nothing here deploys by itself, and a production deploy
+# is Alex's to start.
+#
+# Nothing has a default on purpose: a build that is not told its Surface, its base path, its
+# port or its directories fails (PLAN 6.1 point 1). For your own machine use compose.web.yaml.
+services:
+  # Always on, read-only. Published on loopback only: Caddy on the same host is the one way in.
+  web:
+    image: macro-atlas-${ATLAS_SURFACE:?set ATLAS_SURFACE}-web
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+      args:
+        ATLAS_SURFACE: ${ATLAS_SURFACE:?set ATLAS_SURFACE}
+        BASE_PATH: ${BASE_PATH:?set BASE_PATH}
+    restart: unless-stopped
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    ports:
+      - "127.0.0.1:${ATLAS_WEB_PORT:?set ATLAS_WEB_PORT}:3000"
+    volumes:
+      - "${ATLAS_DATA_DIR:?set ATLAS_DATA_DIR}/public:/releases:ro"
+
+  # The one writer (ADR 0002). Run to completion by the host's timer or by hand; `up` never
+  # starts it. It publishes no port. The API keys and the host's choices reach it from a file
+  # on the server that is in no repository (deploy/server.env.example says what goes in it).
+  ingest:
+    image: macro-atlas-${ATLAS_SURFACE:?set ATLAS_SURFACE}-ingest
+    profiles: [job]
+    build:
+      context: ..
+      dockerfile: deploy/ingest.Dockerfile
+    restart: "no"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    tmpfs:
+      - /tmp
+    env_file:
+      - path: ${ATLAS_SERVER_ENV:?set ATLAS_SERVER_ENV}
+        required: false
+    volumes:
+      - "${ATLAS_DATA_DIR:?set ATLAS_DATA_DIR}/store:/store"
+      - "${ATLAS_DATA_DIR:?set ATLAS_DATA_DIR}/public:/public"

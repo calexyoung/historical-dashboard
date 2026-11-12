@@ -1,0 +1,41 @@
+# Macro Atlas behind the shared Caddy (PLAN 4.8 and 6.1; ADR 0008, ADR 0040). For Alex to
+# apply: these directives go inside the existing site block of the host, either pasted or with
+#
+#     import /srv/macro-atlas/checkout/deploy/Caddyfile.snippet
+#
+# The Caddy configuration itself lives outside this repository. deploy/smoke.sh loads this
+# very file in a throwaway Caddy and checks every line of it.
+#
+# Two matchers that cannot overlap (`/macro-atlas*` would also catch staging). The prefix is
+# not stripped: each build owns its base path. Each goes to its own container on loopback.
+# Leave X-Forwarded-For to Caddy and set no trusted_proxies: the app counts requests by the
+# last address in that header (deploy/README.md, "The proxy in front").
+#
+# Staging asks for a password on every path under it (D9, the recommended default): pages,
+# twins, static assets and the API alike, because one handle block holds all of them. Put the
+# user name and the bcrypt hash in Caddy's own environment, never in a file of this
+# repository:
+#
+#     caddy hash-password                 # type the password; prints the hash
+#     ATLAS_STAGING_USER=...              # in Caddy's environment (its unit or its env file)
+#     ATLAS_STAGING_PASSWORD_HASH=...
+#
+# With either unset there is no account, and staging answers 401 to everyone: it fails shut.
+
+@macro_atlas path /macro-atlas /macro-atlas/*
+handle @macro_atlas {
+	reverse_proxy {$ATLAS_PRODUCTION_UPSTREAM:127.0.0.1:3101}
+}
+
+@macro_atlas_staging path /macro-atlas-staging /macro-atlas-staging/*
+handle @macro_atlas_staging {
+	basic_auth {
+		{$ATLAS_STAGING_USER} {$ATLAS_STAGING_PASSWORD_HASH}
+	}
+	# On every answer, the 401 included. The staging build says it too; its copy is dropped
+	# so the header is there once.
+	header X-Robots-Tag "noindex"
+	reverse_proxy {$ATLAS_STAGING_UPSTREAM:127.0.0.1:3102} {
+		header_down -X-Robots-Tag
+	}
+}
