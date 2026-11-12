@@ -132,7 +132,8 @@ export function DownloadsPage({ view, basePath, address, current }: { view: Down
         </Panel>
       ))}
 
-      {view.whole.some((file) => file.refused === null) && (
+      {/* The examples read these two files: shown only when both are given. */}
+      {["observations.parquet", "observations.csv.gz"].every((name) => view.whole.some((file) => file.name === name && file.refused === null)) && (
         <Panel id="load" title="Load them">
           <pre tabIndex={0} aria-label="How to load the files" role="region" className="overflow-x-auto text-[13px] leading-relaxed text-ink">
             <code className="font-mono">{`# pandas

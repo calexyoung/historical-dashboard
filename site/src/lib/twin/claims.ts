@@ -114,7 +114,8 @@ export function claimTwin(release: OpenedRelease, surface: Surface, id: string, 
     ];
     const lines: string[] = [];
     for (const reading of lock.readings) {
-      const late = latest?.readings.find((r) => r.id === reading.id)?.latest ?? null;
+      const measured = latest?.readings.find((r) => r.id === reading.id);
+      const late = measured?.latest ?? null;
       const states: [string, EvidenceRow | null][] = [["then", reading.then], ["now_when_checked", reading.now_when_checked], ["latest", late]];
       for (const [state, row] of states) {
         if (!row) continue;
@@ -126,6 +127,12 @@ export function claimTwin(release: OpenedRelease, surface: Surface, id: string, 
         };
         put(reading.window ? { from: reading.window.from, to: reading.window.to } : null, true, row.unavailable ? [] : row.figures, row.unavailable ? row.unavailable.reason : null);
         for (const s of row.unavailable ? [] : row.window_sensitivity) put({ from: s.from, to: s.to }, false, s.unavailable ? [] : s.figures, s.unavailable ? s.unavailable.reason : null);
+      }
+      // A Reading this Release could not measure has no latest row, and a reason. One line says
+      // so, as the page and the JSON do: a reader of the CSV must not take it for a row left out.
+      if (!late && measured?.refused) {
+        const window = reading.window ? { from: reading.window.from, to: reading.window.to } : null;
+        lines.push(csvLine([claim.id, lock.version, reading.id, reading.series, reading.freq, reading.transform, reading.measure, "latest", null, null, release.id, window?.from ?? null, window?.to ?? null, window ? "declared" : null, null, null, null, null, null, null, measured.refused.reason]));
       }
     }
     const columns = ["claim", "lock_version", "reading", "series", "freq", "transform", "measure", "state", "as_of", "basis", "release_id", "window_from", "window_to", "window", "unit", "figure", "value", "period", "status", "empty", "unavailable"];

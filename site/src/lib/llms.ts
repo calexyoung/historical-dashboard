@@ -12,10 +12,28 @@ import type { RightsGate, Surface } from "@macro-atlas/core";
 import { FREQUENCIES } from "./catalog";
 import { mdText as md } from "./markdown";
 import { methodIndex } from "./method-docs";
-import { askGate } from "./query";
+import { askGate, fitsOneAnswer } from "./query";
 import type { OpenedRelease } from "./release/reader";
 import { claimTwin } from "./twin/claims";
 import { PAGE_TWINS } from "./twin/pages";
+
+/**
+ * The Claims whose Markdown twin answers 200. Finding out means drawing each twin (whether it is
+ * given depends on the gate and on its size), which is too much to do on every request for a
+ * file no limit is counted against. An opened Release never changes and the site holds one
+ * object for each, so the answer is kept with that object, for each Surface, and goes when the
+ * Release does. A gate of the caller's own (a test's) is always asked.
+ */
+const GIVEN = new WeakMap<OpenedRelease, Map<Surface, ReadonlySet<string>>>();
+function givenClaims(release: OpenedRelease, surface: Surface, address: string, gate?: Pick<RightsGate, "permits">): ReadonlySet<string> {
+  const work = (): ReadonlySet<string> => new Set(release.claims.claims.filter((claim) => claimTwin(release, surface, claim.id, "md", { address, gate }).status === 200).map((claim) => claim.id));
+  if (gate) return work();
+  let kept = GIVEN.get(release);
+  if (!kept) GIVEN.set(release, (kept = new Map()));
+  let found = kept.get(surface);
+  if (!found) kept.set(surface, (found = work()));
+  return found;
+}
 
 export function llmsText(release: OpenedRelease, surface: Surface, options: { address: string; gate?: Pick<RightsGate, "permits"> }): string {
   const { address, gate } = options;
@@ -36,13 +54,15 @@ export function llmsText(release: OpenedRelease, surface: Surface, options: { ad
 
   out.push("## Series", "");
   for (const entry of release.catalog.series) {
-    const given = !withheld.has(entry.key) && askGate(release, surface, [entry.key], "redistribute", { gate }).ok;
+    const permitted = !withheld.has(entry.key) && askGate(release, surface, [entry.key], "redistribute", { gate }).ok;
+    const given = permitted && fitsOneAnswer(release, entry.key);
     const about = `${md(entry.unit)}, ${(FREQUENCIES[entry.freq] ?? entry.freq).toLowerCase()}`;
-    out.push(given ? `- [${md(entry.name)}](${address}/data/${entry.key}.md): ${about}` : `- [${md(entry.name)}](${address}/data/${entry.key}.metadata.json): ${about}. ${withheld.has(entry.key) ? "Withheld" : "Its values are not handed out here"}; this is its metadata.`);
+    const why = withheld.has(entry.key) ? "Withheld" : permitted ? "It is too long for one file; ask its twin for a window" : "Its values are not handed out here";
+    out.push(given ? `- [${md(entry.name)}](${address}/data/${entry.key}.md): ${about}` : `- [${md(entry.name)}](${address}/data/${entry.key}.metadata.json): ${about}. ${why}; this is its metadata.`);
   }
   out.push("");
 
-  const claims = release.claims.claims.filter((claim) => claimTwin(release, surface, claim.id, "md", { address, gate }).status === 200);
+  const claims = release.claims.claims.filter((claim) => givenClaims(release, surface, address, gate).has(claim.id));
   if (release.claims.claims.length > 0) {
     out.push("## Claims", "", ...claims.map((claim) => `- [${md(claim.claimant.name)}, ${claim.said_on}](${address}/claims/${claim.id}.md)`));
     const kept = release.claims.claims.length - claims.length;

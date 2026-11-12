@@ -50,6 +50,12 @@ import type { OpenedRelease } from "../release/reader";
 export const MAX_SERIES = 8;
 /** Observations in one answer. Bounds the work and the bytes; a larger request must be narrowed. */
 export const MAX_ROWS = 50_000;
+/**
+ * Whether a Series' default twin (the whole Series, as it is) is within what one answer may
+ * hold. Past it the twin answers 422, so nothing should point a reader at it as a file.
+ */
+export const fitsOneAnswer = (release: Pick<OpenedRelease, "series" | "derived">, key: string): boolean =>
+  ((release.series[key] ?? release.derived[key])?.observations.length ?? 0) <= MAX_ROWS;
 /** Versions read to answer one as-of question or one vintage table, over every Series it rests on. */
 export const MAX_VINTAGE_ROWS = 250_000;
 /** How long one answer may take. An answer that took longer is not given, even if it finished. */

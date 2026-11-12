@@ -79,17 +79,36 @@ function open(root) {
 /** v1 averaged the weekly levels by the day they are dated. A weekly Observation here is the
  * ISO week of that day, and the engine files a week under the month its last day falls in, so
  * for this comparison alone the weeks are filed under the month of the day `offset` days after
- * the week begins (2 for a Wednesday). */
+ * the week begins (2 for a Wednesday).
+ *
+ * A month is whole only when every week dated in it is listed. The Series' first month is
+ * partial when the week before its first would be dated in the same month, and its last when
+ * the week after its last would be: the month in progress, which is not compared (the engine
+ * marks its own the same way). A month whose weeks are listed and hold no value has no value:
+ * it is kept as that, so that v1's figure for it is a value on one side only. */
 function meanByReferenceDay(observations, offset) {
+  const dated = (o, weeks = 0) => {
+    const day = new Date(`${o.period_start}T00:00:00Z`);
+    day.setUTCDate(day.getUTCDate() + offset + 7 * weeks);
+    return day.toISOString().slice(0, 7);
+  };
   const months = new Map();
   for (const o of observations) {
-    if (o.value === null) continue;
-    const day = new Date(`${o.period_start}T00:00:00Z`);
-    day.setUTCDate(day.getUTCDate() + offset);
-    const label = day.toISOString().slice(0, 7);
-    months.set(label, [...(months.get(label) ?? []), o.value]);
+    const label = dated(o);
+    if (!months.has(label)) months.set(label, []);
+    if (o.value !== null) months.get(label).push(o.value);
   }
-  return [...months].map(([period, values]) => ({ period, value: values.reduce((a, b) => a + b, 0) / values.length, status: "final" }));
+  const partial = new Set();
+  if (observations.length > 0) {
+    const [first, last] = [observations[0], observations.at(-1)];
+    if (dated(first, -1) === dated(first)) partial.add(dated(first));
+    if (dated(last, 1) === dated(last)) partial.add(dated(last));
+  }
+  return [...months].map(([period, values]) => ({
+    period,
+    value: values.length > 0 ? values.reduce((a, b) => a + b, 0) / values.length : null,
+    status: partial.has(period) ? "partial" : values.length > 0 ? "final" : "missing",
+  }));
 }
 
 const statement = json(statementPath);

@@ -839,7 +839,10 @@ class ImfSdmxAdapter:
 
     A null before a series' first number is padding and no entry (Japan's index is listed from
     1900 and begins in 1955). A null after it is a Period the Fund lists and prints no number
-    for. A Period the Fund does not list at all is no entry."""
+    for. A Period the Fund does not list at all is no entry.
+
+    An answer that carries an ``errors`` entry beside its data, or whose data set is a
+    ``Delete`` message (or has an action nobody has read), is kept and is never whole."""
 
     name = "imf_sdmx"
     version = 1
@@ -849,6 +852,9 @@ class ImfSdmxAdapter:
     #: What each derivation code makes of a value. Anything else is not read.
     DERIVATION = MappingProxyType({"O": "observed", "R": "observed", "SE": "estimate", "SEME": "estimate",
                                    "SEHI": "estimate", "SP": "projected"})
+    #: What a data set may say it is (SDMX-JSON's ``action``) and still state values. A
+    #: ``Delete`` data set has the same shape and lists Observations to take away.
+    ACTIONS = frozenset({"Information", "Replace", "Append", "Merge"})
     _NAME = re.compile(r"[A-Za-z0-9_]+(\.[A-Za-z0-9_]+)*")
     _PART = re.compile(r"[A-Za-z0-9_]+")
 
@@ -948,6 +954,14 @@ class ImfSdmxAdapter:
         answer = _json(bodies[0], problems, "the answer")
         if answer is None:
             return {}, {}
+        if answer.get("errors") not in (None, []):
+            # A message may hold data and errors together: an answer cut short says so here.
+            first = answer["errors"][0] if isinstance(answer["errors"], list) else answer["errors"]
+            title = first.get("title") if isinstance(first, dict) else None
+            code = first.get("code") if isinstance(first, dict) else None
+            problems.append("the answer carries an error message"
+                            + (f" ({code}: {str(title)[:120]})" if isinstance(title, str) else ""))
+            return {}, {}
         data = answer.get("data")
         sets = data.get("dataSets") if isinstance(data, dict) else None
         structures = data.get("structures") if isinstance(data, dict) else None
@@ -955,6 +969,14 @@ class ImfSdmxAdapter:
                 and isinstance(sets[0], dict) and isinstance(structures[0], dict)
                 and isinstance(sets[0].get("series"), dict)):
             problems.append("the answer does not hold exactly one data set and one structure")
+            return {}, {}
+        action = sets[0].get("action", "Information")
+        if action == "Delete":
+            problems.append("the answer's data set is a 'Delete' message: it lists what to take away, "
+                            "not what the values are")
+            return {}, {}
+        if not isinstance(action, str) or action not in self.ACTIONS:
+            problems.append(f"the answer's data set has an action this adapter does not read: {action!r}")
             return {}, {}
         structure = structures[0]
         wanted = f"Dataflow={scope['agency']}:{scope['flow']}("

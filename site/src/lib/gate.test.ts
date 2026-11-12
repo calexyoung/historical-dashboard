@@ -414,6 +414,22 @@ describe("gate: rate limits on the read API and on files (PLAN section 7, M24)",
     expect(looked).toBe(0);
   });
 
+  it("the handler's own Explorer twin path, asked for directly with a pin, opens no pinned Release: only the proxy's second pass may", async () => {
+    const PIN = "20260115T000000Z-ccccccc";
+    const token = "a-token-only-this-process-knows";
+    let looked = 0;
+    const reader = { ...readerOf(open), pinned: async () => (looked++, { ok: true, release: { id: PIN } as OpenedRelease, refreshFailed: null }) as Opened };
+    const c = { ...base, basePath: "/macro-atlas", twinToken: token, reader };
+    for (const twinToken of [undefined, "guess"]) {
+      expect(await gate(c, from("/page-twin/explore", "203.0.113.7", { search: `?pin=${PIN}`, ...(twinToken ? { twinToken } : {}) }))).toMatchObject({ rewrite: "/not-found/not-an-address" });
+    }
+    expect(looked).toBe(0);
+    const second = await gate(c, from("/page-twin/explore", "203.0.113.7", { search: `?pin=${PIN}`, twinToken: token }));
+    if (second.action !== "forward") throw new Error("expected forward");
+    expect(second.requestHeaders[RELEASE_HEADER]).toBe(PIN);
+    expect(looked).toBe(1);
+  });
+
   it("a gate that was given no limiter limits nothing", async () => {
     for (let i = 0; i < 3; i++) expect((await gate({ ...base, reader: readerOf(open) }, from("/api/v1/catalog.json"))).action).toBe("forward");
   });

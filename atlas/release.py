@@ -334,11 +334,19 @@ def _bulk_rules(bundle, files, bulk_paths: list[str], digests) -> list[Issue]:
         return issues
     if package["release_id"] != manifest["release_id"]:
         add(DATAPACKAGE, f"it is release {package['release_id']}'s, not this one's")
+    # Its licence statements rest on a rights register: the one this Release was decided by.
+    if any(package["rights_register"].get(part) != manifest["rights_register"].get(part)
+           for part in ("version", "sha256")):
+        add(DATAPACKAGE, "its rights register is not the one the manifest names")
     statuses = {entry["key"]: entry["rights"]["status"] for entry in bundle["catalog"]["series"]}
     named: set[str] = set()
+    names: set[str] = set()
     for resource in package["resources"]:
         path = f"downloads/{resource['path']}"
         match = _BULK_FILE.fullmatch(path)
+        if resource["name"] in names:   # a Data Package tells its resources apart by name
+            add(DATAPACKAGE, f"the name {resource['name']} is given to two resources")
+        names.add(resource["name"])
         if path in named:
             add(DATAPACKAGE, f"{resource['path']} is named twice")
             continue

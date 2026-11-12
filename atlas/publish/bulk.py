@@ -181,7 +181,11 @@ def _observation_rows(files: dict[str, bytes], catalog: dict[str, dict], keys: l
 
 def _vintage_rows(key: str, history: dict, entry: dict) -> list[dict]:
     """One row per version, each under the metadata recorded with it: the unit, the Origin and
-    the licence class a version carries are those of its own day, not today's."""
+    the licence class a version carries are those of its own day, not today's. A version
+    recorded with no rights has no class of its own day to give: it is ``unknown``, and today's
+    class is not written back onto it. What must be said of the file is another matter: for
+    such a version it is what the register asks to be said of the Series today, so that no
+    file leaves without a citation today's terms require."""
     lines = {line["hash"]: line["metadata"] for line in history["metadata"]}
     rows = []
     for index, v in enumerate(history["rows"]):
@@ -195,7 +199,7 @@ def _vintage_rows(key: str, history: dict, entry: dict) -> list[dict]:
                      "channel": v["channel"],
                      "origin": ((metadata.get("source") or {}).get("origin") or {}).get("producer"),
                      "unit": metadata.get("unit"),
-                     "licence": rights.get("licence_class") or entry["rights"]["status"], "_n": index,
+                     "licence": rights.get("licence_class") or "unknown", "_n": index,
                      # Not a column: what the datapackage says of the file the row is in.
                      "_attribution": (rights.get("attribution") if rights.get("licence_class")
                                       else entry["rights"].get("attribution"))})
@@ -429,10 +433,10 @@ def problems(files: dict[str, bytes], gate: RightsGate) -> list[str]:
     bytes: each table again, in every format; the rows the Release's own files give; and the
     gate, asked afresh about every Series a row names."""
     paths = sorted(p for p in files if p.startswith(f"{FOLDER}/") and p != DATAPACKAGE)
-    if not paths and DATAPACKAGE not in files:
-        return []
-    if json.loads(files[MANIFEST]).get("profile") != "public" if MANIFEST in files else False:
-        return ["bulk files are written only for a public-profile release"]
+    public = json.loads(files[MANIFEST]).get("profile") == "public" if MANIFEST in files else True
+    nothing = not paths and DATAPACKAGE not in files
+    if not public:
+        return [] if nothing else ["bulk files are written only for a public-profile release"]
     catalog = {entry["key"]: entry for entry in json.loads(files[CATALOG])["series"]}
     found: list[str] = []
     tables: dict[str, list[tuple]] = {}
@@ -476,6 +480,10 @@ def problems(files: dict[str, bytes], gate: RightsGate) -> list[str]:
         if path in files and _history_refusal(json.loads(files[path]), gate) is None:
             versions.extend(_vintage_rows(key, json.loads(files[path]), catalog[key]))
     expected["vintages"] = [tuple(row[c] for c in VINTAGE_COLUMNS) for row in versions]
+    if nothing:
+        # No file and no descriptor. That is right when nothing may be handed out, and a loss
+        # when something may: the files are missing, not merely absent.
+        return [f"{table}.parquet: is missing" for table in ("observations", "vintages") if expected[table]]
     for table in ("observations", "vintages"):
         if expected[table] and f"{table}.parquet" not in tables:
             found.append(f"{table}.parquet: is missing")

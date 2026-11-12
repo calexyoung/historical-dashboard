@@ -74,6 +74,16 @@ describe("a Claim's page (PLAN section 3, M21)", () => {
     expect(html.match(/<h1/g)).toHaveLength(1);
   });
 
+  it("the page's heading comes before any section heading: who said it and when, then the sections", () => {
+    const { html } = page(fixture);
+    const headings = [...html.matchAll(/<(h[1-6])[^>]*>(.*?)<\/\1>/g)].map((m) => [m[1], m[2]!.replace(/<[^>]+>/g, "").trim()]);
+    expect(headings[0]).toEqual(["h1", "A. Fixture, 11 December 2025"]);
+    expect(headings.slice(1).every(([level]) => level !== "h1")).toBe(true);
+    expect(headings.some(([level, words]) => level === "h2" && words === "Claim")).toBe(false);
+    // The panel is still named by its label, which is no longer a heading.
+    expect(html).toMatch(/<section id="claim" aria-labelledby="claim-title"[^>]*><header[^>]*><p id="claim-title"[^>]*>Claim<\/p>/);
+  });
+
   it("says what each Reading measures, as a sentence that names the computation", () => {
     const { view } = page(fixture);
     expect(view.readings.map((r) => r.what)).toEqual([
@@ -564,6 +574,23 @@ describe("a Claim's twins (PLAN section 7, M21)", () => {
     }
     expect(twin("json", fixture, "production", both)).toMatchObject({ status: 200, cacheable: true, filename: `macro-atlas_claim_${CLAIM}.json` });
     expect(JSON.parse(twin("json", fixture, "production", both).body).notice).toBeUndefined();
+  });
+
+  it("the CSV says of a Reading this Release could not measure that it could not, with the reason", () => {
+    const release = copy();
+    const late = release.latest!.claims[0]!.readings[0]!;
+    late.latest = null;
+    late.refused = { reason: "series_withheld", message: "the series is withheld in this release" };
+    const rows = parseCsv(twin("evidence.csv", release).body).filter((r) => !r[0]!.startsWith("#"));
+    const head = rows[0]!;
+    const at = (name: string) => head.indexOf(name);
+    const mine = rows.filter((r) => r[at("reading")] === late.id && r[at("state")] === "latest");
+    expect(mine).toHaveLength(1);
+    expect(mine[0]![at("unavailable")]).toBe("series_withheld");
+    expect(mine[0]![at("release_id")]).toBe(release.id);
+    expect(mine[0]![at("value")]).toBe("");
+    // The JSON twin and the page already said so.
+    expect(JSON.parse(twin("json", release).body).evidence.readings[0].latest_refused).toMatchObject({ reason: "series_withheld" });
   });
 
   it("a newest lock without its numbers: the record is served, no older lock's figures or file stand in", () => {

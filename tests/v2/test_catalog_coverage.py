@@ -230,3 +230,26 @@ def test_a_stale_page_fails_the_check(tmp_path, monkeypatch, capsys):
     assert "is out of date: run python -m atlas catalog --write" in capsys.readouterr().err
     assert atlas_main(["catalog", "--write"]) == 0
     assert stale.read_text().startswith("# G20 coverage")
+
+
+@pytest.mark.parametrize("option", ["--write", "--check"])
+def test_a_matrix_that_points_at_nothing_stops_the_command_before_any_page_is_written(
+        option, tmp_path, monkeypatch, capsys):
+    """The G20 page is drawn from the matrix's references. One that is not in the Catalog is
+    said by name, and none of the three pages is written: not two of them and a traceback."""
+    from atlas.catalog import cli, coverage
+
+    dangling = json.loads(json.dumps(load_coverage()["g20"]))
+    first = next(cell for row in dangling["rows"] for cell in row["cells"].values() if "series" in cell)
+    first["series"] = "no_such_series"
+    monkeypatch.setattr(coverage, "load_coverage", lambda directory=None: {"g20": dangling})
+    monkeypatch.setattr(coverage, "COVERAGE_PAGE", tmp_path / "g20-coverage.md")
+    written = []
+    monkeypatch.setattr(cli.T, "write_table", lambda *a, **k: written.append("table"))
+    monkeypatch.setattr(cli.V, "write_v1_coverage", lambda *a, **k: written.append("v1"))
+
+    assert atlas_main(["catalog", option]) == 1
+
+    assert written == [] and not (tmp_path / "g20-coverage.md").exists()
+    said = capsys.readouterr().err
+    assert "no_such_series is not in the catalog" in said and "Traceback" not in said
