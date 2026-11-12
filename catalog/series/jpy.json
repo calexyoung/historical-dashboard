@@ -32,13 +32,13 @@
   "max_lag": "P1M",
   "range": [
     70.0,
-    170.0
+    400.0
   ],
   "status": "active",
   "migration": {
     "v1_source": "FRED DEXJPUS",
     "change": "same",
-    "note": "The identifier is the Data Download Program's as recalled, to be confirmed by M13's captured fixture.",
+    "note": "The identifier is the Data Download Program's as recalled, to be confirmed by M13's captured fixture. v1's range was for the years since 2000; the Board's file is daily since 1971, when the dollar bought 358 yen.",
     "milestone": "M13"
   }
 }

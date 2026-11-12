@@ -32,13 +32,13 @@
   "max_lag": "P3M",
   "range": [
     0.0,
-    7.0
+    25.0
   ],
   "status": "active",
   "migration": {
     "v1_source": "FRED FEDFUNDS",
     "change": "same",
-    "note": "The identifier is the Data Download Program's as recalled, to be confirmed by M13's captured fixture.",
+    "note": "The identifier is the Data Download Program's as recalled, to be confirmed by M13's captured fixture. v1's range was for the years since 2000; the Board's file is monthly since 1954, when the rate reached 19 percent in 1981.",
     "milestone": "M13"
   }
 }

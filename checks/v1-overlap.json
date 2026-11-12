@@ -1,0 +1,209 @@
+{
+  "format": 1,
+  "about": "The statement M13 owes for every Series fetched from BLS, Treasury Fiscal Data and the Federal Reserve Board: how far its values may be from v1's over the Periods both hold, and why. scripts/v1-overlap.mjs compares a release built from a capture store with a release of v1's values (atlas legacy-release) against it. abs is in v1's unit: half a unit of the last decimal v1 kept (two for a figure in percent, three otherwise) unless why says more. factor brings the Origin's unit to v1's. exceptions are Periods further off than abs, each with what was found; they are counted, never hidden. different marks a Series that is another quantity than v1's by a recorded decision. v1: null says v1 had no such Series. A Period the engine marks partial (the month in progress) is not compared. The comparison is of figures fetched within days of each other: an Origin's later revision is a difference this file does not allow for. Nothing here is data.",
+  "min_overlap": 100,
+  "series": [
+    {
+      "key": "cpi",
+      "abs": 0.0005,
+      "why": "v1 kept three decimals"
+    },
+    {
+      "key": "unrate",
+      "abs": 0.005,
+      "why": "v1 kept two decimals of a figure in percent"
+    },
+    {
+      "key": "payems",
+      "abs": 0.0005,
+      "why": "v1 kept three decimals"
+    },
+    {
+      "key": "civpart",
+      "abs": 0.005,
+      "why": "v1 kept two decimals of a figure in percent"
+    },
+    {
+      "key": "corecpi",
+      "abs": 0.0005,
+      "why": "v1 kept three decimals"
+    },
+    {
+      "key": "rent_cpi",
+      "abs": 0.0005,
+      "why": "v1 kept three decimals"
+    },
+    {
+      "key": "wages",
+      "abs": 0.0005,
+      "why": "v1 kept three decimals"
+    },
+    {
+      "key": "eggs",
+      "abs": 0.0005,
+      "why": "v1 kept three decimals"
+    },
+    {
+      "key": "labor_share",
+      "abs": 0.0005,
+      "why": "v1 kept three decimals"
+    },
+    {
+      "key": "real_wages",
+      "abs": 0.0005,
+      "why": "v1 kept three decimals"
+    },
+    {
+      "key": "debt",
+      "abs": 5.0,
+      "why": "v1 held the quarter-end total in millions of dollars from FRED's GFDEBTN; here the last business day of the quarter from Debt to the Penny, in dollars, is divided by a million. FRED's figures are whole millions and come from another Treasury publication. 93 of the 106 quarters agree to within $1 million and five more to within $3.6 million; $5 million (under a millionth of the total) is allowed, and the seven quarters beyond it are explained one by one.",
+      "factor": 1e-06,
+      "exceptions": {
+        "2020-Q1": "v1's figure is the total of 31 January 2020 (to $0.12 million), not of 31 March: about $463 billion less than the quarter's end.",
+        "2013-Q4": "v1's figure is the total of 31 October 2013 (to $1.9 million), not of 31 December: about $196 billion less than the quarter's end.",
+        "2012-Q1": "v1's figure is $24.4 billion (0.16 percent) above Debt to the Penny for 30 March 2012 and matches no day near it. Not traced further.",
+        "2010-Q2": "v1's figure is $1.7 billion (0.013 percent) below Debt to the Penny for 30 June 2010. Not traced further.",
+        "2012-Q2": "v1's figure is $1.3 billion (0.008 percent) below Debt to the Penny for 29 June 2012. Not traced further.",
+        "2003-Q3": "v1's figure is $89 million above Debt to the Penny for 30 September 2003. Not traced further.",
+        "2005-Q4": "v1's figure is $11.5 million below Debt to the Penny for 30 December 2005. Not traced further."
+      }
+    },
+    {
+      "key": "gs10",
+      "abs": 0.005,
+      "why": "v1 kept two decimals of a figure in percent; here the month is the mean of the Board's business days, by the engine"
+    },
+    {
+      "key": "gs2",
+      "abs": 0.005,
+      "why": "v1 kept two decimals of a figure in percent; here the month is the mean of the Board's business days, by the engine"
+    },
+    {
+      "key": "fedfunds",
+      "abs": 0.005,
+      "why": "v1 kept two decimals of a figure in percent"
+    },
+    {
+      "key": "eurusd",
+      "abs": 0.0005,
+      "why": "v1 kept three decimals of the monthly mean; here the month is the mean of the Board's business days, by the engine"
+    },
+    {
+      "key": "gbpusd",
+      "abs": 0.0005,
+      "why": "v1 kept three decimals of the monthly mean; here the month is the mean of the Board's business days, by the engine"
+    },
+    {
+      "key": "brl",
+      "abs": 0.0005,
+      "why": "v1 kept three decimals of the monthly mean; here the month is the mean of the Board's business days, by the engine"
+    },
+    {
+      "key": "cad",
+      "abs": 0.0005,
+      "why": "v1 kept three decimals of the monthly mean; here the month is the mean of the Board's business days, by the engine"
+    },
+    {
+      "key": "cny",
+      "abs": 0.0005,
+      "why": "v1 kept three decimals of the monthly mean; here the month is the mean of the Board's business days, by the engine"
+    },
+    {
+      "key": "inr",
+      "abs": 0.0005,
+      "why": "v1 kept three decimals of the monthly mean; here the month is the mean of the Board's business days, by the engine"
+    },
+    {
+      "key": "jpy",
+      "abs": 0.0005,
+      "why": "v1 kept three decimals of the monthly mean; here the month is the mean of the Board's business days, by the engine"
+    },
+    {
+      "key": "mxn",
+      "abs": 0.0005,
+      "why": "v1 kept three decimals of the monthly mean; here the month is the mean of the Board's business days, by the engine"
+    },
+    {
+      "key": "usd_broad",
+      "abs": 0.0005,
+      "why": "v1 kept three decimals of the monthly mean; here the month is the mean of the Board's business days, by the engine"
+    },
+    {
+      "key": "fedassets",
+      "abs": 0.0005,
+      "why": "v1 kept three decimals of the mean of the Wednesday levels dated in the month. A weekly Observation here is the ISO week of its Wednesday, and the engine files a week under the month its last day (a Sunday) falls in; for this comparison the weeks are filed by their Wednesday, as v1 filed them. The engine's own monthly mean differs from v1's in a month whose last Wednesday's week ends in the next month: a difference of representation, stated in docs/v2/v1-overlap.md.",
+      "reference_day_offset": 2
+    },
+    {
+      "key": "m2",
+      "abs": 0.0005,
+      "why": "v1 kept three decimals"
+    },
+    {
+      "key": "credit",
+      "abs": 0.0005,
+      "why": "v1 kept three decimals"
+    },
+    {
+      "key": "indpro",
+      "abs": 0.0005,
+      "why": "v1 kept three decimals"
+    },
+    {
+      "key": "delinq",
+      "abs": 0.005,
+      "why": "v1 kept two decimals of a figure in percent"
+    },
+    {
+      "key": "cpi_yoy",
+      "abs": 0.5,
+      "why": "A different quantity by decision (ADR 0025, decision 2): v1 computed the change of the seasonally adjusted index; this is the twelve-month change of the unadjusted index, the figure BLS publishes. Half a percentage point bounds what the two have differed by since 2000.",
+      "different": true
+    },
+    {
+      "key": "corecpi_yoy",
+      "abs": 0.005,
+      "why": "v1 kept two decimals of a figure in percent; computed by the engine from the unrounded index"
+    },
+    {
+      "key": "rent_yoy",
+      "abs": 0.005,
+      "why": "v1 kept two decimals of a figure in percent; computed by the engine from the unrounded index"
+    },
+    {
+      "key": "wages_yoy",
+      "abs": 0.005,
+      "why": "v1 kept two decimals of a figure in percent; computed by the engine"
+    },
+    {
+      "key": "m2_yoy",
+      "abs": 0.005,
+      "why": "v1 kept two decimals of a figure in percent; computed by the engine"
+    },
+    {
+      "key": "t10y2y",
+      "abs": 0.005,
+      "why": "v1 kept two decimals of a figure percentage points, of FRED's monthly mean of the daily spread; here the engine takes the daily difference of the two yields and then the monthly mean"
+    },
+    {
+      "key": "cpi_nsa",
+      "v1": null,
+      "why": "Not in v1 (M8): what cpi_yoy is computed from."
+    },
+    {
+      "key": "receipts",
+      "v1": null,
+      "why": "Not in v1: new with the Treasury adapter (M13)."
+    },
+    {
+      "key": "outlays",
+      "v1": null,
+      "why": "Not in v1: new with the Treasury adapter (M13)."
+    },
+    {
+      "key": "net_worth",
+      "v1": null,
+      "why": "Not in v1: new with the Board adapter (M13)."
+    }
+  ]
+}
