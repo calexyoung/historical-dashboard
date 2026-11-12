@@ -363,11 +363,19 @@ function bulkRules(release: Release, files: ReleaseFiles, bulkPaths: string[], d
     return issues;
   }
   if (pack.release_id !== manifest.release_id) add(DATAPACKAGE, `it is release ${pack.release_id}'s, not this one's`);
+  // Its licence statements rest on a rights register: the one this Release was decided by.
+  if (pack.rights_register.version !== manifest.rights_register.version || (pack.rights_register.sha256 ?? null) !== (manifest.rights_register.sha256 ?? null)) {
+    add(DATAPACKAGE, "its rights register is not the one the manifest names");
+  }
   const statuses = new Map(release.catalog.series.map((entry) => [entry.key, entry.rights.status as string]));
   const named = new Set<string>();
+  const names = new Set<string>();
   for (const resource of pack.resources) {
     const path = `downloads/${resource.path}`;
     const match = BULK_FILE.exec(path);
+    // A Data Package tells its resources apart by name.
+    if (names.has(resource.name)) add(DATAPACKAGE, `the name ${resource.name} is given to two resources`);
+    names.add(resource.name);
     if (named.has(path)) {
       add(DATAPACKAGE, `${resource.path} is named twice`);
       continue;

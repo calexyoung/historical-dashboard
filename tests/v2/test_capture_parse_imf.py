@@ -291,6 +291,43 @@ def test_an_answer_out_of_shape_is_never_whole(change, said):
     assert IMF.parse(raw).complete is False
 
 
+@pytest.mark.parametrize("action, said", [
+    ("Delete", "the answer's data set is a 'Delete' message: it lists what to take away, not what the values are"),
+    ("Remove", "the answer's data set has an action this adapter does not read: 'Remove'"),
+    (7, "the answer's data set has an action this adapter does not read: 7"),
+])
+def test_a_data_set_that_says_what_to_delete_is_not_read_as_values(action, said):
+    """SDMX-JSON marks a data set with an action. A Delete message lists Observations to take
+    away, in the same shape as the ones to keep."""
+    raw, _ = fetch(endpoint([JPN]), {url(JPN): [(200, damaged(lambda d: d["dataSets"][0].update(action=action)))]})
+    assert raw.evidence.complete is False and raw.evidence.problems == [said]
+    parsed = IMF.parse(raw)
+    assert parsed.complete is False and parsed.series == {}
+
+
+@pytest.mark.parametrize("action", ["Information", "Replace", "Append", "Merge", None])
+def test_a_data_set_that_states_values_is_read(action):
+    change = (lambda d: d["dataSets"][0].pop("action")) if action is None else (lambda d: d["dataSets"][0].update(action=action))
+    raw, _ = fetch(endpoint([JPN]), {url(JPN): [(200, damaged(change))]})
+    assert raw.evidence.complete is True, raw.evidence.problems
+
+
+@pytest.mark.parametrize("errors", [[{"code": 130, "title": "Response too large", "detail": "truncated"}], {"code": 500}, "busy"])
+def test_an_answer_that_carries_an_error_beside_its_data_is_never_whole(errors):
+    """An SDMX-JSON message may hold data and errors together (a response cut short says so
+    there). What came with an error is kept and is not the state of a Series."""
+    whole = json.loads(damaged(lambda d: None))
+    whole["errors"] = errors
+    raw, _ = fetch(endpoint([JPN]), {url(JPN): [(200, json.dumps(whole))]})
+    assert raw.evidence.complete is False
+    assert raw.evidence.problems[0].startswith("the answer carries an error message")
+    assert IMF.parse(raw).complete is False
+
+    whole["errors"] = []
+    raw, _ = fetch(endpoint([JPN]), {url(JPN): [(200, json.dumps(whole))]})
+    assert raw.evidence.complete is True, raw.evidence.problems
+
+
 @pytest.mark.parametrize("text", ["<html>busy</html>", "[]", '{"data": 3}', '{"meta": {}}'])
 def test_an_answer_that_is_not_the_message_is_never_whole(text):
     raw, _ = fetch(endpoint([JPN]), {url(JPN): [(200, text)]})

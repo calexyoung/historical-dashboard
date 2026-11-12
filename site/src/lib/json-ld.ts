@@ -3,10 +3,12 @@
  * program reads to know what the page is about. It is made from the metadata twin's record
  * (`seriesRecord`), a fixed selection of the Catalog entry, so it holds no value, and says how
  * far the Series runs only where the Series may be shown. A file is listed as a distribution
- * only where it would be given: a Series that may not be handed out lists its metadata alone.
+ * only where it would be given: a Series that may not be handed out, or is too long for one
+ * answer (its default twin would answer 422), lists its metadata alone.
  */
 import type { RightsGate, Surface } from "@macro-atlas/core";
 import type { OpenedRelease } from "./release/reader";
+import { fitsOneAnswer } from "./query";
 import { seriesRecord } from "./twin";
 
 const FREQUENCY: Record<string, string> = { daily: "P1D", business_daily: "P1D", weekly: "P1W", monthly: "P1M", quarterly: "P3M", annual: "P1Y" };
@@ -18,7 +20,7 @@ export function datasetJsonLd(release: OpenedRelease, surface: Surface, key: str
   const page = `${options.address}/data/${entry.key}`;
   const file = record.state === "shown" ? (release.series[entry.key] ?? release.derived[entry.key]) : undefined;
   const distribution = [
-    ...(record.downloads.permitted
+    ...(record.downloads.permitted && fitsOneAnswer(release, entry.key)
       ? [
           { "@type": "DataDownload", encodingFormat: "text/csv", contentUrl: `${page}.csv` },
           { "@type": "DataDownload", encodingFormat: "application/json", contentUrl: `${page}.json` },

@@ -161,6 +161,15 @@ question for the engine (PLAN 4.5) and is listed for Alex in the M13 report.
 v1 averaged the prices dated in each month, and the comparison files the weeks by their
 Mondays. Filed that way all 323 months are within v1's rounding.
 
+Filed by a reference day, a month is compared only when every week dated in it is held: the
+Series' first month when it begins part way through one, and its last while the month is in
+progress, are counted as partial and not compared, as the engine's own month in progress is.
+A month whose weeks are listed and hold no value is a month with no value, and v1's figure
+for it is then a value on one side only. This rule was added after the run above (a review
+finding on the comparison, not a change in any figure): the two counts for `fedassets` and
+`gas` in the table were made without it and may each include a first or last month that a
+run today would set aside.
+
 ## What the live runs found that the fixtures now carry
 
 - The Board's download program answers the H.10 daily rates package with an empty body when

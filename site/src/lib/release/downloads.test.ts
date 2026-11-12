@@ -74,6 +74,28 @@ describe("a Release's bulk files, as the reader opens them", () => {
     expect(await createReleaseReader({ root: other, surface: "local" }).current()).toMatchObject({ ok: false, kind: "invalid" });
   });
 
+  it("refuses a datapackage that names another rights register than the manifest, or gives two resources one name", async () => {
+    const change = async (edit: (pack: { rights_register: { version: string; sha256: string | null }; resources: { name: string }[] }) => void) => {
+      const root = tempRoot();
+      const dir = addRelease(root, { id: A, bulk: true });
+      const path = join(dir, "downloads", "datapackage.json");
+      const pack = JSON.parse(readFileSync(path, "utf8"));
+      edit(pack);
+      writeFileSync(path, JSON.stringify(pack));
+      promote(root, A);
+      return createReleaseReader({ root, surface: "local" }).current();
+    };
+    expect(await change(() => undefined)).toMatchObject({ ok: true });
+    const version = await change((pack) => void (pack.rights_register.version = "another"));
+    expect(version).toMatchObject({ ok: false, kind: "invalid" });
+    if (!version.ok) expect(version.reason).toContain("rights register");
+    const digest = await change((pack) => void (pack.rights_register.sha256 = "0".repeat(64)));
+    expect(digest).toMatchObject({ ok: false, kind: "invalid" });
+    const twice = await change((pack) => void (pack.resources[1]!.name = pack.resources[0]!.name));
+    expect(twice).toMatchObject({ ok: false, kind: "invalid" });
+    if (!twice.ok) expect(twice.reason).toContain("the name");
+  });
+
   it("hands out one named file as it is on disk, and nothing by any other name", async () => {
     const reader = createReleaseReader({ root: FIXTURE_ROOT, surface: "local" });
     const file = await reader.download!(FIXTURE_ID, "observations.ndjson.gz");
@@ -93,6 +115,21 @@ describe("a Release's bulk files, as the reader opens them", () => {
     const file = await reader.download!(FIXTURE_ID, "datapackage.json");
     const text = (await drain(file!.stream())).toString("utf8");
     expect(JSON.parse(text).release_id).toBe(FIXTURE_ID);
+  });
+
+  it("still hands out the current Release's datapackage after four other Releases were opened beside it", async () => {
+    // The reader keeps four opened Releases. When the current one is the one let go, it is
+    // still served (it is the last good one), and its datapackage must be too.
+    const root = tempRoot();
+    const ids = ["20260201T000000Z-aaaaaaa", "20260202T000000Z-bbbbbbb", "20260203T000000Z-ccccccc", "20260204T000000Z-ddddddd", "20260205T000000Z-eeeeeee"];
+    for (const id of ids) addRelease(root, { id, bulk: true });
+    promote(root, ids[0]!);
+    const reader = createReleaseReader({ root, surface: "local" });
+    expect((await reader.current()).ok).toBe(true);
+    for (const id of ids.slice(1)) expect((await reader.pinned!(id)).ok).toBe(true);
+    const file = await reader.download!(ids[0]!, "datapackage.json");
+    expect(file).not.toBeNull();
+    expect(JSON.parse((await drain(file!.stream())).toString("utf8")).release_id).toBe(ids[0]);
   });
 
   it("gives nothing once the file on disk is no longer the one that was checked", async () => {

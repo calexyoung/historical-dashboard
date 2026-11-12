@@ -82,11 +82,15 @@ One row per version in `vintages/{key}.json`: the columns above without `frequen
 The two clocks are never merged into one column (`vintage-resolution.md`). A version's
 `licence` is the class the register gave when the version was captured, so
 `vintages.{licence}.parquet` is split by that, and a Series whose class changed has rows in
-two files. Whether a version is in any file at all is decided by today's register.
+two files. A version the store recorded with no rights has no class of its own day: its
+`licence` is `unknown` and it is in `vintages.unknown.parquet`. Today's class is never written
+back onto it. Whether a version is in any file at all is decided by today's register.
 
 A file of versions is described in the datapackage by what was recorded with its rows: their
 licence classes, the attribution each carried, the Origin each names. Today's terms address
-is given only for a class a Series in the file still has today.
+is given only for a class a Series in the file still has today. For a version recorded with
+no rights the attribution is the one the register asks for the Series today: what class the
+version was under is not known, and what must be said when the file is handed out still is.
 
 ## The datapackage
 

@@ -205,6 +205,29 @@ def test_the_datapackage_is_split_into_resources_by_licence(tmp_path, store):
     assert validate_release(directory) == []
 
 
+def test_a_version_recorded_without_a_licence_class_is_not_given_todays(tmp_path, register):
+    """The store may hold a version whose metadata records no rights. What class it was under
+    that day is then not known, and the file says so: today's class is not written back onto
+    it. Whether it is in a file at all is still today's register's decision, and what the
+    register asks to be said of the Series today is still said of the file."""
+    from .test_publish_edges import record
+
+    store = tmp_path / "store"
+    record(store, 0, [("2026-01", "100.000", "final"), ("2026-02", "100.400", "final")])   # rights: None
+    directory = publish(tmp_path, register, store)
+
+    versions = parquet_rows(directory / "downloads" / "vintages.parquet")
+    assert versions and {r["licence"] for r in versions} == {"unknown"}
+    by_path = {r["path"]: r for r in read_json(directory / "downloads" / "datapackage.json")["resources"]}
+    assert "vintages.public_domain.parquet" not in by_path
+    assert by_path["vintages.unknown.parquet"]["licences"] == ["unknown"] == by_path["vintages.parquet"]["licences"]
+    assert by_path["vintages.unknown.parquet"]["licenses"] == [{"name": "other-closed", "title": "Not settled"}]
+    assert by_path["vintages.parquet"]["attributions"] == ["Synthetic test data, Macro Atlas project"]
+    # The Observations are today's and say today's class.
+    assert {r["licence"] for r in csv_rows(directory / "downloads" / "observations.csv.gz")} == {"public_domain"}
+    assert validate_release(directory) == []
+
+
 # --- they load ------------------------------------------------------------------------------------
 
 
@@ -338,6 +361,29 @@ def test_the_validator_refuses_bulk_files_in_a_local_profile_release(tmp_path, r
     assert "bulk_files" in {issue.code for issue in validate_release(local)}
 
 
+def test_the_validator_holds_the_datapackage_to_the_manifests_register_and_to_one_name_a_resource(
+        tmp_path, register, store):
+    """The datapackage's licence statements rest on a rights register: it must be the one the
+    manifest names. And a Data Package's resources are told apart by name."""
+    directory = publish(tmp_path, register, store)
+    files = {p.relative_to(directory).as_posix(): p.read_bytes() for p in directory.rglob("*") if p.is_file()}
+
+    def issues(change) -> list[str]:
+        package = json.loads(files["downloads/datapackage.json"])
+        change(package)
+        found = validate_files(directory.name, {**files, "downloads/datapackage.json": json.dumps(package).encode()})
+        return [f"{issue.code}: {issue.message}" for issue in found]
+
+    assert issues(lambda p: None) == []
+    assert issues(lambda p: p["rights_register"].update(version="another")) == [
+        "bulk_files: its rights register is not the one the manifest names"]
+    assert issues(lambda p: p["rights_register"].update(sha256="0" * 64)) == [
+        "bulk_files: its rights register is not the one the manifest names"]
+    first = json.loads(files["downloads/datapackage.json"])["resources"][0]["name"]
+    assert issues(lambda p: p["resources"][1].update(name=first)) == [
+        f"bulk_files: the name {first} is given to two resources"]
+
+
 # --- reuse and withdrawal -------------------------------------------------------------------------
 
 
@@ -350,6 +396,59 @@ def test_a_content_only_release_writes_its_bulk_files_again(tmp_path, register, 
     assert six(csv_rows(second / "downloads" / "observations.csv.gz")) == JOBS + PRICE
     assert read_json(second / "downloads" / "datapackage.json")["release_id"] == second.name
     assert validate_release(second) == []
+
+
+def _two_rows(tmp_path, **jobs) -> Path:
+    """The fixture's register with jobs on a row of its own, which ``jobs`` changes."""
+    table = fixture_table(datasets=["fixture prices"])
+    second = {**table["rows"][0], "id": "fx-jobs", "datasets": ["fixture jobs"], **jobs}
+    second.pop("capture", None)
+    table["rows"].append(second)
+    return write_register(tmp_path / f"two-{len(jobs)}.json", table)
+
+
+def test_a_content_only_release_says_todays_rights_of_the_data_it_reuses(tmp_path, store):
+    """--reuse-data keeps the data files. What the register says of them is not data: a
+    Series the register has since moved to another licence class is described, and filed in
+    the bulk files, by today's class and today's terms, not by those of the day it was read."""
+    first = publish(tmp_path, _two_rows(tmp_path), store, series=series_with_recipes(tmp_path / "series.json"))
+    assert not (first / "downloads" / "observations.citation_required.csv.gz").exists()
+    before = {e["key"]: e for e in read_json(first / "catalog.json")["series"]}
+    assert before["fx_jobs_per_price"]["rights"]["status"] == "public_domain"
+    cited = _two_rows(tmp_path, licence_class="citation_required", attribution="Source: Fixture jobs office",
+                      terms=[{"url": "https://example.org/terms", "read_on": "2026-01-01"}])
+
+    second = publish(tmp_path, cited, store, reuse_data=True, now=NOW.replace(hour=18))
+
+    entries = {e["key"]: e for e in read_json(second / "catalog.json")["series"]}
+    assert entries["fx_jobs"]["rights"] == {
+        "owner": entries["fx_jobs"]["rights"]["owner"], "terms_url": "https://example.org/terms",
+        "status": "citation_required", "attribution": "Source: Fixture jobs office", "reviewed": "2026-01-01"}
+    assert entries["fx_price"] == {e["key"]: e for e in read_json(first / "catalog.json")["series"]}["fx_price"]
+    assert read_json(second / "manifest.json")["series"]["fx_jobs"]["rights_status"] == "citation_required"
+    by_path = {r["path"]: r for r in read_json(second / "downloads" / "datapackage.json")["resources"]}
+    # A Derived series takes the most restrictive class of what it rests on, today: the one
+    # computed from jobs and prices moves with jobs, the one from prices alone stays.
+    assert entries["fx_jobs_per_price"]["rights"]["status"] == "citation_required"
+    assert "Source: Fixture jobs office" in entries["fx_jobs_per_price"]["rights"]["attribution"]
+    assert entries["fx_price_change"] == before["fx_price_change"]
+    assert read_json(second / "manifest.json")["series"]["fx_jobs_per_price"]["rights_status"] == "citation_required"
+    assert by_path["observations.citation_required.csv.gz"]["series"] == ["fx_jobs", "fx_jobs_per_price"]
+    assert by_path["observations.public_domain.csv.gz"]["series"] == ["fx_price", "fx_price_change"]
+    assert by_path["observations.citation_required.csv.gz"]["attributions"] == [
+        "Source: Fixture jobs office", entries["fx_jobs_per_price"]["rights"]["attribution"]]
+    assert {(r["key"], r["licence"]) for r in csv_rows(second / "downloads" / "observations.csv.gz")} == {
+        ("fx_jobs", "citation_required"), ("fx_price", "public_domain"),
+        ("fx_jobs_per_price", "citation_required"), ("fx_price_change", "public_domain")}
+    # The data files are still the first Release's own.
+    assert (first / "series" / "fx_jobs.json").stat().st_ino == (second / "series" / "fx_jobs.json").stat().st_ino
+    assert validate_release(second) == []
+
+
+def test_a_content_only_release_under_the_same_register_keeps_the_catalog_byte_for_byte(tmp_path, register, store):
+    first = publish(tmp_path, register, store)
+    second = publish(tmp_path, register, store, reuse_data=True, now=NOW.replace(hour=18))
+    assert (first / "catalog.json").read_bytes() == (second / "catalog.json").read_bytes()
 
 
 def test_a_withdrawn_series_leaves_the_bulk_files_of_the_replacement(tmp_path, register, store):
@@ -414,6 +513,21 @@ def test_the_check_holds_the_datapackage_to_the_rows_of_each_file(tmp_path, regi
     assert any("licence classes" in p for p in B.problems(with_package(lambda r: r.update(licences=["cc_by"])), gate))
     gone = {k: v for k, v in files.items() if k != "downloads/datapackage.json"}
     assert B.problems(gone, gate) == ["datapackage.json: is missing or cannot be read"]
+
+
+def test_the_check_finds_bulk_files_that_are_all_missing(tmp_path, register, store):
+    """A Release with Series that may be handed out and no downloads/ at all lost its bulk
+    files; one with nothing to hand out never had any, and passes."""
+    from atlas.rights import RightsGate
+
+    directory = publish(tmp_path, register, store)
+    files = {p.relative_to(directory).as_posix(): p.read_bytes() for p in directory.rglob("*") if p.is_file()}
+    none = {k: v for k, v in files.items() if not k.startswith("downloads/")}
+
+    found = B.problems(none, RightsGate(read_json(register)))
+    assert "observations.parquet: is missing" in found and "vintages.parquet: is missing" in found
+    display_only = RightsGate(fixture_table(decision=_signed(redistribute=False)))
+    assert B.problems(none, display_only) == []
 
 
 def test_a_file_of_versions_is_described_by_what_was_recorded_with_them(tmp_path, store):

@@ -105,12 +105,40 @@ def test_a_unit_factor_brings_the_origins_unit_to_v1s(tmp_path):
 def test_weeks_can_be_filed_by_the_day_they_are_dated_as_v1_filed_them(tmp_path):
     # 2026-W05 runs 26 January to 1 February: its Wednesday is in January, its Sunday in February.
     native = {"a": {"freq": "weekly", "measure_kind": "stock",
-                    "values": {"2026-W02": 10.0, "2026-W03": 10.0, "2026-W04": 10.0, "2026-W05": 50.0, "2026-W06": 10.0}}}
+                    "values": {"2026-W02": 10.0, "2026-W03": 10.0, "2026-W04": 10.0, "2026-W05": 50.0, "2026-W06": 10.0,
+                               "2026-W07": 10.0, "2026-W08": 10.0, "2026-W09": 10.0}}}
     legacy = {"a": {"freq": "monthly", "values": {"2026-01": 20.0, "2026-02": 10.0}}}
     code, lines, _ = run(tmp_path, native, legacy, [{"key": "a", "abs": 0.0005, "reference_day_offset": 2}], min_overlap=2)
     assert code == 0 and "n=2" in lines["a"]
     code, lines, _ = run(tmp_path / "engine", native, legacy, [{"key": "a", "abs": 0.0005}], min_overlap=1)
     assert code == 1  # the engine files W05 under February: a difference of representation
+
+
+def test_a_month_whose_weeks_are_not_all_in_yet_is_not_compared(tmp_path):
+    """The Series ends on the Wednesday of 11 February and begins on that of 14 January: the
+    weeks of 7 January and of 18 and 25 February are not held. Both months are in progress as
+    far as this Series goes, as the engine would mark them, whatever v1's figure was."""
+    weeks = {"2026-W03": 10.0, "2026-W04": 10.0, "2026-W05": 10.0, "2026-W06": 30.0, "2026-W07": 30.0}
+    native = {"a": {"freq": "weekly", "measure_kind": "stock", "values": weeks}}
+    legacy = {"a": {"freq": "monthly", "values": {"2026-01": 99.0, "2026-02": 99.0}}}
+    statement = [{"key": "a", "abs": 0.0005, "reference_day_offset": 2}]
+    code, lines, _ = run(tmp_path, native, legacy, statement, min_overlap=0)
+    assert code == 0 and "n=0" in lines["a"] and "partial=2" in lines["a"] and "beyond=0" in lines["a"]
+
+    # With every Wednesday of both months held, the same figures are compared and found far off.
+    whole = {"2026-W02": 10.0, **weeks, "2026-W08": 30.0, "2026-W09": 30.0}
+    code, lines, _ = run(tmp_path / "whole", {"a": {**native["a"], "values": whole}}, legacy, statement, min_overlap=0)
+    assert code == 1 and "n=2" in lines["a"] and "partial=0" in lines["a"]
+
+
+def test_a_month_with_no_weekly_value_at_all_is_a_value_on_one_side_only(tmp_path):
+    """February's four Wednesdays are listed and hold nothing. v1 has a figure for the month:
+    that is a gap, at the end of the span as surely as inside it."""
+    weeks = {f"2026-W{n:02d}": (None if 6 <= n <= 9 else 10.0) for n in range(2, 10)}
+    native = {"a": {"freq": "weekly", "measure_kind": "stock", "values": weeks}}
+    legacy = {"a": {"freq": "monthly", "values": {"2026-01": 10.0, "2026-02": 10.0}}}
+    code, lines, _ = run(tmp_path, native, legacy, [{"key": "a", "abs": 0.0005, "reference_day_offset": 2}], min_overlap=1)
+    assert code == 1 and "FAILED: 1 Periods have a value on one side only" in lines["a"] and "v1-only=1" in lines["a"]
 
 
 def test_too_little_overlap_or_a_value_on_one_side_only_is_not_a_pass(tmp_path):

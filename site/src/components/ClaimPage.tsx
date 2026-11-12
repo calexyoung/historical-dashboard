@@ -191,7 +191,7 @@ export function ClaimPage({ view, basePath }: { view: ClaimPageView; basePath: s
   const { lock } = view;
   return (
     <div className="flex flex-col gap-6">
-      <Panel id="claim" title="Claim" level={2} bodyClassName="p-4">
+      <Panel id="claim" title="Claim" level={0} bodyClassName="p-4">
         <blockquote data-quote className="max-w-[60ch] border-l-2 border-ink pl-3 text-base font-medium leading-snug text-ink sm:text-lg">
           {view.quote.map((paragraph, i) => (
             <p key={i} className={i > 0 ? "mt-2" : undefined}>

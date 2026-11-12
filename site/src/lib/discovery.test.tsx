@@ -10,6 +10,7 @@ import { Markdown } from "@/components/Markdown";
 import { downloadDecision, downloadsView, downloadType } from "./downloads";
 import { datasetJsonLd, jsonLdText } from "./json-ld";
 import { llmsText } from "./llms";
+import { MAX_ROWS } from "./query";
 import { parseMarkdown } from "./markdown";
 import { methodBlocks, methodDoc, methodIndex, methodLinks } from "./method-docs";
 import { METHOD_DOCS } from "./method-docs.generated";
@@ -100,6 +101,18 @@ describe("/downloads", () => {
     expect(html).toContain("does not allow redistribute");
     expect(html).toContain("datapackage.json");
   });
+
+  it("shows how to load the files only when the files its examples read are given", () => {
+    const view = downloadsView(release, "local");
+    const page = (rows: typeof view.whole) => renderToStaticMarkup(<DownloadsPage view={{ ...view, whole: rows }} basePath="/macro-atlas" address={ADDRESS} current />);
+    expect(page(view.whole)).toContain("read_parquet");
+    // The Observations are refused today and the versions are not: the examples read the Observations.
+    const refused = view.whole.map((f) => (f.name.startsWith("observations.") ? { ...f, refused: "the rights register row does not allow redistribute" } : f));
+    expect(refused.some((f) => f.refused === null)).toBe(true);
+    expect(page(refused)).not.toContain("read_parquet");
+    expect(page(view.whole.map((f) => (f.name === "observations.csv.gz" ? { ...f, refused: "no" } : f)))).not.toContain("read_csv");
+    expect(page(view.whole.filter((f) => f.name !== "observations.parquet"))).not.toContain("read_parquet");
+  });
 });
 
 describe("/llms.txt", () => {
@@ -132,6 +145,32 @@ describe("/llms.txt", () => {
     const open = llmsText(release, "local", { address: ADDRESS });
     expect(open).toContain(`(${ADDRESS}/data/fx_exchange_index.metadata.json)`); // Withheld, on any Surface
     expect(open).toContain("Withheld; this is its metadata.");
+  });
+
+  it("lists a Series too long for one answer by its metadata: its default twin would answer 422", () => {
+    const long = structuredClone(release);
+    const file = long.series.fx_price_index!;
+    file.observations = Array.from({ length: MAX_ROWS + 1 }, () => file.observations[0]) as typeof file.observations;
+    const text = llmsText(long, "local", { address: ADDRESS, gate: all });
+    expect(text).toContain(`(${ADDRESS}/data/fx_price_index.metadata.json)`);
+    expect(text).not.toContain(`(${ADDRESS}/data/fx_price_index.md)`);
+    expect(text).toContain(`(${ADDRESS}/data/fx_output_quarterly.md)`);
+    const doc = datasetJsonLd(long, "local", "fx_price_index", { address: ADDRESS })!;
+    expect((doc.distribution as { contentUrl: string }[]).map((d) => d.contentUrl)).toEqual([`${ADDRESS}/data/fx_price_index.metadata.json`]);
+  });
+
+  it("works out which Claims are given once for a Release, not on every request", () => {
+    const one = structuredClone(release);
+    const first = llmsText(one, "local", { address: ADDRESS });
+    expect(first).toContain("/claims/2025-12-11-a-fixture-official-on-fixture-prices.md");
+    // Asked again of the same Release (as the site does: one object per opened Release), the
+    // Claims are not gone through again. Seen here by taking the evidence away afterwards.
+    one.latest = null;
+    one.locks = {};
+    expect(llmsText(one, "local", { address: ADDRESS })).toBe(first);
+    expect(llmsText(one, "local", { address: "https://other.example/macro-atlas" })).toContain("https://other.example/macro-atlas/claims/2025-12-11-a-fixture-official-on-fixture-prices.md");
+    // A gate of a test's own is always asked.
+    expect(llmsText(structuredClone(release), "production", { address: ADDRESS, gate: displayOnly })).not.toContain("/claims/2025-12-11-a-fixture-official-on-fixture-prices.md");
   });
 });
 
@@ -189,6 +228,10 @@ describe("/docs/method", () => {
     const resolve = methodLinks("/macro-atlas");
     expect(resolve("transforms.md")).toEqual({ href: "/macro-atlas/docs/method/transforms", external: false });
     expect(resolve("docs/method/claims.md")).toEqual({ href: "/macro-atlas/docs/method/claim-records", external: false });
+    // With a fragment, and by the site's own path: still the contract's page, not the reader page's twin.
+    expect(resolve("/docs/method/claims.md#the-lock")).toEqual({ href: "/macro-atlas/docs/method/claim-records#the-lock", external: false });
+    expect(resolve("claims.md#the-lock")).toEqual({ href: "/macro-atlas/docs/method/claim-records#the-lock", external: false });
+    expect(resolve("/docs/method/claims#how")).toEqual({ href: "/macro-atlas/docs/method/claims#how", external: false });
     expect(resolve("/docs/glossary/basis")).toEqual({ href: "/macro-atlas/docs/glossary/basis", external: false });
     expect(resolve("https://example.org/a")).toEqual({ href: "https://example.org/a", external: true });
     for (const href of ["../adr/0031.md", "//evil.example/x", "javascript:alert(1)", "http://example.org", "CONTEXT.md"]) expect(resolve(href), href).toBeNull();

@@ -213,6 +213,51 @@ def combined_rights(blocks: list[dict]) -> dict:
             "reviewed": None if any(day is None for day in read) else min(read)}
 
 
+def todays_rights(entries: list[dict], table: object, gate: RightsGate) -> list[dict]:
+    """A Catalog's entries with each Rights block as the register reads today. A Release that
+    reuses another's data files reuses its values, not what the register said of them that day:
+    a Series moved to another licence class is described, and filed in the bulk files, by
+    today's. An entry the register still describes the same way is returned as it is, so a
+    Catalog nothing changed for is the same bytes. v1's legacy entries are left alone (their
+    rights are not the register's to say), and so is everything when the register cannot be
+    trusted: the gate refuses the Release then."""
+    if gate.problem is not None:
+        return entries
+    fresh: dict[str, dict] = {}
+    for entry in entries:
+        if "recipe" not in entry and entry.get("representation") == NATIVE:
+            origin = entry["source"]["origin"]
+            rights = _register_rights(table, gate, origin["producer"], origin["dataset"])
+            fresh[entry["key"]] = entry if rights == entry["rights"] else {**entry, "rights": rights}
+        else:
+            fresh[entry["key"]] = entry
+
+    def stored(key: str) -> list[dict] | None:
+        """The stored Series a Derived one rests on, each once, in the order first reached."""
+        found, seen, stack = [], set(), list(reversed(fresh[key]["recipe"]["inputs"]))
+        while stack:
+            name = stack.pop()
+            if name in seen:
+                continue
+            seen.add(name)
+            if name not in fresh or fresh[name].get("representation") != NATIVE:
+                return None
+            if "recipe" in fresh[name]:
+                stack.extend(reversed(fresh[name]["recipe"]["inputs"]))
+            else:
+                found.append(fresh[name])
+        return found
+
+    for entry in entries:
+        if "recipe" in entry and entry.get("representation") == NATIVE:
+            leaves = stored(entry["key"])
+            if leaves:
+                rights = combined_rights([leaf["rights"] for leaf in leaves])
+                if rights != entry["rights"]:
+                    fresh[entry["key"]] = {**entry, "rights": rights}
+    return [fresh[entry["key"]] for entry in entries]
+
+
 def _derived_entry(spec: dict, leaves: list[dict]) -> dict:
     """The Catalog entry of a Derived series. A Release's entry has room for one Origin: it is
     that of the first stored Series the Recipe reaches, and stands for the lineage only as a
