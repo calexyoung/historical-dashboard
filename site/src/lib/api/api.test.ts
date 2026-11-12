@@ -12,6 +12,7 @@ import { createRightsGate, SEMANTICS_VERSION, TRANSFORMS } from "@macro-atlas/co
 import { createReleaseReader, type OpenedRelease } from "../release/reader";
 import { addRelease, FIXTURE_ID, FIXTURE_ROOT, fixtureRegister, promote, tempRoot } from "../release/testing";
 import { seriesTwin } from "../twin";
+import { apiDocsView } from "./docs";
 import { API_ROUTES, apiCatalog, apiClaims, apiEvents, apiIndex, apiNotFound, apiSeries, apiStatus, apiVintages, VERSIONS_PER_PAGE, type ApiResponse } from "./index";
 
 let release: OpenedRelease;
@@ -488,5 +489,30 @@ describe("what a collection may cost", () => {
       expect(answer.status).toBe(422);
       expect(read(answer).error.code).toBe("too_large");
     }
+  });
+});
+
+describe("what /docs/api says", () => {
+  it("is every route the API has, each with an address that answers, and the limits in force", () => {
+    const view = apiDocsView(release, "local", ADDRESS);
+    expect(view.routes.map((r) => r.path)).toEqual(API_ROUTES.map((r) => r.path));
+    expect(view.routes.map((r) => r.example)).toEqual([
+      `${ADDRESS}/api/v1/catalog.json`,
+      `${ADDRESS}/api/v1/series/fx_price_index?transform=pc1&start=2020-01-01`,
+      `${ADDRESS}/api/v1/series/fx_price_index/vintages`,
+      `${ADDRESS}/api/v1/events.json`,
+      `${ADDRESS}/api/v1/claims.json`,
+      `${ADDRESS}/api/v1/status`,
+    ]);
+    expect(view.example).toEqual({ key: "fx_price_index", name: "Fixture price index", given: true });
+    expect(Object.fromEntries(view.limits)["Each address"]).toBe("120 requests at once, then 120 a minute. An IPv6 address is counted with its /64 network.");
+    expect(Object.fromEntries(view.limits)["Every address together"]).toBe("600 requests at once, then 1,200 a minute.");
+    expect(Object.fromEntries(view.limits)["One answer"]).toBe("At most 50,000 observations, 8 MiB, and 5 seconds. An as-of answer or a history reads at most 250,000 versions.");
+    expect(view.errors.map(([status]) => status)).toEqual(["400", "403", "404", "422", "429", "503"]);
+  });
+
+  it("where no Series may be handed out, says so and still names one to ask about", () => {
+    expect(apiDocsView(release, "production", ADDRESS).example).toEqual({ key: "fx_price_index", name: "Fixture price index", given: false });
+    expect(apiDocsView(release, "production", ADDRESS, signed()).example).toMatchObject({ given: true });
   });
 });
