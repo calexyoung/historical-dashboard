@@ -81,11 +81,17 @@
         "url": { "type": "string", "pattern": "^https://" },
         "read_on": { "description": "The date the page was read; null when it was not.", "anyOf": [{ "$ref": "#/$defs/date" }, { "type": "null" }] },
         "how": {
-          "description": "page: the quotations are from the page's own text as fetched. extract: read through a tool that returns short extracts, so the wording is to be checked against the page before signing. not_read: the page could not be read.",
-          "enum": ["page", "extract", "not_read"]
+          "description": "page: the quotations are from the page's own text as fetched. extract: read through a tool that returns short extracts, so the wording is to be checked against the page before signing. not_read: the page could not be read. attested: a named person (Alex) read the page in a browser and reported on it; no quotation was captured, and the note gives his report.",
+          "enum": ["page", "extract", "not_read", "attested"]
         },
         "quotes": { "type": "array", "items": { "type": "string", "minLength": 1 } },
         "note": { "type": "string" }
+      },
+      "if": { "properties": { "how": { "const": "attested" } }, "required": ["how"] },
+      "then": {
+        "description": "An attested read carries no quotation; the note is the reader's report and must be present.",
+        "required": ["note"],
+        "properties": { "quotes": { "maxItems": 0 }, "note": { "minLength": 1 } }
       }
     },
     "licenceClass": { "enum": ["public_domain", "cc_by", "citation_required", "permission_required", "no_redistribution", "unknown"] },

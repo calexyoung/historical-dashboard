@@ -203,3 +203,23 @@ class TestCli:
 
     def test_the_register_path_is_the_one_table(self):
         assert REGISTER_PATH == ROOT / "schema" / "rights-register.json"
+
+
+def test_an_attested_read_has_no_quotation_and_a_note():
+    """An `attested` read is a person's report, not the page's text: it carries no quotation and
+    must say what was reported."""
+    import copy
+
+    schema = json.loads((ROOT / "schema" / "rights-register.schema.json").read_text())
+    validator = Draft202012Validator(schema)
+    base = {"url": "https://example.gov/terms", "read_on": "2026-11-12", "how": "attested", "quotes": []}
+
+    def errors_for(terms):
+        register = copy.deepcopy(REGISTER)
+        register["rows"][0]["terms"] = [terms]
+        return [e.message for e in validator.iter_errors(register)]
+
+    assert errors_for({**base, "note": "Read in a browser; nothing against."}) == []
+    assert errors_for({**base, "note": "x", "quotes": ["some words"]})  # a quotation is refused
+    assert errors_for(base)  # no note is refused
+    assert errors_for({**base, "note": ""})  # an empty note is refused
