@@ -114,9 +114,28 @@ export type Instant1 = string;
  * The hash of the rest of the file as the writer serialises it. A lock is never edited.
  */
 export type Sha2562 = string;
+/**
+ * A few words. Not a sentence: no full stop, question mark, exclamation mark or line break.
+ *
+ * This interface was referenced by `Release`'s JSON-Schema
+ * via the `definition` "topicLabel".
+ */
+export type TopicLabel = string;
+/**
+ * A Series' permanent public key. Also a file name, so it is restricted to safe characters.
+ */
+export type SeriesKey1 = string;
+/**
+ * How a Companion is related to the Topic's main Series. component: it measures a part of what the main Series measures. excludes_components: it measures the same thing with some parts left out. input: the main Series is computed from it. same_survey: both come from one survey of one agency. same_release: the agency publishes both in one release.
+ *
+ * This interface was referenced by `Release`'s JSON-Schema
+ * via the `definition` "topicRelation".
+ */
+export type TopicRelation =
+  "component" | "excludes_components" | "input" | "same_survey" | "same_release";
 
 /**
- * Macro Atlas release contract, v0 (schema_version 0.5.0). A Release is a directory; this schema describes it gathered into one object: manifest.json, catalog.json, series/{key}.json, derived/{key}.json, vintages/{key}.json, content/annotations.json, content/events.json, content/claims.json, locks/{claim_id}.v{n}.lock.json, evidence/latest.json, content/highlights.json and search.json. It is the seam between the writer and every reader (PLAN 4.2). Conventions the schema cannot express, and the cross-file rules, are in schema/README.md. Structural validity is not authorisation: whether a series may appear on a Surface is decided by permits() and the rights register.
+ * Macro Atlas release contract, v0 (schema_version 0.6.0). A Release is a directory; this schema describes it gathered into one object: manifest.json, catalog.json, series/{key}.json, derived/{key}.json, vintages/{key}.json, content/annotations.json, content/events.json, content/claims.json, locks/{claim_id}.v{n}.lock.json, evidence/latest.json, content/highlights.json, search.json and content/topics.json. It is the seam between the writer and every reader (PLAN 4.2). Conventions the schema cannot express, and the cross-file rules, are in schema/README.md. Structural validity is not authorisation: whether a series may appear on a Surface is decided by permits() and the rights register.
  */
 export interface Release {
   manifest: Manifest;
@@ -151,6 +170,7 @@ export interface Release {
   latest?: LatestFile;
   highlights?: HighlightsFile;
   search?: SearchFile;
+  topics?: TopicsFile;
 }
 /**
  * manifest.json: what this Release is and what it holds. created is when the Release was written, and is also the fixed date against which staleness (max_lag) is judged, so a Release never changes state as the clock moves.
@@ -160,9 +180,9 @@ export interface Release {
  */
 export interface Manifest {
   /**
-   * Version of this contract. Readers refuse a version they do not know. 0.2.0 added vintages/ and vintages_sha256; a 0.1.0 Release holds neither. 0.3.0 (M19) added content/events.json, which a 0.3.0 Release must have and an earlier one may not, and the rule that every Event is one Annotation. 0.4.0 (M20) added content/claims.json, which a 0.4.0 Release must have, locks/ and evidence/latest.json. 0.5.0 (M22) added content/highlights.json and search.json, both of which a 0.5.0 Release must have. Writers write the last one listed.
+   * Version of this contract. Readers refuse a version they do not know. 0.2.0 added vintages/ and vintages_sha256; a 0.1.0 Release holds neither. 0.3.0 (M19) added content/events.json, which a 0.3.0 Release must have and an earlier one may not, and the rule that every Event is one Annotation. 0.4.0 (M20) added content/claims.json, which a 0.4.0 Release must have, locks/ and evidence/latest.json. 0.5.0 (M22) added content/highlights.json and search.json, both of which a 0.5.0 Release must have. 0.6.0 (M23) added content/topics.json, which a 0.6.0 Release must have, and the Topics' entries of search.json. Writers write the last one listed.
    */
-  schema_version: "0.1.0" | "0.2.0" | "0.3.0" | "0.4.0" | "0.5.0";
+  schema_version: "0.1.0" | "0.2.0" | "0.3.0" | "0.4.0" | "0.5.0" | "0.6.0";
   /**
    * Version of the engine's behaviour that wrote derived/ (ADR 0003).
    */
@@ -1518,7 +1538,7 @@ export interface HighlightsFile {
   ];
 }
 /**
- * search.json (0.5.0): one entry for every Series of catalog.json, then every Event of content/events.json, then every Claim of content/claims.json, each in that file's order. A public-profile Release holds no draft, so its index names none.
+ * search.json (0.5.0): one entry for every Series of catalog.json, then every Event of content/events.json, then every Claim of content/claims.json, then (0.6.0) every Topic of content/topics.json, each in that file's order. A public-profile Release holds no draft, so its index names none.
  *
  * This interface was referenced by `Release`'s JSON-Schema
  * via the `definition` "searchFile".
@@ -1527,20 +1547,20 @@ export interface SearchFile {
   entries: SearchEntry[];
 }
 /**
- * One thing a reader can search for: a Series, an Event or a Claim of this Release. Words only: a name, the text that describes it, and keywords. No field holds an Observation's value, and both validators hold every entry to the projection of the Release's own catalog.json, content/events.json and content/claims.json (schema/README.md).
+ * One thing a reader can search for: a Series, an Event, a Claim or a Topic of this Release. Words only: a name, the text that describes it, and keywords. No field holds an Observation's value, and both validators hold every entry to the projection of the Release's own catalog.json, content/events.json, content/claims.json and content/topics.json (schema/README.md).
  *
  * This interface was referenced by `Release`'s JSON-Schema
  * via the `definition` "searchEntry".
  */
 export interface SearchEntry {
-  kind: "series" | "event" | "claim";
+  kind: "series" | "event" | "claim" | "topic";
   /**
-   * The Series key, the Event id or the Claim id: what the page's address ends in.
+   * The Series key, the Event id, the Claim id or the Topic slug: what the page's address ends in.
    */
   id: string;
   title: string;
   /**
-   * A Series' description, an Event's description, a Claim's quote. Empty when there is none.
+   * A Series' description, an Event's description, a Claim's quote, the definition a Topic quotes. Empty when there is none.
    */
   text: string;
   keywords: string[];
@@ -1548,4 +1568,107 @@ export interface SearchEntry {
    * A Series only: it is Withheld in this Release (listed by name, no values anywhere).
    */
   withheld?: true;
+}
+/**
+ * content/topics.json (0.6.0): the Topics, by slug. A public-profile Release holds no draft, and of each Topic's Events only those it holds itself.
+ *
+ * This interface was referenced by `Release`'s JSON-Schema
+ * via the `definition` "topicsFile".
+ */
+export interface TopicsFile {
+  topics: Topic[];
+}
+/**
+ * One Topic as a Release carries it (content/topics/{slug}.md compiled; schema/topic.schema.json is the authoring form). Labels, a definition quoted from a cited source, and the names of Series and Events. There is no field for prose of the site's own: none for an explanation, a finding, a cause or a published account.
+ *
+ * This interface was referenced by `Release`'s JSON-Schema
+ * via the `definition` "topic".
+ */
+export interface Topic {
+  /**
+   * Permanent. The file is named for it and the page is /topics/{slug}.
+   */
+  slug: string;
+  title: TopicLabel;
+  segment:
+    | "economy_jobs"
+    | "markets_money"
+    | "infrastructure"
+    | "governance_politics"
+    | "disasters_health"
+    | "us_in_the_world";
+  /**
+   * A draft is never in a public-profile Release.
+   */
+  status: "draft" | "public";
+  definition: TopicDefinition;
+  main: SeriesKey1;
+  /**
+   * The Topic's member Series, in the order they are listed on its page. The main Series is one of them.
+   */
+  series: SeriesKey[];
+  /**
+   * What else moved (CONTEXT.md, Companion): Series an editor chose to show beside the main Series on one time axis. Each states how it is related to the main Series, as one of a closed list of factual relations. It is never said to have caused, or to explain, a movement.
+   */
+  companions: {
+    series: SeriesKey;
+    relation: TopicRelation;
+  }[];
+  range?: TopicRange;
+  /**
+   * Events an editor lists on the Topic's page, by id. Not a statement that any of them moved a Series.
+   */
+  events: string[];
+}
+/**
+ * What the Topic's main measure is, in its origin agency's own words: quoted, never paraphrased.
+ */
+export interface TopicDefinition {
+  /**
+   * The agency's words, verbatim, as they stand at the cited address.
+   */
+  quote: string;
+  source: TopicCitation;
+}
+/**
+ * Where the quoted words stand: the publisher, the address, and an archived copy of it or the reason there is none.
+ *
+ * This interface was referenced by `Release`'s JSON-Schema
+ * via the `definition` "topicCitation".
+ */
+export interface TopicCitation {
+  /**
+   * The publisher and the page: 'U.S. Bureau of Labor Statistics, Consumer Price Index: Overview'.
+   */
+  name: string;
+  url: string;
+  archive_url?: string;
+  /**
+   * Why this citation has no archived copy.
+   */
+  no_archive?: string;
+}
+/**
+ * One Series set against the range of a group: the lowest, the middle and the highest value among the members in each Period. The members are resolved when the Release is written, from the coverage matrix the Topic's file names: one Series per country. A member is named by key whether or not the Release holds it; nothing here is a value.
+ */
+export interface TopicRange {
+  series: SeriesKey;
+  /**
+   * A few words. Not a sentence: no full stop, question mark, exclamation mark or line break.
+   */
+  label: string;
+  indicator: {
+    id: string;
+    /**
+     * The column's name in the coverage matrix: a label.
+     */
+    name: string;
+  };
+  members: {
+    key: SeriesKey;
+    /**
+     * ISO 3166-1 alpha-3.
+     */
+    country: string;
+  }[];
 }

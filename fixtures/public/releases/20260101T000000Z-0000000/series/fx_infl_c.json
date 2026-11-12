@@ -1,0 +1,72 @@
+{
+  "key": "fx_infl_c",
+  "freq": "monthly",
+  "representation": "native",
+  "period_start": "2025-04-01",
+  "period_end": "2025-12-31",
+  "observations": [
+    {
+      "period": "2025-04",
+      "period_start": "2025-04-01",
+      "period_end": "2025-04-30",
+      "value": 9.4,
+      "status": "final"
+    },
+    {
+      "period": "2025-05",
+      "period_start": "2025-05-01",
+      "period_end": "2025-05-31",
+      "value": 9.1,
+      "status": "final"
+    },
+    {
+      "period": "2025-06",
+      "period_start": "2025-06-01",
+      "period_end": "2025-06-30",
+      "value": 8.8,
+      "status": "final"
+    },
+    {
+      "period": "2025-07",
+      "period_start": "2025-07-01",
+      "period_end": "2025-07-31",
+      "value": 8.6,
+      "status": "final"
+    },
+    {
+      "period": "2025-08",
+      "period_start": "2025-08-01",
+      "period_end": "2025-08-31",
+      "value": 8.2,
+      "status": "final"
+    },
+    {
+      "period": "2025-09",
+      "period_start": "2025-09-01",
+      "period_end": "2025-09-30",
+      "value": 7.9,
+      "status": "final"
+    },
+    {
+      "period": "2025-10",
+      "period_start": "2025-10-01",
+      "period_end": "2025-10-31",
+      "value": 7.7,
+      "status": "final"
+    },
+    {
+      "period": "2025-11",
+      "period_start": "2025-11-01",
+      "period_end": "2025-11-30",
+      "value": 7.5,
+      "status": "final"
+    },
+    {
+      "period": "2025-12",
+      "period_start": "2025-12-01",
+      "period_end": "2025-12-31",
+      "value": 7.2,
+      "status": "final"
+    }
+  ]
+}

@@ -1,0 +1,222 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mydashboards.co/macro-atlas/schema/topic.schema.json",
+  "title": "Topic",
+  "description": "One Topic (CONTEXT.md; PLAN 5 and M23; ADR 0037): the front matter of content/topics/{slug}.md, which is the whole file: nothing is written under it. A Topic is labels, a definition quoted from a cited source, and names of Series and Events. There is no field for prose of the site's own: none for an explanation, a finding, a cause or a published account. A label is a few words and is not a sentence.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "slug",
+    "title",
+    "segment",
+    "status",
+    "definition",
+    "main",
+    "series",
+    "companions",
+    "events"
+  ],
+  "properties": {
+    "slug": {
+      "description": "Permanent. The file is named for it and the page is /topics/{slug}.",
+      "type": "string",
+      "maxLength": 40,
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+    },
+    "title": {
+      "$ref": "#/$defs/label"
+    },
+    "segment": {
+      "enum": [
+        "economy_jobs",
+        "markets_money",
+        "infrastructure",
+        "governance_politics",
+        "disasters_health",
+        "us_in_the_world"
+      ]
+    },
+    "status": {
+      "description": "A draft is never in a public-profile Release.",
+      "enum": [
+        "draft",
+        "public"
+      ]
+    },
+    "definition": {
+      "title": "TopicDefinition",
+      "description": "What the Topic's main measure is, in its origin agency's own words: quoted, never paraphrased.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "quote",
+        "source"
+      ],
+      "properties": {
+        "quote": {
+          "description": "The agency's words, verbatim, as they stand at the cited address.",
+          "type": "string",
+          "minLength": 20,
+          "maxLength": 600,
+          "pattern": "^\\S(.*\\S)?$"
+        },
+        "source": {
+          "$ref": "#/$defs/citation"
+        }
+      }
+    },
+    "main": {
+      "description": "The Series the Topic opens with: its change strip and its main figure.",
+      "$ref": "#/$defs/key"
+    },
+    "series": {
+      "description": "The Topic's member Series, in the order they are listed on its page. The main Series is one of them.",
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 40,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/key"
+      }
+    },
+    "companions": {
+      "description": "What else moved (CONTEXT.md, Companion): Series an editor chose to show beside the main Series on one time axis. Each states how it is related to the main Series, as one of a closed list of factual relations. It is never said to have caused, or to explain, a movement.",
+      "type": "array",
+      "maxItems": 6,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "series",
+          "relation"
+        ],
+        "properties": {
+          "series": {
+            "$ref": "#/$defs/key"
+          },
+          "relation": {
+            "$ref": "#/$defs/relation"
+          }
+        }
+      }
+    },
+    "range": {
+      "title": "TopicRange",
+      "description": "One Series set against the range of a group: the lowest, the middle and the highest value among the group's members in each Period. The members are the Series a coverage matrix (catalog/coverage/{coverage}.json) gives for one indicator, one per country.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "series",
+        "coverage",
+        "indicator",
+        "label"
+      ],
+      "properties": {
+        "series": {
+          "$ref": "#/$defs/key"
+        },
+        "coverage": {
+          "description": "The coverage matrix's name: catalog/coverage/{coverage}.json.",
+          "type": "string",
+          "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+        },
+        "indicator": {
+          "description": "A column of that matrix.",
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]*$"
+        },
+        "label": {
+          "description": "What the group is called on the page: 'G20'.",
+          "$ref": "#/$defs/label"
+        }
+      }
+    },
+    "events": {
+      "description": "Events an editor lists on the Topic's page, by id. Not a statement that any of them moved a Series.",
+      "type": "array",
+      "maxItems": 40,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "maxLength": 100,
+        "pattern": "^[0-9]{4}(-[0-9]{2}(-[0-9]{2})?)?-[a-z0-9]+(-[a-z0-9]+)*$"
+      }
+    }
+  },
+  "$defs": {
+    "key": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]{0,63}$"
+    },
+    "label": {
+      "description": "A few words. Not a sentence: no full stop, question mark, exclamation mark or line break.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 60,
+      "pattern": "^[^\\s.!?]([^.!?\\n]*[^\\s.!?])?$"
+    },
+    "relation": {
+      "description": "How a Companion is related to the Topic's main Series. component: it measures a part of what the main Series measures. excludes_components: it measures the same thing with some parts left out. input: the main Series is computed from it. same_survey: both come from one survey of one agency. same_release: the agency publishes both in one release.",
+      "enum": [
+        "component",
+        "excludes_components",
+        "input",
+        "same_survey",
+        "same_release"
+      ]
+    },
+    "citation": {
+      "title": "TopicCitation",
+      "description": "Where the quoted words stand: the publisher, the address, and an archived copy of it or the reason there is none.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "url"
+      ],
+      "oneOf": [
+        {
+          "properties": {
+            "archive_url": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "archive_url"
+          ]
+        },
+        {
+          "properties": {
+            "no_archive": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "no_archive"
+          ]
+        }
+      ],
+      "properties": {
+        "name": {
+          "description": "The publisher and the page: 'U.S. Bureau of Labor Statistics, Consumer Price Index: Overview'.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "url": {
+          "type": "string",
+          "pattern": "^https://\\S+$"
+        },
+        "archive_url": {
+          "type": "string",
+          "pattern": "^https://\\S+$"
+        },
+        "no_archive": {
+          "description": "Why this citation has no archived copy.",
+          "type": "string",
+          "minLength": 10
+        }
+      }
+    }
+  }
+}

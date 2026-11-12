@@ -1,0 +1,103 @@
+{
+  "topics": [
+    {
+      "slug": "inflation",
+      "title": "Inflation",
+      "segment": "economy_jobs",
+      "status": "public",
+      "definition": {
+        "quote": "The fixture price index measures the average change in the prices that synthetic households pay.",
+        "source": {
+          "name": "Fixture statistics office (synthetic), Handbook",
+          "url": "https://example.org/fixture-handbook",
+          "archive_url": "https://example.org/archive/2026/fixture-handbook"
+        }
+      },
+      "main": "fx_price_index_yoy",
+      "series": [
+        "fx_price_index_yoy",
+        "fx_price_index",
+        "fx_exchange_index",
+        "fx_infl_b",
+        "fx_not_in_this_release"
+      ],
+      "companions": [
+        {
+          "series": "fx_price_index",
+          "relation": "input"
+        },
+        {
+          "series": "fx_payrolls_break",
+          "relation": "same_release"
+        },
+        {
+          "series": "fx_poverty_rate_annual",
+          "relation": "same_survey"
+        },
+        {
+          "series": "fx_exchange_index",
+          "relation": "component"
+        }
+      ],
+      "range": {
+        "series": "fx_price_index_yoy",
+        "label": "Fixture five",
+        "indicator": {
+          "id": "inflation",
+          "name": "Inflation (y/y)"
+        },
+        "members": [
+          {
+            "key": "fx_price_index_yoy",
+            "country": "USA"
+          },
+          {
+            "key": "fx_infl_b",
+            "country": "FXB"
+          },
+          {
+            "key": "fx_infl_c",
+            "country": "FXC"
+          },
+          {
+            "key": "fx_infl_d",
+            "country": "FXD"
+          },
+          {
+            "key": "fx_infl_e",
+            "country": "FXE"
+          }
+        ]
+      },
+      "events": [
+        "2024-09-18-fixture-rate-decision"
+      ]
+    },
+    {
+      "slug": "jobs",
+      "title": "Jobs",
+      "segment": "economy_jobs",
+      "status": "public",
+      "definition": {
+        "quote": "Fixture payrolls count the jobs on the books of synthetic employers in the middle of each month.",
+        "source": {
+          "name": "Fixture statistics office (synthetic), Payroll survey notes",
+          "url": "https://example.org/fixture-payrolls",
+          "no_archive": "The fixture office's notes cannot be archived (synthetic reason)."
+        }
+      },
+      "main": "fx_payrolls_break",
+      "series": [
+        "fx_payrolls_break",
+        "fx_permits_stale"
+      ],
+      "companions": [
+        {
+          "series": "fx_permits_stale",
+          "relation": "same_release"
+        }
+      ],
+      "events": []
+    }
+  ]
+}

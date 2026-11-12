@@ -1,0 +1,93 @@
+{
+  "key": "fx_infl_d",
+  "freq": "monthly",
+  "representation": "native",
+  "period_start": "2025-01-01",
+  "period_end": "2025-12-31",
+  "observations": [
+    {
+      "period": "2025-01",
+      "period_start": "2025-01-01",
+      "period_end": "2025-01-31",
+      "value": 2.6,
+      "status": "final"
+    },
+    {
+      "period": "2025-02",
+      "period_start": "2025-02-01",
+      "period_end": "2025-02-28",
+      "value": 2.7,
+      "status": "final"
+    },
+    {
+      "period": "2025-03",
+      "period_start": "2025-03-01",
+      "period_end": "2025-03-31",
+      "value": 2.9,
+      "status": "final"
+    },
+    {
+      "period": "2025-04",
+      "period_start": "2025-04-01",
+      "period_end": "2025-04-30",
+      "value": 3.0,
+      "status": "final"
+    },
+    {
+      "period": "2025-05",
+      "period_start": "2025-05-01",
+      "period_end": "2025-05-31",
+      "value": 3.3,
+      "status": "final"
+    },
+    {
+      "period": "2025-06",
+      "period_start": "2025-06-01",
+      "period_end": "2025-06-30",
+      "value": null,
+      "status": "missing"
+    },
+    {
+      "period": "2025-07",
+      "period_start": "2025-07-01",
+      "period_end": "2025-07-31",
+      "value": 3.4,
+      "status": "final"
+    },
+    {
+      "period": "2025-08",
+      "period_start": "2025-08-01",
+      "period_end": "2025-08-31",
+      "value": 3.2,
+      "status": "final"
+    },
+    {
+      "period": "2025-09",
+      "period_start": "2025-09-01",
+      "period_end": "2025-09-30",
+      "value": 3.0,
+      "status": "final"
+    },
+    {
+      "period": "2025-10",
+      "period_start": "2025-10-01",
+      "period_end": "2025-10-31",
+      "value": 3.2,
+      "status": "final"
+    },
+    {
+      "period": "2025-11",
+      "period_start": "2025-11-01",
+      "period_end": "2025-11-30",
+      "value": 3.1,
+      "status": "final"
+    },
+    {
+      "period": "2025-12",
+      "period_start": "2025-12-01",
+      "period_end": "2025-12-31",
+      "value": 3.3,
+      "status": "estimate"
+    }
+  ]
+}

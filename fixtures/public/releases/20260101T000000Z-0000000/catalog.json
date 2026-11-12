@@ -345,6 +345,123 @@
       },
       "status": "active",
       "max_lag": "P3M"
+    },
+    {
+      "key": "fx_infl_b",
+      "name": "Fixture economy B inflation",
+      "description": "Synthetic monthly rate for the invented economy B: a member of a Topic's range.",
+      "unit": "percent change from a year earlier",
+      "unit_kind": "percent",
+      "measure_kind": "rate",
+      "agg": "none",
+      "freq": "monthly",
+      "continuity": "discrete",
+      "representation": "native",
+      "country": "FXB",
+      "segment": "us_in_the_world",
+      "topics": [
+        "inflation"
+      ],
+      "source": {
+        "origin": {
+          "producer": "Macro Atlas fixture (synthetic)",
+          "dataset": "fixture",
+          "origin_id": "FX-INFL-B",
+          "url": null
+        },
+        "channel": {
+          "via": "fixture",
+          "adapter": "hand_written",
+          "auth": "none"
+        }
+      },
+      "rights": {
+        "owner": "Macro Atlas project",
+        "terms_url": null,
+        "status": "public_domain",
+        "attribution": "Synthetic test data, Macro Atlas project",
+        "reviewed": "2026-01-01"
+      },
+      "status": "active",
+      "max_lag": "P3M"
+    },
+    {
+      "key": "fx_infl_c",
+      "name": "Fixture economy C inflation",
+      "description": "Synthetic monthly rate for the invented economy C: a member of a Topic's range.",
+      "unit": "percent change from a year earlier",
+      "unit_kind": "percent",
+      "measure_kind": "rate",
+      "agg": "none",
+      "freq": "monthly",
+      "continuity": "discrete",
+      "representation": "native",
+      "country": "FXC",
+      "segment": "us_in_the_world",
+      "topics": [
+        "inflation"
+      ],
+      "source": {
+        "origin": {
+          "producer": "Macro Atlas fixture (synthetic)",
+          "dataset": "fixture",
+          "origin_id": "FX-INFL-C",
+          "url": null
+        },
+        "channel": {
+          "via": "fixture",
+          "adapter": "hand_written",
+          "auth": "none"
+        }
+      },
+      "rights": {
+        "owner": "Macro Atlas project",
+        "terms_url": null,
+        "status": "public_domain",
+        "attribution": "Synthetic test data, Macro Atlas project",
+        "reviewed": "2026-01-01"
+      },
+      "status": "active",
+      "max_lag": "P3M"
+    },
+    {
+      "key": "fx_infl_d",
+      "name": "Fixture economy D inflation",
+      "description": "Synthetic monthly rate for the invented economy D: a member of a Topic's range.",
+      "unit": "percent change from a year earlier",
+      "unit_kind": "percent",
+      "measure_kind": "rate",
+      "agg": "none",
+      "freq": "monthly",
+      "continuity": "discrete",
+      "representation": "native",
+      "country": "FXD",
+      "segment": "us_in_the_world",
+      "topics": [
+        "inflation"
+      ],
+      "source": {
+        "origin": {
+          "producer": "Macro Atlas fixture (synthetic)",
+          "dataset": "fixture",
+          "origin_id": "FX-INFL-D",
+          "url": null
+        },
+        "channel": {
+          "via": "fixture",
+          "adapter": "hand_written",
+          "auth": "none"
+        }
+      },
+      "rights": {
+        "owner": "Macro Atlas project",
+        "terms_url": null,
+        "status": "public_domain",
+        "attribution": "Synthetic test data, Macro Atlas project",
+        "reviewed": "2026-01-01"
+      },
+      "status": "active",
+      "max_lag": "P3M"
     }
   ]
 }

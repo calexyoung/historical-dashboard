@@ -64,6 +64,8 @@ export type IssueCode =
   | "claim_evidence"
   | "highlights"
   | "search_projection"
+  | "duplicate_topic"
+  | "topic"
   | "unsigned_register"
   | "legacy_in_public"
   | "draft_in_public";
@@ -79,9 +81,12 @@ const CLAIMS = "content/claims.json";
 const LATEST = "evidence/latest.json";
 const HIGHLIGHTS = "content/highlights.json";
 const SEARCH = "search.json";
-const OPTIONAL_FILES: readonly string[] = [EVENTS, CLAIMS, LATEST, HIGHLIGHTS, SEARCH];
+const TOPICS = "content/topics.json";
+const OPTIONAL_FILES: readonly string[] = [EVENTS, CLAIMS, LATEST, HIGHLIGHTS, SEARCH, TOPICS];
 /** The versions that have no headline Series and no search index; from 0.5.0 (M22) a Release must have both files. */
 const BEFORE_SEARCH: readonly unknown[] = ["0.1.0", "0.2.0", "0.3.0", "0.4.0"];
+/** The versions that have no Topics; from 0.6.0 (M23) a Release must have content/topics.json. */
+const BEFORE_TOPICS: readonly unknown[] = [...BEFORE_SEARCH, "0.5.0"];
 /** The six Segments, in the order of the Overview (CONTEXT.md, Segment). */
 export const SEGMENTS = ["economy_jobs", "markets_money", "infrastructure", "governance_politics", "disasters_health", "us_in_the_world"] as const;
 /** The versions that have no Claims, locks or latest Evidence rows; from 0.4.0 (M20) a Release must have content/claims.json. */
@@ -190,7 +195,7 @@ function locate(instancePath: string): [string, string] {
     return [`${head}/${rest[0]}.json`, "/" + rest.slice(1).join("/")];
   }
   if (head === "locks" && rest.length > 0) return [`locks/${rest[0]}.lock.json`, "/" + rest.slice(1).join("/")];
-  const named: Record<string, string> = { manifest: MANIFEST, catalog: CATALOG, annotations: ANNOTATIONS, events: EVENTS, claims: CLAIMS, latest: LATEST, highlights: HIGHLIGHTS, search: SEARCH };
+  const named: Record<string, string> = { manifest: MANIFEST, catalog: CATALOG, annotations: ANNOTATIONS, events: EVENTS, claims: CLAIMS, latest: LATEST, highlights: HIGHLIGHTS, search: SEARCH, topics: TOPICS };
   const file = named[head ?? ""] ?? MANIFEST;
   return [file, "/" + rest.join("/")];
 }
@@ -276,6 +281,11 @@ export function validateRelease(releaseId: string, files: ReleaseFiles): Issue[]
       issues.push({ code: "missing_file", path, message: "a release must have this file" });
     }
   }
+  if (BEFORE_TOPICS.includes(version) && files[TOPICS]) {
+    issues.push({ code: "unknown_file", path: TOPICS, message: `schema_version ${String(version)} does not name this file` });
+  } else if (version !== undefined && !BEFORE_TOPICS.includes(version) && !files[TOPICS]) {
+    issues.push({ code: "missing_file", path: TOPICS, message: "a release must have this file" });
+  }
   if (issues.length > 0) return issues;
 
   const collect = (folder: Folder): Record<string, unknown> =>
@@ -292,6 +302,7 @@ export function validateRelease(releaseId: string, files: ReleaseFiles): Issue[]
     ...(parsed.has(LATEST) ? { latest: parsed.get(LATEST) } : {}),
     ...(parsed.has(HIGHLIGHTS) ? { highlights: parsed.get(HIGHLIGHTS) } : {}),
     ...(parsed.has(SEARCH) ? { search: parsed.get(SEARCH) } : {}),
+    ...(parsed.has(TOPICS) ? { topics: parsed.get(TOPICS) } : {}),
   };
   const validate = schemaValidator();
   if (!validate(bundle)) {
@@ -313,12 +324,13 @@ export function validateRelease(releaseId: string, files: ReleaseFiles): Issue[]
 
 /**
  * `search.json` (0.5.0, M22; ADR 0036): what a reader can search for in a Release, as words. One
- * entry for every Series of `catalog.json`, then every Event, then every Claim, each in its
- * file's order. It is a projection of those three files and of the manifest's withheld list,
+ * entry for every Series of `catalog.json`, then every Event, then every Claim, then (0.6.0,
+ * M23) every Topic, each in its
+ * file's order. It is a projection of those files and of the manifest's withheld list,
  * and of nothing else: no Observation, lock or Evidence row is read to make it, so no value can
  * enter it from data (a description or a quote is content a person wrote, public on its own page). The Python twin (`atlas.release.search_document`) is what writers write.
  */
-export function searchDocument(release: Pick<Release, "catalog" | "manifest" | "events" | "claims">): SearchFile {
+export function searchDocument(release: Pick<Release, "catalog" | "manifest" | "events" | "claims" | "topics">): SearchFile {
   const words = (...values: unknown[]): string[] => values.filter((value): value is string => typeof value === "string" && value !== "");
   const gone = new Set(release.manifest.withheld.map((row) => row.key));
   const entries: SearchEntry[] = [];
@@ -337,7 +349,43 @@ export function searchDocument(release: Pick<Release, "catalog" | "manifest" | "
     const who = claim.claimant;
     entries.push({ kind: "claim", id: claim.id, title: `${who.name}, ${claim.said_on}`, text: claim.quote, keywords: words(who.name, who.role, who.party, ...(claim.topics ?? [])) });
   }
+  for (const topic of release.topics?.topics ?? []) {
+    // The text is the definition the Topic quotes: a cited source's words, public on its page.
+    entries.push({ kind: "topic", id: topic.slug, title: topic.title, text: topic.definition.quote, keywords: words(topic.segment, topic.definition.source.name, topic.main) });
+  }
   return { entries };
+}
+
+/**
+ * 0.6.0 (M23; ADR 0037): a Topic is listed once; its main Series is one of its member Series; a
+ * Companion is not the main Series and is listed once; a range has each member once; and every
+ * Event it lists is an Event of this Release. A Series is named by key whether or not the
+ * Release holds it, as an Event's related Series are. A public-profile Release holds no draft
+ * Topic.
+ */
+function topicRules(bundle: Release): Issue[] {
+  const issues: Issue[] = [];
+  const held = bundle.topics;
+  if (!held) return issues;
+  const add = (code: IssueCode, message: string) => issues.push({ code, path: TOPICS, message });
+  const events = new Set((bundle.events?.events ?? []).map((event) => event.id));
+  const seen = new Set<string>();
+  for (const topic of held.topics) {
+    const slug = topic.slug;
+    if (seen.has(slug)) add("duplicate_topic", `${slug} appears more than once`);
+    seen.add(slug);
+    if (!topic.series.includes(topic.main)) add("topic", `${slug}: its main Series ${topic.main} is not one of its member Series`);
+    const companions = topic.companions.map((companion) => companion.series);
+    if (companions.includes(topic.main)) add("topic", `${slug}: its main Series is listed as its own Companion`);
+    if (new Set(companions).size !== companions.length) add("topic", `${slug}: a Companion is listed twice`);
+    const members = (topic.range?.members ?? []).map((member) => member.key);
+    if (new Set(members).size !== members.length) add("topic", `${slug}: a member of its range is listed twice`);
+    for (const event of topic.events) {
+      if (!events.has(event)) add("topic", `${slug}: it lists the Event ${event}, which is not an Event of this release`);
+    }
+    if (bundle.manifest.profile === "public" && topic.status === "draft") add("draft_in_public", `${slug} is a draft`);
+  }
+  return issues;
 }
 
 /**
@@ -364,11 +412,12 @@ function readingRules(bundle: Release): Issue[] {
       }
     }
   }
+  issues.push(...topicRules(bundle));
   const index = bundle.search;
   if (index) {
     const expected = searchDocument(bundle).entries;
     if (index.entries.length !== expected.length) {
-      issues.push({ code: "search_projection", path: SEARCH, message: `it holds ${index.entries.length} entries and the release's Series, Events and Claims are ${expected.length}` });
+      issues.push({ code: "search_projection", path: SEARCH, message: `it holds ${index.entries.length} entries and the release's Series, Events, Claims and Topics are ${expected.length}` });
     }
     for (let i = 0; i < Math.min(index.entries.length, expected.length); i++) {
       const want = expected[i]!;

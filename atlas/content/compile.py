@@ -5,7 +5,7 @@
 It reads files of the repository and nothing else: Events (``content/events/*.md``) and the
 hand-entered layers (``catalog/manual/terms`` and ``catalog/manual/spans``). It writes
 these files of the Release (and, since M20, ``content/claims.json`` and the Claim locks: see
-``_compile_claims``):
+``_compile_claims``; since M23, ``content/topics.json``: see ``_compile_topics``):
 
 ``content/events.json``
     The Events, whole and in the order of time. A public-profile Release holds the ``public``
@@ -38,10 +38,11 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from .. import manual
-from ..release import ANNOTATIONS, CATALOG, CLAIMS, EVENTS, HIGHLIGHTS, LEGACY, SEARCH, search_document
+from ..release import ANNOTATIONS, CATALOG, CLAIMS, EVENTS, HIGHLIGHTS, LEGACY, SEARCH, TOPICS, search_document
 from . import claims as K
 from . import events as E
 from . import highlights as H
+from . import topics as T
 from . import wordlist as W
 
 HAND_ENTERED = "hand_entered"
@@ -247,17 +248,69 @@ def _compile_claims(out: Compiled, *, profile: str, content: Path, gate, local_l
                                       "repository: " + ", ".join(hidden))[:2000]})
 
 
+def _compile_topics(out: Compiled, *, profile: str, content: Path, events: list[dict],
+                    catalog: dict[str, dict] | None, coverage: dict[str, dict] | None) -> None:
+    """``content/topics.json`` (M23; ADR 0037). Each Topic of ``content/topics`` with what it
+    names checked first: a Series that is not in the Catalog, an Event that is not a file, a
+    coverage matrix or an indicator that is not there, or a relation the Catalog contradicts
+    refuses the Release, whatever its Profile, and says the file and the line. A public-profile
+    Release holds the ``public`` Topics, and of each one's Events those it holds itself: the id
+    of a draft Event is in no file of it. Series are carried by key whether or not the Release
+    holds them. The Catalog and the coverage matrices are read only when there is a Topic."""
+    directory = content / "topics"
+    topics, unreadable = T.load_topics(directory)
+    problems = [T.said(path, found) for path, found in unreadable]
+    if topics:
+        if catalog is None:
+            from ..catalog.load import load_catalog
+            catalog = load_catalog()
+        if coverage is None:
+            from ..catalog.coverage import COVERAGE_DIR, load_coverage
+            coverage = load_coverage()
+            for topic in topics:
+                name = topic.record.get("range", {}).get("coverage")
+                path = COVERAGE_DIR / f"{name}.json"
+                if name and path.is_file() and (f"coverage/{name}.json", path.read_bytes()) not in out.read:
+                    out.read.append((f"coverage/{name}.json", path.read_bytes()))
+        files = {path.name[:-len(".md")] for path in E.event_files(content / "events")}
+        for topic in topics:
+            problems += [T.said(topic.path, found)
+                         for found in T.references(topic, catalog=catalog, events=files, coverage=coverage)]
+    if problems:
+        raise ContentError("; ".join(problems[:5]) + (f" (and {len(problems) - 5} more)" if len(problems) > 5 else ""))
+    out.read += [(f"topics/{topic.path.name}", topic.body) for topic in topics]
+    drafts = [topic for topic in topics if topic.record["status"] == "draft"]
+    if profile == "public":
+        topics = [topic for topic in topics if topic.record["status"] == "public"]
+    held = {event["id"] for event in events}
+    compiled, said = [], []
+    for topic in topics:
+        record, left_off = T.compiled(topic, coverage or {}, held)
+        compiled.append(record)
+        if left_off:
+            said.append(f"{len(left_off)} draft Event{'' if len(left_off) == 1 else 's'} left off {topic.slug}")
+    out.files[TOPICS] = dump({"topics": compiled})
+    if directory.is_dir():
+        if profile == "public" and drafts:
+            said.insert(0, f"{len(drafts)} draft{'' if len(drafts) == 1 else 's'} left out")
+        out.report.append({"check": "content: topics", "outcome": "pass",
+                           "detail": "; ".join([f"{len(compiled)} Topic{'' if len(compiled) == 1 else 's'}", *said])[:2000]})
+
+
 def compile_content(*, profile: str, content: Path | None = None, manual: Path | None = None,
                     gate=None, legacy_annotations: list[dict] | None = None,
                     local_locks: Path | None = None, withdrawn: set[str] | None = None,
-                    carry_locks: bool = True) -> Compiled:
+                    carry_locks: bool = True, catalog: dict[str, dict] | None = None,
+                    coverage: dict[str, dict] | None = None) -> Compiled:
     """The content files of a Release of ``profile``. ``content`` is the directory that holds
     ``events/`` (default the repository's ``content``); ``manual`` the hand-entered directory
     (``catalog/manual``; None: no hand-entered layer is read); ``gate`` the rights gate a
     public Profile asks; ``legacy_annotations`` what the legacy converter projected from v1's
     bands and its recession series; ``local_locks`` a local root's own Claim locks (local
     Profile only); ``withdrawn`` the Series withdrawn from the root; ``carry_locks`` False for
-    a writer that runs no engine step. Raises ``ContentError``."""
+    a writer that runs no engine step; ``catalog`` and ``coverage`` the Catalog and the
+    coverage matrices a Topic is held to (default the repository's, read only when there is a
+    Topic). Raises ``ContentError``."""
     if profile not in ("public", "local"):
         raise ContentError(f"unknown profile {profile!r}")
     if profile == "public" and legacy_annotations:
@@ -326,6 +379,7 @@ def compile_content(*, profile: str, content: Path | None = None, manual: Path |
         seen.add(annotation["id"])
     _compile_claims(out, profile=profile, content=content, gate=gate, local_locks=local_locks,
                     withdrawn=set(withdrawn or ()), carry_locks=carry_locks)
+    _compile_topics(out, profile=profile, content=content, events=compiled_events, catalog=catalog, coverage=coverage)
     declared, problems, body = H.load(content)
     if problems:
         raise ContentError("; ".join(problems[:5]))
@@ -341,12 +395,13 @@ def add_reading_files(files: dict[str, bytes], withheld: list[dict], declared: d
     """Write a Release's ``content/highlights.json`` and ``search.json`` into ``files`` (M22;
     ADR 0036), and return what its check report says of them. Called by every writer last of
     all, when the Catalog, the withheld list, the Events and the Claims are what the Release
-    will hold: both files are projections of those and of nothing else. Neither reads an
+    and the Topics are what the Release will hold: both files are projections of those and of nothing else. Neither reads an
     Observation, so no value can enter either from data; a Withheld Series is in both by name."""
     catalog = json.loads(files[CATALOG])
     document, left_out = H.project(declared, catalog["series"])
     files[HIGHLIGHTS] = dump(document)
-    index = search_document(catalog, withheld, json.loads(files[EVENTS]), json.loads(files[CLAIMS]))
+    index = search_document(catalog, withheld, json.loads(files[EVENTS]), json.loads(files[CLAIMS]),
+                            json.loads(files[TOPICS]))
     files[SEARCH] = dump(index)
     named = sum(len(row["series"]) for row in document["segments"])
     # Left out is said, and is not a warning: a Release of some of the Catalog names fewer.

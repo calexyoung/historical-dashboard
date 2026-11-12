@@ -21,7 +21,12 @@ It runs after the Catalog's four layers and holds Macro Atlas's own content to i
   redistribution of everything its numbers came through (a lock in the repository is a file
   of values);
 - ``content/highlights.json``, the headline Series (M22; ADR 0036), names Series of the
-  Catalog, each once, under the Segment the Catalog puts it in, and none that is retired.
+  Catalog, each once, under the Segment the Catalog puts it in, and none that is retired;
+- every file under ``content/topics`` is a Topic (``schema/topic.schema.json``, M23; ADR
+  0037) that names Series of the Catalog, Events that are files and a coverage matrix that
+  has the indicator, with no relation the Catalog contradicts; each problem says its line;
+- a ``public`` Event or Claim names Topics that are files (a draft that names one that is not
+  gets a note).
 
 Reads files; fetches and writes nothing.
 """
@@ -34,6 +39,7 @@ from . import claims as K
 from . import events as E
 from . import highlights as H
 from . import notes as N
+from . import topics as T
 from . import wordlist as W
 from .compile import CONTENT_DIR
 
@@ -43,11 +49,13 @@ RECORDS = ("migration-review.json",)
 
 
 def check_content(series: dict[str, dict] | set[str], content: Path | None = None,
-                  notes: Path | None = None, gate=None) -> tuple[list[Problem], list[str]]:
+                  notes: Path | None = None, gate=None,
+                  coverage: dict[str, dict] | None = None) -> tuple[list[Problem], list[str]]:
     """The problems of the content layer, and the notes (what a person should know that is
     not wrong). ``series`` is the Catalog (key to entry; a set of keys will do where no Claim
     is checked). ``gate`` is the rights gate asked about the locks kept in the repository;
-    with none, a lock there is refused."""
+    with none, a lock there is refused. ``coverage`` is the coverage matrices a Topic's range
+    may name, by name."""
     content = CONTENT_DIR if content is None else Path(content)
     events_dir = content / "events"
     problems: list[Problem] = []
@@ -60,6 +68,35 @@ def check_content(series: dict[str, dict] | set[str], content: Path | None = Non
         for path in sorted(events_dir.iterdir()):
             if path.is_dir() or (path.suffix != ".md" and path.name not in RECORDS):
                 problem(path, "it is under content/events and is not an Event (ID.md): nothing else is kept there")
+    # --- Topics: read first, so that an Event and a Claim can be held to them ---
+    topics_dir = content / "topics"
+    if topics_dir.is_dir():
+        for path in sorted(topics_dir.iterdir()):
+            if path.is_dir() or path.suffix != ".md":
+                problem(path, "it is under content/topics and is not a Topic (SLUG.md): nothing else is kept there")
+    topics, unreadable = T.load_topics(topics_dir)
+    for path, (line, message) in unreadable:
+        problem(Path(f"{path}:{line}") if line is not None else path, message)
+    # A file that could not be read is a Topic all the same: what names it is not dangling.
+    status_of = {path.name[:-len(".md")]: None for path in T.topic_files(topics_dir)}
+    status_of.update({topic.slug: topic.record["status"] for topic in topics})
+    event_ids = {path.name[:-len(".md")] for path in E.event_files(events_dir)}
+    for topic in topics:
+        for line, message in T.references(topic, catalog=series, events=event_ids, coverage=coverage or {}):
+            problem(Path(f"{topic.path}:{line}"), message)
+
+    def named_topics(path: Path, record: dict) -> None:
+        for slug in record.get("topics", []):
+            if slug not in status_of:
+                if record["status"] == "public":
+                    problem(path, f"it names the Topic {slug}, and there is no content/topics/{slug}.md")
+                else:
+                    remarks.append(f"{path.name} is a draft and names the Topic {slug}, which is not a file "
+                                   f"(content/topics/{slug}.md): it cannot be made public as it stands")
+            elif record["status"] == "public" and status_of[slug] == "draft":
+                remarks.append(f"{path.name} names the Topic {slug}, which is a draft: a public release holds "
+                               "the name and no page for it")
+
     seen: dict[str, Path] = {}
     for path in E.event_files(events_dir):
         event, found = E.read_event(path.read_bytes(), path.name)
@@ -68,6 +105,7 @@ def check_content(series: dict[str, dict] | set[str], content: Path | None = Non
         if event is None:
             continue
         seen[event["id"]] = path
+        named_topics(path, event)
         for key in event["related_series"]:
             if key not in series:
                 problem(path, f"it names the Series {key}, which is not in the catalog")
@@ -82,6 +120,10 @@ def check_content(series: dict[str, dict] | set[str], content: Path | None = Non
             remarks.append(f"{path.name} is a draft and {where} (the word list): it is in no public release "
                            "until its wording is decided")
     problems += _claims(series, content / "claims", gate, remarks)
+    for path in K.claim_files(content / "claims"):
+        claim, _found = K.read_claim(path.read_bytes(), path.name)
+        if claim is not None:
+            named_topics(path, claim)
     declared, found, _body = H.load(content)
     for said in found:
         where, _, rest = said.partition(": ")
