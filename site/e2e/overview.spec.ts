@@ -14,6 +14,9 @@ const axe = async (page: Page) => {
   return results.violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target).join(" | ")}`);
 };
 
+/** The page has taken over the server's markup: the "/" key and the sheet are live. */
+const ready = (page: Page) => expect(page.locator("[data-open-search][data-ready]")).toBeVisible();
+
 test.describe("with JavaScript off (AC: the Overview renders complete)", () => {
   test.use({ javaScriptEnabled: false });
 
@@ -54,6 +57,7 @@ test.describe("with JavaScript off (AC: the Overview renders complete)", () => {
 test.describe("the search sheet", () => {
   test("opens from the top bar with the field focused, lists grouped hits as the reader types, and Escape gives focus back", async ({ page, atlas }) => {
     await page.goto(atlas.url("/explore"));
+    await ready(page);
     const opener = page.locator("[data-open-search]");
     await opener.click();
     const sheet = page.getByRole("dialog", { name: "Search" });
@@ -70,6 +74,7 @@ test.describe("the search sheet", () => {
 
   test("the / key opens it, the arrow keys reach a hit, and Enter on the field lists every result on a page", async ({ page, atlas }) => {
     await page.goto(atlas.url("/data"));
+    await ready(page);
     await page.keyboard.press("/");
     const sheet = page.getByRole("dialog", { name: "Search" });
     await expect(sheet).toBeVisible();
@@ -90,6 +95,7 @@ test.describe("the search sheet", () => {
 
   test("opened with the / key from a place in the page, it gives focus back to that place", async ({ page, atlas }) => {
     await page.goto(atlas.url("/"));
+    await ready(page);
     const place = page.locator("li[data-segment=infrastructure]").getByRole("link", { name: "Fixture building permits", exact: true });
     await place.focus();
     await page.keyboard.press("/");
@@ -104,6 +110,7 @@ test.describe("the search sheet", () => {
 
   test("the / key is the reader's own while they type in a field", async ({ page, atlas }) => {
     await page.goto(atlas.url("/"));
+    await ready(page);
     const field = page.locator("#overview-q");
     await field.focus();
     await page.keyboard.type("a/b");
@@ -113,6 +120,7 @@ test.describe("the search sheet", () => {
 
   test("never animates, and a Withheld Series is found by name and marked", async ({ page, atlas }) => {
     await page.goto(atlas.url("/"));
+    await ready(page);
     await page.keyboard.press("/");
     const sheet = page.getByRole("dialog", { name: "Search" });
     expect(await sheet.evaluate((el) => getComputedStyle(el).transitionDuration)).toMatch(/^0s(, 0s)*$/);
@@ -124,6 +132,7 @@ test.describe("the search sheet", () => {
 
   test("says so when nothing matches", async ({ page, atlas }) => {
     await page.goto(atlas.url("/"));
+    await ready(page);
     await page.locator("[data-open-search]").click();
     await page.keyboard.type("zzzz");
     await expect(page.getByRole("dialog", { name: "Search" }).locator("[data-no-results]")).toContainText("Nothing matches");

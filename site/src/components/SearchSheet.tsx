@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, type KeyboardEvent, type MouseEvent } from "react";
 import type { SearchAnswer } from "@/lib/search";
+import { useHydrated } from "./explorer/nav";
 
 const MAX_QUERY = 100;
 const HELD: Record<string, string> = { withheld: "Withheld", not_permitted: "Not shown here" };
@@ -33,6 +34,9 @@ export function SearchSheet({ basePath }: { basePath: string }) {
   const [q, setQ] = useState("");
   const [answer, setAnswer] = useState<SearchAnswer | null>(null);
   const [failed, setFailed] = useState(false);
+  // Said on the door once the "/" key is being listened for (a test waits for it; a reader
+  // who presses the key before then gets what the browser does with it).
+  const ready = useHydrated();
 
   useEffect(() => {
     const onKey = (event: globalThis.KeyboardEvent) => {
@@ -115,6 +119,7 @@ export function SearchSheet({ basePath }: { basePath: string }) {
         href={`${basePath}/search`}
         onClick={open}
         data-open-search
+        data-ready={ready ? "" : undefined}
         aria-haspopup="dialog"
         aria-keyshortcuts="/"
         className="press hover-control inline-flex h-8 items-center gap-2 rounded border border-control bg-raised px-2.5 text-xs text-ink-2"

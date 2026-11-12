@@ -57,7 +57,8 @@ check() { # port base
   local url="http://127.0.0.1:$1$2"
   curl -fsS "$url/api/health" | grep -q '"release_id":"20260101T000000Z-0000000"' || { echo "FAIL: $url/api/health"; exit 1; }
   curl -fsS "$url/explore" | grep -q 'Fixture price index' || { echo "FAIL: $url/explore"; exit 1; }
-  [ "$(curl -s -o /dev/null -w '%{http_code}' "$url/")" = 307 ] || { echo "FAIL: $url/ should redirect"; exit 1; }
+  # The front door is the Overview (M22): a page, complete in its HTML, not a redirect.
+  curl -fsS "$url/" | grep -q 'Fixture price index' || { echo "FAIL: $url/ should be the Overview"; exit 1; }
   echo "ok  $url"
 }
 check 3101 /macro-atlas
