@@ -60,7 +60,10 @@ export function createRateLimiter(options: Partial<Limits> & { /** Milliseconds,
       }
       if (own) refill(own, limits.address, now);
       else {
-        own = { tokens: limits.address.burst, at: now };
+        // An address that may have been spending the shared bucket starts with what that has
+        // left, so finding room is not a new burst. Unused, the shared bucket is full.
+        refill(overflow, limits.address, now);
+        own = { tokens: overflow.tokens, at: now };
         addresses.set(key, own);
       }
       const waits = [own.tokens < 1 ? wait(own, limits.address) : 0, everybody.tokens < 1 ? wait(everybody, limits.global) : 0] as const;
@@ -86,8 +89,9 @@ function ipv6Prefix(text: string): string | null {
   const [head, tail] = text.split("::") as [string, string | undefined];
   const left = head === "" ? [] : head.split(":");
   const right = tail === undefined || tail === "" ? [] : tail.split(":");
+  // `::` stands for at least one group; without it there are exactly eight.
+  if (tail === undefined ? left.length !== 8 : left.length + right.length > 7) return null;
   const groups = tail === undefined ? left : [...left, ...Array<string>(8 - left.length - right.length).fill("0"), ...right];
-  if (groups.length !== 8 || (tail !== undefined && left.length + right.length > 7)) return null;
   if (!groups.every((g) => /^[0-9a-f]{1,4}$/.test(g))) return null;
   return `${groups.slice(0, 4).map((g) => parseInt(g, 16).toString(16)).join(":")}::/64`;
 }

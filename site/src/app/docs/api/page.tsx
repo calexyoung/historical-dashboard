@@ -146,6 +146,10 @@ export default async function ApiDocsPage() {
             A refusal is JSON with an <code className={code}>error</code>: its status, a code, a sentence, and where it helps, what may be asked
             instead.
           </p>
+          <p>
+            One case is not JSON. When there is no release this site may serve, every address answers 503 with a line of text, the API included:
+            there is then no release to name.
+          </p>
         </div>
         <div className="mt-3">
           <Rows head={["Status", "When"]} rows={view.errors} />

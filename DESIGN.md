@@ -364,6 +364,18 @@ then the quote as the door.
   section 3) comes with a sixth tab.
 - **Motion.** None: these are reading pages, and charts and data get no animation.
 
+### The read API's page (`/docs/api`, M24)
+
+- **A reading page** in the method pages' pattern: panels, prose at 72ch, and two-column
+  `data-table`s whose row heads are the thing documented. A route, a parameter, a field or a
+  status is set in the mono face at 13px; a limit's name is not, since it is a phrase.
+- **Each route is a link to a real answer** on the Release being served, so the page is also
+  the place to try the API. The routes table scrolls inside its panel on a phone; the page
+  itself never scrolls sideways.
+- **Examples** are one `pre` in the `raised` band, as the series page's "reproduce" block.
+- **The footer** carries a second link, "API", beside "Glossary".
+- **Motion.** None.
+
 ### Still to be recorded here
 
 Statement-table styles (v2.3) are added to this file by the milestone that builds them.

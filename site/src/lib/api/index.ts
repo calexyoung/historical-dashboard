@@ -140,7 +140,7 @@ function unknownSeries(c: Context, key: string): ApiResponse {
 
 /** A key that was renamed: the Series it now names, or nothing. */
 const renamed = (release: OpenedRelease, key: string): CatalogEntry | undefined => (typeof key === "string" && KEY.test(key) ? release.catalog.series.find((e) => e.aliases?.includes(key)) : undefined);
-const moved = (location: string): ApiResponse => ({ status: 308, body: toJson({ moved_to: location }), location, cacheable: false });
+const moved = (c: Context, location: string): ApiResponse => ({ status: 308, body: toJson({ moved_to: `${c.options.address}${location}`, ...envelope(c.release) }), location, cacheable: false });
 
 // --- GET /api/v1 ------------------------------------------------------------------------------------
 
@@ -180,7 +180,7 @@ export function apiSeries(release: OpenedRelease, surface: Surface, key: string,
   const parsed = parseSeriesRequest(search, true);
   if (!parsed.ok) return bad(c, parsed.message, SERIES_ALLOWED);
   const tail = parsed.search ? `?${parsed.search}` : "";
-  if (!entry) return moved(`/api/v1/series/${alias!.key}${tail}`);
+  if (!entry) return moved(c, `/api/v1/series/${alias!.key}${tail}`);
 
   const answer = query(release, surface, toQuery(parsed.request, entry.key, "redistribute"), { gate: options.gate, maxMs: options.maxMs, clock: options.clock });
   if (!answer.ok) return failed(c, answer, SERIES_ALLOWED);
@@ -218,6 +218,7 @@ export function apiVintages(release: OpenedRelease, surface: Surface, key: strin
   // A page that is not a whole number is refused below with the pages there are; until then it is the first.
   const pageOk = pageText === undefined || /^[1-9][0-9]{0,8}$/.test(pageText);
   const page = pageText === undefined || !pageOk ? 1 : Number(pageText);
+  const periodOk = period === undefined || /^[0-9A-Za-z-]{1,16}$/.test(period);
   const tailOf = (n: number): string => {
     const out = new URLSearchParams();
     if (period !== undefined) out.set("period", period);
@@ -225,9 +226,11 @@ export function apiVintages(release: OpenedRelease, surface: Surface, key: strin
     const text = out.toString();
     return text ? `?${text}` : "";
   };
+  if (!periodOk) return bad(c, "period: a period label, such as 2025-11 or 2025-Q3", allowed);
   if (!entry) {
-    if (period !== undefined && !/^[0-9A-Za-z-]{1,16}$/.test(period)) return bad(c, "period: a period label, such as 2025-11 or 2025-Q3", allowed);
-    return moved(`/api/v1/series/${alias!.key}/vintages${tailOf(page)}`);
+    // A question that would be refused is refused here, not sent on with the bad part dropped.
+    if (!pageOk) return bad(c, "page: a whole number from 1", allowed);
+    return moved(c, `/api/v1/series/${alias!.key}/vintages${tailOf(page)}`);
   }
 
   const table = vintageTable(release, surface, entry.key, { period, permission: "redistribute", gate: options.gate, maxMs: options.maxMs, clock: options.clock });

@@ -68,7 +68,7 @@ export function apiDocsView(release: OpenedRelease, surface: Surface, address: s
       ["404", "There is no route at that address. The answer lists the routes."],
       ["422", `The answer would be larger than ${n(MAX_BYTES / 1024 / 1024)} MiB or ${n(MAX_ROWS)} observations. Ask for a shorter window.`],
       ["429", "Too many requests in a short time. The Retry-After header and error.retry_after_seconds say how many seconds to wait."],
-      ["503", `There is no release that may be served, or an answer took longer than ${n(MAX_MS / 1000)} seconds to make. Nothing is served in its place.`],
+      ["503", `An answer took longer than ${n(MAX_MS / 1000)} seconds to make and is not given; or there is no release that may be served, which is said as a line of text. Nothing is served in its place.`],
     ],
     limits: [
       ["Each address", `${n(LIMITS.address.burst)} requests at once, then ${perMinute(LIMITS.address.perSecond)}. An IPv6 address is counted with its /64 network.`],

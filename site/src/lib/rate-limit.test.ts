@@ -145,7 +145,7 @@ describe("whose request it is", () => {
   });
 
   it("is one shared bucket when there is no header or it holds no address", () => {
-    for (const header of [null, undefined, "", "unknown", "not an address", "999.1.1.1", "1.2.3", "a".repeat(500), "203.0.113.7, <script>", "1:2:3:4:5::6:7:8:9", "1:2:3:4:5:6:7::8", "1:2:3:4:5:6:7:8:9", "1::2::3", ":::", "::", "1:2:3", "12345::1", "[::1", "::ffff:999.1.1.1"]) {
+    for (const header of [null, undefined, "", "unknown", "not an address", "999.1.1.1", "1.2.3", "a".repeat(500), "203.0.113.7, <script>", "1:2:3:4:5::6:7:8:9", "1:2:3:4:5:6:7::8", "1:2:3:4:5:6:7:8:9", "1::2::3", ":::", "1:2:3", "12345::1", "[::1", "::ffff:999.1.1.1"]) {
       expect(addressOf(header)).toBe("direct");
     }
   });
