@@ -15,7 +15,7 @@ v1 showed 126 series. This page accounts for every one of them (PLAN M16) as one
 store and the release writer run for these Series, and v1's own copy of them (which came through
 FRED and Yahoo) is not what is read. It is not a statement about a public Surface. A public
 Release holds a Series only when the rights register row it rests on is signed, and no builder
-signs one. The rights gate would show 0 of them on production today.
+signs one. The rights gate would show 14 of them on production today.
 
 Whether each live Series says what v1 said is the comparison in `docs/v2/v1-overlap.md`, which
 holds counts and differences and no agency's figures. What is proposed for each Series, and

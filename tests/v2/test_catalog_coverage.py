@@ -11,10 +11,11 @@ import pytest
 from atlas.catalog import load_catalog
 from atlas.catalog.check import check
 from atlas.catalog.coverage import COVERAGE_PAGE, load_coverage, render_coverage
+from atlas.catalog.table import gate_shows
 from atlas.cli import main as atlas_main
-from atlas.rights import load_register
+from atlas.rights import RightsGate, load_register
 
-from .capture_helpers import ALLOW
+from .capture_helpers import committed_with
 from .catalog_helpers import derived, stored, write
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -179,12 +180,13 @@ def test_a_cell_says_what_exists_and_the_page_says_why_anything_is_missing(tmp_p
 def test_the_page_gives_the_gates_answer_and_never_reads_a_proposal_as_permission(tmp_path):
     entries = [stored("fx_live", country="JPN", status="active", source=BOUND)]
     rows = [{"country": "JPN", "name": "Japan", "cells": {"cpi": {"series": "fx_live"}}}]
-    text = page(tmp_path, entries, rows)
+    # No row signed: the register still proposes all four for the Bureau, and a proposal shows nothing.
+    unsigned = committed_with()
+    assert next(row for row in unsigned["rows"] if row["id"] == "bls")["proposal"]["display"] is True
+    text = page(tmp_path, entries, rows, register=unsigned)
     assert "The rights gate would show 0 of the 1 Series in the pipeline on production today." in text
     assert "| Bureau of Labor Statistics | `bls` | not signed | 1 |" in text
-    table = load_register()
-    next(row for row in table["rows"] if row["id"] == "bls")["decision"] = dict(ALLOW)
-    text = page(tmp_path, entries, rows, register=table)
+    text = page(tmp_path, entries, rows, register=committed_with(["bls"]))
     assert "The rights gate would show 1 of the 1 Series in the pipeline on production today." in text
     assert "| Bureau of Labor Statistics | `bls` | signed 2026-11-11: display allowed | 1 |" in text
 
@@ -208,7 +210,14 @@ def test_the_committed_page_is_what_the_command_writes(capsys):
     assert len(rows) == 20 and all(len(row.strip("|").split("|")) == 8 for row in rows)
     assert cells(text, "Japan")[:3] == ["`jp_cpi`", "`jp_infl`", "`jp_fx`"]
     assert cells(text, "Germany")[2] == "`ez_fx` (EA)"
-    assert "0 of the" in text  # no row is signed
+    # The gate's count is worked out from the committed register, whatever Alex has signed in it.
+    catalog, gate = load_catalog(), RightsGate(load_register())
+    series = {cell.get("series") or cell.get("shared") for row in load_coverage()["g20"]["rows"]
+              for cell in row["cells"].values()} - {None}
+    live = [key for key in series if catalog[key]["status"] != "draft"
+            and ("recipe" in catalog[key] or (catalog[key]["source"]["channel"] or {}).get("endpoint"))]
+    shown = sum(gate_shows(catalog[key], catalog, gate) for key in live)
+    assert f"The rights gate would show {shown} of the {len(live)} Series in the pipeline on production today." in text
 
 
 def test_a_stale_page_fails_the_check(tmp_path, monkeypatch, capsys):

@@ -25,7 +25,7 @@ from atlas.rights import RightsGate, load_register
 from atlas.vintage.cli import main as replay_main
 from atlas.vintage.store import VintageStore
 
-from .capture_helpers import ALLOW
+from .capture_helpers import ALLOW, committed_with_file, signed_in_committed
 from .catalog_helpers import stored, write
 from .release_helpers import all_bytes
 
@@ -40,13 +40,8 @@ ROWS = sorted({e.source for e in endpoints_from_register(load_register())})
 
 
 def signed(tmp_path: Path, rows) -> Path:
-    table = load_register()
-    for row in table["rows"]:
-        if row["id"] in rows:
-            row["decision"] = dict(ALLOW)
-    path = tmp_path / f"register-{'-'.join(rows) or 'none'}.json"
-    path.write_text(json.dumps(table))
-    return path
+    """The register with exactly ``rows`` signed, whatever Alex has signed in the committed file."""
+    return committed_with_file(tmp_path, rows, name=f"register-{'-'.join(rows) or 'none'}.json")
 
 
 def no_spots(tmp: Path) -> Path:
@@ -178,11 +173,36 @@ def test_a_public_release_holds_exactly_the_allowlisted_series(rows, store, tmp_
         assert word not in everything, word
 
 
-def test_under_the_committed_register_a_public_release_holds_nothing(store, tmp_path):
-    assert allowlist(ROOT / "schema" / "rights-register.json") == set()
-    result = release(profile="public", root=tmp_path / "public", store=store, now=NOW, spot=no_spots(tmp_path))
+def test_under_a_register_with_no_signed_row_a_public_release_holds_nothing(store, tmp_path):
+    unsigned = signed(tmp_path, [])
+    assert allowlist(unsigned) == set()
+    result = release(profile="public", root=tmp_path / "public", store=store, register=unsigned, now=NOW,
+                     spot=no_spots(tmp_path))
     assert result.exit_code == 1
     assert not (tmp_path / "public" / "CURRENT").exists()
+
+
+def test_the_committed_register_allowlists_exactly_what_rests_on_rows_alex_has_signed_for_display(tmp_path):
+    """The committed register, read and not released from. A Series is on its allowlist only if
+    every stored Series under it rests on a row Alex has signed for display, and every Series of
+    the pipeline that does so directly is on it. With no row signed the allowlist is empty."""
+    table, catalog = load_register(), load_catalog()
+    alex = {row["id"] for row in table["rows"] if (row["decision"] or {}).get("display") is True}
+    assert alex <= signed_in_committed()
+    row_of = {origin: row for row in table["rows"] if row["kind"] == "origin" for origin in row["origins"]}
+
+    def rows_under(key: str) -> set[str]:
+        return {row_of[catalog[name]["source"]["origin"]["producer"]]["id"] for name in leaves(key, catalog)}
+
+    allowed = allowlist(ROOT / "schema" / "rights-register.json")
+    assert bool(allowed) <= bool(alex)
+    for key in allowed:
+        assert rows_under(key) <= alex, key
+    whole = {row["id"] for row in table["rows"] if row["kind"] == "origin" and row["datasets"] == "*"}
+    for key in allowlist(signed(tmp_path, ROWS)):  # the pipeline, under every capturing row
+        below = [catalog[name]["source"] for name in leaves(key, catalog)]
+        if rows_under(key) <= alex & whole and all(one["channel"]["via"] == "direct" for one in below):
+            assert key in allowed, key
 
 
 def test_v1s_own_values_are_never_what_a_public_release_holds(store, tmp_path):

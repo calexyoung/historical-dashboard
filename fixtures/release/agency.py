@@ -6,8 +6,8 @@ It runs the real capture kit over every recorded exchange in ``fixtures/capture`
 values; nothing is asked of the network), replays them into a vintage store and runs the real
 release writer with ``--profile public``. The register it is decided under is a copy of the
 committed table in which every row that lists something to capture carries a decision. That
-decision is test data and says nothing of what Alex has decided: the committed register signs
-no row, which is why this Release needs ``--out`` and can never be written into $ATLAS_PUBLIC
+decision is test data and says nothing of what Alex has decided, and the values are invented,
+which is why this Release needs ``--out`` and can never be written into $ATLAS_PUBLIC
 (docs/method/release-writer.md).
 
 DIR then holds ``public/`` (the release root), ``store/`` and ``register.json`` (the test

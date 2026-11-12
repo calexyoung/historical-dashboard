@@ -1,7 +1,7 @@
 """M14 on the committed fixtures: the consumer price index of the nineteen G20 countries and the
 dollar rate of sixteen currencies go from recorded bytes of the IMF's shape through capture,
 replay and the release writer, and pass the release gate when the IMF's row is signed. Under
-the committed register, where no row is signed, nothing is captured, recorded or released.
+a register in which no row is signed, nothing is captured, recorded or released.
 
 The fixtures' values are invented (fixtures/capture/README.md). A decision in a register here
 is test data and says nothing of what Alex has decided."""
@@ -17,10 +17,9 @@ from atlas.capture.cli import main as capture_main
 from atlas.catalog import load_catalog
 from atlas.publish.run import release
 from atlas.release import validate_release
-from atlas.rights import load_register
 from atlas.vintage.cli import main as replay_main
 
-from .capture_helpers import ALLOW
+from .capture_helpers import committed_with_file
 
 ROOT = Path(__file__).resolve().parents[2]
 FIXTURES = ROOT / "fixtures" / "capture"
@@ -34,13 +33,8 @@ FX = sorted([*(f"{c}_fx" for c in G20 if c not in ("de", "fr", "it", "us", "tr")
 
 
 def signed(tmp_path: Path, rows=("imf",)) -> Path:
-    table = load_register()
-    for row in table["rows"]:
-        if row["id"] in rows:
-            row["decision"] = dict(ALLOW)
-    path = tmp_path / "register.json"
-    path.write_text(json.dumps(table))
-    return path
+    """The register with exactly ``rows`` signed, whatever Alex has signed in the committed file."""
+    return committed_with_file(tmp_path, rows)
 
 
 @pytest.fixture(scope="module")
@@ -144,16 +138,19 @@ def test_inflation_is_the_change_from_the_same_month_a_year_earlier_by_the_calen
     assert next(iter(series(root, "au_infl", "derived"))) == "2025-04"
 
 
-def test_under_the_committed_register_nothing_is_captured_recorded_or_released(tmp_path, capsys, released):
+def test_under_a_register_with_no_signed_row_nothing_is_captured_recorded_or_released(tmp_path, capsys, released):
     _, _, store, _ = released
-    assert capture_main(["--store", str(tmp_path / "store"), "--replay", str(FIXTURES), "--only", "imf"]) == 1
+    unsigned = signed(tmp_path, rows=())
+    assert capture_main(["--store", str(tmp_path / "store"), "--register", str(unsigned),
+                         "--replay", str(FIXTURES), "--only", "imf"]) == 1
     assert "the rights register row for International Monetary Fund (imf) is not signed" in capsys.readouterr().out
     assert not (tmp_path / "store").exists()
-    assert replay_main(["--store", str(tmp_path / "vintages"), "--captures", str(store)]) == 1
+    assert replay_main(["--store", str(tmp_path / "vintages"), "--register", str(unsigned),
+                        "--captures", str(store)]) == 1
     out = capsys.readouterr().out
     for key in ("jp_cpi", "us_cpi", "tryusd", "ez_fx"):
         assert f"REFUSED {key}:" in out
-    result = release(profile="public", root=tmp_path / "public", store=store, now=NOW)
+    result = release(profile="public", root=tmp_path / "public", store=store, register=unsigned, now=NOW)
     assert result.exit_code == 1
     assert not (tmp_path / "public" / "CURRENT").exists()
 

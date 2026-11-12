@@ -2,7 +2,7 @@
 
 # Rights register
 
-Version `2026-11-11.draft-6`. 0 of 31 rows signed. Intermediary Channels cleared: none.
+Version `2026-11-12.1`. 1 of 31 rows signed. Intermediary Channels cleared: none.
 
 One row per Origin and per intermediary Channel: the terms that were read, the sentences that
 matter quoted, a proposal, and Alex's decision (CONTEXT.md, Rights register; PLAN 6 and 6.1;
@@ -40,9 +40,29 @@ An Origin, dataset or Channel with no row is unknown, and unknown is refused.
 2. In `schema/rights-register.json`, replace the row's `"decision": null` with, for example,
    `"decision": { "display": true, "redistribute": true, "store": true, "ml_use": false,
    "signed_by": "Alex", "signed_on": "2026-11-20" }`, and change `version` at the top.
-3. Add the row's id to `SIGNED_BY_ALEX` in `tests/v2/test_rights_register.py`.
-4. Run `npm run gen` and `make v2-check`, and commit. `python -m atlas rights` lists what is
-   signed.
+3. Add the row's id to `SIGNED_BY_ALEX` in `tests/v2/test_rights_register.py`. It is the one
+   test edit a signature needs: every other test reads what is signed from the table.
+4. Run `npm run gen` (this page and `packages/core/src/rights-register.generated.ts`) and
+   `python -m atlas catalog --write` (`docs/v2/g20-coverage.md`, `docs/v2/v1-coverage.md` and
+   `docs/v2/catalog-migration.md`, which say what the gate would show today).
+5. Run `make v2-check` and `make v2-site-check`, and commit. `python -m atlas rights` lists what
+   is signed, and `python -m atlas capture --dry-run` what the capture job is now cleared to ask.
+
+What a signature changes, and what it does not:
+
+- **Capture.** If the decision allows store, the row's endpoints are cleared for storage. A run
+  still fetches nothing while any endpoint it selects is not cleared, so a run of only the
+  cleared rows names them:
+  `python -m atlas capture --only <row>`. On the capture host that is the variable
+  `ATLAS_CAPTURE_ONLY`, and the host runs the commit `ATLAS_REF` names, so it sees the signature
+  once `ATLAS_REF` is moved to a commit that holds it (`deploy/capture/README.md`). A source
+  that wants an API key also needs its key.
+- **A public Release.** It may hold a Series once every row that Series rests on is signed and
+  allows display, the store holds captures of it, and the Release's checks pass. Signing alone
+  publishes nothing.
+- **The repository.** No agency data is fetched or committed by signing. The committed capture
+  fixtures stay invented values until a real capture is exported under a row that allows
+  redistribution (`python -m atlas capture --export-fixtures`).
 
 Clearing an intermediary Channel (FRED, ALFRED, Yahoo) takes two more things: a section in
 `docs/adr/0006-rights-gate-allowlist-releases.md` headed
@@ -53,7 +73,7 @@ with that date in `cleared_intermediaries`.
 
 | Row | Kind | Licence class | Terms read | Proposed | Decision |
 |---|---|---|---|---|---|
-| `bls` Bureau of Labor Statistics | origin | public domain | in part | all four | not decided |
+| `bls` Bureau of Labor Statistics | origin | public domain | in part | all four | all four |
 | `bea` Bureau of Economic Analysis | origin | public domain | yes | all four | not decided |
 | `census` Census Bureau | origin | public domain | yes | all four | not decided |
 | `treasury-fiscal-data` Treasury Fiscal Data | origin | public domain | yes | all four | not decided |
@@ -119,7 +139,7 @@ Open questions:
 - The API terms of service and the API FAQ were not read: bls.gov refused the automated request for both (HTTP 403, 2026-11-11). Read them before signing.
 - Limits without a key, as far as M7 and M13 could check them on 2026-11-11 by asking the API: a request for more than ten years is cut to ten years from its start year, with a message; an unknown series is left out, with a message; a year with no figure yet (this year, each January) is answered "No Data Available for Series ... Year: ...". The capture job asks for thirty years in three requests per endpoint, accepts only that last message and only of the current year, and treats any other message as an incomplete answer. The daily limit on requests without a key is believed to be 25 and was not confirmed from the page; the job makes six requests per run, two runs a day.
 
-Decision: **not decided**.
+Decision: allow **all four**. Signed by Alex on 2026-11-12.
 
 ### Bureau of Economic Analysis
 

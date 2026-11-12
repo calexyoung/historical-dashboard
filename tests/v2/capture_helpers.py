@@ -3,14 +3,44 @@ that answers from a script. No test of the capture kit touches the network (PLAN
 from __future__ import annotations
 
 import copy
+import json
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 
 from atlas.capture.http import Response, TransportError
+from atlas.rights import load_register
 
 FIXTURE_ORIGIN = "Macro Atlas fixture (synthetic)"
 ALLOW = {"display": True, "redistribute": True, "store": True, "ml_use": True,
          "signed_by": "Alex", "signed_on": "2026-11-11"}
 PROPOSAL = {"display": True, "redistribute": True, "store": True, "ml_use": True, "note": "test"}
+
+
+def signed_in_committed() -> set[str]:
+    """The ids of the rows Alex has signed in the committed register, read from the file. A test
+    of what the committed register does today works its expectation out from this, so that the
+    next signature changes no test."""
+    return {row["id"] for row in load_register()["rows"] if row["decision"] is not None}
+
+
+def committed_with(signed=(), **grants) -> dict:
+    """The committed register's rows under test decisions: exactly the rows named are signed
+    (ALLOW, with ``grants`` changed) and every other row is unsigned, whatever Alex has signed
+    in the file. A test of what a signature does, or of what its absence does, uses this and so
+    says the same thing before and after Alex signs a row. The decisions are test data."""
+    table = load_register()
+    unknown = set(signed) - {row["id"] for row in table["rows"]}
+    assert not unknown, f"the register has no row {sorted(unknown)}"
+    for row in table["rows"]:
+        row["decision"] = {**ALLOW, **grants} if row["id"] in signed else None
+    return table
+
+
+def committed_with_file(directory: Path, signed=(), name="register.json", **grants) -> Path:
+    """``committed_with`` written to a file, for a command that takes ``--register``."""
+    path = directory / name
+    path.write_text(json.dumps(committed_with(signed, **grants)))
+    return path
 
 
 def origin_row(row_id, origin, capture, *, signed=True, store=True, datasets="*"):

@@ -8,7 +8,7 @@ from pathlib import Path
 
 from atlas.catalog import load_catalog
 from atlas.catalog.check import ALLOWED_AGGREGATION, check
-from atlas.catalog.table import TABLE_PATH, proposal, render_table
+from atlas.catalog.table import TABLE_PATH, gate_shows, proposal, render_table
 from atlas.cli import main as atlas_main
 from atlas.rights import RightsGate, load_register
 
@@ -92,7 +92,13 @@ def test_the_committed_table_is_what_the_command_writes(tmp_path, capsys):
     assert atlas_main(["catalog", "--check"]) == 0
     assert atlas_main(["catalog"]) == 0
     out = capsys.readouterr().out
-    assert "188 Series" in out and "0 the rights gate would show on production today" in out
+    # The gate's count is worked out from the committed register, whatever Alex has signed in it:
+    # nothing while no row is signed, and never a draft Series or one with no Channel.
+    catalog, gate = load_catalog(), RightsGate(load_register())
+    shown = [key for key, entry in catalog.items() if gate_shows(entry, catalog, gate)]
+    signed = [row for row in load_register()["rows"] if row["decision"] is not None]
+    assert bool(shown) <= bool(signed)
+    assert "188 Series" in out and f"\n{len(shown)} the rights gate would show on production today" in out
 
 
 def test_no_proposal_reads_a_decision():

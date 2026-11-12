@@ -99,7 +99,7 @@ export function promote(root: string, id: string): void {
 /**
  * A rights register for tests only: the fixture Origin with a signed decision. It exists so a
  * test can ask a gate that answers differently per Permission (a display-only Series). The
- * committed register (`schema/rights-register.json`) holds no signed row, and nothing the app
+ * committed register (`schema/rights-register.json`) holds no signed row for the fixture Origin, and nothing the app
  * runs can be handed this table: a gate is passed in as an argument, by a test.
  */
 export function fixtureRegister(decision: { display: boolean; redistribute: boolean }): unknown {

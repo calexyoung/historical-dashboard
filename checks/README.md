@@ -4,7 +4,7 @@ Tables of expected behaviour, specified independently of the code that must sati
 
 | File | Run by | Pins down |
 |---|---|---|
-| `permits-cases.json` | pytest and Vitest | the rights gate, `permits(rightsUsed, surface)`: against the committed register, in which nothing is signed, and against test registers that cross a row's status (signed, signed in part, unsigned, no row) with the Channel and the Surface (ADR 0020). The test registers and their signatures are test data |
+| `permits-cases.json` | pytest and Vitest | the rights gate, `permits(rightsUsed, surface)`: against the committed register, for an Origin it does not list, and against test registers that cross a row's status (signed, signed in part, unsigned, no row) with the Channel and the Surface (ADR 0020). The test registers and their signatures are test data |
 | `period-cases.json` | pytest and Vitest | Period bounds and successors, worked out from a calendar |
 | `release-cases.json` | pytest and Vitest | every rule of the release contract, as edits to the fixture release |
 | `v1-links.json` | Vitest | what v1's own page did with its 11 presets and with ten hash links: selection, mode, range, layers. Recorded by `scripts/record-v1-links.py` driving v1's built page in a browser; holds keys, months and Event titles, no values. The Explorer must open the same (`site/src/lib/explorer/state.test.ts`, `site/src/lib/legacy/explorer.test.tsx`) |

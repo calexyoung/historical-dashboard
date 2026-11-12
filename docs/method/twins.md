@@ -75,8 +75,9 @@ an as-of view, which links to it.
 - `.metadata.json` is a fixed selection of the Catalog entry. It never holds a value, and where
   the Series may not be shown it says nothing of its coverage either.
 - On the local Surface every file of values is stamped "not for publication", in its content
-  and in the name a browser saves it under (CSV, JSON and Markdown alike). On a public Surface no register row is signed today, so every file of values is
-  403 (PLAN 6.1).
+  and in the name a browser saves it under (CSV, JSON and Markdown alike). On a public Surface a file of values is
+  403 unless the register row of every Origin it rests on is signed and allows redistribution (PLAN 6.1;
+  `python -m atlas rights` lists what is signed).
 
 ## Text from a Release
 

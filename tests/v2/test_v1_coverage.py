@@ -11,10 +11,12 @@ from pathlib import Path
 
 from atlas.capture.adapters import ADAPTERS
 from atlas.catalog import load_catalog
+from atlas.catalog.table import gate_shows
 from atlas.catalog.v1coverage import CLASSES, COVERAGE_PATH, account, render_v1_coverage
 from atlas.cli import main as atlas_main
-from atlas.rights import load_register
+from atlas.rights import RightsGate, load_register
 
+from .capture_helpers import committed_with
 from .catalog_helpers import derived, stored
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -123,8 +125,14 @@ def test_the_committed_page_is_what_the_command_writes_and_states_what_live_mean
     assert sorted(listed) == V1_KEYS  # each once, in one table
     assert "| live from origin | 51 |" in text and "| live via a cleared channel | 0 |" in text
     assert "| withheld | 75 |" in text
-    # "Live" is a statement about the pipeline. What a public Surface shows is the gate's.
-    assert "The rights gate would show 0 of them on production today" in text
+    # "Live" is a statement about the pipeline. What a public Surface shows is the gate's: none
+    # of them with no row signed, and under the committed register the ones whose rows Alex signed.
+    catalog, gate = load_catalog(), RightsGate(load_register())
+    shown = sum(gate_shows(catalog[key], catalog, gate) for key, row in committed().items() if row.klass != WITHHELD)
+    assert f"The rights gate would show {shown} of them on production today" in text
+    unsigned = render_v1_coverage(catalog, committed_with())
+    assert "| live from origin | 51 |" in unsigned  # the classes are the pipeline's, signed or not
+    assert "The rights gate would show 0 of them on production today" in unsigned
     assert "docs/v2/v1-overlap.md" in text
     # No figure of any agency is on the page: it is names, sources and reasons.
     assert not re.search(r"\d{4}-\d{2}: -?\d", text)
