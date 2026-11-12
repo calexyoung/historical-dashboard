@@ -1,11 +1,18 @@
 """API keys (PLAN M15; ADR 0029): a key is added to a request as it is sent to a source and is
 in nothing the kit keeps: no URL, no header, no body, no reason for a retry. A replay asks for
 none and sends none."""
+import gzip
+import json
+
 import pytest
 
+from atlas.capture import run_capture
+from atlas.capture.cli import main as capture_main
 from atlas.capture.http import CaptureError, Request, Session, usable_key
+from atlas.capture.replay import ReplayTransport, export_exchanges
+from atlas.capture.store import read_fetch_log, read_runs
 
-from .capture_helpers import LiveScripted, Scripted, refused
+from .capture_helpers import LiveScripted, Scripted, fixture_endpoint, fixture_register, refused
 
 KEY = "AB12CD34-EF56-7890-ABCD-EF1234567890"
 URL = "https://keyed.invalid/api/data?method=GetData"
@@ -27,7 +34,7 @@ def test_the_key_is_sent_and_the_request_that_is_kept_does_not_hold_it():
 
 
 def test_a_key_the_source_echoes_is_taken_out_of_the_body_and_the_headers_before_anything_is_kept():
-    body = '{"Request":[{"ParameterName":"USERID","ParameterValue":"%s"}],"again":"%s"}' % (KEY, KEY)
+    body = '{"Request":[{"ParameterName":"USERID","ParameterValue":"KEY"}],"again":"KEY"}'.replace("KEY", KEY)
     headers = [["Content-Type", "application/json"], ["Location", "/x?UserID=" + KEY]]
     http, _ = live({SENT: [(200, body, headers)]}, {"BEA_API_KEY": KEY})
     part = http.send(ASK)
@@ -75,20 +82,10 @@ def test_a_key_is_usable_only_in_the_shape_that_survives_a_url_and_json_unchange
 
 # --- a run -------------------------------------------------------------------------------
 
-import gzip  # noqa: E402
-import json  # noqa: E402
-
-from atlas.capture import run_capture  # noqa: E402
-from atlas.capture.cli import main as capture_main  # noqa: E402
-from atlas.capture.replay import ReplayTransport, export_exchanges  # noqa: E402
-from atlas.capture.store import read_fetch_log, read_runs  # noqa: E402
-
-from .capture_helpers import fixture_endpoint, fixture_register  # noqa: E402
-
 PLAIN = "https://fixture.invalid/a"
 KEYED = "https://fixture.invalid/keyed?table=1"
 KEYED_SENT = KEYED + "&token=" + KEY
-ECHO = 'asked with "%s"\n# end\n' % KEY
+ECHO = f'asked with "{KEY}"\n# end\n'
 
 
 def keyed_register():

@@ -1117,6 +1117,468 @@ class ImfSdmxAdapter:
         return self.read(capture.evidence.scope, capture.bodies)
 
 
+class BeaAdapter:
+    """The Bureau of Economic Analysis's data API (M15; ADR 0029). It wants a key, sent as the
+    query parameter ``UserID``, and repeats that key in every answer; the Session adds the one
+    and takes out the other, so nothing here ever holds it.
+
+    One request asks for one whole thing, every year: a table of the National Income and
+    Product Accounts with all its lines (``read: nipa``), or one indicator of the International
+    Transactions Accounts (``read: ita``). A series is the Bureau's own code for it
+    (``A191RX``, ``TSI_ItaBalGdsServ_QSA``). A code can sit on two lines of one table, so a
+    NIPA series is read from the line the endpoint pins, and what its rows say of themselves is
+    pinned with it (``labels``: unit, multiplier, metric): a change of multiplier stops the
+    capture instead of changing every figure by a thousand. ``basis`` pins a text the line or
+    the table's own note must hold ("chained (2017) dollars"), because nothing else in a row
+    says which year's dollars a chained series is in.
+
+    An error is an HTTP 200 with ``Error`` in place of ``Results``. A value is the Bureau's
+    text with the thousands commas taken out and nothing else changed; anything that is then
+    not a number makes the capture incomplete, for a line that is read. The Bureau marks no
+    value as preliminary: every one is ``observed``, and a later estimate of the same quarter
+    is a revision the vintage store sees."""
+
+    name = "bea"
+    version = 1
+    URL = "https://apps.bea.gov/api/data"
+    KEY = ("UserID", "BEA_API_KEY")
+    #: For each way of reading: the frequencies it may be asked at and what each makes a
+    #: Period; what names a series in a row; the labels pinned, by the row field each is read
+    #: from; and the request parameters that say what is asked, by the scope field each takes.
+    READS = MappingProxyType({
+        "nipa": {"frequencies": {"M": "monthly", "Q": "quarterly", "A": "annual"}, "id": "SeriesCode",
+                 "labels": {"unit": "CL_UNIT", "multiplier": "UNIT_MULT", "metric": "METRIC_NAME"},
+                 "asks": {"DataSetName": "dataset", "TableName": "table", "Frequency": "frequency"}},
+        "ita": {"frequencies": {"QSA": "quarterly", "QNSA": "quarterly", "A": "annual"}, "id": "TimeSeriesId",
+                "labels": {"unit": "CL_UNIT", "multiplier": "UNIT_MULT"},
+                "asks": {"Indicator": "indicator", "AreaOrCountry": "area", "Frequency": "frequency"}},
+    })
+    _NAME = re.compile(r"[A-Za-z0-9_]+")
+    _TIMES = MappingProxyType({
+        "monthly": (re.compile(r"([0-9]{4})M(0[1-9]|1[0-2])"), "{0}-{1}", "month"),
+        "quarterly": (re.compile(r"([0-9]{4})Q([1-4])"), "{0}-Q{1}", "quarter"),
+        "annual": (re.compile(r"([0-9]{4})"), "{0}", "year"),
+    })
+    _VALUE = re.compile(r"-?([0-9]{1,3}(,[0-9]{3})+|[0-9]+)(\.[0-9]+)?")
+
+    def key(self, params: dict) -> tuple[str, str]:
+        return self.KEY
+
+    def problem(self, params: dict) -> str | None:
+        how = self.READS.get(params.get("read"))
+        if how is None:
+            return f"its read is not {' or '.join(self.READS)}"
+        named = {"nipa": ("dataset", "table"), "ita": ("indicator", "area")}[params["read"]]
+        for name in named:
+            if not isinstance(params.get(name), str) or not self._NAME.fullmatch(params[name]):
+                return f"it names no {name}"
+        if params.get("frequency") not in how["frequencies"]:
+            listed = list(how["frequencies"])
+            return f"its frequency is not {', '.join(listed[:-1])} or {listed[-1]}"
+        series = params.get("series")
+        if (not isinstance(series, list) or not series or len(set(map(str, series))) != len(series)
+                or not all(isinstance(s, str) and self._NAME.fullmatch(s) for s in series)):
+            return "it does not name its series"
+        labels = params.get("labels")
+        wanted = ({"line"} if params["read"] == "nipa" else set()) | set(how["labels"])
+        allowed = wanted | ({"basis"} if params["read"] == "nipa" else set())
+        for name in series:
+            pinned = labels.get(name) if isinstance(labels, dict) else None
+            if pinned is None:
+                return f"it does not pin the labels of {name}"
+            if (not isinstance(pinned, dict) or not wanted <= set(pinned) <= allowed
+                    or not all(isinstance(v, str) and v for v in pinned.values())):
+                order = [n for n in ("line", "unit", "multiplier", "metric") if n in wanted]
+                return f"the labels of {name} are not {', '.join(order)}"
+        if isinstance(labels, dict) and set(labels) - set(series):
+            return f"it pins labels for {min(set(labels) - set(series))}, which it does not ask for"
+        return None
+
+    def _url(self, scope: dict) -> str:
+        how = self.READS[scope["read"]]
+        asked = {"method": "GetData"}
+        if scope["read"] == "ita":
+            asked["DataSetName"] = "ITA"
+        asked.update({parameter: scope[name] for parameter, name in how["asks"].items()})
+        return f"{self.URL}?{urlencode({**asked, 'Year': 'ALL', 'ResultFormat': 'JSON'})}"
+
+    def fetch(self, endpoint: Endpoint, fetch: Fetch) -> Evidence:
+        params = endpoint.params
+        scope = {name: params[name] for name in ("read", "dataset", "table", "indicator", "area", "frequency")
+                 if name in params}
+        scope["series"] = list(params["series"])
+        # The pins go into the scope: an old Capture is read under what it was asked with.
+        scope["labels"] = {name: dict(params["labels"][name]) for name in params["series"]}
+        scope["asked_on"] = fetch.now().astimezone(RELEASE_ZONE).date().isoformat()
+        return self.examine(scope, [fetch.get(self._url(scope), key=self.KEY).body])
+
+    @staticmethod
+    def _labelled(pinned: dict) -> str:
+        return ", ".join(f"{name} {pinned[name]!r}" for name in ("unit", "multiplier", "metric") if name in pinned)
+
+    def _read(self, scope: dict, bodies: list[bytes], problems: list[str]) -> tuple[dict[str, list[dict]], dict]:
+        from ..period import period_bounds
+
+        if len(bodies) != 1:
+            problems.append(f"1 part was asked for and {len(bodies)} were kept")
+            return {}, {}
+        answer = _json(bodies[0], problems, "the answer")
+        if answer is None:
+            return {}, {}
+        top = answer.get("BEAAPI")
+        results = top.get("Results") if isinstance(top, dict) else None
+        for holder in (top, results):
+            error = holder.get("Error") if isinstance(holder, dict) else None
+            if error is not None:
+                detail = error.get("ErrorDetail") if isinstance(error, dict) else None
+                words = [error.get("APIErrorCode"), error.get("APIErrorDescription"),
+                         detail.get("Description") if isinstance(detail, dict) else None] \
+                    if isinstance(error, dict) else [json.dumps(error)[:200]]
+                problems.append("BEA says: " + " ".join(str(w) for w in words if w))
+                return {}, {}
+        how = self.READS[scope["read"]]
+        request = top.get("Request") if isinstance(top, dict) else None
+        echoed = request.get("RequestParam") if isinstance(request, dict) else None
+        if not isinstance(echoed, list) or not all(isinstance(e, dict) for e in echoed):
+            problems.append("the answer does not say what it was asked for")
+            return {}, {}
+        said = {str(e.get("ParameterName", "")).upper(): str(e.get("ParameterValue", "")) for e in echoed}
+        expected = {parameter: scope[name] for parameter, name in how["asks"].items()}
+        expected["Year"] = "ALL"
+        if scope["read"] == "ita":
+            expected["DataSetName"] = "ITA"
+        for parameter, value in expected.items():
+            # The Bureau repeats what it was asked in capitals.
+            if said.get(parameter.upper(), "").upper() != value.upper():
+                problems.append(f"the answer says it was asked for {parameter} "
+                                f"{said.get(parameter.upper()) or 'nothing'}, not {value}")
+        data = results.get("Data") if isinstance(results, dict) else None
+        if not isinstance(data, list) or not data:
+            problems.append("the answer has no rows")
+            return {}, {}
+        checks: dict = {"rows": len(data)}
+        produced = results.get("UTCProductionTime", results.get("TsLastUpdated"))
+        if isinstance(produced, str):
+            checks["produced"] = produced
+        note = None
+        if scope["read"] == "nipa":
+            notes = results.get("Notes") if isinstance(results.get("Notes"), list) else []
+            note = next((n.get("NoteText") for n in notes if isinstance(n, dict)
+                         and n.get("NoteRef") == scope["table"] and isinstance(n.get("NoteText"), str)), None)
+            if note is not None:
+                checks["note"] = note
+        fixed = {"TableName": scope["table"]} if scope["read"] == "nipa" else \
+            {"Indicator": scope["indicator"], "AreaOrCountry": scope["area"], "Frequency": scope["frequency"]}
+        strays = sum(1 for row in data if not isinstance(row, dict)
+                     or not isinstance(row.get(how["id"]), str) or not isinstance(row.get("TimePeriod"), str)
+                     or any(row.get(field) != value for field, value in fixed.items()))
+        if strays:
+            what = " and ".join(f"{field} {value}" for field, value in fixed.items())
+            problems.append(f"the answer has {strays} row(s) that are not rows of {what}")
+            return {}, checks
+        frequency = how["frequencies"][scope["frequency"]]
+        pattern, label_as, kind = self._TIMES[frequency]
+        found: dict[str, list[dict]] = {}
+        for name in scope["series"]:
+            pinned = scope["labels"][name]
+            rows = [row for row in data if row[how["id"]] == name
+                    and (scope["read"] != "nipa" or row.get("LineNumber") == pinned["line"])]
+            if not rows:
+                problems.append(f"{name} is not on line {pinned['line']} of the answer" if scope["read"] == "nipa"
+                                else f"{name} is not in the answer")
+                continue
+            ours = {label: pinned[label] for label in how["labels"]}
+            other = next(({label: row.get(field) for label, field in how["labels"].items()} for row in rows
+                          if any(row.get(field) != pinned[label] for label, field in how["labels"].items())), None)
+            if other is not None:
+                problems.append(f"{name} is labelled {self._labelled(other)}; {self._labelled(ours)} was expected")
+            basis = pinned.get("basis")
+            if basis is not None and not any(isinstance(text, str) and basis.casefold() in text.casefold()
+                                             for text in (rows[0].get("LineDescription"), note)):
+                problems.append(f"neither the line of {name} nor the table's note says {basis!r} "
+                                "(a rebase: every figure means something else)")
+            out: list[tuple[str, dict]] = []
+            seen: set[str] = set()
+            for row in rows:
+                time = row["TimePeriod"]
+                match = pattern.fullmatch(time) if time.isascii() else None
+                label = label_as.format(*match.groups()) if match else None
+                bounds = period_bounds(frequency, label) if label else None
+                if bounds is None:
+                    problems.append(f"{name} has a time that is not a {kind}: {time!r}")
+                    continue
+                if label in seen:
+                    problems.append(f"{name} gives {label} twice")
+                    continue
+                seen.add(label)
+                value = row.get("DataValue")
+                if not (isinstance(value, str) and value.isascii() and self._VALUE.fullmatch(value)):
+                    # "(D)" and the like are known of other BEA data sets and were not seen in
+                    # these. What one would mean here is not guessed.
+                    problems.append(f"{name} has a value that is not a number for {label}: {value!r}")
+                    continue
+                if bounds[0] > scope["asked_on"]:
+                    problems.append(f"{name} has a value for {label}, a Period that had not begun on "
+                                    f"{scope['asked_on']}")
+                out.append((bounds[0], {"period": label, "value": value.replace(",", ""),
+                                        "status": "observed", "footnotes": []}))
+            out.sort(key=lambda pair: pair[0])
+            found[name] = [row for _, row in out]
+            checks.setdefault("series", {})[name] = {
+                "rows": len(out), "first": out[0][1]["period"] if out else None,
+                "last": out[-1][1]["period"] if out else None}
+        return found, checks
+
+    def examine(self, scope: dict, bodies: list[bytes]) -> Evidence:
+        problems: list[str] = []
+        _, checks = self._read(scope, bodies, problems)
+        return _evidence(scope, checks, list(dict.fromkeys(problems)))
+
+    def coverage(self, scope: dict) -> tuple[None, None]:
+        """Every year is asked for, every time: a Period that has left the table is gone."""
+        return None, None
+
+    def parse(self, capture: RawCapture) -> NormalizedState:
+        problems: list[str] = []
+        series, _ = self._read(capture.evidence.scope, capture.bodies, problems)
+        problems = list(dict.fromkeys(problems))
+        return NormalizedState(not problems, capture.evidence.scope, series if not problems else {}, problems)
+
+
+class EiaAdapter:
+    """The Energy Information Administration's API, version 2 (M15; ADR 0029). It wants a key,
+    sent as the query parameter ``api_key``; the Session adds it and nothing here holds it. A
+    missing or wrong key is answered with HTTP 403, which fails the fetch.
+
+    An endpoint is one route (``petroleum/pri/spt``) at one frequency, one column of data
+    (``value``; ``generation`` on the electricity route) and the series named by one facet
+    (``series``; ``fueltypeid`` where a row has no series id), with any other facet held to one
+    value (``facets``). Every Period is asked for, in pages of at most 5,000 rows sorted by
+    period and then by the facet. The units each series' rows carry are pinned (``units``).
+
+    A value is the Administration's own text: the answer is read so that a number printed bare
+    is kept as its characters, not as a float. A Period listed with ``null`` is an Observation
+    with no value. A weekly row is dated by a day, which names its ISO week.
+
+    Pages are whole when they agree on the total, add up to it, and their rows are in order
+    with none repeated. That shows a table that grew or shrank while it was read; a figure
+    revised between two pages would not show, and is seen by the next capture instead."""
+
+    name = "eia"
+    version = 1
+    BASE = "https://api.eia.gov/v2"
+    KEY = ("api_key", "EIA_API_KEY")
+    PAGE_SIZE = 5000  # the most the API gives in one answer
+    MAX_PAGES = 40
+    FREQUENCIES = MappingProxyType({"daily": "day", "weekly": "week", "monthly": "month",
+                                    "quarterly": "quarter", "annual": "year"})
+    _ROUTE = re.compile(r"[a-z0-9-]+(/[a-z0-9-]+)*")
+    _NAME = re.compile(r"[A-Za-z0-9_.-]+")
+
+    def key(self, params: dict) -> tuple[str, str]:
+        return self.KEY
+
+    def problem(self, params: dict) -> str | None:
+        if not isinstance(params.get("route"), str) or not self._ROUTE.fullmatch(params["route"]):
+            return "it names no route"
+        if params.get("frequency") not in self.FREQUENCIES:
+            return "its frequency is not daily, weekly, monthly, quarterly or annual"
+        for name in ("column", "facet"):
+            if name in params and not (isinstance(params[name], str) and self._NAME.fullmatch(params[name])):
+                return f"its {name} is not a name"
+        series = params.get("series")
+        if (not isinstance(series, list) or not series or len(set(map(str, series))) != len(series)
+                or not all(isinstance(s, str) and self._NAME.fullmatch(s) for s in series)):
+            return "it does not name its series"
+        facets = params.get("facets", {})
+        if not isinstance(facets, dict) or not all(
+                isinstance(k, str) and self._NAME.fullmatch(k) and isinstance(v, str) and self._NAME.fullmatch(v)
+                for k, v in facets.items()):
+            return "its facets are not each one name and one value"
+        if params.get("facet", "series") in facets:
+            return "its facets hold the facet that names its series"
+        units = params.get("units")
+        for name in series:
+            if not isinstance(units, dict) or not isinstance(units.get(name), str) or not units[name]:
+                return f"it does not pin the units of {name}"
+        if set(units) - set(series):
+            return f"it pins units for {min(set(units) - set(series))}, which it does not ask for"
+        size = params.get("page_size", self.PAGE_SIZE)
+        if isinstance(size, bool) or not isinstance(size, int) or not 1 <= size <= self.PAGE_SIZE:
+            return f"its page_size is not between 1 and {self.PAGE_SIZE}"
+        return None
+
+    def _url(self, scope: dict, offset: int) -> str:
+        query = [("frequency", scope["frequency"]), ("data[0]", scope["column"]),
+                 *((f"facets[{scope['facet']}][]", name) for name in scope["series"]),
+                 *((f"facets[{name}][]", value) for name, value in sorted(scope["facets"].items())),
+                 ("sort[0][column]", "period"), ("sort[0][direction]", "asc"),
+                 ("sort[1][column]", scope["facet"]), ("sort[1][direction]", "asc"),
+                 ("offset", offset), ("length", scope["page_size"])]
+        return f"{self.BASE}/{scope['route']}/data/?{urlencode(query)}"
+
+    @staticmethod
+    def _load(body: bytes) -> object:
+        """The answer, with every number kept as the characters it was printed in."""
+        try:
+            return json.loads(body.decode("utf-8"), parse_float=str, parse_int=str)
+        except (UnicodeDecodeError, ValueError):
+            return None
+
+    def _total(self, body: bytes) -> int:
+        answer = self._load(body)
+        response = answer.get("response") if isinstance(answer, dict) else None
+        total = response.get("total") if isinstance(response, dict) else None
+        return int(total) if isinstance(total, str) and total.isascii() and total.isdigit() else 0
+
+    def fetch(self, endpoint: Endpoint, fetch: Fetch) -> Evidence:
+        params = endpoint.params
+        scope = {"route": params["route"], "frequency": params["frequency"],
+                 "column": params.get("column", "value"), "facet": params.get("facet", "series"),
+                 "series": list(params["series"]), "facets": dict(params.get("facets", {})),
+                 "units": {name: params["units"][name] for name in params["series"]},
+                 "page_size": params.get("page_size", self.PAGE_SIZE),
+                 "asked_on": fetch.now().astimezone(RELEASE_ZONE).date().isoformat()}
+        bodies = [fetch.get(self._url(scope, 0), key=self.KEY).body]
+        total = self._total(bodies[0])
+        while len(bodies) * scope["page_size"] < total and len(bodies) < self.MAX_PAGES:
+            bodies.append(fetch.get(self._url(scope, len(bodies) * scope["page_size"]), key=self.KEY).body)
+        return self.examine(scope, bodies)
+
+    def _period(self, frequency: str, time: object) -> tuple[str, str] | None:
+        """A row's period as (the Period's label, the day it is dated or begins), or None."""
+        from ..period import period_bounds
+
+        if not isinstance(time, str) or not time.isascii():
+            return None
+        if frequency == "weekly":
+            if not _is_day(time):
+                return None
+            iso = date.fromisoformat(time).isocalendar()
+            return f"{iso[0]:04d}-W{iso[1]:02d}", time
+        bounds = period_bounds(frequency, time)
+        return (time, bounds[0]) if bounds else None
+
+    def _read(self, scope: dict, bodies: list[bytes], problems: list[str]) -> tuple[dict[str, list[dict]], dict]:
+        facet, column, kind = scope["facet"], scope["column"], self.FREQUENCIES[scope["frequency"]]
+        units_field = "units" if column == "value" else f"{column}-units"
+        command = f"/v2/{scope['route']}/data/"
+        totals: set[int] = set()
+        rows: list[dict] = []
+        for number, body in enumerate(bodies, start=1):
+            where = f"page {number}: " if len(bodies) > 1 else ""
+            answer = self._load(body)
+            if not isinstance(answer, dict):
+                problems.append(f"{where}the answer is not JSON" if answer is None
+                                else f"{where}the answer is not a JSON object")
+                continue
+            error = answer.get("error")
+            if error is not None:
+                words = [error.get("code"), error.get("message")] if isinstance(error, dict) else [error]
+                problems.append(f"{where}EIA says: " + " ".join(str(w) for w in words if w))
+                continue
+            warnings = answer.get("warnings") or []
+            for warning in warnings if isinstance(warnings, list) else [warnings]:
+                words = [warning.get("warning"), warning.get("description")] if isinstance(warning, dict) else [warning]
+                problems.append(f"{where}EIA warns: " + " ".join(str(w) for w in words if w))
+            response, request = answer.get("response"), answer.get("request")
+            data = response.get("data") if isinstance(response, dict) else None
+            total = response.get("total") if isinstance(response, dict) else None
+            if not isinstance(data, list) or not (isinstance(total, str) and total.isascii() and total.isdigit()):
+                problems.append(f"{where}the answer has no data and total")
+                continue
+            totals.add(int(total))
+            said = request.get("command") if isinstance(request, dict) else None
+            if said != command:
+                problems.append(f"{where}the answer says it is {said}, not {command}")
+            if response.get("frequency") != scope["frequency"]:
+                problems.append(f"{where}the answer is {response.get('frequency')}, not {scope['frequency']}")
+            asked = request.get("params") if isinstance(request, dict) and isinstance(request.get("params"), dict) else {}
+            offset = (number - 1) * scope["page_size"]
+            if "offset" in asked and str(asked["offset"]) != str(offset):
+                problems.append(f"{where}the answer begins at row {asked['offset']}, not {offset}")
+            if number < len(bodies) and len(data) != scope["page_size"]:
+                problems.append(f"{where}the page has {len(data)} rows, not {scope['page_size']}, and is not the last")
+            rows.extend(data)
+        if len(totals) > 1:
+            problems.append("the pages do not agree on the total; the data changed while it was read")
+        elif totals and next(iter(totals)) != len(rows):
+            problems.append(f"the answer says there are {next(iter(totals))} rows and {len(rows)} were read")
+        checks: dict = {"total": next(iter(totals)) if len(totals) == 1 else None, "pages": len(bodies)}
+        if not rows and not problems:
+            problems.append("the answer has no rows")
+        found: dict[str, list[tuple[str, dict]]] = {}
+        seen: dict[str, set[str]] = {}
+        before: tuple[str, str] | None = None
+        for row in rows:
+            name = row.get(facet) if isinstance(row, dict) else None
+            time = row.get("period") if isinstance(row, dict) else None
+            if not isinstance(name, str) or not isinstance(time, str):
+                problems.append(f"the answer has a row without its period and its {facet}")
+                continue
+            if before is not None and (time, name) <= before:
+                problems.append(f"the rows are not in order of period and {facet}, or one is repeated, at {time} {name}")
+            before = (time, name)
+            if name not in scope["series"]:
+                problems.append(f"{name} was not asked for")
+                continue
+            period = self._period(scope["frequency"], time)
+            if period is None:
+                problems.append(f"{name} has a time that is not a {kind}: {time!r}")
+                continue
+            label, day = period
+            for other, value in scope["facets"].items():
+                if row.get(other) != value:
+                    problems.append(f"a row for {name} in {label} has {other} {row.get(other)!r}, not {value!r}")
+            if label in seen.setdefault(name, set()):
+                problems.append(f"{name} gives {label} twice")
+                continue
+            seen[name].add(label)
+            if row.get(units_field) != scope["units"][name]:
+                problems.append(f"{name} is in {row.get(units_field)!r} for {label}; "
+                                f"{scope['units'][name]!r} was expected")
+            value = row.get(column)
+            if value is None:
+                found.setdefault(name, []).append(
+                    (day, {"period": label, "value": None, "status": "unavailable", "footnotes": []}))
+                continue
+            if not (isinstance(value, str) and _is_number(value)):
+                problems.append(f"{name} has a value that is not a number or null for {label}: {value!r}")
+                continue
+            if day > scope["asked_on"]:
+                problems.append(f"{name} has a value for {label}, a Period that had not begun on {scope['asked_on']}")
+            found.setdefault(name, []).append(
+                (day, {"period": label, "value": value, "status": "observed", "footnotes": []}))
+        series: dict[str, list[dict]] = {}
+        for name in scope["series"]:
+            listed = sorted(found.get(name, []), key=lambda pair: pair[0])
+            if name not in found:
+                if rows:
+                    problems.append(f"{name} is not in the answer")
+                continue
+            if not any(row["value"] is not None for _, row in listed):
+                problems.append(f"{name} is in the answer without a single number")
+            series[name] = [row for _, row in listed]
+            checks.setdefault("series", {})[name] = {"rows": len(listed), "first": listed[0][1]["period"],
+                                                     "last": listed[-1][1]["period"]}
+        return series, checks
+
+    def examine(self, scope: dict, bodies: list[bytes]) -> Evidence:
+        problems: list[str] = []
+        _, checks = self._read(scope, bodies, problems)
+        return _evidence(scope, checks, list(dict.fromkeys(problems)))
+
+    def coverage(self, scope: dict) -> tuple[None, None]:
+        """Every Period is asked for, every time: one that has left the data is gone."""
+        return None, None
+
+    def parse(self, capture: RawCapture) -> NormalizedState:
+        problems: list[str] = []
+        series, _ = self._read(capture.evidence.scope, capture.bodies, problems)
+        problems = list(dict.fromkeys(problems))
+        return NormalizedState(not problems, capture.evidence.scope, series if not problems else {}, problems)
+
+
 def _month_after(day: str) -> str | None:
     """The month (YYYY-MM) of the day after ``day``; None after the calendar's last day."""
     try:
@@ -1134,7 +1596,7 @@ def _is_day(text: str) -> bool:
 
 ADAPTERS = {adapter.name: adapter for adapter in
             (FixtureAdapter(), BlsAdapter(), TreasuryFiscalDataAdapter(), FedBoardAdapter(),
-             ImfSdmxAdapter())}
+             ImfSdmxAdapter(), BeaAdapter(), EiaAdapter())}
 
 
 def key_of(endpoint: Endpoint) -> tuple[str, str] | None:
