@@ -764,4 +764,22 @@ describe("M18: found in review", () => {
     expect(v.selection[0]!.compared).toMatchObject({ drawn: true });
     expect(v.asOf!.basis).toBe("atlas_observed");
   });
+
+  it("where the versions known then were under more than one unit and none was in force, they are shown and nothing is computed across them", () => {
+    // The fixture's quarterly history, with half its versions re-recorded under another unit (in memory only).
+    const mixedRelease = structuredClone(release);
+    const file = mixedRelease.vintages.fx_output_quarterly!;
+    const other = { ...file.metadata[0]!, hash: "f".repeat(64), metadata: { ...file.metadata[0]!.metadata, unit: "millions of fixture dollars" } };
+    file.metadata.push(other);
+    file.rows.forEach((row, i) => {
+      if (i % 2 === 0) row.metadata = other.hash;
+    });
+    const v = explorerView(mixedRelease, "local", parseExplorerParams(new URLSearchParams("s=fx_output_quarterly,fx_price_index&as_of=2025-06-01&basis=lvl")));
+    expect(v.selection[0]!.state).toBe("drawn");
+    expect(v.runs[0]!.rows.some((r) => r.value !== null)).toBe(true);
+    expect(v.snapshot[0]).toMatchObject({ first: null, change: null });
+    expect(v.notes.join(" ")).toMatch(/more than one unit or definition/);
+    // The same history untouched has a snapshot.
+    expect(view("s=fx_output_quarterly&as_of=2025-06-01").snapshot[0]!.first).not.toBeNull();
+  });
 });

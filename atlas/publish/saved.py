@@ -74,12 +74,14 @@ def canonical(address: str) -> tuple[str, str | None]:
     query = urlsplit(address).query if "?" in address or "://" in address else address
     if urlsplit(address).fragment or "#" in address:
         raise NotSaved("the address has a part after '#'; a saved query is an address of v2's Explorer")
+    if not query.isascii():
+        raise NotSaved("the address has a character the Explorer never writes")
     pairs = [part.partition("=") for part in query.split("&")] if query else []
     names = [name for name, _, _ in pairs]
     for name, sep, value in pairs:
         if name not in ORDER:
             raise NotSaved(f"{name!r} is not part of a saved view" if name else "the address has an empty part")
-        if not sep or not re.fullmatch(_SHAPES[name], value):
+        if not sep or not re.fullmatch(_SHAPES[name], value, re.ASCII):
             raise NotSaved(f"{name}: not as the Explorer writes it")
     if len(set(names)) != len(names):
         raise NotSaved("a part of the address is given twice")

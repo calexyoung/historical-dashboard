@@ -303,6 +303,12 @@ export function explorerView(release: OpenedRelease, surface: Surface, state: Ex
     ...(asOf !== null ? { as_of: asOf } : {}),
     ...(freq !== undefined ? { freq } : {}),
   });
+  /**
+   * An as-of answer of a stored Series with no metadata in force: its versions were recorded
+   * under more than one unit or definition (ADR 0031, point 6). A legacy answer and a Derived
+   * one carry no metadata line of their own and are not this case.
+   */
+  const mixed = (vintage: VintageInfo | null): boolean => vintage !== null && vintage.metadata === null && vintage.inputs === null && vintage.basis !== "legacy" && vintage.basis !== "unavailable";
   const notOffered = (m: ExplorerMode): string => `This series does not offer “${MODE_LABELS[m].toLowerCase()}”.`;
   let rowsLeft = MAX_ROWS;
   type Run = { raw: TransformedObservation[]; drawn: TransformedObservation[] | null; reason: string | null; vintage: VintageInfo | null };
@@ -356,6 +362,7 @@ export function explorerView(release: OpenedRelease, surface: Surface, state: Ex
       const named = others.length > 6 ? `${others.slice(0, 6).join(", ")} and ${others.length - 6} more` : list(others);
       notes.push(`${g.entry.name}: as of then, ${named} ${others.length === 1 ? "was" : "were"} still held under an earlier unit or definition. ${others.length === 1 ? "It is" : "They are"} left out of whatever is computed across periods: a change, the snapshot, the relationships.`);
     }
+    if (mixed(g.vintage) && g.raw.length > 0) notes.push(`${g.entry.name}: the versions known then were recorded under more than one unit or definition, and which applied to each period cannot be told. They are shown, and nothing is computed across them.`);
     if (g.vintage?.metadata?.differs_from_current) notes.push(`${g.entry.name}: the unit recorded then was “${g.vintage.metadata.unit}”. It has changed since.`);
   }
 
@@ -767,6 +774,8 @@ export function explorerView(release: OpenedRelease, surface: Surface, state: Ex
   };
   /** Values that may be set beside one another: a Period still held under earlier metadata has none (as a Recipe treats it). */
   const comparable = (observations: TransformedObservation[], vintage: VintageInfo | null): TransformedObservation[] => {
+    // No one unit or definition was in force (Query's `metadata_mixed`): no two of them may be set beside one another.
+    if (mixed(vintage)) return observations.map((o) => ({ ...o, value: null, status: "missing" }));
     const others = new Set(vintage?.metadata?.other_metadata_periods ?? []);
     return others.size === 0 ? observations : observations.map((o) => (others.has(o.period) ? { ...o, value: null, status: "missing" } : o));
   };

@@ -43,6 +43,11 @@
     "s=unrate&mode=lin&from=2019-06&to=2022-06&layers=rec,rec",
     "s=unrate&mode=lin&from=2019-06&to=2022-06&layers=none,rec",
     "s=unrate&mode=lin&from=2019-06&to=2022-06&layers=none&sx=unrate&sy=Unrate",
-    "s=unrate&mode=lin&from=2019-06&to=2022-06&layers=none%20"
+    "s=unrate&mode=lin&from=2019-06&to=2022-06&layers=none%20",
+    "s=unrate&mode=lin&from=\uff12\uff10\uff11\uff19-06&to=\uff12\uff10\uff12\uff12-06&layers=none",
+    "s=unrate&mode=lin&from=2019-06&to=2022-06&layers=none&lag=\u0663",
+    "s=unrat\u0435&mode=lin&from=2019-06&to=2022-06&layers=none",
+    "s=unrate&mode=lin&from=2019-06&to=2022-06&layers=none&at=2020-04-0\u0661",
+    "s=unrate&mode=lin&from=2019-06&to=2022-06&layers=none\n"
   ]
 }
