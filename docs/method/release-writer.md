@@ -221,7 +221,8 @@ capture kit flags the answer, replay records nothing from it, and the Release is
 the last good state with the source marked `failed`. A provider that goes on serving old data
 gives a Release whose source is `stale`. So does a source that wants an API key when the capture run had
 none (M15): it was not asked, the Release holds the last state recorded from it, and the
-manifest says when that was. The site does not show per-source status yet (M17's status page).
+manifest says when that was. The site does not show per-source status yet (M17's status page). Where one
+source has both a failed fetch and a stale note, the line says `failed` and gives the failure.
 
 ## Retention, pins, rollback
 
