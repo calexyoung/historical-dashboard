@@ -80,7 +80,7 @@ function applyCase(c: Pick<Case, "steps" | "rehash">): { id: string; files: Rele
       case "project_search": {
         const read = (path: string) => (files[path] ? parse(files[path]!) : undefined);
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        files["search.json"] = bytes(searchDocument({ catalog: read("catalog.json"), manifest: read("manifest.json"), events: read("content/events.json"), claims: read("content/claims.json") } as any));
+        files["search.json"] = bytes(searchDocument({ catalog: read("catalog.json"), manifest: read("manifest.json"), events: read("content/events.json"), claims: read("content/claims.json"), topics: read("content/topics.json") } as any));
         break;
       }
     }

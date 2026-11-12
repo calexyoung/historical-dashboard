@@ -77,7 +77,7 @@ def test_every_series_the_three_adapters_read_passes_the_release_gate(released):
         "no observation after the release": "pass", "values within the catalog's range": "pass",
         "staleness": "pass", "withdrawn series stay out": "pass",
         "rights: every Series and every input is permitted for display": "pass", "vintages": "pass",
-        "engine: derived series": "pass", "content": "pass", "content: claims": "pass", "content: headline series": "pass",
+        "engine: derived series": "pass", "content": "pass", "content: claims": "pass", "content: topics": "pass", "content: headline series": "pass",
             "content: search index": "pass", "release contract": "pass"}
     assert {source["outcome"] for source in manifest["sources"]} == {"ok"}
 

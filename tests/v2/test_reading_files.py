@@ -156,7 +156,9 @@ def test_the_legacy_converter_writes_both_files_from_the_repositorys_declaration
     assert all(catalog[key]["segment"] == segment for segment, keys in held.items() for key in keys)
     index = json.loads(files["search.json"])["entries"]
     assert len(index) == len(catalog) + len(json.loads(files["content/events.json"])["events"]) + len(
-        json.loads(files["content/claims.json"])["claims"])
+        json.loads(files["content/claims.json"])["claims"]) + 2
+    # The two Topics (M23), each found by its name and by the words of the definition it quotes.
+    assert [(entry["id"], entry["title"]) for entry in index if entry["kind"] == "topic"] == [("inflation", "Inflation"), ("jobs", "Jobs")]
     # Only the fields the contract names: none is made from an Observation.
     assert all(set(entry) <= {"kind", "id", "title", "text", "keywords", "withheld"} for entry in index)
 
