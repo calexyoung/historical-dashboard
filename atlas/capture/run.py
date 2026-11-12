@@ -201,7 +201,10 @@ def run_capture(
     store.mkdir(parents=True, exist_ok=True)
     try:
         with S.locked(store):
-            return _run(store, table, endpoints, transport, register_sha256, hide, sleep, user_agent, keys)
+            result = _run(store, table, endpoints, transport, register_sha256, hide, sleep, user_agent, keys)
+        # Every line a run reports is redacted once more on its way out, whatever built it.
+        result.lines = [hide(line) for line in result.lines]
+        return result
     except S.StoreLocked as error:
         return RunResult(1, [f"REFUSED: {error} ({store / 'LOCK'}). Nothing was fetched."])
 

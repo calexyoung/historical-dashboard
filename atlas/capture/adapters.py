@@ -1541,7 +1541,10 @@ class EiaAdapter:
             if row.get(units_field) != scope["units"][name]:
                 problems.append(f"{name} is in {row.get(units_field)!r} for {label}; "
                                 f"{scope['units'][name]!r} was expected")
-            value = row.get(column)
+            if column not in row:
+                problems.append(f"{name} has no {column} field for {label}")
+                continue
+            value = row[column]
             if value is None:
                 found.setdefault(name, []).append(
                     (day, {"period": label, "value": None, "status": "unavailable", "footnotes": []}))

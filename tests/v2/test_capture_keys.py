@@ -50,6 +50,41 @@ def test_every_key_of_the_run_is_taken_out_and_the_longer_first():
     assert http.send(ASK).response.body == b"a REDACTED b REDACTED c"
 
 
+def test_a_key_repeated_in_other_letter_case_is_taken_out_too():
+    """The BEA repeats what it was asked in capitals."""
+    mixed = "ab12cd34-ef56-7890-abcd-ef1234567890"
+    sent = URL + "&UserID=" + mixed
+    http, _ = live({sent: [(200, f"echo {mixed.upper()} and {mixed}", [["X-Asked", mixed.upper()]])]},
+                   {"BEA_API_KEY": mixed})
+    part = http.send(ASK)
+    assert part.response.body == b"echo REDACTED and REDACTED" and part.key_removed == 3
+    assert part.response.headers == [["X-Asked", "REDACTED"]]
+
+
+@pytest.mark.parametrize("spelt", [
+    "".join(f"\\u{ord(c):04x}" for c in KEY),                 # every character a JSON escape
+    KEY[:8] + "\\u002d" + KEY[9:],                            # one hyphen escaped
+    KEY[:8] + "\\u002D" + KEY[9:].lower(),                    # and in another letter case
+    "".join(f"%{ord(c):02X}" for c in KEY),                   # percent-encoded
+    KEY[:8] + "%2D" + KEY[9:],
+])
+def test_an_answer_that_repeats_the_key_in_an_encoded_spelling_is_not_kept_at_all(spelt):
+    """Such a copy cannot be replaced without rewriting the answer, and decoding it would give
+    the key back. The answer is refused: no Part, so no blob, no log line and no message."""
+    http, _ = live({SENT: [(200, '{"Error":{"Detail":"bad UserID ' + spelt + '"}}')]}, {"BEA_API_KEY": KEY})
+    with pytest.raises(CaptureError) as error:
+        http.send(ASK)
+    assert "repeats an API key in an encoded spelling" in str(error.value)
+    assert KEY not in str(error.value) and spelt not in str(error.value)
+    fetch_parts = []
+    http, _ = live({SENT: [(200, spelt, [["Location", spelt]])]}, {"BEA_API_KEY": KEY})
+    from atlas.capture.http import Fetch
+    fetch = Fetch(http)
+    with pytest.raises(CaptureError):
+        fetch.get(URL, key=("UserID", "BEA_API_KEY"))
+    assert fetch.parts == fetch_parts == []
+
+
 def test_a_network_error_that_quotes_the_url_does_not_carry_the_key_into_the_reasons():
     http, _ = live({SENT: [refused(f"timed out reading {SENT}"), (200, "ok")]}, {"BEA_API_KEY": KEY})
     assert http.send(ASK).tries == [f"timed out reading {URL}&UserID=REDACTED"]
@@ -121,6 +156,28 @@ def test_a_run_with_its_key_keeps_the_answer_and_the_key_is_in_no_byte_it_writes
     assert blob == b'asked with "REDACTED"\n# end\n'
     assert part["retried_after"] == [f"reset by {KEYED}&token=REDACTED"]
     assert "key" not in read_fetch_log(tmp_path / "store")[1]
+
+
+def test_a_run_refuses_an_answer_with_an_encoded_key_and_keeps_and_prints_nothing_of_it(tmp_path, capsys):
+    escaped = "".join(f"\\u{ord(c):04x}" for c in KEY)
+    page = '{"error":"bad key ' + escaped + '"}\n# end\n'
+    transport = LiveScripted({KEYED_SENT: [(200, page)], PLAIN: [(200, "x\n# end\n")]})
+    result = run_capture(tmp_path / "store", keyed_register(), transport, sleep=lambda s: None,
+                         keys={"FIXTURE_API_KEY": KEY})
+    assert result.outcomes == {"fx-keyed": "failed", "fx-a": "captured"}
+    kept = everything_under(tmp_path / "store")
+    assert KEY.encode() not in kept and escaped.encode() not in kept
+    assert json.loads(kept[kept.index(b"{"):].split(b"\n")[0])["parts"] == []
+    assert KEY not in "\n".join(result.lines) and escaped not in "\n".join(result.lines)
+
+
+def test_every_line_a_run_prints_is_passed_through_the_same_redaction(tmp_path):
+    """Belt and braces: a secret that reached a message some other way is not printed."""
+    table = fixture_register(endpoints=[fixture_endpoint(url=PLAIN + "?token=s3cretS3cretS3cret")])
+    transport = Scripted({PLAIN + "?token=s3cretS3cretS3cret": [(500, "down")] * 4})
+    result = run_capture(tmp_path / "store", table, transport, sleep=lambda s: None, secrets=["s3cretS3cretS3cret"])
+    assert result.exit_code == 1 and any(line.startswith("FAILED") for line in result.lines)
+    assert "s3cretS3cretS3cret" not in "\n".join(result.lines)
 
 
 def test_a_failed_keyed_fetch_keeps_the_error_page_without_the_key(tmp_path):

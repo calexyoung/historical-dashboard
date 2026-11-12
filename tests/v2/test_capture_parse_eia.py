@@ -155,6 +155,16 @@ def test_an_answer_that_is_not_the_whole_of_what_was_asked_is_incomplete_and_say
     assert said in raw.evidence.problems, raw.evidence.problems
 
 
+def test_a_row_without_its_value_is_not_a_period_listed_with_no_number():
+    """``null`` is the Administration saying there is no number. A row with no value at all
+    is a malformed answer, and must not turn a figure already held into a missing one."""
+    row = spot("RWTC", "2026-09", "1")
+    del row["value"]
+    raw, state = read({url(): eia([*ROWS[:3], row])})
+    assert state.complete is False
+    assert "RWTC has no value field for 2026-09" in raw.evidence.problems
+
+
 def test_two_dates_in_one_week_are_one_period_given_twice():
     spec = endpoint(route="petroleum/pri/gnd", frequency="weekly", series=["GAS"], units={"GAS": "$/GAL"})
     rows = [spot("GAS", "2026-11-02", "3.9", "$/GAL"), spot("GAS", "2026-11-03", "3.9", "$/GAL")]

@@ -23,7 +23,7 @@ from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from typing import Protocol
-from urllib.parse import urlsplit
+from urllib.parse import unquote, urlsplit
 
 #: Sent on every request unless ATLAS_CAPTURE_USER_AGENT says otherwise. It names the job
 #: honestly and carries no personal detail; the runbook says how to add a contact address.
@@ -39,6 +39,7 @@ REDACTED = "REDACTED"
 #: A key is letters, digits and hyphens: text that a URL, a header and JSON all carry unchanged,
 #: so the one literal search below finds every copy of it. A key of any other shape is not used.
 _KEY_SHAPE = re.compile(r"[A-Za-z0-9-]{16,128}")
+_JSON_ESCAPE = re.compile(r"\\u([0-9a-fA-F]{4})")
 
 
 def usable_key(value: object) -> bool:
@@ -177,22 +178,29 @@ class Session:
         self._last_call[host] = self._monotonic()
 
     def _without_keys(self, response: Response) -> tuple[Response, int]:
-        """``response`` with every key of the run replaced, and how many copies there were.
-        Byte for byte otherwise: nothing is parsed or written out again."""
+        """``response`` with every key of the run replaced, in whatever letter case it comes
+        back (the BEA repeats what it was asked in capitals), and how many copies there were.
+        Byte for byte otherwise: nothing is parsed or written out again.
+
+        A key spelt some other way (JSON's ``\\u002d`` for a hyphen, a percent-encoding) cannot
+        be replaced without rewriting the answer, and whoever decoded the answer would have the
+        key. Such an answer is refused whole: ``CaptureError``, and nothing of it is kept."""
         if not self._secrets:
             return response, 0
         count, body = 0, response.body
         for secret in self._secrets:
-            found = body.count(secret.encode())
-            if found:
-                count += found
-                body = body.replace(secret.encode(), REDACTED.encode())
+            body, found = re.subn(re.escape(secret.encode()), REDACTED.encode(), body, flags=re.IGNORECASE)
+            count += found
         headers = []
         for name, value in response.headers:
             for secret in self._secrets:
-                count += value.count(secret)
-                value = value.replace(secret, REDACTED)
+                value, found = re.subn(re.escape(secret), REDACTED, value, flags=re.IGNORECASE)
+                count += found
             headers.append([name, value])
+        text = "\n".join([body.decode("utf-8", "replace"), *(value for _, value in headers)])
+        decoded = unquote(_JSON_ESCAPE.sub(lambda m: chr(int(m[1], 16)), text)).casefold()
+        if any(secret.casefold() in decoded for secret in self._secrets):
+            raise CaptureError("the answer repeats an API key in an encoded spelling; it was not kept")
         if not count:
             return response, 0
         return Response(response.status, headers, body, response.received_at), count
@@ -285,5 +293,5 @@ def redact(text: str, secrets: Iterable[str]) -> str:
     """``text`` with every secret value replaced, the longest first so that one secret inside
     another leaves nothing behind. Applied to everything the kit writes."""
     for secret in sorted({s for s in secrets if s}, key=len, reverse=True):
-        text = text.replace(secret, REDACTED)
+        text = re.sub(re.escape(secret), REDACTED, text, flags=re.IGNORECASE)
     return text

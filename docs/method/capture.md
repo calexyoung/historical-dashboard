@@ -214,6 +214,10 @@ variable `BEA_API_KEY`) and the EIA (`api_key`, from `EIA_API_KEY`). ADR 0029 ha
   of a network error, with `REDACTED`, before the bytes are hashed, stored or examined. This
   is the one exception to "the exact bytes": the blob, its hash and its length are of the
   answer with that replacement and no other change. Nothing is parsed and written out again.
+  The search ignores letter case, because the BEA repeats what it was asked in capitals. An
+  answer that repeats a key in an encoded spelling (a JSON `\u` escape, a percent-encoding)
+  cannot be cleaned that way, so it is refused whole: the fetch fails and nothing of the
+  answer is kept or printed.
   The fetch-log part says how many copies were replaced (`key_removed`), and the line names
   the key it needed (`key`), never its value.
 - **What a key looks like.** Letters, digits and hyphens, 16 to 128 of them. Such text is the

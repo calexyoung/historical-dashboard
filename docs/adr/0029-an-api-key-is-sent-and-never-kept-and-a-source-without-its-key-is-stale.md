@@ -35,10 +35,16 @@ sections); the host's side is in `deploy/capture/README.md`.
    have meant no vintage history for GDP.
 3. **A key is letters, digits and hyphens, 16 to 128 of them, or it is not sent.** Text of
    that shape reads the same in a URL, in a header and inside JSON, so one literal search
-   finds every copy. A value with a character that a URL or JSON would escape could come back
-   in a spelling the search does not match, so it is refused before it is sent and its
-   endpoint is treated as having no key. Both agencies' keys fit. Keys are replaced the
-   longest first, so one key inside another leaves nothing behind.
+   finds every copy a source writes plainly. A value with a character that a URL or JSON
+   must escape would come back in another spelling, so it is refused before it is sent and
+   its endpoint is treated as having no key. Both agencies' keys fit. Keys are replaced the
+   longest first, so one key inside another leaves nothing behind, and without regard to
+   letter case, because the BEA repeats what it was asked in capitals. A source may still
+   choose to escape a plain character (JSON allows `\u002d` for a hyphen). The Session
+   looks for every key in the answer as it reads once JSON escapes and percent-encodings
+   are decoded; an answer that holds one that way is refused whole, since it cannot be
+   cleaned without being rewritten: the fetch fails and nothing of the answer is kept.
+   Every line a run reports is passed through the same replacement on its way out.
 4. **Keys come from the environment of a live run and from nowhere else.** The register names
    no key; it could not, being public. The command reads `BEA_API_KEY` and `EIA_API_KEY` only
    when it is about to ask the network, hands them to the run, and prints at most whether
