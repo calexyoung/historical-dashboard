@@ -55,13 +55,13 @@ How to read a cell:
 
 ## In the pipeline, and what the rights gate says today
 
-The rights gate would show 1 of the 57 Series in the pipeline on production today.
+The rights gate would show 2 of the 57 Series in the pipeline on production today.
 A Series is shown only when the register row of every Origin it rests on is signed and allows display.
 
 | Origin | Register row | Decision | Series of this matrix resting on it |
 |---|---|---|---|
 | International Monetary Fund | `imf` | not signed | 54 |
-| Federal Reserve Board | `fed-board` | not signed | 1 |
+| Federal Reserve Board | `fed-board` | signed 2026-11-12: display allowed | 1 |
 | Bureau of Labor Statistics | `bls` | signed 2026-11-12: display allowed | 1 |
 | Bureau of Economic Analysis | `bea` | not signed | 1 |
 
