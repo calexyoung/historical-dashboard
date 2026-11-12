@@ -15,6 +15,7 @@
  * selection, so nothing rides along). Node only; pure otherwise.
  */
 import { mdText } from "../markdown";
+import { mlUse, type MlUseOptions } from "../ml-use";
 import { SEMANTICS_VERSION, type RightsGate, type Surface } from "@macro-atlas/core";
 import type { CatalogEntry } from "@macro-atlas/core/release";
 import { releaseHoldsLegacy } from "../catalog";
@@ -72,9 +73,16 @@ export function sourceOf(entry: CatalogEntry) {
     channel: { via: channel.via, adapter: channel.adapter ?? null },
   };
 }
-export function rightsOf(entry: CatalogEntry) {
+/**
+ * The Rights a file names. `ml_use` is whether the values may be described as usable for
+ * training machine-learning models, and `ml_use_note` the sentence that says so where they may
+ * not (ADR 0041; `mlUse`): the Release's own statement and the gate's answer today, whichever
+ * is stricter.
+ */
+export function rightsOf(release: OpenedRelease, surface: Surface, entry: CatalogEntry, options: MlUseOptions = {}) {
   const { rights } = entry;
-  return { status: rights.status, owner: rights.owner, attribution: rights.attribution ?? null, terms_url: rights.terms_url ?? null, reviewed: rights.reviewed ?? null };
+  const training = mlUse(release, surface, entry, options);
+  return { status: rights.status, owner: rights.owner, attribution: rights.attribution ?? null, terms_url: rights.terms_url ?? null, reviewed: rights.reviewed ?? null, ml_use: training.ml_use, ml_use_note: training.note };
 }
 
 export function seriesTwin(release: OpenedRelease, surface: Surface, key: string, format: TwinFormat, search: URLSearchParams, options: TwinOptions): TwinResponse {
@@ -120,6 +128,7 @@ export function seriesTwin(release: OpenedRelease, surface: Surface, key: string
   const cite = citation(release, entry, page, parsed.request.as_of);
   const got = retrieved(release, entry);
   const name = `macro-atlas_${entry.key}${stamped ? "_not-for-publication" : ""}`;
+  const training = mlUse(release, surface, entry, { gate: options.gate, history: parsed.request.as_of !== undefined });
 
   if (format === "csv") {
     const head = [
@@ -131,6 +140,7 @@ export function seriesTwin(release: OpenedRelease, surface: Surface, key: string
       ...when.map(csvNote),
       csvNote(`Source: ${sourceWords(entry)}${got ? ` · ${got.line}` : ""}`),
       csvNote(`Rights: ${entry.rights.status}${entry.rights.attribution ? ` · ${entry.rights.attribution}` : ""}`),
+      ...(training.note ? [csvNote(training.note)] : []),
       csvNote(`Cite as: ${cite}`),
       csvNote(`This file: ${page}.csv${tail}`),
     ];
@@ -140,11 +150,11 @@ export function seriesTwin(release: OpenedRelease, surface: Surface, key: string
   }
 
   if (format === "json") {
-    const doc = seriesDocument(release, surface, entry, parsed.request, answer, series, address);
+    const doc = seriesDocument(release, surface, entry, parsed.request, answer, series, address, options.gate);
     return within(json(doc), { filename: `${name}.json`, disposition: "inline" });
   }
 
-  return within(markdown(release, surface, entry, series, parsed.request, search, { ...options, unit, shown, when, cite, page, tail, stamped }), { filename: `${name}.md`, disposition: "inline" });
+  return within(markdown(release, surface, entry, series, parsed.request, search, { ...options, unit, shown, when, cite, page, tail, stamped, training: training.note }), { filename: `${name}.md`, disposition: "inline" });
 }
 
 /**
@@ -153,7 +163,7 @@ export function seriesTwin(release: OpenedRelease, surface: Surface, key: string
  * this document, so the two cannot hold different values or say different things about them.
  * Called only with an answer the gate allowed for `redistribute`.
  */
-export function seriesDocument(release: OpenedRelease, surface: Surface, entry: CatalogEntry, request: SeriesRequest, answer: QueryAnswer, series: SeriesAnswer, address: string) {
+export function seriesDocument(release: OpenedRelease, surface: Surface, entry: CatalogEntry, request: SeriesRequest, answer: QueryAnswer, series: SeriesAnswer, address: string, gate?: TwinOptions["gate"]) {
   if (!series.result.ok) throw new Error("a document is made only from an answer that holds values");
   const { vintage } = series;
   const observations = series.result.observations;
@@ -195,7 +205,7 @@ export function seriesDocument(release: OpenedRelease, surface: Surface, entry: 
       retrieved: release.manifest.sources?.find((s) => s.producer === entry.source.origin.producer && s.via === entry.source.channel.via)?.fetched ?? null,
       ...(entry.recipe ? { recipe: { op: entry.recipe.op, inputs: entry.recipe.inputs } } : {}),
     },
-    rights: { ...rightsOf(entry), permission: "redistribute", permitted: true, lineage: answer.rights_used.map(({ origin, dataset, channel }) => ({ origin, dataset, channel })) },
+    rights: { ...rightsOf(release, surface, entry, { gate, history: request.as_of !== undefined }), permission: "redistribute", permitted: true, lineage: answer.rights_used.map(({ origin, dataset, channel }) => ({ origin, dataset, channel })) },
     citation: cite,
     address: page,
     observations: observations.map((o) => {
@@ -251,7 +261,7 @@ export function seriesRecord(release: OpenedRelease, surface: Surface, entry: Ca
     recipe: entry.recipe ? { op: entry.recipe.op, inputs: entry.recipe.inputs } : null,
     breaks: (entry.breaks ?? []).map((b) => ({ period: b.period, note: b.note })),
     source: sourceOf(entry),
-    rights: rightsOf(entry),
+    rights: rightsOf(release, surface, entry, { gate }),
     /** Whether this build shows the Series, and why not when it does not. */
     state,
     reason: withheld?.reason ?? (display.ok ? null : display.message),
@@ -291,7 +301,7 @@ function markdown(
   series: SeriesAnswer,
   request: SeriesRequest,
   search: URLSearchParams,
-  o: TwinOptions & { unit: string; shown: string | null; when: string[]; cite: string; page: string; tail: string; stamped: boolean },
+  o: TwinOptions & { unit: string; shown: string | null; when: string[]; cite: string; page: string; tail: string; stamped: boolean; training: string | null },
 ): string {
   // The file leaves the site: a note typed in from somebody's record is asked for `redistribute`.
   const found = seriesPageView(release, surface, entry.key, { search, address: o.address, gate: o.gate, notes: "redistribute" });
@@ -299,6 +309,7 @@ function markdown(
   const out: string[] = [`# ${md(entry.name)}`, ""];
   if (o.stamped) out.push(`> ${STAMP} · ${localNote(release)}`, "");
   if (entry.description) out.push(md(entry.description), "");
+  if (o.training) out.push(`> ${md(o.training)}.`, "");
   out.push(`- Series key: \`${entry.key}\``, `- Unit: ${md(o.unit)}`, `- Frequency: ${series.answered_freq.replace("_", " ")}`);
   if (o.shown) out.push(`- Shown as: ${md(o.shown)}`);
   if (view?.latest) out.push(`- ${view.latest.label}: ${md(view.latest.value)} (${md(view.latest.period)}${view.latest.states.map((s) => `, ${s.word.toLowerCase()}`).join("")})`);

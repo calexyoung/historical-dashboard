@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from atlas.rights import PERMISSIONS, SURFACES, RightsGate, permits
+from atlas.rights import PERMISSIONS, SURFACES, RightsGate, ml_use_note, permits
 
 ROOT = Path(__file__).resolve().parents[2]
 TABLE = json.loads((ROOT / "checks" / "permits-cases.json").read_text())
@@ -107,3 +107,58 @@ class TestStorage:
     def test_a_table_that_cannot_be_trusted_permits_no_storage(self):
         gate = RightsGate(TABLE["registers"]["invalid_format"])
         assert not gate.may_store("Agency Open", "Any set", "direct").allowed
+
+
+ML_USE = json.loads((ROOT / "checks" / "ml-use-cases.json").read_text())
+
+
+@pytest.mark.parametrize("case", ML_USE["cases"], ids=lambda c: c["name"])
+def test_the_sentence_about_machine_learning(case):
+    assert ml_use_note(case["rights"]) == case["note"]
+
+
+class TestMlUse:
+    """What a Release's Rights block says of use in training a model (ADR 0041): the gate's
+    answer for production, and the signed rows that say no, by name."""
+
+    gate = RightsGate(TEST_REGISTER)
+
+    @staticmethod
+    def row(origin, channel="direct", representation="native"):
+        return {"origin": origin, "dataset": "Any set", "channel": channel, "representation": representation}
+
+    def test_a_signed_row_that_allows_it(self):
+        assert self.gate.ml_use([self.row("Agency Open")]) == {"ml_use": True}
+
+    def test_a_signed_row_that_reserves_it_is_named(self):
+        assert self.gate.ml_use([self.row("Agency Display Only")]) == {
+            "ml_use": False, "ml_use_reserved_by": ["Agency Display Only"]}
+
+    def test_an_unsigned_or_unlisted_origin_is_not_allowed_and_nobody_is_named(self):
+        assert self.gate.ml_use([self.row("Agency Unsigned")]) == {"ml_use": False}
+        assert self.gate.ml_use([self.row("Agency Nobody Listed")]) == {"ml_use": False}
+
+    def test_the_most_restrictive_of_several_wins_and_each_that_reserves_is_named_once(self):
+        rows = [self.row("Agency Open"), self.row("Agency Display Only"), self.row("Agency Display Only"),
+                self.row("Agency Refused")]
+        assert self.gate.ml_use(rows) == {
+            "ml_use": False, "ml_use_reserved_by": ["Agency Display Only", "Agency Refused"]}
+
+    def test_an_intermediary_that_is_not_cleared_is_not_allowed(self):
+        assert self.gate.ml_use([self.row("Agency Open", "mirror_ok")]) == {"ml_use": True}
+        assert self.gate.ml_use([self.row("Agency Open", "mirror_uncleared")])["ml_use"] is False
+
+    def test_an_intermediary_whose_signed_row_reserves_it_is_named(self):
+        table = copy.deepcopy(TEST_REGISTER)
+        row = next(r for r in table["rows"] if r.get("channel") == "mirror_ok")
+        row["decision"]["ml_use"] = False
+        row["name"] = "The Mirror"
+        assert RightsGate(table).ml_use([self.row("Agency Open", "mirror_ok")]) == {
+            "ml_use": False, "ml_use_reserved_by": ["The Mirror"]}
+
+    def test_the_legacy_representation_and_no_lineage_are_never_allowed(self):
+        assert self.gate.ml_use([self.row("Agency Open", representation="legacy_monthly_rounded")]) == {"ml_use": False}
+        assert self.gate.ml_use([]) == {"ml_use": False}
+
+    def test_a_table_that_cannot_be_trusted_allows_nothing(self):
+        assert RightsGate(TABLE["registers"]["invalid_format"]).ml_use([self.row("Agency Open")]) == {"ml_use": False}

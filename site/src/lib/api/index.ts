@@ -192,7 +192,7 @@ export function apiSeries(release: OpenedRelease, surface: Surface, key: string,
   const page = `${options.address}/data/${entry.key}`;
   const self = `${options.address}/api/v1/series/${entry.key}`;
   return give(c, {
-    ...seriesDocument(release, surface, entry, parsed.request, answer, series, options.address),
+    ...seriesDocument(release, surface, entry, parsed.request, answer, series, options.address, options.gate),
     links: { self: `${self}${tail}`, vintages: `${self}/vintages`, page: `${page}${tail}`, csv: `${page}.csv${tail}`, markdown: `${page}.md${tail}`, metadata: `${page}.metadata.json` },
   });
 }
@@ -263,7 +263,8 @@ export function apiVintages(release: OpenedRelease, surface: Surface, key: strin
     semantics_version: SEMANTICS_VERSION,
     // The Source is today's. What the history came through, which may be more, is `rights.lineage`.
     provenance: { current: sourceOf(entry), representation: entry.representation, captures: table.held ? { count: table.captures.count, first: table.captures.first, last: table.captures.last } : null },
-    rights: { ...rightsOf(entry), permission: "redistribute", permitted: true, lineage },
+    // Past versions: everything the history came through is asked about model training too.
+    rights: { ...rightsOf(release, surface, entry, { gate: options.gate, history: true }), permission: "redistribute", permitted: true, lineage },
     links: { self: `${self}/vintages${tailOf(page)}`, series: self, page: `${options.address}/data/${entry.key}` },
   });
 }

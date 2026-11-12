@@ -117,3 +117,61 @@ def test_a_directory_that_is_not_a_release_is_reported_not_raised(tmp_path):
     empty.mkdir()
     assert {i.code for i in validate_release(empty)} == {"missing_file"}
     assert {i.code for i in validate_release(tmp_path / "nowhere")} == {"missing_file"}
+
+
+def _diamonds(levels: int) -> dict[str, dict]:
+    """A Catalog whose Recipes share inputs: each level's two Series are each computed from
+    both of the level below. Followed path by path, the bottom is reached 2 ** levels times."""
+    def rights(**more) -> dict:
+        return {"owner": "x", "terms_url": None, "status": "public_domain", "attribution": None,
+                "reviewed": None, **more}
+
+    entries = {"leaf_a": {"key": "leaf_a", "rights": rights(ml_use=True)},
+               "leaf_b": {"key": "leaf_b", "rights": rights(ml_use=False, ml_use_reserved_by=["B"])}}
+    below = ["leaf_a", "leaf_b"]
+    for level in range(levels):
+        here = [f"d{level}_a", f"d{level}_b"]
+        for key in here:
+            entries[key] = {"key": key, "recipe": {"inputs": list(below)},
+                            "rights": rights(ml_use=False, ml_use_reserved_by=["B"])}
+        below = here
+    return entries
+
+
+def test_recipes_that_share_inputs_are_followed_once_for_ml_use():
+    from atlas.release import _ml_use_rules
+
+    entries = _diamonds(60)   # 2 ** 60 paths: not finished in a lifetime unless each key is followed once
+    assert _ml_use_rules("0.8.0", entries) == []
+    entries["d59_a"]["rights"] = {**entries["d59_a"]["rights"], "ml_use": True}
+    del entries["d59_a"]["rights"]["ml_use_reserved_by"]
+    assert [i.message for i in _ml_use_rules("0.8.0", entries)] == [
+        "d59_a: ml_use is true, and it is computed from leaf_b, where it is false"]
+
+
+def test_a_cycle_or_an_unknown_input_is_left_to_the_recipe_rules_from_every_root():
+    from atlas.release import _ml_use_rules
+
+    entries = _diamonds(3)
+    entries["d0_a"]["recipe"]["inputs"] = ["d2_a", "leaf_a"]       # a cycle, reached from several roots
+    entries["d0_b"]["recipe"]["inputs"] = ["nowhere"]                # an input the Catalog does not hold
+    for key in ("d2_a", "d2_b"):
+        entries[key]["rights"] = {**entries[key]["rights"], "ml_use_reserved_by": ["Nobody"]}
+    assert _ml_use_rules("0.8.0", entries) == []
+
+
+def test_saying_ml_use_afresh_follows_shared_inputs_once():
+    from atlas.publish.export import refresh_ml_use
+    from atlas.rights import RightsGate
+
+    from .release_helpers import fixture_table
+
+    table = fixture_table()
+    source = {"origin": {"producer": table["rows"][0]["origins"][0], "dataset": "fixture prices"},
+              "channel": {"via": "fixture"}}
+    entries = list(_diamonds(60).values())
+    for entry in entries:
+        entry.update(representation="native", source=source)
+    refresh_ml_use(entries, RightsGate(table))
+    assert all(entry["rights"] == {**entry["rights"], "ml_use": True} for entry in entries)
+    assert all("ml_use_reserved_by" not in entry["rights"] for entry in entries)

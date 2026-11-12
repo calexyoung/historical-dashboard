@@ -36,6 +36,11 @@ function Files({ rows, basePath, label }: { rows: DownloadRow[]; basePath: strin
                   </a>
                 )}
                 {file.refused && <span className="block max-w-[44ch] whitespace-normal text-xs text-ink-3">{file.refused}.</span>}
+                {file.mlUse === false && (
+                  <span data-ml-use="false" className="block max-w-[44ch] whitespace-normal text-xs text-ink-2">
+                    Holds rows that are not for use in training machine-learning models.
+                  </span>
+                )}
               </th>
               <td className="whitespace-nowrap text-ink-2">{file.format}</td>
               <td className="num text-right">{file.rows.toLocaleString("en-US")}</td>
@@ -131,6 +136,26 @@ export function DownloadsPage({ view, basePath, address, current }: { view: Down
           </div>
         </Panel>
       ))}
+
+      {(view.notForMl.length > 0 || view.mlUseNotRecorded) && (
+        <Panel id="ml-use" title="Not for training machine-learning models">
+          {view.mlUseNotRecorded ? (
+            <p className="max-w-[68ch] text-sm text-ink-2" data-ml-use="not-recorded">
+              These files were written before a release recorded whether its series may be used to train a model. Nothing here says that they may.
+            </p>
+          ) : (
+            <>
+              <p className="mb-3 max-w-[68ch] text-sm text-ink-2">
+                {/* A Series is named here when any file marks rows of it (its versions may be marked where its
+                    Observations are not), and whether a file is handed out here today is said beside the file. */}
+                These series are in the files. Some of their rows are marked <code className="font-mono">false</code> in the{" "}
+                <code className="font-mono">ml_use</code> column: those values are not for use in training machine-learning models. The data package says so file by file.
+              </p>
+              <Named rows={view.notForMl} basePath={basePath} />
+            </>
+          )}
+        </Panel>
+      )}
 
       {/* The examples read these two files: shown only when both are given. */}
       {["observations.parquet", "observations.csv.gz"].every((name) => view.whole.some((file) => file.name === name && file.refused === null)) && (

@@ -28,6 +28,7 @@ import { exportView, parseCsv } from "../export";
 import { GLOSSARY, GLOSSARY_GROUPS, glossaryEntry } from "../glossary";
 import { highlightsView, overviewView, type HeadlineRow } from "../highlights";
 import { mdText as md } from "../markdown";
+import { mlUseOf } from "../ml-use";
 import { methodDoc, methodIndex } from "../method-docs";
 import { tooManyBytes } from "../query";
 import type { OpenedRelease } from "../release/reader";
@@ -120,7 +121,13 @@ export function pageTwin(release: OpenedRelease, surface: Surface, page: string,
     }
     if (row.cells === null && row.reason) out.push(`  - ${md(sentence(row.reason))}`);
     if (row.compared) out.push(`  - ${md(row.compared)}`);
+    out.push(...training(row.key));
     return out;
+  }
+  /** Under a Series whose value is in the file: the sentence, where it is not for model training (ADR 0041). */
+  function training(key: string): string[] {
+    const note = mlUseOf(release, surface, key, { gate: options.gate })?.note;
+    return note ? [`  - ${md(sentence(note))}`] : [];
   }
   function ref(s: SeriesRef, extra = ""): string {
     return `- ${link(s.name, s.href)}${extra}${s.state === "shown" ? "" : `: no value here. ${md(sentence(s.note ?? "It is not shown"))}`}`;
@@ -170,7 +177,7 @@ export function pageTwin(release: OpenedRelease, surface: Surface, page: string,
         if (r.reason) body.push(md(sentence(r.reason)), "");
         body.push(...r.caption.map((line) => md(line)), "");
         if (r.rows.length > 0) body.push("| Period | Members counted | Lowest | Median | Highest |", "|---|---|---|---|---|", ...r.rows.map((row) => `| ${md(row.label)} | ${row.n} | ${md(row.minimum ?? "")} | ${md(row.median ?? "")} | ${md(row.maximum ?? "")} |`), "");
-        body.push("Members:", "", ...r.members.map((m) => ref(m, ` (${md(m.country)}${m.counted ? "" : ", not counted"})`)));
+        body.push("Members:", "", ...r.members.flatMap((m) => [ref(m, ` (${md(m.country)}${m.counted ? "" : ", not counted"})`), ...(m.counted ? training(m.key) : [])]));
       }
       if (view.claims.length > 0) body.push("", "## Claims", "", ...view.claims.map((c) => `- ${link(c.title, c.href)}${c.draft ? " (draft)" : ""}: “${md(c.quote)}”`));
       if (view.events.length > 0) body.push("", "## Events", "", ...view.events.map((e) => `- ${md(e.when)}: ${link(e.title, e.href)}${e.draft ? " (draft)" : ""}`));
@@ -206,7 +213,8 @@ export function pageTwin(release: OpenedRelease, surface: Surface, page: string,
       const body = [`${view.rows.length} of ${view.total} series${view.active ? ", as the address narrows them" : ""}. A latest value is given only where the series may be handed out here.`, "", "| Series | Key | Unit | Frequency | Coverage | Latest | Origin | Rights |", "|---|---|---|---|---|---|---|---|"];
       for (const row of view.rows) {
         const latest = row.state === "shown" ? (row.latest ? `${md(row.latest.text)} (${md(row.latest.period)})` : "No value") : md(sentence(`${row.state === "withheld" ? "Withheld" : "Not handed out here"}: ${row.reason ?? ""}`));
-        body.push(`| ${link(row.name, `/data/${row.key}`)} | \`${row.key}\` | ${md(row.unit)} | ${md(row.frequency)} | ${row.first && row.last ? `${md(row.first)} to ${md(row.last)}` : ""} | ${latest} | ${md(row.origin)} | ${md(row.rights)} |`);
+        const note = mlUseOf(release, surface, row.key, { gate: options.gate })?.note;
+        body.push(`| ${link(row.name, `/data/${row.key}`)} | \`${row.key}\` | ${md(row.unit)} | ${md(row.frequency)} | ${row.first && row.last ? `${md(row.first)} to ${md(row.last)}` : ""} | ${latest} | ${md(row.origin)} | ${md(row.rights)}${note ? `. ${md(sentence(note))}` : ""} |`);
       }
       body.push("", `Each series' own page has twins: add \`.md\`, \`.csv\`, \`.json\` or \`.metadata.json\` to its address.`);
       return { title: "Catalog", body, values: true };
@@ -239,9 +247,11 @@ export function pageTwin(release: OpenedRelease, surface: Surface, page: string,
       const body: string[] = [];
       if (view.none) body.push(md(view.none), "", `Each series' own values are at its page's address with \`.csv\`, \`.json\` or \`.md\`: ${at("/data")}.md`);
       else {
-        const rows = (list: DownloadRow[]): string[] => ["| File | Format | Rows | Series | Size | SHA-256 |", "|---|---|---|---|---|---|", ...list.map((f) => `| ${f.refused ? `${md(f.name)} (${md(f.refused)})` : `[${md(f.name)}](${at(f.href)})`} | ${f.format} | ${f.rows} | ${f.series} | ${f.size} | \`${f.sha256}\` |`)];
+        const rows = (list: DownloadRow[]): string[] => ["| File | Format | Rows | Series | Size | SHA-256 | Usable for ML, as the file marks its rows |", "|---|---|---|---|---|---|---|", ...list.map((f) => `| ${f.refused ? `${md(f.name)} (${md(f.refused)})` : `[${md(f.name)}](${at(f.href)})`} | ${f.format} | ${f.rows} | ${f.series} | ${f.size} | \`${f.sha256}\` | ${f.refused ? "Not handed out here" : f.mlUse === null ? "Not recorded" : f.mlUse ? "Every row" : "Not every row"} |`)];
         body.push(`Every series of release ${view.release} that may be redistributed, at its native frequency and not rounded: ${view.counts.observations} observations of ${view.counts.series} series, and ${view.counts.versions} versions held of ${view.counts.withHistory} of them.`, "", ...rows(view.whole), "", `- Data package (Frictionless v2), with every file's size, hash and licence: ${at(view.datapackage)}`, `- The newest release's files are always at ${at("/downloads/latest/")}{file}`, "");
-        for (const group of view.byLicence) body.push(`## ${md(group.label)}`, "", ...group.attributions.map((a) => `- ${md(a)}`), ...group.terms.map((t) => `- Terms: ${t}`), "", ...rows(group.rows), "");
+        for (const group of view.byLicence) body.push(`## ${md(group.label)}`, "", ...group.attributions.map((a) => `- ${md(a)}`), ...group.terms.map((t) => `- Terms: ${t}`), ...group.notForMl.map((s) => `- ${link(s.name, `/data/${s.key}`)}: ${md(sentence(s.reason))}`), "", ...rows(group.rows), "");
+        if (view.mlUseNotRecorded) body.push("## Not for training machine-learning models", "", "These files were written before a release recorded whether its series may be used to train a model. Nothing here says that they may.", "");
+        else if (view.notForMl.length > 0) body.push("## Not for training machine-learning models", "", "These series are in the files. Some of their rows are marked false in the `ml_use` column: those values are not for use in training machine-learning models. The table above says which files are handed out here.", "", ...view.notForMl.map((s) => `- ${link(s.name, `/data/${s.key}`)}: ${md(sentence(s.reason))}`), "");
         if (view.leftOut.length > 0) body.push("## Published, and in no bulk file", "", ...view.leftOut.map((s) => `- ${link(s.name, `/data/${s.key}`)}: ${md(sentence(s.reason))}`), "");
       }
       if (view.withheld.length > 0) body.push("", "## Withheld", "", ...view.withheld.map((s) => `- ${link(s.name, `/data/${s.key}`)}: ${md(sentence(s.reason))}`));

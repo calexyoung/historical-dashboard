@@ -40,6 +40,8 @@ export function datasetJsonLd(release: OpenedRelease, surface: Surface, key: str
     creator: { "@type": "Organization", name: record.source.origin.producer },
     ...(record.rights.terms_url ? { license: record.rights.terms_url } : {}),
     ...(record.rights.attribution ? { creditText: record.rights.attribution } : {}),
+    // Said only where it is not allowed (ADR 0041): the condition a reader of the data is under.
+    ...(record.rights.ml_use_note ? { conditionsOfAccess: `${record.rights.ml_use_note}.` } : {}),
     variableMeasured: { "@type": "PropertyValue", name: entry.name, unitText: entry.unit },
     ...(FREQUENCY[entry.freq] ? { repeatFrequency: FREQUENCY[entry.freq] } : {}),
     ...(file && file.observations.length > 0 ? { temporalCoverage: `${file.period_start}/${file.period_end}` } : {}),

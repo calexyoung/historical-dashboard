@@ -17,6 +17,7 @@ import { createHash } from "node:crypto";
 import { Ajv2020, type ErrorObject, type ValidateFunction } from "ajv/dist/2020.js";
 import addFormats from "ajv-formats";
 import { nextPeriod, periodBounds } from "../period";
+import { ML_USE_LEAD } from "../rights";
 import { releaseSchema, SCHEMA_VERSION, SCHEMA_VERSIONS } from "./schema.generated";
 import type { Anchor, CatalogEntry, Claim, Event, Release, SearchEntry, SearchFile, SeriesFile, VintageRow } from "./types.generated";
 
@@ -32,6 +33,7 @@ export type IssueCode =
   | "invalid_json"
   | "unsupported_schema_version"
   | "schema"
+  | "ml_use"
   | "release_id_mismatch"
   | "duplicate_key"
   | "withheld_unknown"
@@ -87,6 +89,8 @@ const DATAPACKAGE = "downloads/datapackage.json";
 const OPTIONAL_FILES: readonly string[] = [EVENTS, CLAIMS, LATEST, HIGHLIGHTS, SEARCH, TOPICS, DATAPACKAGE];
 /** The versions that have no bulk files; from 0.7.0 (M25) a public-profile Release may have them. */
 const BEFORE_BULK: readonly unknown[] = ["0.1.0", "0.2.0", "0.3.0", "0.4.0", "0.5.0", "0.6.0"];
+/** The versions whose Rights do not say `ml_use`; from 0.8.0 (ADR 0041) every Catalog entry's must. */
+const BEFORE_ML_USE: readonly unknown[] = [...BEFORE_BULK, "0.7.0"];
 const LICENCE = "public_domain|cc_by|citation_required|permission_required|no_redistribution|unknown";
 /** A bulk data file (ADR 0039): the Observations in three formats, the versions in one, each whole or for one licence class. */
 const BULK_FILE = new RegExp(`^downloads/(?:observations(?:\\.(${LICENCE}))?\\.(?:parquet|csv\\.gz|ndjson\\.gz)|vintages(?:\\.(${LICENCE}))?\\.parquet)$`);
@@ -368,6 +372,8 @@ function bulkRules(release: Release, files: ReleaseFiles, bulkPaths: string[], d
     add(DATAPACKAGE, "its rights register is not the one the manifest names");
   }
   const statuses = new Map(release.catalog.series.map((entry) => [entry.key, entry.rights.status as string]));
+  const stated = !BEFORE_ML_USE.includes(manifest.schema_version);
+  const notForMl = new Set(release.catalog.series.filter((entry) => entry.rights.ml_use !== true).map((entry) => entry.key));
   const named = new Set<string>();
   const names = new Set<string>();
   for (const resource of pack.resources) {
@@ -393,6 +399,25 @@ function bulkRules(release: Release, files: ReleaseFiles, bulkPaths: string[], d
       const row = Object.hasOwn(manifest.series, key) ? manifest.series[key] : undefined;
       if (row === undefined || row.representation !== "native") add(DATAPACKAGE, `${resource.path} lists ${key}, which this release does not publish natively`);
       else if (licence !== undefined && path.startsWith("downloads/observations") && statuses.get(key) !== licence) add(DATAPACKAGE, `${resource.path} lists ${key}, whose licence class is not ${licence}`);
+    }
+    // 0.8.0 (ADR 0041): a file says which of its Series are not for model training. It may say
+    // so of more than the Catalog does (a history that came through other terms), never of
+    // fewer, and never of a Series it does not hold.
+    const reserved = resource.ml_use_reserved;
+    if (!stated) {
+      // An earlier contract did not say; a reader takes silence as no permission.
+    } else if (resource.ml_use === undefined || reserved === undefined) {
+      add(DATAPACKAGE, `${resource.path}: it does not say ml_use and ml_use_reserved`);
+    } else {
+      const keys = reserved.map((row) => row.key);
+      if (new Set(keys).size !== keys.length || !keys.every((key) => resource.series.includes(key))) add(DATAPACKAGE, `${resource.path}: ml_use_reserved lists a Series twice, or one the file does not hold`);
+      const missed = resource.series.filter((key) => notForMl.has(key) && !keys.includes(key)).sort();
+      if (missed.length > 0) add(DATAPACKAGE, `${resource.path}: ml_use_reserved leaves out ${missed.join(", ")}, which the catalog does not allow for model training`);
+      if (resource.ml_use !== (keys.length === 0)) add(DATAPACKAGE, `${resource.path}: ml_use is true exactly when ml_use_reserved is empty`);
+      // The note is what a person reads: it says the denial in the words every surface uses,
+      // so it cannot say the opposite of the flag beside it.
+      const unsaid = reserved.filter((row) => !row.note.startsWith(`${ML_USE_LEAD}: `)).map((row) => row.key).sort();
+      if (unsaid.length > 0) add(DATAPACKAGE, `${resource.path}: the note of ${unsaid.join(", ")} in ml_use_reserved does not begin "${ML_USE_LEAD}: "`);
     }
   }
   for (const path of bulkPaths) if (!named.has(path)) add(path, "the datapackage does not name this file");
@@ -697,6 +722,7 @@ function crossFileRules(
   }
 
   issues.push(...recipeRules(entries, withheld));
+  issues.push(...mlUseRules(manifest.schema_version, entries));
 
   // Annotations.
   const seen = new Set<string>();
@@ -904,6 +930,68 @@ function recipeRules(entries: Map<string, CatalogEntry>, withheld: Set<string>):
         message: `${key} is derived from withheld ${blocked.join(", ")}`,
       });
     }
+  }
+  return issues;
+}
+
+/**
+ * 0.8.0 (ADR 0041): every Catalog entry's Rights say `ml_use` (an earlier Release's need not);
+ * `ml_use_reserved_by` names somebody only where the answer is no; and a Derived series is no
+ * more permitted than the stored Series its Recipe reaches: false where any of them is false,
+ * naming everybody they name. What the answer should be is the register's business and the
+ * writer's; this holds a Release to its own Catalog. Exported for its own test: a reader
+ * calls `validateRelease`.
+ */
+export function mlUseRules(version: string, entries: ReadonlyMap<string, CatalogEntry>): Issue[] {
+  const issues: Issue[] = [];
+  const add = (message: string): void => void issues.push({ code: "ml_use", path: CATALOG, message });
+  // An earlier contract did not say; a reader takes silence as no permission.
+  if (BEFORE_ML_USE.includes(version)) return issues;
+  // The stored Series each key rests on, each once. Null: an unknown input or a cycle, which
+  // the Recipe rules report. Worked out once for a key: a Recipe whose inputs share inputs
+  // would otherwise be walked again for every path that reaches them. A key that reaches an
+  // unknown input or a cycle does so by whatever path it is reached, so null is kept as well.
+  const known = new Map<string, CatalogEntry[] | null>();
+  const leaves = (key: string, seen: ReadonlySet<string> = new Set()): CatalogEntry[] | null => {
+    const entry = entries.get(key);
+    if (entry === undefined || seen.has(key)) return null;
+    const kept = known.get(key);
+    if (kept !== undefined) return kept;
+    let found: Map<string, CatalogEntry> | null = new Map();
+    if (!entry.recipe) found.set(key, entry);
+    else {
+      const path = new Set(seen).add(key);
+      for (const name of entry.recipe.inputs) {
+        const below = leaves(name, path);
+        if (below === null) {
+          found = null;
+          break;
+        }
+        for (const leaf of below) found.set(leaf.key, leaf);
+      }
+    }
+    const result = found === null ? null : [...found.values()];
+    known.set(key, result);
+    return result;
+  };
+  for (const [key, entry] of entries) {
+    const { rights } = entry;
+    if (rights.ml_use === undefined) {
+      add(`${key}: its Rights do not say ml_use`);
+      continue;
+    }
+    if (rights.ml_use && rights.ml_use_reserved_by !== undefined) add(`${key}: ml_use is true and ml_use_reserved_by names somebody`);
+    if (!entry.recipe) continue;
+    const restsOn = leaves(key);
+    if (restsOn === null || restsOn.some((leaf) => leaf.rights.ml_use === undefined)) continue;
+    const refused = restsOn.filter((leaf) => !leaf.rights.ml_use).map((leaf) => leaf.key).sort();
+    if (rights.ml_use && refused.length > 0) add(`${key}: ml_use is true, and it is computed from ${refused.join(", ")}, where it is false`);
+    const said: readonly string[] = rights.ml_use_reserved_by ?? [];
+    const owed = new Set(restsOn.flatMap((leaf) => leaf.rights.ml_use_reserved_by ?? []));
+    const missing = [...owed].filter((name) => !said.includes(name)).sort();
+    if (!rights.ml_use && missing.length > 0) add(`${key}: ml_use_reserved_by leaves out ${missing.join(", ")}`);
+    const unsupported = [...new Set(said)].filter((name) => !owed.has(name)).sort();
+    if (!rights.ml_use && unsupported.length > 0) add(`${key}: ml_use_reserved_by names ${unsupported.join(", ")}, whom none of the stored Series it is computed from names`);
   }
   return issues;
 }

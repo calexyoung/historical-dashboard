@@ -193,12 +193,13 @@ def rights_block(entry: dict, entries: dict[str, dict], table: object, gate) -> 
 
     def stored(one: dict) -> dict:
         origin = one["source"]["origin"]
-        return _register_rights(table, gate, origin["producer"], origin["dataset"])
+        return _register_rights(table, gate, origin["producer"], origin["dataset"],
+                                one["source"]["channel"]["via"])
 
     if "recipe" not in entry:
         return stored(entry)
     rests_on = [entries[key] for key in leaves(entry["key"], {**entries, entry["key"]: entry})]
     if not rests_on:
         return {"owner": "Macro Atlas", "terms_url": None, "status": "unknown", "attribution": None,
-                "reviewed": None}
+                "reviewed": None, "ml_use": False}
     return combined_rights([stored(one) for one in rests_on])

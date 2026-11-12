@@ -48,7 +48,11 @@ semantics change; a test says when).
 To change it, edit the literals in `make_fixture.py`, run `python fixtures/make_fixture.py` and
 commit the result. A test fails if the committed files and the script disagree.
 
-It holds bulk files (`downloads/`, contract 0.7.0, M25): the real bulk writer's, over the
+One Series, `fx_poverty_rate_annual`, may be handed out and is not for use in training a model
+(`rights.ml_use` false, an invented reservation; contract 0.8.0, ADR 0041), so every surface
+has something to say it of.
+
+It holds bulk files (`downloads/`, contract 0.7.0, M25; since 0.8.0 with the `ml_use` column): the real bulk writer's, over the
 fixture's own Series, kept in `bulk/downloads/` and written by
 `python fixtures/bulk/make_bulk.py` (run it, then `make_fixture.py`, when a Series or the bulk
 writer changes; a test says when, comparing rows and not compressed bytes). Two licence

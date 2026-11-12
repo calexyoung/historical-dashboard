@@ -180,7 +180,8 @@ const ABSENT: Record<string, string> = {
   not_carried: "This release does not carry its numbers",
 };
 
-function gateSays(lineage: readonly RightsLineage[], permission: Permission, surface: Surface, gate?: Gate) {
+/** The gate's answer, on this Surface, for a lineage a lock or a latest row recorded. */
+export function gateSays(lineage: readonly RightsLineage[], permission: Permission, surface: Surface, gate?: Gate) {
   const rows = lineage.map((row) => ({ origin: row.origin, dataset: row.dataset, channel: row.channel, representation: row.representation, permission }));
   return gate ? gate.permits(rows, surface) : permits(rows, surface);
 }

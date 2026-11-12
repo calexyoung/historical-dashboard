@@ -12,6 +12,7 @@ import type { RightsGate, Surface } from "@macro-atlas/core";
 import { FREQUENCIES } from "./catalog";
 import { mdText as md } from "./markdown";
 import { methodIndex } from "./method-docs";
+import { mlUse } from "./ml-use";
 import { askGate, fitsOneAnswer } from "./query";
 import type { OpenedRelease } from "./release/reader";
 import { claimTwin } from "./twin/claims";
@@ -38,12 +39,23 @@ function givenClaims(release: OpenedRelease, surface: Surface, address: string, 
 export function llmsText(release: OpenedRelease, surface: Surface, options: { address: string; gate?: Pick<RightsGate, "permits"> }): string {
   const { address, gate } = options;
   const withheld = new Set(release.manifest.withheld.map((row) => row.key));
+  // What is said of the bulk files is what this Release's own files do: a column only where
+  // every one of them has it, and nothing where the Release has no bulk files.
+  const files = release.downloads?.resources ?? [];
+  const bulk =
+    files.length === 0
+      ? "."
+      : files.every((resource) => resource.ml_use !== undefined)
+        ? " and in the bulk files' `ml_use` column."
+        : ". Not every bulk file of this release records it: a file that does not say gives no permission.";
   const out = [
     "# Macro Atlas",
     "",
     "> Data and facts about the past and current state of the United States in a global context: series from the agencies that produce them, with where each number came from, what was known when, and what may be redistributed. The site states figures and gives no evaluation of them.",
     "",
     `This file lists release ${release.id}. Every page has a Markdown twin: add \`.md\` to its address (\`/index.md\` for the overview). A series page also has \`.csv\`, \`.json\` and \`.metadata.json\`. A file of values is given only where the rights of every series in it allow redistribution; otherwise the answer is 403 with the reason.`,
+    "",
+    `Redistribution is not permission to train a model. A series whose rights do not allow use in training machine-learning models says so below, on its page, in each of its files (\`rights.ml_use\` is false in JSON)${bulk}`,
     "",
     "## Pages",
     "",
@@ -57,8 +69,12 @@ export function llmsText(release: OpenedRelease, surface: Surface, options: { ad
     const permitted = !withheld.has(entry.key) && askGate(release, surface, [entry.key], "redistribute", { gate }).ok;
     const given = permitted && fitsOneAnswer(release, entry.key);
     const about = `${md(entry.unit)}, ${(FREQUENCIES[entry.freq] ?? entry.freq).toLowerCase()}`;
+    const training = mlUse(release, surface, entry, { gate }).note;
+    // Said of every Series it is true of, whichever way the Series is listed: one whose values
+    // are not handed out here is still one a reader may hold from elsewhere.
+    const reserved = training ? `. ${md(training)}.` : "";
     const why = withheld.has(entry.key) ? "Withheld" : permitted ? "It is too long for one file; ask its twin for a window" : "Its values are not handed out here";
-    out.push(given ? `- [${md(entry.name)}](${address}/data/${entry.key}.md): ${about}` : `- [${md(entry.name)}](${address}/data/${entry.key}.metadata.json): ${about}. ${why}; this is its metadata.`);
+    out.push(given ? `- [${md(entry.name)}](${address}/data/${entry.key}.md): ${about}${reserved}` : `- [${md(entry.name)}](${address}/data/${entry.key}.metadata.json): ${about}. ${why}; this is its metadata${reserved || "."}`);
   }
   out.push("");
 

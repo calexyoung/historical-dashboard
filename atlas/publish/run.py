@@ -60,6 +60,7 @@ from .export import (
     build,
     dump,
     lag_limit,
+    refresh_ml_use,
     todays_rights,
 )
 
@@ -453,9 +454,12 @@ def _reuse(run: _Run, legacy: dict[str, bytes] | None, drop: dict[str, str] | No
     built.rows = {key: row for key, row in manifest["series"].items() if key not in gone}
     # The values are reused; what the register says of them is read today. A Series whose row
     # has changed (another licence class, other terms) is described by today's, here and in
-    # the bulk files made from this Catalog. Unchanged, the Catalog is the same bytes.
-    fresh = todays_rights(entries, run.table, run.gate)
-    if any(new is not old for new, old in zip(fresh, entries, strict=True)):
+    # the bulk files made from this Catalog. So is what it says of model training: a Release
+    # reused from before contract 0.8.0 states it, and one reused after a signature changed
+    # says what the register says now (ADR 0041). Unchanged, the Catalog is the same bytes.
+    fresh = [dict(entry) for entry in todays_rights(entries, run.table, run.gate)]
+    refresh_ml_use(fresh, run.gate)
+    if fresh != entries:
         built.files[CATALOG] = dump({**json.loads(files[CATALOG]), "series": fresh})
         for entry in fresh:
             if "rights_status" in built.rows.get(entry["key"], {}):

@@ -43,6 +43,11 @@ const HOW = {
   not_read: "not read",
   attested: "read by Alex on {date} in a browser; no quotation recorded",
 };
+/** What a signed decision says no to, in a sentence of its own; nothing when it allows all four. */
+const refusedText = (decision) => {
+  const no = GRANTS.filter(([key]) => !decision[key]).map(([, word]) => word);
+  return no.length === 0 ? "" : ` Not allowed: **${no.join(", ")}**.`;
+};
 const grantsText = (grants) => {
   const allowed = GRANTS.filter(([key]) => grants[key]).map(([, word]) => word);
   return allowed.length === GRANTS.length ? "all four" : allowed.length ? allowed.join(", ") : "nothing";
@@ -81,7 +86,7 @@ function rowSection(row) {
   out.push(
     row.decision === null
       ? "Decision: **not decided**."
-      : `Decision: allow **${grantsText(row.decision)}**. Signed by ${row.decision.signed_by} on ${row.decision.signed_on}.${row.decision.note ? ` ${row.decision.note}` : ""}`,
+      : `Decision: allow **${grantsText(row.decision)}**. Signed by ${row.decision.signed_by} on ${row.decision.signed_on}.${refusedText(row.decision)}${row.decision.note ? ` ${row.decision.note}` : ""}`,
     "",
   );
   return out;

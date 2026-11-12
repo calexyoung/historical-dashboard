@@ -1,7 +1,7 @@
 {
   "$schema": "./rights-register.schema.json",
   "format": 1,
-  "version": "2026-11-12.4",
+  "version": "2026-11-12.5",
   "about": "The rights register (CONTEXT.md; PLAN 6 and 6.1; ADR 0006, ADR 0020): one row per Origin (or per set of an Origin's datasets; no two rows cover the same dataset) and per intermediary Channel, with the terms read, a proposal, and Alex's decision. This file is the single table. docs/v2/rights-register.md and packages/core/src/rights-register.generated.ts are generated from it (npm run gen); atlas/rights.py reads it. A row permits something on a public Surface only when its decision is signed by Alex. The builder proposes and never fills in a decision.",
   "cleared_intermediaries": [],
   "rows": [
@@ -312,7 +312,7 @@
         "The row was signed on 2026-11-12 with the API terms of service unread by the builder and with no read of them by Alex recorded: the sign-up page asks for agreement to them and M15 did not fetch the document. Read it and record any required notice here.",
         "Request limits, as the API's user guide gives them and M15 did not test: 100 requests a minute, 100 MB a minute, 30 errors a minute, and an hour's lock-out (HTTP 429) beyond them. The capture job makes six requests a run, about 17 MB, two runs a day.",
         "The API repeats the key it was asked with in every answer. The capture kit replaces every copy before anything is kept, so the bytes kept are the answer with that one change (ADR 0029). Confirm that keeping them so is acceptable.",
-        "The monthly trade balance v1 showed is the FT-900 release, compiled with the Census Bureau, and is not in this API. The quarterly balance from the International Transactions Accounts is captured here under a new key; the monthly figure waits for the Census files (M16)."
+        "The monthly trade balance v1 showed is the FT-900 release, compiled with the Census Bureau, and is not in this API. The quarterly balance from the International Transactions Accounts is captured here under a new key; the monthly figure is read from the Census Bureau's own files (M16), under the census row."
       ],
       "decision": {
         "display": true,
@@ -1584,11 +1584,18 @@
         "note": "Allow display, download and storage with attribution, for a non-commercial site. Do not describe as usable for model training: the terms as summarised reserve that."
       },
       "open_questions": [
-        "Does a daily request to the SDMX API count as automated bulk downloading, which the terms as summarised reserve? What M14 would ask for is two requests a run (35 series, about 1.1 MB, whole history each time). That is a fact about the job, not an answer: confirm with the page or with the Fund before the row is signed for storage.",
-        "The wording was read through a tool that returns short extracts. Open the page before signing (PLAN 6: IMF reuse wording still unverified).",
+        "Automated bulk downloading, which the terms as summarised reserve: Alex judged on 2026-11-12 that two small requests a day (about 1.1 MB) are not bulk downloading; revisit if the job grows or the Fund says otherwise.",
+        "The wording was read through a tool that returns short extracts. The row was signed on 2026-11-12 with no read of the page itself by Alex recorded: open the page and record any difference here (PLAN 6: IMF reuse wording still unverified).",
         "The Fund republishes national figures. The CPI Observations read here are all marked 'reported official data' and the exchange rates 'raw data'; whether a national statistics office's own terms add anything for its index is not looked into."
       ],
-      "decision": null
+      "decision": {
+        "display": true,
+        "redistribute": true,
+        "store": true,
+        "ml_use": false,
+        "signed_by": "Alex",
+        "signed_on": "2026-11-12"
+      }
     },
     {
       "id": "oecd",

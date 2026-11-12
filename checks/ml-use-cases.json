@@ -1,0 +1,15 @@
+{
+  "about": "Shared table for the sentence a Series' Rights say about use in training machine-learning models (ADR 0041). Run by pytest (tests/v2/test_rights.py, atlas.rights.ml_use_note) and Vitest (packages/core/src/rights.test.ts, mlUseNote) so the two bodies cannot drift. `rights` is a Catalog entry's Rights block, or the part of it the sentence reads; `note` is the sentence, or null when nothing is said.",
+  "cases": [
+    {"name": "allowed: nothing is said", "rights": {"owner": "Agency Open", "status": "public_domain", "ml_use": true}, "note": null},
+    {"name": "one signed row reserves it", "rights": {"owner": "Agency Reserved", "status": "citation_required", "ml_use": false, "ml_use_reserved_by": ["Agency Reserved"]}, "note": "Not for use in training machine-learning models: Agency Reserved's terms reserve it"},
+    {"name": "two reserve it", "rights": {"owner": "A; B; C", "status": "citation_required", "ml_use": false, "ml_use_reserved_by": ["A", "B"]}, "note": "Not for use in training machine-learning models: A's and B's terms reserve it"},
+    {"name": "three reserve it", "rights": {"owner": "A; B; C", "status": "citation_required", "ml_use": false, "ml_use_reserved_by": ["A", "B", "C"]}, "note": "Not for use in training machine-learning models: A's, B's and C's terms reserve it"},
+    {"name": "a name that ends in s", "rights": {"owner": "Bureau of Statistics", "status": "cc_by", "ml_use": false, "ml_use_reserved_by": ["Bureau of Statistics"]}, "note": "Not for use in training machine-learning models: Bureau of Statistics' terms reserve it"},
+    {"name": "not allowed and nobody's signed decision says so: the rights are not settled", "rights": {"owner": "Agency Unsigned", "status": "cc_by", "ml_use": false}, "note": "Not for use in training machine-learning models: its rights are not settled"},
+    {"name": "an empty list names nobody", "rights": {"owner": "Agency Unsigned", "status": "unknown", "ml_use": false, "ml_use_reserved_by": []}, "note": "Not for use in training machine-learning models: its rights are not settled"},
+    {"name": "a Release written before the flag: it is not recorded, and that is said", "rights": {"owner": "Agency Open", "status": "public_domain"}, "note": "Not for use in training machine-learning models: this release does not record whether its terms allow it"},
+    {"name": "a flag that is not true or false is no permission", "rights": {"owner": "Agency Open", "status": "public_domain", "ml_use": "yes"}, "note": "Not for use in training machine-learning models: this release does not record whether its terms allow it"},
+    {"name": "no Rights at all", "rights": null, "note": "Not for use in training machine-learning models: this release does not record whether its terms allow it"}
+  ]
+}

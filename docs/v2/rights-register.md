@@ -2,7 +2,7 @@
 
 # Rights register
 
-Version `2026-11-12.4`. 6 of 32 rows signed. Intermediary Channels cleared: none.
+Version `2026-11-12.5`. 7 of 32 rows signed. Intermediary Channels cleared: none.
 
 One row per Origin and per intermediary Channel: the terms that were read, the sentences that
 matter quoted, a proposal, and Alex's decision (CONTEXT.md, Rights register; PLAN 6 and 6.1;
@@ -84,7 +84,7 @@ with that date in `cleared_intermediaries`.
 | `alfred` ALFRED (Federal Reserve Bank of St. Louis), as a channel | channel | unknown | no | nothing | not decided |
 | `yahoo` Yahoo Finance, as a channel | channel | permission required | yes | nothing | not decided |
 | `philadelphia-fed` Federal Reserve Bank of Philadelphia, Real-Time Data Set | origin | unknown | no | nothing | not decided |
-| `imf` International Monetary Fund | origin | citation required | in part | display, redistribute, store | not decided |
+| `imf` International Monetary Fund | origin | citation required | in part | display, redistribute, store | display, redistribute, store |
 | `oecd` OECD | origin | unknown | no | nothing | not decided |
 | `world-bank` World Bank | origin | CC BY | in part | all four | not decided |
 | `bis` Bank for International Settlements | origin | citation required | yes | all four | not decided |
@@ -172,7 +172,7 @@ Open questions:
 - The row was signed on 2026-11-12 with the API terms of service unread by the builder and with no read of them by Alex recorded: the sign-up page asks for agreement to them and M15 did not fetch the document. Read it and record any required notice here.
 - Request limits, as the API's user guide gives them and M15 did not test: 100 requests a minute, 100 MB a minute, 30 errors a minute, and an hour's lock-out (HTTP 429) beyond them. The capture job makes six requests a run, about 17 MB, two runs a day.
 - The API repeats the key it was asked with in every answer. The capture kit replaces every copy before anything is kept, so the bytes kept are the answer with that one change (ADR 0029). Confirm that keeping them so is acceptable.
-- The monthly trade balance v1 showed is the FT-900 release, compiled with the Census Bureau, and is not in this API. The quarterly balance from the International Transactions Accounts is captured here under a new key; the monthly figure waits for the Census files (M16).
+- The monthly trade balance v1 showed is the FT-900 release, compiled with the Census Bureau, and is not in this API. The quarterly balance from the International Transactions Accounts is captured here under a new key; the monthly figure is read from the Census Bureau's own files (M16), under the census row.
 
 Decision: allow **all four**. Signed by Alex on 2026-11-12.
 
@@ -432,11 +432,11 @@ Proposal: allow **display, redistribute, store**. Allow display, download and st
 
 Open questions:
 
-- Does a daily request to the SDMX API count as automated bulk downloading, which the terms as summarised reserve? What M14 would ask for is two requests a run (35 series, about 1.1 MB, whole history each time). That is a fact about the job, not an answer: confirm with the page or with the Fund before the row is signed for storage.
-- The wording was read through a tool that returns short extracts. Open the page before signing (PLAN 6: IMF reuse wording still unverified).
+- Automated bulk downloading, which the terms as summarised reserve: Alex judged on 2026-11-12 that two small requests a day (about 1.1 MB) are not bulk downloading; revisit if the job grows or the Fund says otherwise.
+- The wording was read through a tool that returns short extracts. The row was signed on 2026-11-12 with no read of the page itself by Alex recorded: open the page and record any difference here (PLAN 6: IMF reuse wording still unverified).
 - The Fund republishes national figures. The CPI Observations read here are all marked 'reported official data' and the exchange rates 'raw data'; whether a national statistics office's own terms add anything for its index is not looked into.
 
-Decision: **not decided**.
+Decision: allow **display, redistribute, store**. Signed by Alex on 2026-11-12. Not allowed: **ML use**.
 
 ### OECD
 

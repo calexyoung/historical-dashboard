@@ -349,6 +349,13 @@ licence class (`observations.{licence}.…`, `vintages.{licence}.parquet`) and `
 A Series is in them only under the Permission to redistribute; the site asks the gate again
 when a file is requested, so production keeps a copy for five minutes, not for good.
 
+As built after M25 (ADR 0041): the release contract is 0.8.0. A Catalog entry's Rights state
+`ml_use`, the gate's answer when the Release was written, and name whose signed row reserves
+it; a Derived series takes the most restrictive of its inputs; bulk files carry it as a
+column and the datapackage per file; and the site says "Not for use in training
+machine-learning models: {Origin}'s terms reserve it" wherever a value of such a Series leaves
+it. The IMF row is signed with ML use refused.
+
 As built in M26 (ADR 0040, `deploy/RUNBOOK.md`): the store also holds `REFRESH.LOCK`, held by
 `atlas refresh` (capture, replay, release in one run) and by `atlas backup`. A backup is one
 `macro-atlas-{time}.tar.gz` of the whole store and the whole root (not only the pinned

@@ -2,7 +2,7 @@
 
 `release.schema.json` is the contract between whatever writes a Release and everything that reads
 one (PLAN 4.2). Words in capitals are defined in `/CONTEXT.md`. This is **v0**
-(`schema_version` `0.7.0`; M10 added `vintages/`, M19 Events, M20 Claims, locks and latest rows, M22 the headline Series and the search index, M23 Topics, M25 bulk files): it already carries what tracks A to D need, and later milestones add
+(`schema_version` `0.8.0`; M10 added `vintages/`, M19 Events, M20 Claims, locks and latest rows, M22 the headline Series and the search index, M23 Topics, M25 bulk files, ADR 0041 `ml_use` in a Series' Rights): it already carries what tracks A to D need, and later milestones add
 to it (locks, search, downloads) by raising the version. A reader refuses a version it does
 not know. It still reads 0.1.0, the contract before vintages: such a Release holds no
 `vintages/` file, so every Release kept in a root stays readable (ADR 0024). Writers write the newest.
@@ -115,6 +115,18 @@ reports.
 marks whole Series carried over from v1's output; the two are never mixed in one Series and the
 legacy one never appears in a public Release.
 
+**ML use** (0.8.0; ADR 0041). A Catalog entry's `rights.ml_use` says whether the rights register
+allowed describing the Series as usable for training machine-learning models when the Release
+was written: the gate's answer for the production Surface, and for a Derived series the most
+restrictive of the stored Series its Recipe reaches. `rights.ml_use_reserved_by` names each
+signed row that says no; where the answer is no and nobody is named, the rights are not
+settled. Every entry of a 0.8.0 Release states `ml_use`. An earlier Release need not, and a
+reader takes silence as no. A bulk file's resource says `ml_use` (true only when every row is)
+and `ml_use_reserved` (each Series that is not, with the sentence that says so); it may reserve
+more than the Catalog does (a history under other terms), never less, and each sentence begins
+"Not for use in training machine-learning models: ". `ml_use_note` (Python) and
+`mlUseNote` (TypeScript) make the sentence; `checks/ml-use-cases.json` holds both to it.
+
 **Hashes.** A manifest row's `sha256` is the hash of the file's exact bytes. `state_hash` is the
 writer's hash of the normalized state (PLAN 4.3) and is opaque to readers.
 
@@ -226,6 +238,7 @@ the last stage: they are judged against Series files already known to be sound.
 | rules | `implicit_gap` | a Period left out between the bounds |
 | rules | `bounds_mismatch` | the file's bounds are not its first and last Observation |
 | rules | `unknown_recipe_input`, `recipe_cycle`, `withheld_input` | Recipe structure |
+| rules | `ml_use` | from 0.8.0: a Catalog entry's Rights do not say `ml_use`; `ml_use_reserved_by` names somebody where `ml_use` is true; a Derived series says true where a stored Series it is computed from says false, leaves out a name one of them gives, or names somebody none of them names |
 | rules | `duplicate_annotation_id`, `unknown_series_ref`, `bad_anchor` | Annotations |
 | rules | `duplicate_event_id`, `bad_event_date` | two Events share an id; an Event's date or end is not a day, month or year of the calendar as its precision says, or it ends before it starts |
 | rules | `event_projection` | an Event has no Annotation, or its Annotation does not say what it says; an Annotation of kind `event` is the projection of no Event |

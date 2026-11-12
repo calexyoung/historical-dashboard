@@ -19,6 +19,7 @@ import { stateOfStatus } from "./figure/states";
 import { dayWords, periodWords, together } from "./figure/words";
 import { formatDay } from "./freshness";
 import { askGate, query, vintageTable, type Version } from "./query";
+import { mlUse, type MlUseOptions } from "./ml-use";
 import type { OpenedRelease } from "./release/reader";
 import { parseSeriesRequest, SERIES_PARAMS, toQuery, type SeriesRequest } from "./series-request";
 import { asOfLines, asOfWords, BASIS_INFO, shownAs, shownUnit, unavailableWords } from "./series-words";
@@ -205,7 +206,7 @@ function lineage(release: OpenedRelease, entry: CatalogEntry): SeriesPageView["p
   return { text, inputs: recipe.inputs.map((key) => ({ key, name: names.get(key) ?? key })) };
 }
 
-function provenance(release: OpenedRelease, entry: CatalogEntry): SeriesPageView["provenance"] {
+function provenance(release: OpenedRelease, surface: Surface, entry: CatalogEntry, options: MlUseOptions): SeriesPageView["provenance"] {
   const { origin, channel } = entry.source;
   const originFacts: Fact[] = [
     { label: "Produced by", value: origin.producer },
@@ -226,6 +227,9 @@ function provenance(release: OpenedRelease, entry: CatalogEntry): SeriesPageView
   ];
   if (rights.terms_url) rightsFacts.push({ label: "Terms", value: rights.terms_url, href: /^https:\/\//.test(rights.terms_url) ? rights.terms_url : undefined });
   if (rights.attribution) rightsFacts.push({ label: "Attribution", value: rights.attribution });
+  // Said only where it is not allowed (ADR 0041); the twins carry the same sentence.
+  const training = mlUse(release, surface, entry, options);
+  if (training.note) rightsFacts.push({ label: "Machine learning", value: training.note });
 
   const releaseFacts: Fact[] = [
     { label: "Release", value: release.id },
@@ -394,7 +398,7 @@ export function seriesPageView(release: OpenedRelease, surface: Surface, key: st
     name: entry.name,
     description: entry.description ?? null,
     facts: facts(entry),
-    provenance: provenance(release, entry),
+    provenance: provenance(release, surface, entry, { gate, history: request?.as_of !== undefined }),
     explorerPath: `/explore?s=${entry.key}`,
     downloads: downloads(release, surface, entry, request, search, address, gate),
   };
