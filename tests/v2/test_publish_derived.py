@@ -282,7 +282,7 @@ def test_a_step_that_fails_rejects_the_run(tmp_path, register, store, series, mo
 
 
 def test_a_step_that_does_not_finish_in_time_rejects_the_run(tmp_path, register, store, series, monkeypatch):
-    monkeypatch.setenv("ATLAS_NODE", str(fake_node(tmp_path, "sleep 30\n")))
+    monkeypatch.setenv("ATLAS_NODE", str(fake_node(tmp_path, "exec sleep 30\n")))
     monkeypatch.setenv("ATLAS_ENGINE_TIMEOUT", "1")
     assert_nothing_promoted(tmp_path, publish(tmp_path, register, store, series), "did not finish")
 
