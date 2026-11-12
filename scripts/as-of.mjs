@@ -34,7 +34,7 @@ const bundle = await rolldown({
   plugins: [{
     name: "entry",
     resolveId: (id) => (id.endsWith("as-of-entry.ts") ? id : null),
-    load: (id) => (id.endsWith("as-of-entry.ts") ? 'export { asOf } from "./as-of";\nexport { createReleaseReader } from "./reader";\n' : null),
+    load: (id) => (id.endsWith("as-of-entry.ts") ? 'export { asOf, derivedAsOf } from "./as-of";\nexport { createReleaseReader } from "./reader";\n' : null),
   }],
 });
 const { output } = await bundle.generate({ format: "esm" });
@@ -54,12 +54,32 @@ if (!opened.ok) {
   console.error(`no release could be opened in ${root}: ${opened.reason}`);
   process.exit(1);
 }
+const say = (label, value) => console.log(`${label.padEnd(18)}${value}`);
+const computed = lib_.derivedAsOf(opened.release, key, date ?? null);
+if (computed) {
+  // A Derived series the engine computes: its Recipe over each input's own Vintage (M11).
+  say("series", `${key}  (release ${computed.release_id}, semantics ${computed.semantics_version})`);
+  say("derived from", computed.inputs.map((input) => input.key).join(", "));
+  say("as of", computed.as_of ?? "not asked: the release's own state");
+  say("basis", computed.basis ? `${computed.basis}  (the weakest among its inputs)` : "none (not an as-of answer)");
+  for (const input of computed.inputs) {
+    const gap = input.capture_gap ? `, last capture ${input.capture_gap.from}, ${input.capture_gap.missed_days} day(s) not seen` : "";
+    say(`  ${input.key}`.slice(0, 17), ` ${input.basis ?? "the release's own state"}${input.reason ? ` (${input.reason})` : ""}${gap}`);
+    if (input.left_out_periods.length) say("", `  left out, held under other metadata: ${input.left_out_periods.join(", ")}`);
+  }
+  say("rights", `${computed.rights_status}  (the most restrictive among its inputs)`);
+  if (computed.unavailable) say("no answer", computed.unavailable.message);
+  const shown = tail > 0 ? computed.observations.slice(-tail) : [];
+  if (shown.length < computed.observations.length) console.log(`  ... ${computed.observations.length - shown.length} earlier Period(s)`);
+  for (const o of shown) console.log(`  ${o.period.padEnd(11)}${String(o.value ?? "").padStart(22)}  ${o.status}`);
+  if (computed.observations.length === 0) console.log("  (no Observation)");
+  process.exit(0);
+}
 const answer = lib_.asOf(opened.release, key, date ?? null);
 if (!answer) {
   console.error(`release ${opened.release.id} holds no values for ${key} (unknown, or withheld)`);
   process.exit(1);
 }
-const say = (label, value) => console.log(`${label.padEnd(18)}${value}`);
 say("series", `${key}  (release ${answer.release_id}, semantics ${answer.semantics_version})`);
 say("as of", answer.as_of ?? "not asked: the release's own state");
 if (answer.cutoff) say("cutoff", `before ${answer.cutoff.instant}  (${answer.cutoff.precision === "date" ? "00:00" : "that instant"} in New York, ${answer.cutoff.day})`);

@@ -5,7 +5,9 @@
 
 It runs the real capture kit over M8's three recorded fetches (invented values of a made-up
 Origin; nothing is asked of the network), replays them into a vintage store, and then runs the
-real commands: a public-profile release, a second one that withholds a Series, a rollback, and
+real commands: a public-profile release with two Derived series the engine computes (the Node
+step, ``atlas-core verify``, so Node 22.18 or later is needed), a second release that withholds
+a Series and with it the Derived series that rests on it, a rollback, and
 the production preflight, which refuses the root because its values are invented and the
 committed rights register signs nothing. The register the releases are decided under is the
 fixture's own test table, which is why they may be written at all, and why they can never be
@@ -55,7 +57,11 @@ def run(directory: Path, *, quiet: bool = False) -> int:
                         "--series", str(VINTAGE / "series.json")]):
         return 1
     common = ["--profile", "public", "--out", str(root), "--store", str(store)]
-    series = ["--series", str(VINTAGE / "series.json")]
+    # The fixture's series table with its two Recipes (fixtures/vintage/recipes.json).
+    recipes = json.loads((VINTAGE / "series.json").read_text())
+    recipes["derived"] = json.loads((VINTAGE / "recipes.json").read_text())["derived"]
+    (directory / "series.json").write_text(json.dumps(recipes))
+    series = ["--series", str(directory / "series.json")]
     say = (lambda text: None) if quiet else print
     step = quietly if quiet else (lambda command, arguments: command(arguments))
 
@@ -70,6 +76,11 @@ def run(directory: Path, *, quiet: bool = False) -> int:
           f"{manifest['rights_register']['signed']}; sources: {manifest['sources']}")
     price = json.loads((root / "releases" / first / "series" / "fx_price.json").read_text())
     print("  fx_price:", [(o["period"], o["value"], o["status"]) for o in price["observations"]])
+    for key in ("fx_price_change", "fx_jobs_per_price"):
+        derived = json.loads((root / "releases" / first / "derived" / f"{key}.json").read_text())
+        print(f"  {key} (computed by the engine, semantics {manifest['semantics_version']}):",
+              [(o["period"], None if o["value"] is None else round(o["value"], 4), o["status"])
+               for o in derived["observations"]])
 
     print("\n=== the same store under a register that covers only the prices dataset ===")
     atlas(["release", *common, "--register", str(narrowed), *series])

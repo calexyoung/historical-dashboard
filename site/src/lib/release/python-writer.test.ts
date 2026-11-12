@@ -10,8 +10,9 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, renameSync } from "no
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { beforeAll, describe, expect, it } from "vitest";
+import { SEMANTICS_VERSION } from "@macro-atlas/core";
 import { REPO } from "../legacy/testing";
-import { asOf } from "./as-of";
+import { asOf, derivedAsOf } from "./as-of";
 import { createReleaseReader } from "./reader";
 
 let root: string;
@@ -44,7 +45,28 @@ describe("a Release written by the Python release writer", () => {
       ["2026-03", 100.9, "final"],
       ["2026-04", 101.3, "final"],
     ]);
-    expect(release.catalog.series.map((entry) => entry.representation)).toEqual(["native", "native"]);
+    expect(release.catalog.series.map((entry) => entry.representation)).toEqual(["native", "native", "native", "native"]);
+  });
+
+  it("holds the Derived series the engine computed in the Node step, and answers as-of for them", async () => {
+    const opened = await createReleaseReader({ root, surface: "local" }).current();
+    if (!opened.ok) throw new Error(opened.reason);
+    const { release } = opened;
+    expect(Object.keys(release.derived).sort()).toEqual(["fx_jobs_per_price", "fx_price_change"]);
+    expect(release.manifest.semantics_version).toBe(SEMANTICS_VERSION);
+    // April on March, 101.3 against 100.9. The file is what the engine gives for the Release's own state.
+    const file = release.derived.fx_price_change!.observations;
+    expect(file.map((o) => o.period)).toEqual(["2026-04"]);
+    expect(file[0]!.value).toBeCloseTo((101.3 / 100.9 - 1) * 100, 12);
+    expect(derivedAsOf(release, "fx_price_change", null)!.observations).toEqual(file);
+    // On 15 April February was still listed (100.4) and April was not: March on February.
+    const april = derivedAsOf(release, "fx_price_change", "2026-04-15")!;
+    expect(april.basis).toBe("uncertain");
+    expect(april.observations.map((o) => o.period)).toEqual(["2026-02", "2026-03"]);
+    expect(april.observations[1]!.value).toBeCloseTo((100.9 / 100.4 - 1) * 100, 12);
+    // Before the first Capture there is no answer, and so no figure of today's.
+    expect(derivedAsOf(release, "fx_jobs_per_price", "2026-03-10")).toMatchObject({ basis: "unavailable", observations: [] });
+    expect(derivedAsOf(release, "fx_price", null)).toBeNull(); // a stored Series: asOf() answers
   });
 
   it("carries the store's history, and the engine answers as-of questions from it", async () => {

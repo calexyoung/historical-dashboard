@@ -7,7 +7,7 @@
  * it was converted from (`manifest.inputs[].generated`). A Release that does not say cannot
  * answer an as-of question for it.
  */
-import { resolve, type VintageAnswer } from "@macro-atlas/core";
+import { evaluateRecipe, resolve, type DerivedAnswer, type ResolveSeries, type VintageAnswer } from "@macro-atlas/core";
 import type { OpenedRelease } from "./reader";
 
 /** When v1's output was generated, as the Release records it; null when it does not. */
@@ -39,4 +39,25 @@ export function asOf(release: OpenedRelease, key: string, date: string | null): 
     date,
     { releaseId: release.id },
   );
+}
+
+/**
+ * What a Derived series the engine computes said as of a date: its Recipe run over each stored
+ * input's own Vintage, with the weakest Basis among them (PLAN 4.5, M11;
+ * `docs/method/transforms.md`, "Recipes"). `date` null asks for the Release's own state.
+ *
+ * Null when `key` is not such a Series in this Release: unknown, withheld, stored, or one of
+ * v1's Derived series, which v1 computed and which `asOf` answers on the legacy Basis.
+ */
+export function derivedAsOf(release: OpenedRelease, key: string, date: string | null): DerivedAnswer | null {
+  const entry = release.catalog.series.find((candidate) => candidate.key === key);
+  if (!entry?.recipe || entry.representation !== "native" || !Object.hasOwn(release.derived, key)) return null;
+  const catalog = new Map(release.catalog.series.map((candidate) => [candidate.key, candidate]));
+  const load = (name: string): ResolveSeries | null => {
+    const file = Object.hasOwn(release.series, name) ? release.series[name] : undefined;
+    if (!file) return null;
+    const vintages = Object.hasOwn(release.vintages, name) ? release.vintages[name]! : null;
+    return { key: name, freq: file.freq, representation: file.representation, observations: file.observations, vintages, heldAt: null };
+  };
+  return evaluateRecipe(key, catalog, load, { asOf: date, releaseId: release.id });
 }
