@@ -65,7 +65,8 @@ def test_a_public_release_holds_the_public_events_whole_and_in_order(tmp_path):
     events = read(result, "events")
     assert [e["id"] for e in events] == [YEAR["id"], MONTH["id"], DAY["id"], SPAN["id"]]
     assert events[2] == DAY
-    assert set(result.files) == {"content/events.json", "content/annotations.json", "content/claims.json"}
+    assert set(result.files) == {"content/events.json", "content/annotations.json", "content/claims.json",
+                                 "content/topics.json"}
 
 
 def test_each_event_is_projected_as_one_annotation_anchored_as_precisely_as_it_is_dated(tmp_path):

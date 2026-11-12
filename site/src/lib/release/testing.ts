@@ -22,9 +22,12 @@ export type Variant = {
   /**
    * Write it as a Release of an earlier contract. "0.2.0": before Events (M19), so no
    * content/events.json, Claims, locks or latest rows. "0.4.0": before headline Series and the
-   * search index (M22), so neither file.
+   * search index (M22), so neither file. "0.5.0": before Topics (M23), so no content/topics.json
+   * and no Topic in the search index.
    */
-  schema?: "0.2.0" | "0.4.0";
+  schema?: "0.2.0" | "0.4.0" | "0.5.0";
+  /** Change the Topics in place (the search index is written again). */
+  topics?: (topics: Json[]) => void;
   /** The headline Series of these Segments, in place of the fixture's. */
   highlights?: Record<string, string[]>;
   /** Change the Events in place (content/events.json and its Annotations are the caller's to keep in step). */
@@ -60,6 +63,10 @@ export function addRelease(root: string, variant: Variant): string {
   if (variant.signed !== undefined) manifest.rights_register.signed = variant.signed;
   if (variant.schema) {
     manifest.schema_version = variant.schema;
+    rmSync(join(dir, "content", "topics.json"), { force: true });
+  }
+  const beforeSearch = variant.schema !== undefined && variant.schema !== "0.5.0";
+  if (beforeSearch) {
     rmSync(join(dir, "content", "highlights.json"), { force: true });
     rmSync(join(dir, "search.json"), { force: true });
   }
@@ -99,7 +106,7 @@ export function addRelease(root: string, variant: Variant): string {
   }
   writeJson(join(dir, "manifest.json"), manifest);
   writeJson(join(dir, "catalog.json"), catalog);
-  if (!variant.schema) {
+  if (!beforeSearch) {
     if (variant.highlights) {
       const held = readJson(join(dir, "content", "highlights.json"));
       for (const row of held.segments) if (variant.highlights[row.segment]) row.series = variant.highlights[row.segment];
@@ -112,7 +119,12 @@ export function addRelease(root: string, variant: Variant): string {
     }
     // The search index is a projection of the files above: written again, as a writer would.
     const claims = readJson(join(dir, "content", "claims.json"));
-    writeJson(join(dir, "search.json"), searchDocument({ catalog, manifest, events, claims } as Parameters<typeof searchDocument>[0]));
+    const topics = variant.schema ? undefined : readJson(join(dir, "content", "topics.json"));
+    if (topics && variant.topics) {
+      variant.topics(topics.topics);
+      writeJson(join(dir, "content", "topics.json"), topics);
+    }
+    writeJson(join(dir, "search.json"), searchDocument({ catalog, manifest, events, claims, topics } as Parameters<typeof searchDocument>[0]));
   }
   return dir;
 }

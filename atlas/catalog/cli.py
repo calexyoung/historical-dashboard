@@ -125,13 +125,32 @@ def add_main(argv: list[str]) -> int:
     c.add_argument("--order", choices=["highest", "lowest"], help="rank")
     c.add_argument("--alt-window", action="append", metavar="FROM:TO", help="an alternative window; may be given more than once")
     c.add_argument("--content", help="the content directory (default content)")
-    if argv[:1] and argv[0] in ("event", "note", "claim"):
+    t = kinds.add_parser("topic", help="a draft Topic in content/topics/{slug}.md",
+                         description="Write a draft Topic: its labels, a definition quoted from its source, its "
+                                     "main Series and its member Series. There is no option for text of the "
+                                     "site's own: a Topic has none.")
+    t.add_argument("slug", help="what its address ends in: lower-case words joined by hyphens. Permanent")
+    t.add_argument("--title", required=True, help="its name on the page: a label, not a sentence")
+    t.add_argument("--segment", required=True, choices=["economy_jobs", "markets_money", "infrastructure",
+                                                        "governance_politics", "disasters_health", "us_in_the_world"])
+    t.add_argument("--main", required=True, help="the Series it opens with (a key)")
+    t.add_argument("--series", action="append", help="another member Series; may be given more than once")
+    t.add_argument("--quote", required=True, help="the definition, in the origin agency's own words, verbatim")
+    t.add_argument("--source-name", required=True, help="the publisher and the page the words stand on")
+    t.add_argument("--source", required=True, help="that page's address (https)")
+    t.add_argument("--archive-url", help="an archived copy of that address")
+    t.add_argument("--no-archive", choices=["no_copy_found", "archiving_refused", "page_removed"],
+                   help="why there is no archived copy: one of these")
+    t.add_argument("--content", help="the content directory (default content)")
+    if argv[:1] and argv[0] in ("event", "note", "claim", "topic"):
         args = parser.parse_args(argv)   # a mistake in the options exits, as argparse does
         try:
             if args.kind == "event":
                 _, said = X.add_event(args, set(load_catalog()))
             elif args.kind == "claim":
                 _, said = X.add_claim(args, load_catalog())
+            elif args.kind == "topic":
+                _, said = X.add_topic(args, set(load_catalog()))
             else:
                 _, said = X.add_note(args, set(load_catalog()))
         except (X.AddRefused, CatalogError) as refused:

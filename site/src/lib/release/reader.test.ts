@@ -26,7 +26,9 @@ describe("ReleaseReader.current: the promoted Release, validated on open", () =>
     if (!opened.ok) throw new Error(opened.reason);
     expect(opened.release.highlights.segments.map((row) => row.segment)).toEqual(["economy_jobs", "markets_money", "infrastructure", "governance_politics", "disasters_health", "us_in_the_world"]);
     expect(opened.release.highlights.segments[0]!.series[0]).toBe("fx_price_index");
-    expect(opened.release.search.entries.map((e) => e.kind)).toEqual([...Array<string>(8).fill("series"), "event", "claim"]);
+    expect(opened.release.search.entries.map((e) => e.kind)).toEqual([...Array<string>(11).fill("series"), "event", "claim", "topic", "topic"]);
+    // 0.6.0, M23: the Topics, by slug.
+    expect(opened.release.topics.topics.map((topic) => topic.slug)).toEqual(["inflation", "jobs"]);
   });
 
   it("refuses a Release whose search index is not the projection of its own files", async () => {

@@ -15,6 +15,13 @@ describe("navigation: only tabs whose pages exist are shown (PLAN section 3)", (
     expect(breadcrumb("/claims")).toBe("Claims");
   });
 
+  it("shows Topics, before Claims, only when the Release being served holds a Topic (M23)", () => {
+    expect(tabsFor("/explore", { claims: true, topics: true }).map((t) => t.label)).toEqual(["Topics", "Claims", "Explore", "Events", "Data"]);
+    expect(tabsFor("/topics/inflation", { topics: true }).find((t) => t.current)?.label).toBe("Topics");
+    expect(tabsFor("/topics", { topics: false }).map((t) => t.label)).toEqual(["Explore", "Events", "Data"]);
+    expect(breadcrumb("/topics/jobs")).toBe("Topics");
+  });
+
   it("marks the tab the reader is under, including deeper pages", () => {
     expect(tabsFor("/explore").find((t) => t.current)?.label).toBe("Explore");
     expect(tabsFor("/explore/anything").find((t) => t.current)?.label).toBe("Explore");

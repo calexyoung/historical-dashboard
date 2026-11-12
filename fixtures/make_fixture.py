@@ -165,7 +165,27 @@ permits_stale = series_file(
     "fx_permits_stale", "monthly", observations(months((2023, 1), 18), PERMITS)
 )
 
+# 9 to 11. Three more invented economies' inflation, for the range a Topic sets the price
+#    index's own change against (M23). B is whole. C begins in April 2025. D has no value in
+#    June and an estimate in December, which a range does not count. A fifth member of the
+#    range, fx_infl_e, is named by the Topic and is not in this Release at all.
+#
+#    The range for November 2025, by hand: the price index's change is (109.3 / 104.1 - 1) x 100
+#    = 4.9952 (to four places), B is 2.0, C is 7.5, D is 3.1. Four of five members. Lowest 2.0,
+#    highest 7.5, and the median of 2.0, 3.1, 4.9952, 7.5 is (3.1 + 4.9952) / 2 = 4.0476.
+#    March 2025 has two members (B and D: the price index has a gap and C has not begun), which
+#    is not more than half of five, so it has no range.
+INFL_B = [1.2, 1.3, 1.1, 1.4, 1.6, 1.5, 1.7, 1.8, 1.9, 2.1, 2.0, 2.2]
+INFL_C = [9.4, 9.1, 8.8, 8.6, 8.2, 7.9, 7.7, 7.5, 7.2]
+INFL_D = [2.6, 2.7, 2.9, 3.0, 3.3, None, 3.4, 3.2, 3.0, 3.2, 3.1, 3.3]
+infl_b = series_file("fx_infl_b", "monthly", observations(months((2025, 1), 12), INFL_B))
+infl_c = series_file("fx_infl_c", "monthly", observations(months((2025, 4), 9), INFL_C))
+infl_d = series_file("fx_infl_d", "monthly", observations(months((2025, 1), 12), INFL_D, {"2025-12": "estimate"}))
+
 STORED = {
+    "fx_infl_b": infl_b,
+    "fx_infl_c": infl_c,
+    "fx_infl_d": infl_d,
     "fx_price_index": price,
     "fx_output_quarterly": output,
     "fx_poverty_rate_annual": poverty,
@@ -354,6 +374,28 @@ CATALOG = {
             "status": "active",
             "max_lag": "P3M",
         },
+        *[
+            {
+                "key": f"fx_infl_{letter}",
+                "name": f"Fixture economy {letter.upper()} inflation",
+                "description": f"Synthetic monthly rate for the invented economy {letter.upper()}: a member of a Topic's range.",
+                "unit": "percent change from a year earlier",
+                "unit_kind": "percent",
+                "measure_kind": "rate",
+                "agg": "none",
+                "freq": "monthly",
+                "continuity": "discrete",
+                "representation": "native",
+                "country": f"FX{letter.upper()}",
+                "segment": "us_in_the_world",
+                "topics": ["inflation"],
+                "source": source(f"FX-INFL-{letter.upper()}"),
+                "rights": rights(),
+                "status": "active",
+                "max_lag": "P3M",
+            }
+            for letter in "bcd"
+        ],
     ]
 }
 
@@ -662,11 +704,55 @@ HIGHLIGHTS = {"segments": [
 ]}
 
 
-def search_document(catalog: dict, withheld: list, events: dict, claims: dict) -> dict:
+#: Two invented Topics (content/topics.json, 0.6.0, M23). "inflation" shows everything a Topic
+#: page may: a Companion that is an input, one from another cadence, one with a break and one
+#: that is Withheld; a range with a member the Release does not hold; an Event and (by the
+#: Claim's own `topics`) a Claim. "jobs" is the plain case. The quoted definitions are invented.
+TOPICS = {"topics": [
+    {
+        "slug": "inflation", "title": "Inflation", "segment": "economy_jobs", "status": "public",
+        "definition": {
+            "quote": "The fixture price index measures the average change in the prices that synthetic households pay.",
+            "source": {"name": "Fixture statistics office (synthetic), Handbook", "url": "https://example.org/fixture-handbook",
+                       "archive_url": "https://example.org/archive/2026/fixture-handbook"},
+        },
+        "main": "fx_price_index_yoy",
+        "series": ["fx_price_index_yoy", "fx_price_index", "fx_exchange_index", "fx_infl_b", "fx_not_in_this_release"],
+        "companions": [
+            {"series": "fx_price_index", "relation": "input"},
+            {"series": "fx_payrolls_break", "relation": "same_survey"},
+            {"series": "fx_poverty_rate_annual", "relation": "excludes_components"},
+            {"series": "fx_exchange_index", "relation": "component"},
+        ],
+        "range": {
+            "series": "fx_price_index_yoy", "label": "Fixture five",
+            "indicator": {"id": "inflation", "name": "Inflation (y/y)"},
+            "members": [{"key": "fx_price_index_yoy", "country": "USA"}, {"key": "fx_infl_b", "country": "FXB"},
+                        {"key": "fx_infl_c", "country": "FXC"}, {"key": "fx_infl_d", "country": "FXD"},
+                        {"key": "fx_infl_e", "country": "FXE"}],
+        },
+        "events": ["2024-09-18-fixture-rate-decision"],
+    },
+    {
+        "slug": "jobs", "title": "Jobs", "segment": "economy_jobs", "status": "public",
+        "definition": {
+            "quote": "Fixture payrolls count the jobs on the books of synthetic employers in the middle of each month.",
+            "source": {"name": "Fixture statistics office (synthetic), Payroll survey notes", "url": "https://example.org/fixture-payrolls",
+                       "no_archive": "archiving_refused"},
+        },
+        "main": "fx_payrolls_break",
+        "series": ["fx_payrolls_break", "fx_permits_stale"],
+        "companions": [{"series": "fx_permits_stale", "relation": "same_release"}],
+        "events": [],
+    },
+]}
+
+
+def search_document(catalog: dict, withheld: list, events: dict, claims: dict, topics: dict) -> dict:
     """search.json, by the contract's own projection (atlas/release.py)."""
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
     from atlas.release import search_document as project
-    return project(catalog, withheld, events, claims)
+    return project(catalog, withheld, events, claims, topics)
 
 
 def dump(obj) -> bytes:
@@ -704,7 +790,7 @@ def build(root: Path, claims: bool = True) -> Path:
         rows[key]["vintages_sha256"] = hashlib.sha256(data).hexdigest()
 
     manifest = {
-        "schema_version": "0.5.0",
+        "schema_version": "0.6.0",
         "semantics_version": "0",
         "release_id": RELEASE_ID,
         "profile": "public",
@@ -733,7 +819,8 @@ def build(root: Path, claims: bool = True) -> Path:
         (release / "evidence").mkdir()
         (release / "evidence" / "latest.json").write_bytes(latest)
     (release / "content" / "highlights.json").write_bytes(dump(HIGHLIGHTS))
-    (release / "search.json").write_bytes(dump(search_document(CATALOG, manifest["withheld"], EVENTS, listed)))
+    (release / "content" / "topics.json").write_bytes(dump(TOPICS))
+    (release / "search.json").write_bytes(dump(search_document(CATALOG, manifest["withheld"], EVENTS, listed, TOPICS)))
     (root / "CURRENT").write_text(RELEASE_ID + "\n")
     return release
 

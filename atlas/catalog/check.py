@@ -390,7 +390,8 @@ def check(directory: Path | None = None, register: Path | None = None, content: 
         from ..content.check import check_content
 
         found, report.notes = check_content(entries, content, notes,
-                                            gate=RightsGate(table) if table is not None else None)
+                                            gate=RightsGate(table) if table is not None else None,
+                                            coverage=matrices)
         return found
 
     steps = (references,

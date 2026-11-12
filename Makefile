@@ -46,6 +46,7 @@ v2-check: lint-py test
 #   http://localhost:3000/macro-atlas/explore   http://localhost:3000/macro-atlas/data
 #   http://localhost:3000/macro-atlas/events    (v1's 83 Events, drafts marked; M19)
 #   http://localhost:3000/macro-atlas/claims    (draft Claims, and your own notes/ on them; M21)
+#   http://localhost:3000/macro-atlas/topics    (Inflation and Jobs; M23)
 # Local only (PLAN 6.1): the release is never public-profile, and nothing is fetched.
 ATLAS_LOCAL ?= $(CURDIR)/var/local
 

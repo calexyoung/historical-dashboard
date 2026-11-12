@@ -1,5 +1,5 @@
 {
-  "schema_version": "0.5.0",
+  "schema_version": "0.6.0",
   "semantics_version": "0",
   "release_id": "20260101T000000Z-0000000",
   "profile": "public",
@@ -10,6 +10,27 @@
     "signed": true
   },
   "series": {
+    "fx_infl_b": {
+      "kind": "stored",
+      "sha256": "cad6e82b5d8358351dc416648949608f132a5e47f2f2202454e126da2b321a9b",
+      "channel": "fixture",
+      "rights_status": "public_domain",
+      "representation": "native"
+    },
+    "fx_infl_c": {
+      "kind": "stored",
+      "sha256": "e1b0d2c13df1f6c29c5df64689baed0abce25f4173d5efb0e9e7875a870cfd66",
+      "channel": "fixture",
+      "rights_status": "public_domain",
+      "representation": "native"
+    },
+    "fx_infl_d": {
+      "kind": "stored",
+      "sha256": "4f8e4e8dc5c21e1bbc395019131d570c3523b845d72687a26555a2ca538951dd",
+      "channel": "fixture",
+      "rights_status": "public_domain",
+      "representation": "native"
+    },
     "fx_output_quarterly": {
       "kind": "stored",
       "sha256": "3001ee5840f57b7c4f1769376b4ff745d27daadadc0d8110526b63938382ab3c",

@@ -34,6 +34,7 @@ import {
   type ReleaseFiles,
   type SearchFile,
   type SeriesFile,
+  type TopicsFile,
   type VintageFile,
 } from "@macro-atlas/core/release";
 
@@ -64,6 +65,8 @@ export type OpenedRelease = {
    * it is the same projection of the Release's own files, made when the Release is opened.
    */
   search: SearchFile;
+  /** `content/topics.json`: the Topics, by slug. A Release written before 0.6.0 has none. */
+  topics: TopicsFile;
   series: Record<string, SeriesFile>;
   derived: Record<string, SeriesFile>;
   /** `vintages/{key}.json`: what was held for a stored Series over time. Not every Series has one. */
@@ -244,6 +247,7 @@ export function createReleaseReader(options: {
         ? parse<HighlightsFile>("content/highlights.json")
         : ({ segments: SEGMENTS.map((segment) => ({ segment, series: [] })) } as unknown as HighlightsFile),
       search: { entries: [] },
+      topics: files["content/topics.json"] ? parse<TopicsFile>("content/topics.json") : { topics: [] },
       series: folder("series"),
       derived: folder("derived"),
       vintages: folder<VintageFile>("vintages"),

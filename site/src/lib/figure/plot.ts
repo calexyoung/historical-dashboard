@@ -223,6 +223,12 @@ export type PlotInput = { series: ShownSeries; style: SeriesStyle; /** Stale in 
 export const leftMargin = (axis: YAxis): number => Math.max(30, Math.max(...axis.ticks.map(axis.format).map(textWidth)) + 10);
 
 export type PlotOptions = {
+  /**
+   * Two Series of this plot whose values are the lower and upper edge of a band: the space
+   * between them is filled, pale, wherever both have a value, and neither is drawn as a line.
+   * A Period where either has none is a gap in the band; nothing is carried across it.
+   */
+  band?: { low: string; high: string };
   /** Calendar dates, both inclusive: the time axis, whatever the Series hold. Several plots given one domain line up. */
   domain?: { from: string; to: string };
   /** At least this much room at the left, so plots stacked in one figure share an edge. */
@@ -230,10 +236,16 @@ export type PlotOptions = {
   layers?: Layers;
   /** A date the reader pinned. */
   pin?: string;
+  /** A lower plot, for one of several stacked on one time axis (small multiples). */
+  compact?: boolean;
 };
 
+/** The heights of a plot that is one of several stacked: enough for an axis of three or four ticks. */
+export const COMPACT_HEIGHTS: Record<LayoutName, number> = { narrow: 150, medium: 170, wide: 190 };
+
 export function drawPlot(input: PlotInput, created: string, layout: LayoutName, axis: YAxis, wantEndLabels: boolean, options: PlotOptions = {}): { svg: SvgNode; endLabels: boolean } {
-  const { width: W, height: H } = LAYOUT_SIZES[layout];
+  const W = LAYOUT_SIZES[layout].width;
+  const H = options.compact ? COMPACT_HEIGHTS[layout] : LAYOUT_SIZES[layout].height;
   const all = input.map((i) => i.series);
 
   // The time axis runs from the first Period's start to the last one's, or to the day the Release
@@ -253,7 +265,7 @@ export function drawPlot(input: PlotInput, created: string, layout: LayoutName, 
   const bottom = 28;
 
   // End labels (wide layout, two or more Series): only where every name fits beside the plot.
-  const names = input.filter((i) => !i.style.ghost).map((i) => i.style.name);
+  const names = input.filter((i) => !i.style.ghost && i.series.key !== options.band?.low && i.series.key !== options.band?.high).map((i) => i.style.name);
   const labelRoom = Math.max(...names.map(textWidth)) + 30;
   const endLabels = wantEndLabels && names.length > 1 && labelRoom <= W * 0.3;
   const right = endLabels ? labelRoom : 16;
@@ -386,6 +398,36 @@ export function drawPlot(input: PlotInput, created: string, layout: LayoutName, 
     }
   }
 
+  // --- a band between two Series: behind every line, one closed shape per run of Periods ---
+  const edges = new Set<string>();
+  const bandShapes: SvgNode[] = [];
+  const lowEdge = options.band && input.find((i) => i.series.key === options.band!.low)?.series;
+  const highEdge = options.band && input.find((i) => i.series.key === options.band!.high)?.series;
+  if (lowEdge && highEdge) {
+    edges.add(lowEdge.key).add(highEdge.key);
+    const upper = new Map(highEdge.observations.map((o) => [o.period, o.value]));
+    const both = lowEdge.observations.map((o) => ({ t: ms(o.at ?? o.period_start), low: o.value, high: upper.get(o.period) ?? null }));
+    const filled = (p: (typeof both)[number]): p is { t: number; low: number; high: number } => p.low !== null && p.high !== null && inWindow(p.t);
+    let run: { t: number; low: number; high: number }[] = [];
+    const close = () => {
+      if (run.length === 1) {
+        // One Period with no neighbour: an upright stroke from the lowest to the highest value.
+        const px = r2(x(run[0]!.t));
+        bandShapes.push(h("line", { "data-band": "", "data-periods": 1, x1: px, y1: r2(y(run[0]!.low)), x2: px, y2: r2(y(run[0]!.high)), stroke: INK, "stroke-opacity": 0.25, "stroke-width": 3 }));
+      } else if (run.length > 1) {
+        const top = run.map((p, i) => `${i === 0 ? "M" : "L"}${r2(x(p.t))} ${r2(y(p.high))}`).join("");
+        const foot = [...run].reverse().map((p) => `L${r2(x(p.t))} ${r2(y(p.low))}`).join("");
+        bandShapes.push(h("path", { "data-band": "", "data-periods": run.length, d: `${top}${foot}Z`, fill: INK, "fill-opacity": 0.12, stroke: "none" }));
+      }
+      run = [];
+    };
+    for (const p of both) {
+      if (filled(p)) run.push(p);
+      else close();
+    }
+    close();
+  }
+
   // --- the Series ---
   const drawn: SvgNode[] = [];
   const overlay: SvgNode[] = [];
@@ -400,6 +442,8 @@ export function drawPlot(input: PlotInput, created: string, layout: LayoutName, 
     // A second run: the same colour and line style, pale and wide, so weight tells the two apart.
     const common = ghost ? { "data-series": s.key, "data-run": "comparison", stroke: colour, "stroke-opacity": 0.45 } : { "data-series": s.key, stroke: colour };
     const lineWidth = ghost ? 4 : 1.75;
+    // An edge of the band is the band: it has no line, no symbol and no name at its end.
+    if (edges.has(s.key)) continue;
 
     if (style.drawnAs === "line") {
       const path = d3line<FigureObservation>()
@@ -488,7 +532,8 @@ export function drawPlot(input: PlotInput, created: string, layout: LayoutName, 
   const first = own.flatMap((s) => s.observations.slice(0, 1).map((o) => ({ s, o }))).sort((a, b) => a.o.period_start.localeCompare(b.o.period_start))[0];
   const lastOne = own.flatMap((s) => s.observations.slice(-1).map((o) => ({ s, o }))).sort((a, b) => b.o.period_start.localeCompare(a.o.period_start))[0];
   const span = first && lastOne ? `, ${periodWords(first.s.freq, first.o, "short")} to ${periodWords(lastOne.s.freq, lastOne.o, "short")}` : "";
-  const label = `Chart of ${names.join(", ")}${span}${all.length > own.length ? ", each with the same series over a second range" : ""}. Every value is in the table below.`;
+  const banded = lowEdge && highEdge ? `, with a band from ${lowEdge.name} to ${highEdge.name}` : "";
+  const label = `Chart of ${names.join(", ")}${banded}${span}${all.length > own.length ? ", each with the same series over a second range" : ""}. Every value is in the table below.`;
 
   const svg = h(
     "svg",
@@ -511,6 +556,7 @@ export function drawPlot(input: PlotInput, created: string, layout: LayoutName, 
     h("g", { "data-axis": "y" }, ...grid),
     h("g", { "data-axis": "time" }, ...timeAxis),
     ...stateMarks,
+    ...bandShapes,
     ...drawn,
     ...overlay,
     ...labels,

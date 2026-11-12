@@ -1,5 +1,5 @@
-"""``python -m atlas add event``, ``add note`` (PLAN 5, M19; ADR 0033) and ``add claim`` (M20;
-ADR 0034).
+"""``python -m atlas add event``, ``add note`` (PLAN 5, M19; ADR 0033), ``add claim`` (M20;
+ADR 0034) and ``add topic`` (M23; ADR 0037).
 
 Each writes one draft file and nothing else: it fetches nothing, commits nothing and never
 overwrites a file. What it writes passes ``atlas check``.
@@ -18,6 +18,7 @@ from pathlib import Path
 from . import claims as K
 from . import events as E
 from . import notes as N
+from . import topics as T
 from . import wordlist as W
 from .compile import CONTENT_DIR
 
@@ -77,6 +78,40 @@ def add_event(args, series: set[str] | None = None) -> tuple[Path, list[str]]:
                     "from the cited source.")
     said.append("next: python -m atlas check")
     return path, said
+
+
+def add_topic(args, series: set[str] | None = None) -> tuple[Path, list[str]]:
+    """Write the draft Topic the options describe: its labels, the definition quoted from its
+    source, its main Series and its member Series. Companions, a range and Events are edits to
+    the file, and so is making it public. There is no option for text of the site's own: a
+    Topic has none. Raises ``AddRefused``."""
+    members = list(dict.fromkeys([args.main, *(args.series or [])]))
+    unknown = [key for key in members if series is not None and key not in series]
+    if unknown:
+        raise AddRefused(f"{', '.join(unknown)} is not a Series of the catalog (--main and --series take a key)")
+    if bool(args.archive_url) == bool(args.no_archive):
+        raise AddRefused("a citation needs an archived copy or the reason there is none: give "
+                         "--archive-url URL or --no-archive REASON (one of them)")
+    source = {"name": args.source_name.strip(), "url": args.source,
+              **({"archive_url": args.archive_url} if args.archive_url else {"no_archive": args.no_archive})}
+    record = {"slug": args.slug, "title": args.title.strip(), "segment": args.segment, "status": "draft",
+              "definition": {"quote": args.quote.strip(), "source": source},
+              "main": args.main, "series": members, "companions": [], "events": []}
+    try:
+        text = T.serialise(record)
+    except (KeyError, TypeError) as error:
+        raise AddRefused(f"that is not a Topic: {error}") from None
+    _, problems = T.read_topic(text.encode("utf-8"), f"{args.slug}.md")
+    if problems:
+        raise AddRefused(f"that is not a Topic: {problems[0][1]}")
+    path = (Path(args.content) if args.content else CONTENT_DIR) / "topics" / f"{args.slug}.md"
+    _write_new(path, text)
+    return path, [f"wrote {path} (status: draft; a draft is in no public release)",
+                  "note: the quote is the agency's own words, verbatim, as they stand at the cited address. "
+                  "Check it against the page before making the Topic public.",
+                  "note: companions (each with one of the relations in schema/topic.schema.json), a range and "
+                  "events are edits to the file (docs/method/topics.md).",
+                  "next: python -m atlas check"]
 
 
 def add_note(args, series: set[str] | None) -> tuple[Path, list[str]]:

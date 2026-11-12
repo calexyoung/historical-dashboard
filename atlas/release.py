@@ -27,19 +27,22 @@ from jsonschema import Draft202012Validator, ValidationError, validators
 from atlas.period import next_period, period_bounds
 
 SCHEMA_PATH = Path(__file__).resolve().parents[1] / "schema" / "release.schema.json"
-SCHEMA_VERSION = "0.5.0"
+SCHEMA_VERSION = "0.6.0"
 #: Every version this reader knows; a writer writes ``SCHEMA_VERSION``. 0.2.0 (M10) added
 #: ``vintages/`` and ``vintages_sha256``, so a 0.1.0 Release is one that holds neither. 0.3.0
 #: (M19) added ``content/events.json``: a 0.3.0 Release must have it, an earlier one may not.
 #: 0.4.0 (M20) added ``content/claims.json`` (required), ``locks/`` and ``evidence/latest.json``.
 #: 0.5.0 (M22) added ``content/highlights.json`` and ``search.json`` (both required).
-SCHEMA_VERSIONS = ("0.1.0", "0.2.0", "0.3.0", "0.4.0", SCHEMA_VERSION)
+#: 0.6.0 (M23) added ``content/topics.json`` (required) and the Topics' entries of ``search.json``.
+SCHEMA_VERSIONS = ("0.1.0", "0.2.0", "0.3.0", "0.4.0", "0.5.0", SCHEMA_VERSION)
 #: The versions that have no ``content/events.json``.
 _BEFORE_EVENTS = ("0.1.0", "0.2.0")
 #: The versions that have no Claims, locks or latest Evidence rows.
 _BEFORE_CLAIMS = ("0.1.0", "0.2.0", "0.3.0")
 #: The versions that have no headline Series and no search index.
 _BEFORE_SEARCH = ("0.1.0", "0.2.0", "0.3.0", "0.4.0")
+#: The versions that have no Topics.
+_BEFORE_TOPICS = (*_BEFORE_SEARCH, "0.5.0")
 #: The six Segments, in the order of the Overview (CONTEXT.md, Segment).
 SEGMENTS = ("economy_jobs", "markets_money", "infrastructure", "governance_politics", "disasters_health",
             "us_in_the_world")
@@ -55,7 +58,8 @@ CLAIMS = "content/claims.json"
 LATEST = "evidence/latest.json"
 HIGHLIGHTS = "content/highlights.json"
 SEARCH = "search.json"
-_OPTIONAL_FILES = (EVENTS, CLAIMS, LATEST, HIGHLIGHTS, SEARCH)
+TOPICS = "content/topics.json"
+_OPTIONAL_FILES = (EVENTS, CLAIMS, LATEST, HIGHLIGHTS, SEARCH, TOPICS)
 REQUIRED_FILES = (MANIFEST, CATALOG, ANNOTATIONS)
 _SERIES_FILE = re.compile(r"(series|derived|vintages)/([a-z][a-z0-9_]{0,63})\.json")
 _LOCK_FILE = re.compile(r"locks/([0-9]{4}-[0-9]{2}-[0-9]{2}-[a-z0-9]+(?:-[a-z0-9]+)*\.v[1-9][0-9]{0,3})\.lock\.json")
@@ -191,6 +195,10 @@ def validate_files(release_id: str, files: Mapping[str, bytes]) -> list[Issue]:
             issues.append(Issue("unknown_file", path, f"schema_version {version} does not name this file"))
         elif version is not None and version not in _BEFORE_SEARCH and path not in files:
             issues.append(Issue("missing_file", path, "a release must have this file"))
+    if version in _BEFORE_TOPICS and TOPICS in files:
+        issues.append(Issue("unknown_file", TOPICS, f"schema_version {version} does not name this file"))
+    elif version is not None and version not in _BEFORE_TOPICS and TOPICS not in files:
+        issues.append(Issue("missing_file", TOPICS, "a release must have this file"))
     if issues:
         return issues
 
@@ -213,6 +221,8 @@ def validate_files(release_id: str, files: Mapping[str, bytes]) -> list[Issue]:
         bundle["highlights"] = parsed[HIGHLIGHTS]
     if SEARCH in parsed:
         bundle["search"] = parsed[SEARCH]
+    if TOPICS in parsed:
+        bundle["topics"] = parsed[TOPICS]
     for error in sorted(_validator().iter_errors(bundle), key=lambda e: list(map(str, e.absolute_path))):
         path, pointer = _locate(list(error.absolute_path))
         issues.append(Issue("schema", path, f"{pointer}: {error.message}"[:400]))
@@ -269,7 +279,8 @@ def _locate(parts: list) -> tuple:
     if head == "locks" and rest:
         return f"locks/{rest[0]}.lock.json", "/" + "/".join(map(str, rest[1:]))
     file = {"manifest": MANIFEST, "catalog": CATALOG, "annotations": ANNOTATIONS, "events": EVENTS,
-            "claims": CLAIMS, "latest": LATEST, "highlights": HIGHLIGHTS, "search": SEARCH}.get(head, str(head))
+            "claims": CLAIMS, "latest": LATEST, "highlights": HIGHLIGHTS, "search": SEARCH,
+            "topics": TOPICS}.get(head, str(head))
     return file, "/" + "/".join(map(str, rest))
 
 
@@ -483,10 +494,12 @@ def _claim_rules(bundle: dict, files: Mapping[str, bytes], lock_paths: dict[str,
     return issues
 
 
-def search_document(catalog: dict, withheld: list[dict], events: dict | None, claims: dict | None) -> dict:
+def search_document(catalog: dict, withheld: list[dict], events: dict | None, claims: dict | None,
+                    topics: dict | None = None) -> dict:
     """``search.json`` (0.5.0, M22; ADR 0036): what a reader can search for in a Release, as
     words. One entry for every Series of ``catalog.json``, then every Event, then every Claim,
-    each in its file's order. It is a projection of those three files and of the manifest's
+    then (0.6.0, M23) every Topic,
+    each in its file's order. It is a projection of those files and of the manifest's
     withheld list, and of nothing else: no Observation, lock or Evidence row is read to make it, so no
     value can enter it from data (a description or a quote is content a person wrote, public on
     its own page). Writers write exactly this; both validators hold a Release to it."""
@@ -510,6 +523,11 @@ def search_document(catalog: dict, withheld: list[dict], events: dict | None, cl
         entries.append({"kind": "claim", "id": claim["id"], "title": f"{who['name']}, {claim['said_on']}",
                         "text": claim["quote"],
                         "keywords": words(who["name"], who.get("role"), who.get("party"), *claim.get("topics", []))})
+    for topic in (topics or {}).get("topics", []):
+        # The text is the definition the Topic quotes: a cited source's words, public on its page.
+        entries.append({"kind": "topic", "id": topic["slug"], "title": topic["title"],
+                        "text": topic["definition"]["quote"],
+                        "keywords": words(topic["definition"]["source"]["name"], topic["main"])})
     return {"entries": entries}
 
 
@@ -532,16 +550,52 @@ def _reading_rules(bundle: dict) -> list[Issue]:
                 if key in seen:
                     issues.append(Issue("highlights", HIGHLIGHTS, f"{key} is listed more than once"))
                 seen.add(key)
+    issues.extend(_topic_rules(bundle))
     index = bundle.get("search")
     if index is not None:
         expected = search_document(bundle["catalog"], bundle["manifest"]["withheld"], bundle.get("events"),
-                                   bundle.get("claims"))["entries"]
+                                   bundle.get("claims"), bundle.get("topics"))["entries"]
         entries = index["entries"]
         if len(entries) != len(expected):
-            issues.append(Issue("search_projection", SEARCH, f"it holds {len(entries)} entries and the release's Series, Events and Claims are {len(expected)}"))
+            issues.append(Issue("search_projection", SEARCH, f"it holds {len(entries)} entries and the release's Series, Events, Claims and Topics are {len(expected)}"))
         for got, want in zip(entries, expected):
             if got != want:
                 issues.append(Issue("search_projection", SEARCH, f"the entry for {want['kind']} {want['id']} is not the projection of the release's own files"))
+    return issues
+
+
+def _topic_rules(bundle: dict) -> list[Issue]:
+    """0.6.0 (M23; ADR 0037): a Topic is listed once; its main Series is one of its member
+    Series; a Companion is not the main Series and is listed once; a range has each member
+    once; and every Event it lists is an Event of this Release. A Series is named by key
+    whether or not the Release holds it, as an Event's related Series are. A public-profile
+    Release holds no draft Topic."""
+    issues: list[Issue] = []
+    held = bundle.get("topics")
+    if held is None:
+        return issues
+    events = {event["id"] for event in (bundle.get("events") or {}).get("events", [])}
+    seen: set[str] = set()
+    for topic in held["topics"]:
+        slug = topic["slug"]
+        if slug in seen:
+            issues.append(Issue("duplicate_topic", TOPICS, f"{slug} appears more than once"))
+        seen.add(slug)
+        if topic["main"] not in topic["series"]:
+            issues.append(Issue("topic", TOPICS, f"{slug}: its main Series {topic['main']} is not one of its member Series"))
+        companions = [companion["series"] for companion in topic["companions"]]
+        if topic["main"] in companions:
+            issues.append(Issue("topic", TOPICS, f"{slug}: its main Series is listed as its own Companion"))
+        if len(set(companions)) != len(companions):
+            issues.append(Issue("topic", TOPICS, f"{slug}: a Companion is listed twice"))
+        members = [member["key"] for member in (topic.get("range") or {}).get("members", [])]
+        if len(set(members)) != len(members):
+            issues.append(Issue("topic", TOPICS, f"{slug}: a member of its range is listed twice"))
+        for event in topic["events"]:
+            if event not in events:
+                issues.append(Issue("topic", TOPICS, f"{slug}: it lists the Event {event}, which is not an Event of this release"))
+        if bundle["manifest"]["profile"] == "public" and topic["status"] == "draft":
+            issues.append(Issue("draft_in_public", TOPICS, f"{slug} is a draft"))
     return issues
 
 

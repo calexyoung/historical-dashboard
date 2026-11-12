@@ -1,8 +1,8 @@
 /**
  * Search (PLAN 4.6, M22; ADR 0036): lexical, over an index built when the Release was written.
  *
- * `search(release, surface, q)` reads the Release's own `search.json` (its Series, Events and
- * Claims, as words) and the site's glossary, and answers with hits grouped by kind, in one
+ * `search(release, surface, q)` reads the Release's own `search.json` (its Series, Events,
+ * Claims and Topics, as words) and the site's glossary, and answers with hits grouped by kind, in one
  * fixed order. There is no model and no network: a word of the question must begin a word of
  * the entry, every word of the question must be found, and a match in a name counts for more
  * than one in a description.
@@ -31,10 +31,10 @@ export const SHEET_HITS = 6;
 export const PAGE_HITS = 50;
 const DETAIL = 160;
 
-export type SearchKind = "series" | "event" | "claim" | "glossary";
+export type SearchKind = "topic" | "series" | "event" | "claim" | "glossary";
 export type SearchHit = {
   kind: SearchKind;
-  /** The Series key, the Event id, the Claim id or the glossary entry's slug. */
+  /** The Topic slug, the Series key, the Event id, the Claim id or the glossary entry's slug. */
   id: string;
   title: string;
   /** The hit's own page, without the base path. */
@@ -48,12 +48,13 @@ export type SearchGroup = { kind: SearchKind; label: string; /** How many matche
 export type SearchAnswer = { q: string; /** False when the question holds no word to look for. */ asked: boolean; groups: SearchGroup[]; total: number };
 
 const GROUPS: readonly { kind: SearchKind; label: string }[] = [
+  { kind: "topic", label: "Topics" },
   { kind: "series", label: "Series" },
   { kind: "event", label: "Events" },
   { kind: "claim", label: "Claims" },
   { kind: "glossary", label: "Glossary" },
 ];
-const PATH: Record<SearchKind, string> = { series: "/data", event: "/events", claim: "/claims", glossary: "/docs/glossary" };
+const PATH: Record<SearchKind, string> = { topic: "/topics", series: "/data", event: "/events", claim: "/claims", glossary: "/docs/glossary" };
 
 /** The question an address carries: the first `q`, trimmed and cut to a length. */
 export function parseSearch(params: Record<string, string | string[] | undefined> | URLSearchParams): string {

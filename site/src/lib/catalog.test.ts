@@ -21,8 +21,8 @@ const keys = (v: ReturnType<typeof view>) => v.rows.map((row) => row.key);
 describe("the catalog lists every series the release knows", () => {
   it("in catalog order, with name, unit, frequency, span, source and rights", () => {
     const all = view();
-    expect(all.total).toBe(8);
-    expect(all.rows).toHaveLength(8);
+    expect(all.total).toBe(11);
+    expect(all.rows).toHaveLength(11);
     expect(all.rows[0]).toMatchObject({
       key: "fx_price_index",
       name: "Fixture price index",
@@ -46,7 +46,7 @@ describe("the catalog lists every series the release knows", () => {
 
   it("where the surface is not permitted, lists names and spans' absence but no values", () => {
     const refused = view({}, "production");
-    expect(refused.rows).toHaveLength(8);
+    expect(refused.rows).toHaveLength(11);
     for (const row of refused.rows) {
       expect(row.latest).toBeNull();
       expect(row.state === "withheld" || row.state === "not_permitted").toBe(true);
@@ -93,13 +93,14 @@ describe("filters", () => {
       { value: "markets_money", label: "Markets & money", count: 1 },
       { value: "infrastructure", label: "Infrastructure", count: 1 },
       { value: "governance_politics", label: "Governance & politics", count: 1 },
+      { value: "us_in_the_world", label: "The US in the world", count: 3 },
     ]);
     expect(facets.freq.map((f) => f.label)).toEqual(["Monthly", "Quarterly", "Annual", "Irregular"]);
     expect(facets.rights.find((f) => f.value === "no_redistribution")).toEqual({ value: "no_redistribution", label: "No redistribution", count: 1 });
   });
 
   it("a value that does not occur, or is sent twice, is no filter at all", () => {
-    expect(view({ segment: "no_such_segment" }).rows).toHaveLength(8);
+    expect(view({ segment: "no_such_segment" }).rows).toHaveLength(11);
     expect(view({ segment: "no_such_segment" }).filters.segment).toBeNull();
     expect(view({ freq: ["monthly", "annual"] }).filters.freq).toBe("monthly");
   });

@@ -30,7 +30,7 @@ def claim(**changes) -> dict:
         "selection_note": "Kept as a test of the file format.",
         "checked_on": "2031-03-06",
         "corrections": [],
-        "topics": ["jobs"],
+        "topics": [],
         "status": "draft",
         "quote": "The jobless rate was 4.1 percent in January.",
     }

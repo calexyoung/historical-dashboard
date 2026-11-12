@@ -54,7 +54,7 @@ def apply_case(case, files, release_id):
             read = lambda path: json.loads(files[path]) if path in files else None
             files["search.json"] = json.dumps(search_document(
                 read("catalog.json"), read("manifest.json")["withheld"], read("content/events.json"),
-                read("content/claims.json"))).encode()
+                read("content/claims.json"), read("content/topics.json"))).encode()
         else:
             raise AssertionError(f"unknown step {op}")
     if case.get("rehash", True) and "manifest.json" in files:

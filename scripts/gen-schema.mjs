@@ -19,6 +19,7 @@ const schema = JSON.parse(schemaText);
 // oneOf over required, which only a validator can enforce; the type lists the fields.
 const typed = JSON.parse(JSON.stringify(schema));
 delete typed.$defs.eventCitation.oneOf;
+delete typed.$defs.topicCitation.oneOf;
 const types = await compile(typed, "Release", {
   bannerComment: banner.trimEnd(),
   additionalProperties: false,

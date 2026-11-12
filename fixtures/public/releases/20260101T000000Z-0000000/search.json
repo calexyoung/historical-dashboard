@@ -114,6 +114,48 @@
       ]
     },
     {
+      "kind": "series",
+      "id": "fx_infl_b",
+      "title": "Fixture economy B inflation",
+      "text": "Synthetic monthly rate for the invented economy B: a member of a Topic's range.",
+      "keywords": [
+        "percent change from a year earlier",
+        "Macro Atlas fixture (synthetic)",
+        "fixture",
+        "FX-INFL-B",
+        "FXB",
+        "inflation"
+      ]
+    },
+    {
+      "kind": "series",
+      "id": "fx_infl_c",
+      "title": "Fixture economy C inflation",
+      "text": "Synthetic monthly rate for the invented economy C: a member of a Topic's range.",
+      "keywords": [
+        "percent change from a year earlier",
+        "Macro Atlas fixture (synthetic)",
+        "fixture",
+        "FX-INFL-C",
+        "FXC",
+        "inflation"
+      ]
+    },
+    {
+      "kind": "series",
+      "id": "fx_infl_d",
+      "title": "Fixture economy D inflation",
+      "text": "Synthetic monthly rate for the invented economy D: a member of a Topic's range.",
+      "keywords": [
+        "percent change from a year earlier",
+        "Macro Atlas fixture (synthetic)",
+        "fixture",
+        "FX-INFL-D",
+        "FXD",
+        "inflation"
+      ]
+    },
+    {
       "kind": "event",
       "id": "2024-09-18-fixture-rate-decision",
       "title": "Fixture central bank changes its rate",
@@ -134,6 +176,26 @@
         "Fixture minister of prices (synthetic)",
         "none",
         "inflation"
+      ]
+    },
+    {
+      "kind": "topic",
+      "id": "inflation",
+      "title": "Inflation",
+      "text": "The fixture price index measures the average change in the prices that synthetic households pay.",
+      "keywords": [
+        "Fixture statistics office (synthetic), Handbook",
+        "fx_price_index_yoy"
+      ]
+    },
+    {
+      "kind": "topic",
+      "id": "jobs",
+      "title": "Jobs",
+      "text": "Fixture payrolls count the jobs on the books of synthetic employers in the middle of each month.",
+      "keywords": [
+        "Fixture statistics office (synthetic), Payroll survey notes",
+        "fx_payrolls_break"
       ]
     }
   ]

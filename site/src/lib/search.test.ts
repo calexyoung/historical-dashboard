@@ -36,8 +36,9 @@ describe("search", () => {
 
   it("AC, on the fixture release as it is: one word finds a Series, an Event and glossary terms", () => {
     const answer = search(release, "local", "change");
-    expect(answer.groups.map((g) => g.kind)).toEqual(["series", "event", "glossary"]);
-    expect(ids(answer, "series")).toEqual(["fx_price_index_yoy"]);
+    expect(answer.groups.map((g) => g.kind)).toEqual(["topic", "series", "event", "glossary"]);
+    // The first by its name; then the three whose unit is a change from a year earlier.
+    expect(ids(answer, "series")).toEqual(["fx_price_index_yoy", "fx_infl_b", "fx_infl_c", "fx_infl_d"]);
     expect(ids(answer, "event")).toEqual(["2024-09-18-fixture-rate-decision"]);
     expect(group(answer, "glossary")!.total).toBeGreaterThan(0);
   });
@@ -58,7 +59,7 @@ describe("search", () => {
   it("puts a match in a name before a match in a description", () => {
     // "quarterly" is in fx_output_quarterly's key and description only; "output" is its name.
     const answer = search(release, "local", "fixture");
-    expect(group(answer, "series")!.total).toBe(8);
+    expect(group(answer, "series")!.total).toBe(11);
     const titled = search(release, "local", "index");
     expect(ids(titled, "series").slice(0, 3)).toEqual(["fx_price_index", "fx_price_index_yoy", "fx_exchange_index"]);
   });
@@ -87,7 +88,7 @@ describe("search", () => {
 
   it("gives at most the number of hits asked for in a group, and still says how many there are", () => {
     const answer = search(release, "local", "fixture", { limit: 3 });
-    expect(group(answer, "series")).toMatchObject({ total: 8 });
+    expect(group(answer, "series")).toMatchObject({ total: 11 });
     expect(group(answer, "series")!.hits).toHaveLength(3);
   });
 
@@ -111,7 +112,8 @@ describe("search", () => {
     addRelease(root, { id, schema: "0.4.0" });
     promote(root, id);
     const old = await open(root);
-    expect(old.search.entries.map((e) => e.id)).toEqual(release.search.entries.map((e) => e.id));
+    // The same entries, less the Topics: a Release of that contract holds none (M23).
+    expect(old.search.entries.map((e) => e.id)).toEqual(release.search.entries.filter((e) => e.kind !== "topic").map((e) => e.id));
     expect(ids(search(old, "local", "poverty"), "series")).toEqual(["fx_poverty_rate_annual"]);
   });
 });

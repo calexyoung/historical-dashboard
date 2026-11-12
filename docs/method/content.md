@@ -12,6 +12,7 @@ catalog/manual/terms/{office}.json     a terms file: who held an office and when
 catalog/manual/spans/{name}.json       a spans file: the dated stretches of a layer (recessions)
 notes/{user}/{id}.md                   one user's own note; in no Release
 content/claims/{id}.md                 a Claim, and content/claims/locks/ its locks: docs/method/claims.md
+content/topics/{slug}.md               a Topic: docs/method/topics.md
 ```
 
 `catalog/manual` is empty today: a hand-entered file is a public copy of somebody's record, and
@@ -46,7 +47,7 @@ The Act was signed on 3 February 2031.
 | `title` | What happened, in a few plain words |
 | `category` | `political`, `financial`, `geopolitical`, `health`, `policy` (v1's), `disaster`, `infrastructure`, `legislation` |
 | `status` | `draft` or `public`. A draft is in local-profile Releases only |
-| `topics` | Topic slugs. Not checked against anything until Topics are files (M23) |
+| `topics` | Topic slugs. A `public` Event names Topics that are files (`content/topics/{slug}.md`); a draft that names one that is not gets a note. A tag on the Event: which Events a Topic's page lists is the Topic's own `events` (`docs/method/topics.md`) |
 | `related_series` | Keys of the Catalog to set beside the Event. Not a statement that it moved them |
 | `sources` | At least one. Each has a `url` and either `archive_url` or `no_archive` (the reason there is no archived copy), and may have a `name` |
 | `accepted_terms` | Words of the word list accepted in this Event's own text, because they belong to the thing's name. Alex's to add |

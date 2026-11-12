@@ -90,7 +90,7 @@ describe("the Content Security Policy is enforced with a nonce (ADR 0013)", () =
 
   it("the catalog, a series page and the glossary are reading pages: within the budget, and none adds script of its own (ADR 0014)", async () => {
     const shell = await measureJs(server.url("/data"));
-    for (const path of ["/data/fx_price_index", "/docs/glossary"]) {
+    for (const path of ["/data/fx_price_index", "/docs/glossary", "/topics", "/topics/inflation"]) {
       const measured = await measureJs(server.url(path));
       expect(measured.gzipBytes, path).toBeLessThanOrEqual(JS_BUDGET.budgetBytes);
       expect(measured.gzipBytes, path).toBeLessThanOrEqual(shell.gzipBytes);

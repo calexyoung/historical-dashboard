@@ -6,6 +6,7 @@ import { V1HashDoor } from "@/components/V1HashDoor";
 import { BASE_PATH, SURFACE } from "@/lib/config";
 import { FIRST_VISIT_HEADER } from "@/lib/gate";
 import { overviewView, type HeadlineRow } from "@/lib/highlights";
+import { topicLinks } from "@/lib/topics";
 import { releaseForRequest } from "@/lib/release/server";
 import { MAX_QUERY } from "@/lib/search";
 
@@ -79,7 +80,8 @@ function Row({ row }: { row: HeadlineRow }) {
 /**
  * The Overview (PLAN section 3, M22): the front door. One row per Segment, in a fixed order:
  * the Segment's first headline Series, its latest value in words, how that differs from a year
- * earlier, and the Series drawn small. Then search. No hero, no cards, no tiles.
+ * earlier, and the Series drawn small. Then the Topics, by name, and search. No hero, no cards,
+ * no tiles.
  *
  * A reading page: everything is in the HTML and nothing needs a script. Each row's name opens
  * the Series' page, its change opens the Explorer at that window, and its drawing opens the
@@ -89,6 +91,7 @@ function Row({ row }: { row: HeadlineRow }) {
 export default async function Overview() {
   const { release } = await releaseForRequest();
   const view = overviewView(release, SURFACE);
+  const topics = topicLinks(release);
   const first = (await headers()).get(FIRST_VISIT_HEADER) === "1";
 
   return (
@@ -131,12 +134,26 @@ export default async function Overview() {
         </ol>
       </Panel>
 
+      {topics.length > 0 && (
+        <Panel id="topics" title="Topics" meta="A main series beside what an editor chose to set with it.">
+          <ul className="flex flex-wrap gap-x-6 gap-y-1 text-sm">
+            {topics.map((topic) => (
+              <li key={topic.slug}>
+                <a href={`${BASE_PATH}${topic.href}`} data-topic={topic.slug} className={`${link} inline-flex min-h-6 items-center`}>
+                  {topic.title}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </Panel>
+      )}
+
       <Panel id="find" title="Search">
         <form method="get" action={`${BASE_PATH}/search`} role="search" aria-label="Macro Atlas" className="flex flex-wrap items-end gap-2">
           <label className="sr-only" htmlFor="overview-q">
-            Search series, events and the glossary
+            Search topics, series, events and the glossary
           </label>
-          <input id="overview-q" type="search" name="q" maxLength={MAX_QUERY} placeholder="Search series, events and the glossary" autoComplete="off" className={`${control} w-full sm:w-96`} />
+          <input id="overview-q" type="search" name="q" maxLength={MAX_QUERY} placeholder="Search topics, series, events and the glossary" autoComplete="off" className={`${control} w-full sm:w-96`} />
           <button type="submit" className="press h-9 rounded border border-accent bg-accent px-3 text-sm font-semibold text-void">
             Search
           </button>
