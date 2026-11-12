@@ -59,7 +59,7 @@ PLAN_SOURCES = {
 # The rows Alex has signed. Only Alex adds to this list, in the same change in which he signs the
 # row in schema/rights-register.json. The builder never does (PLAN 6: "The agent proposes; Alex
 # decides and signs once").
-SIGNED_BY_ALEX: set[str] = set()
+SIGNED_BY_ALEX: set[str] = {"bls"}
 
 
 def test_the_register_has_the_shape_its_schema_describes():
@@ -110,9 +110,9 @@ def test_an_intermediary_is_cleared_only_by_a_dated_amendment_to_adr_0006():
     assert {"fred", "alfred", "yahoo"} <= {r["channel"] for r in REGISTER["rows"] if r["kind"] == "channel"}
 
 
-def test_nothing_in_the_committed_register_is_permitted_on_a_public_surface():
+def test_no_unsigned_row_of_the_committed_register_permits_anything_on_a_public_surface():
     # The acceptance criterion: an unsigned row permits nothing on a public surface. Asked of
-    # every row, every Permission, and every Channel a value could arrive by.
+    # every row Alex has not signed, every Permission, and every Channel a value could arrive by.
     gate = committed_gate()
     channels = ["direct", *OWN_CHANNELS, *(r["channel"] for r in REGISTER["rows"] if r["kind"] == "channel")]
     asked = 0

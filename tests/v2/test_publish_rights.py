@@ -356,7 +356,7 @@ def agency_store(directory: Path) -> Path:
 def test_a_local_release_adds_v1s_series_for_keys_the_store_does_not_hold_and_never_mixes(tmp_path, v1):
     store = agency_store(tmp_path / "store")
 
-    # The committed register: nothing is signed, and a local release needs nothing signed.
+    # The committed register, whatever is signed in it: a local release needs nothing signed.
     result = release(profile="local", root=tmp_path / "local", store=store, now=LATER)
 
     assert result.outcome == "promoted", result.lines

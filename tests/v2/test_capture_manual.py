@@ -258,7 +258,7 @@ def test_a_terms_file_says_who_held_an_office_and_when_each_with_a_citation():
     assert [(t["holder"], t["start"], t["end"], t["party"]) for t in document["terms"]] == [
         ("A. Example", "2017-02-01", "2021-01-31", "R"), ("B. Sample", "2021-02-01", None, "D")]
     assert all(manual.citation_problem(t["citation"]) is None for t in document["terms"])
-    assert manual.load_terms(ROOT / "catalog" / "manual") == []  # nothing is entered yet (no row is signed)
+    assert manual.load_terms(ROOT / "catalog" / "manual") == []  # nothing is entered yet (its row is not signed)
 
 
 @pytest.mark.parametrize("change, said", [
@@ -297,7 +297,7 @@ def test_a_spans_file_says_when_each_stretch_ran_each_with_a_citation():
     assert document["layer"] == "recession"
     assert [(s["start"], s["end"]) for s in document["spans"]] == [("2018-03-01", "2018-11-30"), ("2022-07-01", "2023-03-31")]
     assert all(manual.citation_problem(s["citation"]) is None for s in document["spans"])
-    assert manual.load_spans(ROOT / "catalog" / "manual") == []  # nothing is entered yet (no row is signed)
+    assert manual.load_spans(ROOT / "catalog" / "manual") == []  # nothing is entered yet (its row is not signed)
     assert manual.stray_files(REPO / "catalog" / "manual") == []
 
 

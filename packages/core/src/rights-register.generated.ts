@@ -3,7 +3,7 @@
 
 export const RIGHTS_REGISTER: unknown = {
   "format": 1,
-  "version": "2026-11-11.draft-6",
+  "version": "2026-11-12.1",
   "cleared_intermediaries": [],
   "rows": [
     {
@@ -13,7 +13,14 @@ export const RIGHTS_REGISTER: unknown = {
         "U.S. Bureau of Labor Statistics"
       ],
       "datasets": "*",
-      "decision": null
+      "decision": {
+        "display": true,
+        "redistribute": true,
+        "store": true,
+        "ml_use": true,
+        "signed_by": "Alex",
+        "signed_on": "2026-11-12"
+      }
     },
     {
       "id": "bea",

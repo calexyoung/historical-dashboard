@@ -3,9 +3,10 @@
  *
  * The Release is made by the real capture kit and release writer from the recorded exchanges in
  * fixtures/capture (invented values), under a test register in which every capturing row carries
- * a decision; the same table is the gate handed to the view. The committed register signs no
- * row, so on the app's own gate this Release shows nothing on a public Surface: that is tested
- * here too, and is what stays true until Alex signs a row (PLAN 6.1, D2).
+ * a decision; the same table is the gate handed to the view. On a gate with no signed row this
+ * Release shows nothing on a public Surface, and on the app's own gate it shows a Series only
+ * where Alex has signed the row of its Origin in the committed register: both are tested here
+ * too, the second from the rows the committed file holds signed (PLAN 6.1, D2).
  *
  * v1's side of each comparison was recorded from v1's own page (checks/v1-links.json).
  */
@@ -66,11 +67,27 @@ describe("a public-profile release", () => {
     for (const freq of ["business_daily", "weekly", "monthly", "quarterly"]) expect(freqs.has(freq as never), freq).toBe(true);
   });
 
-  it("shows nothing on the app's own gate: the committed register signs no row", () => {
-    const v = explorerView(release, "production", parseExplorerParams(new URLSearchParams("s=unrate,gs10")));
+  it("shows nothing on a gate with no signed row", () => {
+    const unsigned = createRightsGate({ ...fixture.register, rows: fixture.register.rows.map((row) => ({ ...row, decision: null })) });
+    const v = explorerView(release, "production", parseExplorerParams(new URLSearchParams("s=unrate,gs10")), { gate: unsigned });
     expect(v.selection.map((s) => s.state)).toEqual(["not_permitted", "not_permitted"]);
     expect(v.figure).toBeNull();
     expect(v.runs).toEqual([]);
+  });
+
+  it("shows on the app's own gate only a Series whose Origin's row Alex has signed in the committed register", () => {
+    // Read from the file, so that the next row Alex signs changes no test: unrate is the Bureau
+    // of Labor Statistics', gs10 the Federal Reserve Board's.
+    const committed = JSON.parse(readFileSync(new URL("../../../../schema/rights-register.json", import.meta.url), "utf8")) as { rows: { id: string; decision: { display?: boolean } | null }[] };
+    const displays = (id: string): boolean => committed.rows.find((row) => row.id === id)?.decision?.display === true;
+    const rowOf = { unrate: "bls", gs10: "fed-board" } as const;
+    const v = explorerView(release, "production", parseExplorerParams(new URLSearchParams("s=unrate,gs10")));
+    expect(v.selection.map((s) => s.key)).toEqual(["unrate", "gs10"]);
+    for (const s of v.selection) expect(s.state !== "not_permitted", s.key).toBe(displays(rowOf[s.key as keyof typeof rowOf]));
+    if (!displays("bls") && !displays("fed-board")) {
+      expect(v.figure).toBeNull();
+      expect(v.runs).toEqual([]);
+    }
   });
 });
 

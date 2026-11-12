@@ -4,7 +4,7 @@
  * temporary directory (`python fixtures/release/agency.py`). Never imported by the app.
  *
  * It is decided under a test register in which every capturing row carries a decision. That is
- * test data: the committed register signs no row. The same table is handed back as a gate, so a
+ * test data, and says nothing of what Alex has signed. The same table is handed back as a gate, so a
  * test can ask the Explorer what it would show on a public Surface once rows are signed
  * (ADR 0031, point 12: a gate is an argument, and only tests pass one).
  */

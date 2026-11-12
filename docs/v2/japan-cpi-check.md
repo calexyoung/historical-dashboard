@@ -11,7 +11,7 @@ What is compared is stated in `checks/japan-cpi.json`; the command is
 `python -m atlas crosscheck japan-cpi`; this page is what it found when it was run.
 
 **No figure from either source is on this page or in the repository.** The run below asked
-each source once, compared in memory and kept nothing. No register row is signed (D2), so
+each source once, compared in memory and kept nothing. Neither source's register row is signed (D2), so
 neither the IMF's bytes nor the Bureau's may be stored, and the committed test fixtures hold
 invented values in the two sources' shapes.
 

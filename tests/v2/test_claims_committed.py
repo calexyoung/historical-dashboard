@@ -23,7 +23,7 @@ def committed() -> dict[str, dict]:
 def test_every_committed_claim_is_a_draft_and_the_repository_holds_no_lock():
     claims = committed()
     assert claims, "M21 commits one worked Claim"
-    # D7(a): only Alex publishes a Claim. No register row is signed, so no real lock is kept.
+    # D7(a): only Alex publishes a Claim. None is published, so no real lock is kept.
     assert {claim["status"] for claim in claims.values()} == {"draft"}
     assert not (K.CLAIMS_DIR / K.LOCKS).exists() or list((K.CLAIMS_DIR / K.LOCKS).iterdir()) == []
 

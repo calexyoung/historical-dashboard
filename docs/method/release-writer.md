@@ -330,8 +330,8 @@ and the root is a public-profile root of agency values, apart from `$ATLAS_LOCAL
 link in it. `--surface staging` applies the same rule. Proving that a password covers staging
 before a local-profile Release is served there is the deploy step's (M27).
 
-With today's register, where no row is signed, the preflight cannot pass for any root that
-holds a value.
+The preflight cannot pass for a root that holds a value resting on a register row that is not
+signed (`python -m atlas rights` lists what is signed).
 
 ## See it work
 

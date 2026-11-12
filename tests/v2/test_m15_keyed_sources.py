@@ -29,7 +29,7 @@ from atlas.rights import load_register
 from atlas.vintage.cli import main as replay_main
 from atlas.vintage.store import VintageStore
 
-from .capture_helpers import ALLOW, LiveScripted
+from .capture_helpers import LiveScripted, committed_with_file
 
 ROOT = Path(__file__).resolve().parents[2]
 FIXTURES = ROOT / "fixtures" / "capture"
@@ -83,13 +83,8 @@ def everything_under(directory: Path) -> bytes:
 
 
 def signed(tmp_path: Path, rows=ROWS) -> Path:
-    table = load_register()
-    for row in table["rows"]:
-        if row["id"] in rows:
-            row["decision"] = dict(ALLOW)
-    path = tmp_path / "register.json"
-    path.write_text(json.dumps(table))
-    return path
+    """The register with exactly ``rows`` signed, whatever Alex has signed in the committed file."""
+    return committed_with_file(tmp_path, rows)
 
 
 def no_spots(tmp: Path) -> Path:
@@ -169,16 +164,20 @@ def test_values_reach_the_release_as_the_agencies_printed_them(released):
     assert "2019-Q1" in series("gdp_yoy", "derived")
 
 
-def test_under_the_committed_register_nothing_of_theirs_is_captured_recorded_or_released(tmp_path, capsys, released):
+def test_under_a_register_with_no_signed_row_nothing_of_theirs_is_captured_recorded_or_released(
+        tmp_path, capsys, released):
     _, _, store, _ = released
+    unsigned = signed(tmp_path, rows=())
     only = [argument for row in ROWS for argument in ("--only", row)]
-    assert capture_main(["--store", str(tmp_path / "store"), "--replay", str(FIXTURES), *only]) == 1
+    assert capture_main(["--store", str(tmp_path / "store"), "--register", str(unsigned),
+                         "--replay", str(FIXTURES), *only]) == 1
     assert not (tmp_path / "store").exists()
-    assert replay_main(["--store", str(tmp_path / "vintages"), "--captures", str(store)]) == 1
+    assert replay_main(["--store", str(tmp_path / "vintages"), "--register", str(unsigned),
+                        "--captures", str(store)]) == 1
     out = capsys.readouterr().out
     for key in ("gdp", "saving", "wti", "elec_gen"):
         assert f"REFUSED {key}:" in out
-    result = release(profile="public", root=tmp_path / "public", store=store, now=NOW)
+    result = release(profile="public", root=tmp_path / "public", store=store, register=unsigned, now=NOW)
     assert result.exit_code == 1 and not (tmp_path / "public" / "CURRENT").exists()
 
 

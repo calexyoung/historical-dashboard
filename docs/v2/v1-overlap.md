@@ -9,9 +9,9 @@ this page is what the check found when it was run.
 
 **No figure fetched from an agency is on this page or in the repository.** The run below fetched the
 30 endpoints into a temporary directory under a register signed only there, compared, and
-deleted the store. The table holds counts and differences. No register row is signed (D2), so
-the committed capture fixtures are still invented values, and a committed fixture of real
-bytes waits for Alex. The register used for the run was a scratch copy marked as test data; it
+deleted the store. The table holds counts and differences. No register row was signed when
+this was run (D2; Alex signed the `bls` row afterwards, on 2026-11-12). The committed capture
+fixtures are still invented values, and a committed fixture of real bytes waits for Alex. The register used for the run was a scratch copy marked as test data; it
 is not a decision and was deleted with the store.
 
 ## The run of 2026-11-12

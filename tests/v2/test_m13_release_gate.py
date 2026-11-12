@@ -1,7 +1,7 @@
 """M13's acceptance, on the committed fixtures: every Series the Treasury, Board and BLS
 adapters read goes from recorded bytes through capture, replay and the release writer, and
-passes the release gate when its Origin's row is signed. Under the committed register, where no
-row is signed, nothing is captured, recorded or released.
+passes the release gate when its Origin's row is signed. Under a register in which no row is
+signed, nothing is captured, recorded or released.
 
 The fixtures' values are invented (fixtures/capture/README.md). A decision in a register here
 is test data and says nothing of what Alex has decided."""
@@ -19,10 +19,9 @@ from atlas.capture.cli import main as capture_main
 from atlas.catalog import load_catalog
 from atlas.publish.run import release
 from atlas.release import validate_release
-from atlas.rights import load_register
 from atlas.vintage.cli import main as replay_main
 
-from .capture_helpers import ALLOW
+from .capture_helpers import committed_with_file
 
 ROOT = Path(__file__).resolve().parents[2]
 FIXTURES = ROOT / "fixtures" / "capture"
@@ -40,13 +39,8 @@ M8 = ["cpi", "cpi_nsa", "cpi_yoy", "payems", "unrate"]
 
 
 def signed(tmp_path: Path, rows=ROWS) -> Path:
-    table = load_register()
-    for row in table["rows"]:
-        if row["id"] in rows:
-            row["decision"] = dict(ALLOW)
-    path = tmp_path / "register.json"
-    path.write_text(json.dumps(table))
-    return path
+    """The register with exactly ``rows`` signed, whatever Alex has signed in the committed file."""
+    return committed_with_file(tmp_path, rows)
 
 
 @pytest.fixture(scope="module")
@@ -128,16 +122,19 @@ def test_values_reach_the_release_as_the_source_printed_them(released):
     assert series("real_wages")["2025-Q4"] == {**series("real_wages")["2025-Q4"], "value": None, "status": "missing"}
 
 
-def test_under_the_committed_register_nothing_is_captured_recorded_or_released(tmp_path, capsys, released):
+def test_under_a_register_with_no_signed_row_nothing_is_captured_recorded_or_released(tmp_path, capsys, released):
     _, _, store, _ = released
-    assert capture_main(["--store", str(tmp_path / "store"), "--replay", str(FIXTURES)]) == 1
+    unsigned = signed(tmp_path, rows=())
+    assert capture_main(["--store", str(tmp_path / "store"), "--register", str(unsigned),
+                         "--replay", str(FIXTURES)]) == 1
     assert not (tmp_path / "store").exists()
     # A store that does exist (made under the test register) is not replayed or released either.
-    assert replay_main(["--store", str(tmp_path / "vintages"), "--captures", str(store)]) == 1
+    assert replay_main(["--store", str(tmp_path / "vintages"), "--register", str(unsigned),
+                        "--captures", str(store)]) == 1
     out = capsys.readouterr().out
     for key in ("debt", "gs10", "wages", "net_worth"):
         assert f"REFUSED {key}:" in out
-    result = release(profile="public", root=tmp_path / "public", store=store, now=NOW)
+    result = release(profile="public", root=tmp_path / "public", store=store, register=unsigned, now=NOW)
     assert result.exit_code == 1
     assert not (tmp_path / "public" / "CURRENT").exists()
 
