@@ -58,7 +58,7 @@ const md = (text: string | number | null | undefined): string =>
 const mdUrl = (url: string): string => url.replace(/[^A-Za-z0-9\-._~:/?#@!$&+,;=%]/gu, (c) => encodeURIComponent(c)).replace(/[()'*_]/g, (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`);
 
 /** The fields of a Claim's record that a file names: a fixed selection, so nothing rides along. */
-function recordOf(claim: Claim) {
+export function recordOf(claim: Claim) {
   return {
     id: claim.id,
     status: claim.status,
