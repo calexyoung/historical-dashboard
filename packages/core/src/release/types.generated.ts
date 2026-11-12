@@ -67,7 +67,7 @@ export type CalendarDate = string;
  */
 export type PeriodLabel = string;
 /**
- * The declared rule that produces a Derived series. inputs are ordered: ratio is inputs[0] / inputs[1] and difference is inputs[0] - inputs[1], each with exactly two inputs; sum and product take two or more; pct_change takes one input and params.lag, a whole number of the input's Periods. order is always stated. The output's unit is the entry's own unit. Only the engine in packages/core computes a Recipe (ADR 0003); other code may only check its structure.
+ * The declared rule that produces a Derived series. inputs are ordered: ratio is inputs[0] / inputs[1] and difference is inputs[0] - inputs[1], each with exactly two inputs; sum and product take two or more; pct_change takes one input and params.lag, a whole number of Periods at the frequency the arithmetic is done at: the Derived series' own under aggregate_then_compute, the input's under compute_then_aggregate (docs/method/transforms.md). order is always stated. The output's unit is the entry's own unit. Only the engine in packages/core computes a Recipe (ADR 0003); other code may only check its structure.
  *
  * This interface was referenced by `Release`'s JSON-Schema
  * via the `definition` "recipe".
@@ -403,7 +403,7 @@ export interface CombineRecipe {
   order: RecipeOrder;
 }
 /**
- * Percent change of one input from params.lag of its Periods earlier.
+ * Percent change of one input from params.lag Periods earlier, counted at the frequency the arithmetic is done at.
  */
 export interface PercentChangeRecipe {
   op: "pct_change";

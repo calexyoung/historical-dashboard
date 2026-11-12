@@ -77,9 +77,63 @@ numbers exactly as above, and the manifest row's `vintages_sha256`. Past values 
 The check over a Release's files (`atlas doctor --surface production`, rollback, pin, reuse)
 reads the lineage of every vintage file too, against today's register.
 
-**Not written yet.** `derived/` (the engine's, M11), search and bulk files
-(M22, M25), and content other than an empty Annotations list (M19). A local Release carries
-v1's Derived series and Annotations as the legacy converter writes them.
+**Not written yet.** Search and bulk files (M22, M25), and content other than an empty
+Annotations list (M19). A local Release carries v1's Derived series and Annotations as the
+legacy converter writes them.
+
+## Derived series and the Node step
+
+Python never computes a Derived value (ADR 0003, ADR 0025). The series table may list Derived
+series under `derived`: a key, a frequency, a name, a unit, a Recipe over other entries of the
+table and a `catalog` block (`atlas/vintage/series.json`; the first is `cpi_yoy`). For each one
+the export decides, before anything is computed:
+
+- it is **left out** when a stored Series it rests on is not in the store yet: there is
+  nothing to describe, exactly as for a stored Series the store does not hold;
+- it is **withheld** by name, with the reason, when it was withdrawn, when anything it rests on
+  is withheld, or (public Profile) when the gate does not permit display of its whole lineage:
+  its own Origin and Channel and those of every Series it rests on, to any depth;
+- otherwise it is **computed**.
+
+A Derived series' Catalog entry names the Origin of the first stored Series its Recipe reaches
+and the Channel `computed`. That one Origin is a label: the lineage is the Recipe's inputs,
+which the rights check walks to the end. Its Rights block has the most restrictive status among
+the stored Series it rests on and all of their owners and attributions.
+
+Then the **Node step**. The publisher makes a new directory `engine-…` inside the root's
+`.staging/`, writes the Catalog, the stored Series and the list of keys to compute, and runs
+
+```
+node packages/core/bin/atlas-core.mjs verify --release {root}/.staging/engine-… --spot checks/spot.json
+```
+
+The step computes each Recipe with the one engine (`docs/method/transforms.md`, "Recipes") and
+writes `derived/{key}.json` and `engine-report.json` in that directory, each created new, and
+nothing anywhere else. It also checks that each Derived entry's rights status is the engine's
+own answer, and compares spot values (below). Python then looks at everything in the
+directory before believing any of it: a link, a file nobody asked for, a changed input, a
+missing or unreadable report, a file that is not the bytes the report hashed, or a key neither
+written nor reported empty rejects the run. The directory is removed whatever happened, and the
+Derived files go on as bytes through the same checks and the same staging as every other file.
+
+- A Recipe that gives no value (a year-over-year change of a Series with less than a year)
+  is withheld by name, and so is whatever rests on it.
+- `semantics_version` in the manifest is the engine's, when it computed anything.
+- A Derived series has no vintage file. Its as-of answer is computed from its inputs' own
+  (`derivedAsOf` in `site/src/lib/release/as-of.ts`; `node scripts/as-of.mjs KEY DATE`).
+- A release with no Recipe to compute does not run Node at all. `--reuse-data` and a
+  withdrawal link the Derived files as they are and do not run it either.
+- v1's Derived series (local Profile) are never handed to the engine: they stay v1's values.
+  When the store holds everything a table Recipe rests on, the engine's Series replaces v1's
+  Series of that key whole; when it does not, v1's stays whole.
+- Node 22.18 or later is needed, and nothing from npm: the step runs the engine's TypeScript
+  as it is. `ATLAS_NODE` names another `node`; `ATLAS_ENGINE_TIMEOUT` (seconds, default 300)
+  bounds the step.
+
+**Spot values** (`checks/spot.json`): figures published by someone else, each with a tolerance
+and its source. One whose Series and Period the Release holds must match, or the run is
+rejected. One whose Series is in the Release without that Period is a warning ("not checked").
+The first is `cpi_yoy` for June 2022: 9.1, within 0.05.
 
 ## The manifest
 
@@ -108,6 +162,8 @@ kept in `$ATLAS_STORE/rejected/{release_id}.json`.
 | No file for a withdrawn Series | fail |
 | Staleness: the last Period is older than `max_lag` allows | warn |
 | Values as doubles (above) | warn |
+| Engine: derived series (the Node step ran, and what it left is what was asked for) | fail |
+| Spot value (one line per spot the Release holds) | fail; warn when the Period is not held |
 
 The rights check is asked of the staged files, not of what the export meant to write. In
 normal running it finds nothing, because the export already withheld what the gate refuses.
@@ -149,6 +205,8 @@ are resolved.
 | A check failed | STATUS `rejected`, the report in `rejected/` | — |
 | The disk filled while staging | Staging removed, STATUS `failed` | — |
 | Killed while staging | Files in `.staging/`, STATUS `running` or `promoting` | Removes them |
+| The Node step failed, timed out, was not found, or left something it was not asked for | Its directory removed, STATUS `rejected`, the report in `rejected/` | — |
+| Killed during the Node step | Its `engine-…` directory in `.staging/`, STATUS `running` | Removes it |
 | Killed after the rename into `releases/`, before `CURRENT` | A Release nothing names, STATUS `promoting` | Moves it to the trash |
 | Killed, or the disk filled, after `CURRENT` was replaced | The Release is live; the run's record is missing | Records it as promoted, with the journal line it never got (`"recovered": true`) |
 
@@ -254,4 +312,7 @@ holds a value.
 ```
 
 The demo runs the real commands over M8's three-fetch fixture (invented values of a made-up
-Origin, under the fixture's own test register) in a temporary directory.
+Origin, under the fixture's own test register) in a temporary directory. Its series table has
+two Recipes (`fixtures/vintage/recipes.json`), so the first release shows two Derived series the
+Node step computed, and the second withholds the one that rests on a withheld Series.
+`.venv/bin/python -m pytest tests/v2 -q -k "derived or engine"` runs the tests of this part.
