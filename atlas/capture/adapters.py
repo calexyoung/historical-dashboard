@@ -26,6 +26,7 @@ from datetime import date, datetime, timedelta
 from types import MappingProxyType
 from urllib.parse import urlencode
 from xml.etree import ElementTree
+from xml.parsers import expat
 
 from .. import manual
 from .http import CaptureError, Fetch, Part, Request
@@ -1627,6 +1628,29 @@ def _member(archive: zipfile.ZipFile, name: str, limit: int, problems: list[str]
     return data
 
 
+class _DocumentType(Exception):
+    pass
+
+
+def _declares_a_document_type(data: bytes) -> bool:
+    """Whether XML has a DOCTYPE, asked of the parser itself so that the answer does not
+    depend on how the bytes are encoded (a search for the letters misses UTF-16). Entities are
+    declared only inside one. XML that is not well formed has none to act on; the reader that
+    follows says so."""
+    def refuse(*_):
+        raise _DocumentType
+
+    parser = expat.ParserCreate()
+    parser.StartDoctypeDeclHandler = refuse
+    try:
+        parser.Parse(data, True)
+    except _DocumentType:
+        return True
+    except expat.ExpatError:
+        return False
+    return False
+
+
 class CensusEitsAdapter:
     """A flat file of the Census Bureau's Economic Indicators: one program (``MARTS``, the
     advance monthly retail report; ``RESCONST``, new residential construction; ``FTD``,
@@ -1936,7 +1960,7 @@ class CensusC30Adapter:
         shared = _member(archive, self.STRINGS, self.MAX_BYTES, problems) if sheet is not None else None
         if sheet is None or problems:
             return None
-        if any(b"<!DOCTYPE" in part or b"<!ENTITY" in part for part in (sheet, shared or b"")):
+        if any(_declares_a_document_type(part) for part in (sheet, shared or b"")):
             # A spreadsheet's XML declares no document type. One that does is not read: an
             # entity is the one way XML of this size could be made to expand without end.
             problems.append("the workbook's XML declares a document type or an entity; it was not read")

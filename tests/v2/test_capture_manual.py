@@ -146,6 +146,13 @@ def test_the_working_checks_the_value_and_never_replaces_it():
     assert "its working gives 100" in manual.working_problem("1", {**third, "democratic": "9" * 40})
 
 
+def test_arithmetic_that_cannot_be_done_is_a_problem_with_the_file(monkeypatch):
+    # With the limit on decimals lifted, a value of thirty decimals is past what the arithmetic holds.
+    monkeypatch.setattr(manual, "MAX_PLACES", 40)
+    third = {"formula": "two_party_margin", "democratic": "2", "republican": "1"}
+    assert "cannot be worked out" in manual.working_problem("33." + "3" * 28, third)
+
+
 # --- where the bytes come from ----------------------------------------------------------------------
 
 

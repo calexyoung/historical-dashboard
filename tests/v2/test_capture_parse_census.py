@@ -238,6 +238,13 @@ def test_xml_that_declares_an_entity_is_not_read():
     sheet = b'<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData/></worksheet>'
     body = zipped({"xl/workbook.xml": b"<workbook/>", "xl/sharedStrings.xml": bomb, "xl/worksheets/sheet1.xml": sheet})
     assert "declares a document type or an entity; it was not read" in c30_problems(body)
+    # However the bytes are encoded: the parser is asked, not the letters searched for.
+    wide = bomb.decode().replace('<?xml version="1.0"?>', '<?xml version="1.0" encoding="UTF-16"?>').encode("utf-16")
+    assert b"<!DOCTYPE" not in wide
+    body = zipped({"xl/workbook.xml": b"<workbook/>", "xl/sharedStrings.xml": wide, "xl/worksheets/sheet1.xml": sheet})
+    assert "declares a document type or an entity; it was not read" in c30_problems(body)
+    body = zipped({"xl/workbook.xml": b"<workbook/>", "xl/sharedStrings.xml": b"<sst/>", "xl/worksheets/sheet1.xml": wide})
+    assert "declares a document type or an entity; it was not read" in c30_problems(body)
 
 
 @pytest.mark.parametrize("params, said", [
