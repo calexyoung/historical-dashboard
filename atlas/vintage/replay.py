@@ -33,7 +33,8 @@ SERIES_FORMAT = 1
 #: An adapter's word for a kind of value, in the release contract's vocabulary. "observed" is
 #: a published value the source did not mark preliminary; "unavailable" is a Period the source
 #: lists and prints no number for.
-STATUS = {"observed": "final", "preliminary": "preliminary", "unavailable": "missing"}
+STATUS = {"observed": "final", "preliminary": "preliminary", "revised": "revised",
+          "unavailable": "missing"}
 _KEY = re.compile(r"[a-z][a-z0-9_]{0,63}")
 
 

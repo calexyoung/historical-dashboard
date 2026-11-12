@@ -119,20 +119,28 @@ class BlsAdapter:
     """The BLS Public Data API, version 2, without a key: one POST for up to 25 series over at
     most ten years (verified 2026-11-11: a longer range is cut to ten years *from the start
     year* with a message, and an unknown series is left out with a message, both under the
-    status REQUEST_SUCCEEDED). So the window asked for is always the ten years ending this
-    year, and any message at all makes the answer incomplete.
+    status REQUEST_SUCCEEDED). So the window asked for is the ``years`` ending this year, ten
+    years to a request, oldest first, and any message at all makes the answer incomplete: a
+    window must not reach back before any of its series began (the Bureau answers "No Data
+    Available for Series ... Year: ..." for such a year).
+
+    A series is monthly (M01 to M12) or quarterly (Q01 to Q04), never both. A value is
+    ``unavailable`` where the Bureau prints "-", else ``preliminary`` under footnote P, else
+    ``revised`` under footnote R, else ``observed``.
 
     The scope is what "complete" is complete *for*: these series, these years. A year that has
     rolled out of the window was not asked about, and its absence deletes nothing (M8)."""
 
     name = "bls"
-    version = 1
+    version = 2
     URL = "https://api.bls.gov/publicAPI/v2/timeseries/data/"
     MAX_SERIES = 25
-    MAX_YEARS = 10
+    REQUEST_YEARS = 10  # what one keyless request may span
+    DEFAULT_YEARS = 10
+    MAX_YEARS = 100
 
     def problem(self, params: dict) -> str | None:
-        series, years = params.get("series"), params.get("years", self.MAX_YEARS)
+        series, years = params.get("series"), params.get("years", self.DEFAULT_YEARS)
         if (not isinstance(series, list) or not series or len(series) > self.MAX_SERIES
                 or not all(isinstance(s, str) and s for s in series) or len(set(series)) != len(series)):
             return f"it does not name between 1 and {self.MAX_SERIES} distinct series"
@@ -140,14 +148,43 @@ class BlsAdapter:
             return f"years is not between 1 and {self.MAX_YEARS}"
         return None
 
+    def _requests(self, scope: dict) -> list[tuple[int, int]]:
+        """The years of each request, oldest first: ten at a time, the last ending the window."""
+        first, last = scope["start_year"], scope["end_year"]
+        return [(start, min(start + self.REQUEST_YEARS - 1, last))
+                for start in range(first, last + 1, self.REQUEST_YEARS)]
+
     def fetch(self, endpoint: Endpoint, fetch: Fetch) -> Evidence:
         end = fetch.now().astimezone(RELEASE_ZONE).year
-        start = end - endpoint.params.get("years", self.MAX_YEARS) + 1
+        start = end - endpoint.params.get("years", self.DEFAULT_YEARS) + 1
         scope = {"series": list(endpoint.params["series"]), "start_year": start, "end_year": end}
-        body = json.dumps({"seriesid": scope["series"], "startyear": str(start), "endyear": str(end)})
-        response = fetch.send(Request("POST", self.URL, (("Content-Type", "application/json"),),
-                                      body.encode("utf-8")))
-        return self.examine(scope, [response.body])
+        bodies = []
+        for first, last in self._requests(scope):
+            body = json.dumps({"seriesid": scope["series"], "startyear": str(first), "endyear": str(last)})
+            bodies.append(fetch.send(Request("POST", self.URL, (("Content-Type", "application/json"),),
+                                             body.encode("utf-8"))).body)
+        return self.examine(scope, bodies)
+
+    def _read(self, scope: dict, bodies: list[bytes], problems: list[str]) -> tuple[dict[str, list[dict]], dict[str, int]]:
+        """Each series' Observations over every part, in order, and how many rows it had."""
+        requests = self._requests(scope)
+        if len(bodies) != len(requests):
+            problems.append(f"{len(requests)} parts were asked for and {len(bodies)} were kept")
+        series: dict[str, list[dict]] = {}
+        counts: dict[str, int] = {}
+        for number, (body, (first, last)) in enumerate(zip(bodies, requests, strict=False), start=1):
+            said: list[str] = []
+            for name, rows in self._rows(scope, [body], said).items():
+                counts[name] = counts.get(name, 0) + len(rows)
+                series.setdefault(name, []).extend(self._observations(
+                    name, rows, {"start_year": first, "end_year": last}, said))
+            prefix = f"part {number}: " if len(requests) > 1 else ""
+            problems.extend(prefix + problem for problem in said)
+        for name, observations in series.items():
+            observations.sort(key=lambda o: o["period"])
+            if len({"Q" in o["period"] for o in observations}) > 1:
+                problems.append(f"series {name} gives both months and quarters")
+        return series, counts
 
     def _rows(self, scope: dict, bodies: list[bytes], problems: list[str]) -> dict[str, list[dict]]:
         answer = _json(bodies[0], problems, "the answer")
@@ -192,11 +229,14 @@ class BlsAdapter:
                 continue
             year, code = str(row.get("year")), str(row.get("period"))
             value = row.get("value")
-            if not (year.isascii() and year.isdigit() and len(code) == 3 and code[0] == "M"
-                    and code[1:].isascii() and code[1:].isdigit() and 1 <= int(code[1:]) <= 12):
-                problems.append(f"series {series} has a row that is not a month: {year} {code}")
+            numbered = len(code) == 3 and code[1:].isascii() and code[1:].isdigit()
+            if year.isascii() and year.isdigit() and numbered and code[0] == "M" and 1 <= int(code[1:]) <= 12:
+                period = f"{year}-{code[1:]}"
+            elif year.isascii() and year.isdigit() and numbered and code[0] == "Q" and 1 <= int(code[1:]) <= 4:
+                period = f"{year}-Q{int(code[1:])}"
+            else:
+                problems.append(f"series {series} has a row that is not a month or a quarter: {year} {code}")
                 continue
-            period = f"{year}-{code[1:]}"
             if period in seen:
                 problems.append(f"series {series} gives {period} twice")
                 continue
@@ -216,9 +256,9 @@ class BlsAdapter:
                                 f"for {period}: {value!r}")
                 continue
             if value != "-":
-                preliminary = any(n["code"] == "P" for n in notes)
-                out.append({"period": period, "value": value,
-                            "status": "preliminary" if preliminary else "observed", "footnotes": notes})
+                codes = {n["code"] for n in notes}
+                status = "preliminary" if "P" in codes else "revised" if "R" in codes else "observed"
+                out.append({"period": period, "value": value, "status": status, "footnotes": notes})
             else:
                 # BLS prints "-" for a month it did not publish. That is a fact about the
                 # month, not a deletion and not a zero.
@@ -228,13 +268,11 @@ class BlsAdapter:
 
     def examine(self, scope: dict, bodies: list[bytes]) -> Evidence:
         problems: list[str] = []
-        found = self._rows(scope, bodies, problems)
-        checks = {}
-        for series, rows in found.items():
-            observations = self._observations(series, rows, scope, problems)
-            checks[series] = {"rows": len(rows),
-                              "first": observations[0]["period"] if observations else None,
-                              "last": observations[-1]["period"] if observations else None}
+        series, counts = self._read(scope, bodies, problems)
+        checks = {name: {"rows": counts[name],
+                         "first": observations[0]["period"] if observations else None,
+                         "last": observations[-1]["period"] if observations else None}
+                  for name, observations in series.items()}
         return _evidence(scope, {"series": checks}, problems)
 
     def coverage(self, scope: dict) -> tuple[str, str]:
@@ -245,10 +283,10 @@ class BlsAdapter:
     def parse(self, capture: RawCapture) -> NormalizedState:
         scope = capture.evidence.scope
         problems: list[str] = []
-        found = self._rows(scope, capture.bodies, problems)
-        series = {name: self._observations(name, rows, scope, problems)
-                  for name, rows in found.items() if name in scope["series"]}
-        return NormalizedState(not problems, scope, series, problems)
+        series, _ = self._read(scope, capture.bodies, problems)
+        return NormalizedState(not problems, scope,
+                               {name: rows for name, rows in series.items() if name in scope["series"]},
+                               problems)
 
 
 def _is_number(text: str) -> bool:
