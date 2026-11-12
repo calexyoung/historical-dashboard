@@ -30,7 +30,7 @@ EVENT = {
 def text_of(event: dict, body: str = "") -> str:
     text = E.serialise({**event, "description": body})
     # A field the schema does not have is written in by hand: `serialise` writes Events only.
-    extra = "".join(f"{name}: {json.dumps(value)}\n" for name, value in event.items() if name == "finding")
+    extra = "".join(f"{name}: {json.dumps(value)}\n" for name, value in event.items() if name in ("finding", "magnitude"))
     return text.replace("\n---\n", f"\n{extra}---\n", 1) if extra else text
 
 
@@ -57,6 +57,7 @@ def test_a_title_with_quotes_dashes_and_a_colon_survives():
 
 @pytest.mark.parametrize("change, said", [
     ({"finding": "misleading"}, "finding"),
+    ({"magnitude": {"value": 98765.4321, "unit": "index", "source": {"url": "https://example.org/x", "no_archive": "No copy exists anywhere."}}}, "magnitude"),
     ({"category": "opinion"}, "category"),
     ({"status": "published"}, "status"),
     ({"sources": []}, "sources"),
@@ -135,7 +136,7 @@ def test_an_accepted_term_is_passed_over_and_no_other():
 # changes an Event's title, status or accepted terms, never its id, its date or its category;
 # the tests of the committed files allow exactly that.
 
-DECIDED_LATER = ("title", "status", "accepted_terms", "description", "topics", "related_series", "sources", "magnitude")
+DECIDED_LATER = ("title", "status", "accepted_terms", "description", "topics", "related_series", "sources")
 
 
 @pytest.fixture(scope="module")

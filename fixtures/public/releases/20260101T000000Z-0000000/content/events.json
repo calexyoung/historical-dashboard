@@ -15,15 +15,6 @@
         "fx_exchange_index",
         "fx_not_in_this_release"
       ],
-      "magnitude": {
-        "value": 0.5,
-        "unit": "percentage points (invented)",
-        "source": {
-          "name": "Fixture harbour board (synthetic)",
-          "url": "https://example.org/fixture-harbour",
-          "no_archive": "The fixture harbour board's pages cannot be archived (synthetic reason)."
-        }
-      },
       "sources": [
         {
           "name": "Fixture gazette (synthetic)",

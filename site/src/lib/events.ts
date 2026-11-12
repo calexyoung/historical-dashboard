@@ -10,7 +10,6 @@ import { periodBounds, type Surface } from "@macro-atlas/core";
 import type { Event } from "@macro-atlas/core/release";
 import { EVENT_LABELS } from "./explorer/view";
 import { V1_EVENT_CATEGORIES } from "./explorer/state";
-import { fixed, readingDecimals } from "./figure/words";
 import { eventWhen } from "./event-words";
 import { isEventId } from "./event-address";
 import { latestValue } from "./query";
@@ -91,7 +90,6 @@ export type EventPageView = {
   draft: boolean;
   /** The description, by paragraph. Empty: none has been written. */
   description: string[];
-  magnitude: { words: string; source: EventSource } | null;
   sources: EventSource[];
   topics: string[];
   /** Each related Series: a door where this Release shows it here, the reason where it does not. */
@@ -135,7 +133,6 @@ export function eventPageView(release: OpenedRelease, surface: Surface, id: stri
     drawable.length > 0 && first !== null && last !== null
       ? `s=${drawable.slice(0, 4).join(",")}&from=${monthsFrom(first.slice(0, 7), -24)}&to=${monthsFrom(last.slice(0, 7), 24)}&layers=ev.${event.category}&event=event-${event.id}`
       : null;
-  const magnitudeSource = event.magnitude ? sourceOf(event.magnitude.source) : null;
   return {
     id: event.id,
     title: event.title,
@@ -144,7 +141,6 @@ export function eventPageView(release: OpenedRelease, surface: Surface, id: stri
     categoryQuery: `cat=${event.category}`,
     draft: event.status === "draft",
     description: event.description.split(/\n\s*\n/).map((p) => p.trim().replace(/\s*\n\s*/g, " ")).filter(Boolean),
-    magnitude: event.magnitude && magnitudeSource ? { words: `${fixed(event.magnitude.value, readingDecimals(event.magnitude.value))} ${event.magnitude.unit}`, source: magnitudeSource } : null,
     sources: event.sources.map(sourceOf).filter((s): s is EventSource => s !== null),
     topics: [...event.topics],
     related,

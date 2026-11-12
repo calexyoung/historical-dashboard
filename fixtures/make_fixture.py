@@ -377,7 +377,6 @@ EVENTS = {
             "status": "public",
             "topics": ["inflation"],
             "related_series": ["fx_price_index", "fx_exchange_index", "fx_not_in_this_release"],
-            "magnitude": {"value": 0.5, "unit": "percentage points (invented)", "source": NOT_ARCHIVED},
             "sources": [ARCHIVED, NOT_ARCHIVED],
             "description": "The fixture central bank announced a new policy rate on 18 September 2024.\n\n"
                            "The announcement was published in the fixture gazette the same day.",

@@ -451,10 +451,13 @@ function eventRules(bundle: Release): Issue[] {
     }
   }
   const same = (a: unknown, b: unknown): boolean => {
+    // Compared as values, whatever order a writer put an object's names in (as Python's == does).
     const sorted = (value: unknown): unknown =>
-      value !== null && typeof value === "object" && !Array.isArray(value)
-        ? Object.fromEntries(Object.entries(value).sort(([x], [y]) => (x < y ? -1 : 1)).map(([k, v]) => [k, sorted(v)]))
-        : value;
+      Array.isArray(value)
+        ? value.map(sorted)
+        : value !== null && typeof value === "object"
+          ? Object.fromEntries(Object.entries(value).sort(([x], [y]) => (x < y ? -1 : 1)).map(([k, v]) => [k, sorted(v)]))
+          : value;
     return JSON.stringify(sorted(a)) === JSON.stringify(sorted(b));
   };
   const projected = new Set<string>();

@@ -1525,7 +1525,7 @@ export const releaseSchema: Record<string, unknown> = {
     },
     "eventCitation": {
       "title": "EventCitation",
-      "description": "Where an Event can be checked: an address and an archived copy of it, or the reason there is none.",
+      "description": "Where an Event can be checked: an address and an archived copy of it, or the reason there is none. One or the other, never both and never neither.",
       "type": "object",
       "additionalProperties": false,
       "required": [
@@ -1548,7 +1548,29 @@ export const releaseSchema: Record<string, unknown> = {
           "type": "string",
           "minLength": 1
         }
-      }
+      },
+      "oneOf": [
+        {
+          "properties": {
+            "archive_url": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "archive_url"
+          ]
+        },
+        {
+          "properties": {
+            "no_archive": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "no_archive"
+          ]
+        }
+      ]
     },
     "event": {
       "title": "Event",
@@ -1632,28 +1654,6 @@ export const releaseSchema: Record<string, unknown> = {
           "items": {
             "type": "string",
             "pattern": "^[a-z][a-z0-9_]{0,63}$"
-          }
-        },
-        "magnitude": {
-          "description": "A measured size where one is published (a cost, a count), with where it is published.",
-          "type": "object",
-          "additionalProperties": false,
-          "required": [
-            "value",
-            "unit",
-            "source"
-          ],
-          "properties": {
-            "value": {
-              "type": "number"
-            },
-            "unit": {
-              "type": "string",
-              "minLength": 1
-            },
-            "source": {
-              "$ref": "#/$defs/eventCitation"
-            }
           }
         },
         "sources": {

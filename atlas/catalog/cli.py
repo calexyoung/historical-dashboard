@@ -97,7 +97,7 @@ def add_main(argv: list[str]) -> int:
         args = parser.parse_args(argv)   # a mistake in the options exits, as argparse does
         try:
             if args.kind == "event":
-                _, said = X.add_event(args)
+                _, said = X.add_event(args, set(load_catalog()))
             else:
                 _, said = X.add_note(args, set(load_catalog()))
         except (X.AddRefused, CatalogError) as refused:

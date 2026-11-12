@@ -144,10 +144,23 @@ def test_dated_spans_become_recessions(tmp_path):
     spans = [a for a in read(compiled(tmp_path, manual=MANUAL, signed=(OFFICE, COMMITTEE)), "annotations")
              if a["kind"] == "recession"]
     assert [(a["id"], a["label"], a["anchor"]) for a in spans] == [
-        ("recession-2018-03", "Invented recession", {"type": "span", "start": "2018-03-01", "end": "2018-11-30"}),
-        ("recession-2022-07", "Invented recession", {"type": "span", "start": "2022-07-01", "end": "2023-03-31"}),
+        ("recession-2018-03-01", "Invented recession", {"type": "span", "start": "2018-03-01", "end": "2018-11-30"}),
+        ("recession-2022-07-01", "Invented recession", {"type": "span", "start": "2022-07-01", "end": "2023-03-31"}),
     ]
     assert spans[0]["provenance"]["producer"] == COMMITTEE
+
+
+def test_two_spans_that_start_in_one_month_are_two_annotations(tmp_path):
+    import shutil
+    manual = tmp_path / "manual"
+    shutil.copytree(MANUAL, manual)
+    path = manual / "spans" / "invented-recessions.json"
+    document = json.loads(path.read_text())
+    document["spans"][0].update(start="2022-07-01", end="2022-07-05")
+    document["spans"][1].update(start="2022-07-10", end="2022-07-15")
+    path.write_text(json.dumps(document))
+    spans = [a["id"] for a in read(compiled(tmp_path, profile="local", manual=manual), "annotations") if a["kind"] == "recession"]
+    assert spans == ["recession-2022-07-01", "recession-2022-07-10"]
 
 
 def test_a_public_release_leaves_out_a_layer_whose_origin_is_not_signed_and_says_so(tmp_path):

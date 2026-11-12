@@ -646,14 +646,6 @@ export interface Event {
    */
   related_series: string[];
   /**
-   * A measured size where one is published (a cost, a count), with where it is published.
-   */
-  magnitude?: {
-    value: number;
-    unit: string;
-    source: EventCitation;
-  };
-  /**
    * @minItems 1
    */
   sources: [EventCitation, ...EventCitation[]];
@@ -663,7 +655,7 @@ export interface Event {
   description: string;
 }
 /**
- * Where an Event can be checked: an address and an archived copy of it, or the reason there is none.
+ * Where an Event can be checked: an address and an archived copy of it, or the reason there is none. One or the other, never both and never neither.
  *
  * This interface was referenced by `Release`'s JSON-Schema
  * via the `definition` "eventCitation".

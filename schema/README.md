@@ -146,8 +146,8 @@ a Release can ask the gate about it; one that is v1's is never in a public-profi
 
 **Events** (0.3.0, M19; ADR 0033). `content/events.json` holds each Event whole: id, date and
 its precision (a day, a month or a year), an optional end, title, category, status, topics,
-related Series, an optional magnitude, its citations (each with an archived copy or the reason
-there is none) and its description. Every Event is drawn as exactly one Annotation of kind
+related Series, its citations (each with an archived copy or the reason there is none, one or
+the other) and its description. Every Event is drawn as exactly one Annotation of kind
 `event`, with the id `event-{id}`, `ref: content/events/{id}.md`, the Event's title, category
 and first citation, and an anchor as precise as the Event's date: a day is a date, a month or a
 year is that Period, an Event with an end is a span of whole days. `related_series` is not

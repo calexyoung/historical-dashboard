@@ -47,12 +47,15 @@ The Act was signed on 3 February 2031.
 | `status` | `draft` or `public`. A draft is in local-profile Releases only |
 | `topics` | Topic slugs. Not checked against anything until Topics are files (M23) |
 | `related_series` | Keys of the Catalog to set beside the Event. Not a statement that it moved them |
-| `magnitude` | Optional: `value`, `unit`, and the `source` that publishes it |
 | `sources` | At least one. Each has a `url` and either `archive_url` or `no_archive` (the reason there is no archived copy), and may have a `name` |
 | `accepted_terms` | Words of the word list accepted in this Event's own text, because they belong to the thing's name. Alex's to add |
 | the text below | The description: what happened and when, supported by the sources. May be empty |
 
-There is no field for what an Event caused, and none for a judgment (ADR 0011).
+There is no field for what an Event caused, and none for a judgment (ADR 0011). There is none
+yet for a measured size either (the plan's `magnitude`): a figure typed in from a published
+record is a hand-entered value, and those wait for their Origin's row of the rights register
+(ADR 0030, ADR 0033). The same care is the editor's for a figure written into a title or a
+description: the word list cannot see it.
 
 ## The word list
 
@@ -76,8 +79,8 @@ python -m atlas check
 
 It writes one draft file, never overwrites and never commits. `--no-archive "REASON"` stands in
 for `--archive-url` when there is no archived copy; one of the two is required. `--end` makes
-it span time. More than one source, a magnitude, `status: public` and `accepted_terms` are
-edits to the file.
+it span time. `--series` takes keys of the Catalog and refuses any other. More than one
+source, `status: public` and `accepted_terms` are edits to the file.
 
 ## The layers typed in from a record
 
@@ -112,8 +115,10 @@ How an Event is anchored:
 | any, with an `end` | `{type: span}`: the first day to the last, with `attributes.date_precision` when it was months or years |
 
 An Annotation projected from a hand-entered file carries `provenance` (the file's Origin and
-dataset, `via: hand_entered`), and the rights check of a Release asks the gate about it every
-time the Release is checked. v1's carry `representation: legacy_monthly_rounded` and are in no
+dataset, `via: hand_entered`), and the gate is asked about it twice over: by the rights check
+of a Release every time the Release is checked, and by the site on every request
+(`site/src/lib/annotations.ts`), so a layer whose permission is taken away stops being drawn
+at once, whatever Release is being served. A recession span is named for the day it starts. v1's carry `representation: legacy_monthly_rounded` and are in no
 public-profile Release.
 
 `python -m atlas release --profile P --reuse-data` writes the content afresh on the current

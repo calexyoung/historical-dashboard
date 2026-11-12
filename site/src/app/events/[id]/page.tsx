@@ -66,16 +66,6 @@ export default async function EventRoute(props: PageProps<"/events/[id]">) {
               </a>
             </dd>
           </div>
-          {view.magnitude && (
-            <div className="flex gap-3 leading-6">
-              <dt className={term}>Size</dt>
-              <dd className="min-w-0">
-                <span className="num text-ink">{view.magnitude.words}</span>
-                <span className="text-ink-2">, as published by </span>
-                <Source source={view.magnitude.source} />
-              </dd>
-            </div>
-          )}
           {view.topics.length > 0 && (
             <div className="flex gap-3 leading-6">
               <dt className={term}>Topics</dt>

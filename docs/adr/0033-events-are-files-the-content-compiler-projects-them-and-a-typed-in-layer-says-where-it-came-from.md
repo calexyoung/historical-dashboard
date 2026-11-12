@@ -70,7 +70,8 @@ the choices the plan left open. The contract for a person who writes content is
    one. Content that cannot be compiled refuses the release (during a withdrawal that means
    the root is left with no `CURRENT`, as for any other failure there).
 9. **Release contract 0.3.0.** `content/events.json` is required from 0.3.0 and unknown before
-   it; 0.1.0 and 0.2.0 Releases still open and have no Events. Both validators hold every
+   it; an Event's citation in a Release has an archived copy or the reason there is none, as in
+   its file; 0.1.0 and 0.2.0 Releases still open and have no Events. Both validators hold every
    Event to exactly one Annotation that says what it says (id, title, category, anchor, first
    citation; `event_projection`), refuse a date that is not as precise as it claims
    (`bad_event_date`) and a repeated id (`duplicate_event_id`), and refuse a draft Event in a
@@ -91,7 +92,10 @@ the choices the plan left open. The contract for a person who writes content is
     asks the gate about it for as long as the Release is kept. In a 0.3.0 public-profile
     Release a `governance`, `recession` or `policy` Annotation with no provenance is a rights
     problem. Un-signing a row therefore fails the Releases that hold its layer, as it does for
-    a Series.
+    a Series. The site asks too, on every request (`site/src/lib/annotations.ts`): on a public
+    Surface a typed-in Annotation is drawn only while the gate permits display of its Origin
+    and Channel, one with no provenance is never drawn, and the Explorer says how many spans
+    it left out and why. The local Surface asks for no signature.
 12. **v1's bands and recessions stay on a local Release, marked as v1's, until a hand-entered
     file replaces the set.** This is the one place the converter's projection survives, and it
     is the exception to "the Explorer's layers now read compiled content": no register row is
@@ -119,6 +123,18 @@ the choices the plan left open. The contract for a person who writes content is
     Surface: it opens those Series two years either side with the Event's layer on and the
     Event marked. The Explorer lists an Event that spans time whenever any part of it is in the
     window, and reads a Period anchor of four digits as a year.
+
+16. **An Event has no `magnitude` yet.** The plan lists it as optional. A measured size (a cost,
+    a count) is a figure typed in from a published record: a hand-entered value, which ADR 0030
+    keeps out of the repository until its Origin's row is signed, and which would otherwise be
+    a door for any number, from any channel, into a committed file and a public page with no
+    lineage the gate could be asked about. Neither schema has the field, so a file or a Release
+    that carries one is refused. It arrives with a lineage of its own (Origin, dataset, the
+    gate asked at compile, at release and on the page) when the first Event needs one. A figure
+    written into a title or a description is the editor's to keep to what the cited source
+    says; four of v1's titles carry one ("S&P 666", "$147", "9.1%", "~$69k") and are unchanged.
+17. **`atlas add event` refuses a Series that is not in the Catalog**, so what it writes passes
+    `atlas check` whatever it is given.
 
 ## Considered and not done
 

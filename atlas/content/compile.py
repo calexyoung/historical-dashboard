@@ -43,7 +43,7 @@ from . import wordlist as W
 HAND_ENTERED = "hand_entered"
 #: The fields of an Event a Release carries, in this order.
 EVENT_FIELDS = ("id", "date", "end", "date_precision", "title", "category", "status", "topics",
-                "related_series", "magnitude", "sources", "description")
+                "related_series", "sources", "description")
 CONTENT_DIR = E.ROOT / "content"
 
 
@@ -112,7 +112,8 @@ def term_annotations(document: dict) -> list[dict]:
 
 
 def span_annotations(document: dict) -> list[dict]:
-    return [{"id": f"{document['layer']}-{span['start'][:7]}", "kind": document["layer"],
+    # Named for the day it starts: two spans may start in one month.
+    return [{"id": f"{document['layer']}-{span['start']}", "kind": document["layer"],
              "anchor": {"type": "span", "start": span["start"], "end": span["end"]},
              "label": span.get("label", document["label"]), "ref": None, "source": _cited(span["citation"]),
              "provenance": _provenance(document)} for span in document["spans"]]

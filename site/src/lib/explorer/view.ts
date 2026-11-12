@@ -16,6 +16,7 @@
 import { periodBounds, permits, weakestBasis, type Frequency, type RightsGate, type Surface, type TransformAggregation, type TransformedObservation, type VintageBasis } from "@macro-atlas/core";
 import type { Annotation, CatalogEntry } from "@macro-atlas/core/release";
 import { FREQUENCIES, SEGMENTS } from "../catalog";
+import { annotationsFor } from "../annotations";
 import { CATALOG_NAMES } from "../catalog-names.generated";
 import { eventPath } from "../event-address";
 import { NO_ANSWER, renderFigure, type Figure, type Layers, type SeriesStyle, type ShownSeries } from "../figure";
@@ -231,6 +232,11 @@ function anchorEnd(a: Annotation): string | null {
   return periodBounds(/^\d{4}$/.test(a.anchor.period) ? "annual" : "monthly", a.anchor.period)?.end ?? null;
 }
 function anchorWords(a: Annotation): string {
+  // A span of whole years (M19) is said in years: no day is shown that the record does not give.
+  if (a.anchor.type === "span" && a.attributes?.date_precision === "year") {
+    const [from, to] = [a.anchor.start.slice(0, 4), a.anchor.end?.slice(0, 4) ?? null];
+    return to === null ? `${from} on` : from === to ? from : `${from} to ${to}`;
+  }
   const monthly = a.attributes?.date_precision === "month";
   const day = (date: string) => (monthly ? stopWords(`${date.slice(0, 7)}-01`) : dayWords(date, "short"));
   if (a.anchor.type === "date") return day(a.anchor.date);
@@ -414,7 +420,11 @@ export function explorerView(release: OpenedRelease, surface: Surface, state: Ex
   }
 
   // --- layers the Release's Annotations offer ---
-  const annotations = release.annotations.annotations;
+  // The gate is asked about every layer typed in from a record, as it is about every Series.
+  const { annotations, withheld: layersWithheld } = annotationsFor(release, surface, gate);
+  for (const kept of layersWithheld) {
+    notes.push(`${kept.count === 1 ? "One span of a layer is" : `${kept.count} spans of the layers are`} not drawn here: ${kept.reason}.`);
+  }
   const tokens = new Map<string, Annotation[]>();
   for (const a of annotations) {
     const token = layerToken(a);

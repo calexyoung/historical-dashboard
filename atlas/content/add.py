@@ -39,8 +39,12 @@ def _write_new(path: Path, text: str) -> None:
         raise AddRefused(f"{path} already exists; edit it, or choose another title (an id is permanent)") from None
 
 
-def add_event(args) -> tuple[Path, list[str]]:
-    """Write the draft Event the options describe. Raises ``AddRefused``."""
+def add_event(args, series: set[str] | None = None) -> tuple[Path, list[str]]:
+    """Write the draft Event the options describe. ``series`` is every key of the Catalog: an
+    Event is not written about a Series that is not there. Raises ``AddRefused``."""
+    unknown = [key for key in args.series or [] if series is not None and key not in series]
+    if unknown:
+        raise AddRefused(f"{', '.join(unknown)} is not a Series of the catalog (--series takes a key)")
     if bool(args.archive_url) == bool(args.no_archive):
         raise AddRefused("a citation needs an archived copy or the reason there is none: give "
                          "--archive-url URL or --no-archive REASON (one of them)")

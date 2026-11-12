@@ -40,7 +40,6 @@ test.describe("events", () => {
     await expect(main.getByRole("link", { name: "Fixture gazette (synthetic)", exact: true })).toHaveAttribute("href", "https://example.org/fixture-gazette");
     await expect(main.getByRole("link", { name: /archived copy/ })).toHaveAttribute("href", "https://example.org/archive/2026/fixture-gazette");
     await expect(main).toContainText("No archived copy: The fixture harbour board's pages cannot be archived (synthetic reason).");
-    await expect(main).toContainText("0.5 percentage points (invented)");
     await expect(page.locator('[data-related="fx_exchange_index"]')).toContainText("Withheld: The licence does not allow redistribution.");
     await expect(page.locator('[data-related="fx_not_in_this_release"]')).toContainText("Not in this release.");
     await page.locator('[data-related="fx_price_index"]').getByRole("link").click();
@@ -114,7 +113,7 @@ test.describe("events", () => {
     });
   });
 
-  test("the pages add no script of their own and animate nothing", async ({ page, atlas }) => {
+  test("the pages animate nothing", async ({ page, atlas }) => {
     await page.goto(atlas.url(`/events/${RATE}`));
     const animated = await page.evaluate(() => [...document.querySelectorAll("main *")].filter((el) => getComputedStyle(el).animationName !== "none").length);
     expect(animated).toBe(0);

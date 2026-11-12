@@ -83,6 +83,13 @@ def test_add_event_never_overwrites_and_never_writes_what_is_not_an_event(tmp_pa
     assert len(list((content / "events").glob("*.md"))) == 1
 
 
+def test_add_event_refuses_a_series_the_catalog_does_not_have(tmp_path, capsys):
+    content = tmp_path / "content"
+    status, said = add_event(capsys, content, *SOURCE, "--series", "unrate", "--series", "no_such_series")
+    assert status == 1 and "no_such_series" in said and "unrate" not in said
+    assert not (content / "events").exists()
+
+
 def test_add_event_cannot_make_a_public_event_or_accept_a_term(tmp_path, capsys):
     for option in ("--status", "--accept-term"):
         with pytest.raises(SystemExit):

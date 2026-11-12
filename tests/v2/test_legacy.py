@@ -151,7 +151,12 @@ def test_v1_files_are_read_in_place_and_left_as_they_were(tmp_path):
     assert {p: hashlib.sha256((ROOT / p).read_bytes()).hexdigest() for p in inputs} == before
     recorded = {row["path"]: row for row in read(release, "manifest.json")["inputs"]}
     assert set(recorded) == {*inputs, "content/events"}
-    assert "83 Events" in recorded.pop("content/events")["note"]
+    events = recorded.pop("content/events")
+    assert "83 Events" in events["note"]
+    digest = hashlib.sha256()   # over every Event file's name and bytes, in name order
+    for path in sorted((ROOT / "content" / "events").glob("*.md")):
+        digest.update(f"events/{path.name}".encode() + b"\0" + hashlib.sha256(path.read_bytes()).digest())
+    assert events["sha256"] == digest.hexdigest()
     for path, row in recorded.items():
         assert row["sha256"] == before[path]
         assert row["commit"] is None or len(row["commit"]) == 40

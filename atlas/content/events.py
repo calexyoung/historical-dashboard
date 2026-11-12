@@ -151,11 +151,6 @@ def serialise(event: dict) -> str:
         values = event.get(name, [])
         lines.append(f"{name}: []" if not values else f"{name}:")
         lines += [f"  - {_quoted(value)}" for value in values]
-    if "magnitude" in event:
-        magnitude = event["magnitude"]
-        lines += ["magnitude:", f"  value: {json.dumps(magnitude['value'])}", f"  unit: {_quoted(magnitude['unit'])}",
-                  "  source:"]
-        lines += [line.replace("- ", "  ", 1) for line in _citation(magnitude["source"], "    ")]
     lines.append("sources:")
     for source in event["sources"]:
         lines += _citation(source, "  ")

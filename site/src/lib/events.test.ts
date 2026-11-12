@@ -3,12 +3,14 @@
  * on copies of it changed in memory. Everything invented.
  */
 import { beforeAll, describe, expect, it } from "vitest";
+import { createRightsGate, type Surface } from "@macro-atlas/core";
 import { validateRelease, type Annotation, type Event } from "@macro-atlas/core/release";
+import { annotationsFor } from "./annotations";
 import { parseExplorerParams } from "./explorer/state";
 import { explorerView } from "./explorer/view";
 import { eventPageView, eventsIndexView, parseEventFilters } from "./events";
 import { createReleaseReader, refusal, type OpenedRelease } from "./release/reader";
-import { addRelease, FIXTURE_ROOT, tempRoot } from "./release/testing";
+import { addRelease, FIXTURE_ROOT, fixtureRegister, tempRoot } from "./release/testing";
 import { breadcrumb, tabsFor } from "./nav";
 import { seriesPageView } from "./series-page";
 
@@ -135,7 +137,6 @@ describe("an event page", () => {
       { name: "Fixture gazette (synthetic)", url: "https://example.org/fixture-gazette", archive: "https://example.org/archive/2026/fixture-gazette", noArchive: null },
       { name: "Fixture harbour board (synthetic)", url: "https://example.org/fixture-harbour", archive: null, noArchive: "The fixture harbour board's pages cannot be archived (synthetic reason)." },
     ]);
-    expect(v.magnitude).toMatchObject({ words: "0.5 percentage points (invented)", source: { url: "https://example.org/fixture-harbour" } });
     expect(v.topics).toEqual(["inflation"]);
   });
 
@@ -194,6 +195,14 @@ describe("the Explorer and the new ways an Event is dated", () => {
     expect(view(release, "s=fx_price_index&from=2024-03&to=2024-06").events).toEqual([]);
   });
 
+  it("says an Event that spans whole years in years, as its own page does", () => {
+    const YEARS: Event = { ...base, id: "2022-fixture-census", date: "2022", end: "2023", date_precision: "year", title: "Fixture census", category: "policy" };
+    const release = withEvents(YEARS);
+    release.annotations.annotations.find((a) => a.id === "event-2022-fixture-census")!.anchor = { type: "span", start: "2022-01-01", end: "2023-12-31" };
+    expect(view(release, "s=fx_price_index&from=2022-01&to=2025-12").events.find((e) => e.label === "Fixture census")!.when).toBe("2022 to 2023");
+    expect(eventPageView(release, "local", YEARS.id)!.when).toBe("2022 to 2023");
+  });
+
   it("offers the new categories as layers after v1's five", () => {
     const v = view(withEvents(STATUTE, BRIDGES, STORM), "s=fx_price_index");
     expect(v.layers.toggles.map((t) => [t.token, t.label])).toEqual([["rec", "Recessions"], ["ev.policy", "Economic policy"], ["ev.disaster", "Disaster"], ["ev.infrastructure", "Infrastructure"], ["ev.legislation", "Legislation"]]);
@@ -201,6 +210,37 @@ describe("the Explorer and the new ways an Event is dated", () => {
 
   it("each listed Event is a door to its page", () => {
     expect(view(fixture, "s=fx_price_index").events[0]!.page).toBe(`/events/${RATE}`);
+  });
+});
+
+describe("layers typed in from a record are under the rights gate, on every request", () => {
+  const view = (surface: Surface, gate?: ReturnType<typeof createRightsGate>) => explorerView(fixture, surface, parseExplorerParams(new URLSearchParams("s=fx_price_index&from=2022-01&to=2025-12&layers=rec,gov,ev.policy")), { gate });
+  const signed = createRightsGate(fixtureRegister({ display: true, redistribute: true }));
+
+  it("draws them on a public Surface while their Origin's row allows display", () => {
+    const v = view("production", signed);
+    expect(v.layers.toggles.map((t) => t.token)).toContain("rec");
+    expect(v.layers.bands.map((b) => b.token)).toContain("gov");
+    expect(v.recessions.length).toBeGreaterThan(0);
+  });
+
+  it("stops drawing them the moment the row does not, whatever Release is served, and says so", () => {
+    const v = view("production"); // the committed register: no row is signed
+    expect(v.layers.toggles.map((t) => t.token)).toEqual(["ev.policy"]); // the Event is Macro Atlas's own
+    expect(v.layers.bands.map((b) => b.token)).toEqual([""]);
+    expect(v.recessions).toEqual([]);
+    expect(v.notes.join(" ")).toMatch(/4 spans of the layers are not drawn here: .*not signed/);
+    const refusedDisplay = view("production", createRightsGate(fixtureRegister({ display: false, redistribute: false })));
+    expect(refusedDisplay.recessions).toEqual([]);
+  });
+
+  it("never draws one that does not say where it came from, or came through an uncleared channel, on a public Surface", () => {
+    const bare: Annotation = { id: "recession-bare", kind: "recession", anchor: { type: "span", start: "2023-06-01", end: "2023-09-30" }, label: "Bare", ref: null, source: null };
+    const viaFred: Annotation = { ...bare, id: "recession-fred", provenance: { producer: "Macro Atlas fixture (synthetic)", dataset: "fixture", via: "fred", representation: "native" } };
+    const held = { ...fixture, annotations: { annotations: [bare, viaFred] } };
+    expect(annotationsFor(held, "production", signed).annotations).toEqual([]);
+    expect(annotationsFor(held, "staging", signed).withheld.map((w) => w.count)).toEqual([1, 1]);
+    expect(annotationsFor(held, "local").annotations).toHaveLength(2);
   });
 });
 
