@@ -30,6 +30,7 @@ import yaml
 from jsonschema import Draft202012Validator
 
 from . import events as E
+from . import wordlist as W
 
 TOPICS_DIR = E.ROOT / "content" / "topics"
 SCHEMA_PATH = E.ROOT / "schema" / "topic.schema.json"
@@ -139,6 +140,18 @@ def read_topic(body: bytes, name: str, path: Path | None = None) -> tuple[Topic 
     return (None, problems) if problems else (topic, [])
 
 
+def own_terms(topic: Topic) -> list[tuple[int | None, str, list[str]]]:
+    """Where a Topic's own words hit the word list (``atlas/content/wordlist.py``): its title,
+    its range's label and the name of its source, each with its line. The quote is the
+    agency's and is not held to the list."""
+    record = topic.record
+    places = [(("title",), "title", record["title"]),
+              (("definition", "source", "name"), "source name", record["definition"]["source"]["name"])]
+    if "range" in record:
+        places.append((("range", "label"), "range label", record["range"]["label"]))
+    return [(topic.line(*path), name, W.terms_in(text)) for path, name, text in places if W.terms_in(text)]
+
+
 def topic_files(directory: Path | None = None) -> list[Path]:
     directory = TOPICS_DIR if directory is None else Path(directory)
     return sorted(directory.glob("*.md")) if directory.is_dir() else []
@@ -210,8 +223,14 @@ def _relation_problem(main: str, companion: dict, catalog: dict[str, dict]) -> s
     ours, theirs = _origins(main, catalog), _origins(key, catalog)
     if relation in _SAME_DATASET and (len(ours) != 1 or ours != theirs):
         return f"{key} and {main} do not rest on one dataset of one agency, which `{relation}` says they do"
-    if relation == "same_release" and ({p for p, _ in ours} != {p for p, _ in theirs} or len({p for p, _ in ours}) != 1):
-        return f"{key} and {main} are not one agency's, which `same_release` says they are"
+    if relation == "same_release":
+        # What an agency publishes in a release is a Series it produces, not one computed here.
+        computed = next((each for each in (key, main) if "recipe" in catalog[each]), None)
+        if computed:
+            return (f"{computed} is computed by Macro Atlas, so no agency publishes it in a release: "
+                    "name the Series it is computed from")
+        if {p for p, _ in ours} != {p for p, _ in theirs} or len({p for p, _ in ours}) != 1:
+            return f"{key} and {main} are not one agency's, which `same_release` says they are"
     return None
 
 
@@ -258,6 +277,8 @@ def references(topic: Topic, *, catalog: dict[str, dict] | set[str], events: set
                 for member in found:
                     if member["key"] not in catalog:
                         out.append((topic.line("range", "indicator"), f"its member {member['key']} is not in the catalog"))
+                    elif isinstance(catalog, dict) and catalog[member["key"]].get("status") == "retired":
+                        out.append((topic.line("range", "indicator"), f"its member {member['key']} is retired: a range is of Series that are still kept"))
     for i, event in enumerate(record["events"]):
         if event not in events:
             out.append((topic.line("events", i), f"it names the Event {event}, and there is no content/events/{event}.md"))

@@ -22,7 +22,7 @@ companions:
     relation: same_survey
   - series: "payems"
     relation: same_release
-  - series: "wages_yoy"
+  - series: "wages"
     relation: same_release
 events: []
 ---

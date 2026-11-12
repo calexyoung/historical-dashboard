@@ -332,6 +332,38 @@ then the quote as the door.
   6px over 320 ms on the press curve, 40 ms after the row before; opacity only under reduced
   motion.
 
+### Topic pages (M23, ADR 0037)
+
+- **The index** is one panel of rows, a Topic to a row: its name at 16px semibold as the door,
+  its Segment at 12px `ink-3`, the definition it quotes behind a 2px `line-strong` rule with
+  the source under it, and its main Series.
+- **A Topic page** opens with a "Topic" panel: the name as the page's one `h1`; the definition
+  as a `blockquote` behind a 2px ink rule at 16px medium (18px from 640px), 60 characters wide,
+  with its source and "archived copy" (or the reason there is none) in the `figcaption`; then,
+  under a hairline, the main Series' name as a door and its change strip.
+- **The main figure** is the explained figure over ten years; the panel is titled with the
+  Series' name and its meta line gives the window.
+- **What else moved** lists each Companion (name as a door, the relation's fixed words under
+  it at 12px `ink-3`, the reason where it has no values), then one explained figure in which
+  every Series has a plot of its own. A plot of several is lower than a plot on its own (150,
+  170 and 190 units for the three widths), all share one time axis and one left edge, and each
+  is named under it with its swatch. A sentence above says the scales at the left differ.
+- **Against the range** is one plot: the compared Series and the median as lines in the series
+  colours, and the band from the lowest to the highest value as ink at 12% with no outline,
+  behind them. Where a Period has no range the band stops; a Period on its own is a 3px
+  upright stroke. The band's two edges are in the table and are one entry of the legend (a
+  12% ink swatch), never lines. Above the plot, one sentence at 16px medium states the latest
+  figures; under it, what the band is, as a short list; a disclosure holds the count of
+  members in each Period; then every member, two columns from 640px, its country code at 12px
+  `ink-3` before its name.
+- **Claims, Events and Series** are plain lists of doors. A draft carries the small bordered
+  "Draft" word used on the Events index.
+- **The tab bar** now holds five tabs (Topics · Claims · Explore · Events · Data). Below 640px
+  a tab's side padding is 6px and the gap 2px, so the five fit a 320px phone without the bar
+  scrolling; from 640px they are 12px and 4px as before. The fold under "Research" (PLAN
+  section 3) comes with a sixth tab.
+- **Motion.** None: these are reading pages, and charts and data get no animation.
+
 ### Still to be recorded here
 
 Statement-table styles (v2.3) are added to this file by the milestone that builds them.

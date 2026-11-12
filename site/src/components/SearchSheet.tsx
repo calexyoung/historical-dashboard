@@ -143,7 +143,7 @@ export function SearchSheet({ basePath }: { basePath: string }) {
       >
         <form method="get" action={`${basePath}/search`} className="flex items-center gap-2 border-b border-line p-3">
           <label className="sr-only" htmlFor="sheet-q">
-            Search series, events and the glossary
+            Search topics, series, events and the glossary
           </label>
           <input
             ref={field}
@@ -153,7 +153,7 @@ export function SearchSheet({ basePath }: { basePath: string }) {
             value={q}
             onChange={(event) => setQ(event.target.value)}
             maxLength={MAX_QUERY}
-            placeholder="Search series, events and the glossary"
+            placeholder="Search topics, series, events and the glossary"
             autoComplete="off"
             autoFocus
             className="h-9 min-w-0 flex-1 rounded border border-control bg-raised px-2 text-sm text-ink placeholder:text-ink-3"

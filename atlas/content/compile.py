@@ -282,6 +282,11 @@ def _compile_topics(out: Compiled, *, profile: str, content: Path, events: list[
     drafts = [topic for topic in topics if topic.record["status"] == "draft"]
     if profile == "public":
         topics = [topic for topic in topics if topic.record["status"] == "public"]
+        loaded = [T.said(topic.path, (line, f"its {name} has {', '.join(terms)}"))
+                  for topic in topics for line, name, terms in T.own_terms(topic)]
+        if loaded:
+            raise ContentError("a public Topic's own words hit the word list (atlas/content/wordlist.py): "
+                               + "; ".join(loaded[:5]))
     held = {event["id"] for event in events}
     compiled, said = [], []
     for topic in topics:

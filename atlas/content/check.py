@@ -84,6 +84,14 @@ def check_content(series: dict[str, dict] | set[str], content: Path | None = Non
     for topic in topics:
         for line, message in T.references(topic, catalog=series, events=event_ids, coverage=coverage or {}):
             problem(Path(f"{topic.path}:{line}"), message)
+        for line, name, terms in T.own_terms(topic):
+            if topic.record["status"] == "public":
+                problem(Path(f"{topic.path}:{line}"), f"its {name} has {', '.join(terms)}: a public Topic's own words are "
+                                                      "names, with no word of the list (atlas/content/wordlist.py). "
+                                                      "Reword it, or make it a draft")
+            else:
+                remarks.append(f"{topic.path.name} is a draft and its {name} has {', '.join(terms)} (the word list): "
+                               "it is in no public release until its wording is decided")
 
     def named_topics(path: Path, record: dict) -> None:
         for slug in record.get("topics", []):

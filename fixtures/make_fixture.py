@@ -720,8 +720,8 @@ TOPICS = {"topics": [
         "series": ["fx_price_index_yoy", "fx_price_index", "fx_exchange_index", "fx_infl_b", "fx_not_in_this_release"],
         "companions": [
             {"series": "fx_price_index", "relation": "input"},
-            {"series": "fx_payrolls_break", "relation": "same_release"},
-            {"series": "fx_poverty_rate_annual", "relation": "same_survey"},
+            {"series": "fx_payrolls_break", "relation": "same_survey"},
+            {"series": "fx_poverty_rate_annual", "relation": "excludes_components"},
             {"series": "fx_exchange_index", "relation": "component"},
         ],
         "range": {
@@ -738,7 +738,7 @@ TOPICS = {"topics": [
         "definition": {
             "quote": "Fixture payrolls count the jobs on the books of synthetic employers in the middle of each month.",
             "source": {"name": "Fixture statistics office (synthetic), Payroll survey notes", "url": "https://example.org/fixture-payrolls",
-                       "no_archive": "The fixture office's notes cannot be archived (synthetic reason)."},
+                       "no_archive": "archiving_refused"},
         },
         "main": "fx_payrolls_break",
         "series": ["fx_payrolls_break", "fx_permits_stale"],

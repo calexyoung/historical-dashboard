@@ -184,7 +184,6 @@
       "title": "Inflation",
       "text": "The fixture price index measures the average change in the prices that synthetic households pay.",
       "keywords": [
-        "economy_jobs",
         "Fixture statistics office (synthetic), Handbook",
         "fx_price_index_yoy"
       ]
@@ -195,7 +194,6 @@
       "title": "Jobs",
       "text": "Fixture payrolls count the jobs on the books of synthetic employers in the middle of each month.",
       "keywords": [
-        "economy_jobs",
         "Fixture statistics office (synthetic), Payroll survey notes",
         "fx_payrolls_break"
       ]

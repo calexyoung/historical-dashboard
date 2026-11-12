@@ -38,7 +38,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
           Skip to content
         </a>
         <TopBar basePath={BASE_PATH} pathname={pathname} returnTo={BASE_PATH + path} theme={theme} freshness={fresh} />
-        <TabBar basePath={BASE_PATH} pathname={pathname} claims={release.claims.claims.length > 0} />
+        <TabBar basePath={BASE_PATH} pathname={pathname} claims={release.claims.claims.length > 0} topics={release.topics.topics.length > 0} />
         <ReleaseStrip release={release} />
         <main id="main" tabIndex={-1} className="mx-auto w-full max-w-[1400px] flex-1 px-4 py-5 outline-none lg:px-6">
           {children}

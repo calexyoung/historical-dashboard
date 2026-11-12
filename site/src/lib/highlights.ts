@@ -100,6 +100,11 @@ export function windowHref(key: string, from: string, to: string, freq?: "monthl
   return `/explore?s=${key}&from=${from.slice(0, 7)}&to=${to.slice(0, 7)}${freq ? `&freq=${freq}` : ""}`;
 }
 
+/** One Series as a row of Highlights: a Topic page opens with its main Series' (M23). */
+export function headlineFor(release: OpenedRelease, surface: Surface, entry: CatalogEntry, options: HighlightsOptions = {}): HeadlineRow {
+  return headlineRow(release, surface, entry, { ...options, spark: false });
+}
+
 function headlineRow(release: OpenedRelease, surface: Surface, entry: CatalogEntry, options: HighlightsOptions & { spark: boolean }): HeadlineRow {
   const named = { key: entry.key, name: entry.name, href: `/data/${entry.key}` };
   const ask = (freq?: "monthly") => query(release, surface, { series: [entry.key], transform: "lin", permission: "display", ...(freq ? { freq } : {}) }, { gate: options.gate });

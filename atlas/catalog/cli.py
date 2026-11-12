@@ -139,7 +139,8 @@ def add_main(argv: list[str]) -> int:
     t.add_argument("--source-name", required=True, help="the publisher and the page the words stand on")
     t.add_argument("--source", required=True, help="that page's address (https)")
     t.add_argument("--archive-url", help="an archived copy of that address")
-    t.add_argument("--no-archive", metavar="REASON", help="why there is no archived copy")
+    t.add_argument("--no-archive", choices=["no_copy_found", "archiving_refused", "page_removed"],
+                   help="why there is no archived copy: one of these")
     t.add_argument("--content", help="the content directory (default content)")
     if argv[:1] and argv[0] in ("event", "note", "claim", "topic"):
         args = parser.parse_args(argv)   # a mistake in the options exits, as argparse does

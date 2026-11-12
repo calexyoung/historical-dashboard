@@ -527,7 +527,7 @@ def search_document(catalog: dict, withheld: list[dict], events: dict | None, cl
         # The text is the definition the Topic quotes: a cited source's words, public on its page.
         entries.append({"kind": "topic", "id": topic["slug"], "title": topic["title"],
                         "text": topic["definition"]["quote"],
-                        "keywords": words(topic["segment"], topic["definition"]["source"]["name"], topic["main"])})
+                        "keywords": words(topic["definition"]["source"]["name"], topic["main"])})
     return {"entries": entries}
 
 

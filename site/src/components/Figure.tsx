@@ -86,19 +86,27 @@ export function Figure({
   tableOnDemand?: { shown: boolean; toggle: ReactNode };
 }) {
   const several = figure.tables.length > 1;
-  const plots = figure.plots.map((plot) => (
-    <div key={plot.unit} data-plot className="@container min-w-0 max-w-[1024px]">
+  const plots = figure.plots.map((plot, index) => (
+    <div key={index} data-plot className="@container min-w-0 max-w-[1024px]">
       {LAYOUT_ORDER.map((layout) => (
         <Svg key={layout} node={plot.layouts[layout]} className={`${SHOWN[layout]} h-auto w-full text-ink`} />
       ))}
-      {(plot.series.length > 1 || namePlots) && (
-        <ul data-legend className={`mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-ink-2 ${plot.endLabels ? "@min-[768px]:hidden" : ""}`}>
+      {(plot.series.length > 1 || namePlots || plot.band) && (
+        <ul data-legend className={`mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-ink-2 ${plot.endLabels && !plot.band ? "@min-[768px]:hidden" : ""}`}>
           {plot.series.map((s) => (
             <li key={s.key} className="inline-flex items-center gap-1.5">
               <Svg node={swatch(s)} className="shrink-0" />
               {s.name}
             </li>
           ))}
+          {plot.band && (
+            <li data-legend-band className="inline-flex items-center gap-1.5">
+              <svg viewBox="0 0 32 12" width={32} height={12} aria-hidden="true" focusable="false" className="shrink-0 text-ink">
+                <rect x={1} y={1} width={30} height={10} fill="currentColor" fillOpacity={0.12} />
+              </svg>
+              {plot.band}
+            </li>
+          )}
         </ul>
       )}
       <p data-unit-line className="mt-1 text-xs text-ink-2">

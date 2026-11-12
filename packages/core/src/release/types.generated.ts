@@ -1631,22 +1631,22 @@ export interface TopicDefinition {
   source: TopicCitation;
 }
 /**
- * Where the quoted words stand: the publisher, the address, and an archived copy of it or the reason there is none.
+ * Where the quoted words stand: the publisher and the page, the address, and an archived copy of it or which of a closed list of reasons there is none. No field of it holds a sentence of the site's own.
  *
  * This interface was referenced by `Release`'s JSON-Schema
  * via the `definition` "topicCitation".
  */
 export interface TopicCitation {
   /**
-   * The publisher and the page: 'U.S. Bureau of Labor Statistics, Consumer Price Index: Overview'.
+   * The publisher and the name of the page the words stand on, as the page gives it: 'U.S. Bureau of Labor Statistics, Consumer Price Index'. One line. A name, held to the word list like a title.
    */
   name: string;
   url: string;
   archive_url?: string;
   /**
-   * Why this citation has no archived copy.
+   * Why this citation has no archived copy: one of a closed list, each with fixed words on the page. no_copy_found: the Internet Archive holds no copy of the address. archiving_refused: the publisher does not allow its pages to be archived. page_removed: the page is no longer at the address and no copy was kept.
    */
-  no_archive?: string;
+  no_archive?: "no_copy_found" | "archiving_refused" | "page_removed";
 }
 /**
  * One Series set against the range of a group: the lowest, the middle and the highest value among the members in each Period. The members are resolved when the Release is written, from the coverage matrix the Topic's file names: one Series per country. A member is named by key whether or not the Release holds it; nothing here is a value.
@@ -1664,11 +1664,37 @@ export interface TopicRange {
      */
     name: string;
   };
-  members: {
-    key: SeriesKey;
-    /**
-     * ISO 3166-1 alpha-3.
-     */
-    country: string;
-  }[];
+  /**
+   * @minItems 3
+   */
+  members: [
+    {
+      key: SeriesKey;
+      /**
+       * ISO 3166-1 alpha-3.
+       */
+      country: string;
+    },
+    {
+      key: SeriesKey;
+      /**
+       * ISO 3166-1 alpha-3.
+       */
+      country: string;
+    },
+    {
+      key: SeriesKey;
+      /**
+       * ISO 3166-1 alpha-3.
+       */
+      country: string;
+    },
+    ...{
+      key: SeriesKey;
+      /**
+       * ISO 3166-1 alpha-3.
+       */
+      country: string;
+    }[]
+  ];
 }

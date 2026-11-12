@@ -26,7 +26,7 @@ export default async function SearchPage({ searchParams }: PageProps<"/search">)
       <Panel id="search" title="Search" level={1} meta={answer.asked ? <span className="num">{answer.total === 1 ? "1 result" : `${answer.total} results`}</span> : undefined}>
         <form method="get" action={here} role="search" aria-label="Macro Atlas" className="flex flex-wrap items-end gap-2">
           <label className="sr-only" htmlFor="search-q">
-            Search series, events and the glossary
+            Search topics, series, events and the glossary
           </label>
           <input
             id="search-q"
@@ -34,7 +34,7 @@ export default async function SearchPage({ searchParams }: PageProps<"/search">)
             name="q"
             defaultValue={answer.q}
             maxLength={MAX_QUERY}
-            placeholder="Search series, events and the glossary"
+            placeholder="Search topics, series, events and the glossary"
             autoComplete="off"
             className={`${control} w-full sm:w-96`}
           />
@@ -44,7 +44,7 @@ export default async function SearchPage({ searchParams }: PageProps<"/search">)
         </form>
         {!answer.asked && (
           <p className="mt-3 max-w-[68ch] text-sm text-ink-2">
-            Searches the names and descriptions of the series, events and claims in the release being served, and the glossary. A word matches
+            Searches the names and descriptions of the topics, series, events and claims in the release being served, and the glossary. A word matches
             from its start, and every word asked for must be found.
           </p>
         )}

@@ -18,6 +18,12 @@ tests that need v1's values build a local release in a temporary directory inste
 | `fx_exchange_index` | withheld: in the catalog by name, no values anywhere |
 | `fx_payrolls_break` | a break, with its `data_note` Annotation |
 | `fx_permits_stale` | stale: ends eighteen months before the release was created |
+| `fx_infl_b`, `fx_infl_c`, `fx_infl_d` | three invented economies' inflation: members of a Topic's range. C begins late; D has a gap and an estimate |
+
+It holds two invented Topics (`content/topics.json`): `inflation`, with a Companion of each
+kind a page must handle (an input, another cadence, a break, a Withheld one), a range of five
+declared members of which one is not in the Release, an Event and a Claim; and `jobs`, the
+plain case. The range for November 2025 is worked out by hand in `make_fixture.py`.
 
 Annotations cover every anchor type (date, span, open-ended span, period) and the kinds event,
 recession, governance, policy and data_note.

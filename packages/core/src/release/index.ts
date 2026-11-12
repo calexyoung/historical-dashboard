@@ -351,7 +351,7 @@ export function searchDocument(release: Pick<Release, "catalog" | "manifest" | "
   }
   for (const topic of release.topics?.topics ?? []) {
     // The text is the definition the Topic quotes: a cited source's words, public on its page.
-    entries.push({ kind: "topic", id: topic.slug, title: topic.title, text: topic.definition.quote, keywords: words(topic.segment, topic.definition.source.name, topic.main) });
+    entries.push({ kind: "topic", id: topic.slug, title: topic.title, text: topic.definition.quote, keywords: words(topic.definition.source.name, topic.main) });
   }
   return { entries };
 }

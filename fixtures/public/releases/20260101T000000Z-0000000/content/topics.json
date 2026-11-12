@@ -28,11 +28,11 @@
         },
         {
           "series": "fx_payrolls_break",
-          "relation": "same_release"
+          "relation": "same_survey"
         },
         {
           "series": "fx_poverty_rate_annual",
-          "relation": "same_survey"
+          "relation": "excludes_components"
         },
         {
           "series": "fx_exchange_index",
@@ -83,7 +83,7 @@
         "source": {
           "name": "Fixture statistics office (synthetic), Payroll survey notes",
           "url": "https://example.org/fixture-payrolls",
-          "no_archive": "The fixture office's notes cannot be archived (synthetic reason)."
+          "no_archive": "archiving_refused"
         }
       },
       "main": "fx_payrolls_break",

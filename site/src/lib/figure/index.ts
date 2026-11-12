@@ -96,6 +96,19 @@ export type FigureSpec = {
   layers?: Layers;
   /** A date the reader pinned: one upright line in every plot. */
   pin?: string;
+  /**
+   * True: every Series has a plot of its own, whatever its unit (small multiples). The plots
+   * are stacked on one time axis: give `domain`, and they share their left edge as well.
+   */
+  separate?: boolean;
+  /** True: lower plots, for several stacked in one figure. */
+  compact?: boolean;
+  /**
+   * Two Series of the figure that are the edges of a band (the lowest and the highest value
+   * of a group): the space between them is filled and neither is drawn as a line. `label`
+   * names the band in the legend.
+   */
+  band?: { low: string; high: string; label: string };
 };
 
 /**
@@ -136,6 +149,8 @@ export type Plot = {
   layouts: Record<LayoutName, SvgNode>;
   /** Whether the wide layout names each Series at the end of its line (so it needs no legend). */
   endLabels: boolean;
+  /** The band this plot fills between two of its Series, as the legend names it. */
+  band?: string;
 };
 
 export type StateNote = { mark: MarkName; word: string; text: string; series: string };
@@ -320,12 +335,14 @@ export function renderFigure(spec: FigureSpec, series: readonly FigureSeries[]):
   const groups = new Map<string, ShownSeries[]>();
   for (const s of shown) {
     if (!s.observations.some((o) => o.value !== null)) continue;
-    groups.set(s.unit, [...(groups.get(s.unit) ?? []), s]);
+    const plot = spec.separate ? s.key : s.unit;
+    groups.set(plot, [...(groups.get(plot) ?? []), s]);
   }
   const measured = [...groups.values()].map((group) => ({ group, axis: yAxis(group) }));
   // Plots stacked in one figure share their left edge, so a date is at one place in all of them.
   const minLeft = Math.max(0, ...measured.map(({ axis }) => leftMargin(axis)));
-  const options = { domain: spec.domain, minLeft, layers: spec.layers, pin: spec.pin };
+  const band = spec.band;
+  const options = { domain: spec.domain, minLeft, layers: spec.layers, pin: spec.pin, compact: spec.compact, ...(band ? { band: { low: band.low, high: band.high } } : {}) };
   const plots = measured.map(({ group, axis }): Plot => {
     const input = group.map((s) => ({ series: s, style: styles.get(s.key)!, stale: stale.has(s.key) }));
     const layouts = {} as Record<LayoutName, SvgNode>;
@@ -335,16 +352,24 @@ export function renderFigure(spec: FigureSpec, series: readonly FigureSeries[]):
       layouts[layout] = drawing.svg;
       if (layout === "wide") endLabels = drawing.endLabels;
     }
-    return { unit: group[0]!.unit, unitLine: unitLine(group), series: input.map((i) => i.style), layouts, endLabels };
+    const banded = band !== undefined && group.some((s) => s.key === band.low) && group.some((s) => s.key === band.high);
+    // The band's two edges are one entry of the legend, not two lines.
+    const listed = input.map((i) => i.style).filter((style) => !banded || (style.key !== band.low && style.key !== band.high));
+    return { unit: group[0]!.unit, unitLine: unitLine(group), series: listed, layouts, endLabels, ...(banded ? { band: band.label } : {}) };
   });
 
+  const reading = howToRead(measured, states, spec.created);
+  if (plots.some((plot) => plot.band)) {
+    // Before the line about the table, which stays last.
+    reading.splice(Math.max(0, reading.length - 1), 0, { text: "The pale band runs from the lowest to the highest value in each period. Where it stops, no range is stated for that period." });
+  }
   return {
     takeaway,
     silence,
     plots,
     states,
     sourceLine: sourceLine(spec, shown),
-    howToRead: howToRead(measured, states, spec.created),
+    howToRead: reading,
     tables: shown.map((s) => tableFor(s, stale.has(s.key))),
   };
 }

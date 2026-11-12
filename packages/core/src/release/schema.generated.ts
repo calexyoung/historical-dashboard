@@ -3153,7 +3153,7 @@ export const releaseSchema: Record<string, unknown> = {
               "type": "string",
               "minLength": 20,
               "maxLength": 600,
-              "pattern": "^\\S(.*\\S)?$"
+              "pattern": "^\\S([^\\n\\r\\u2028\\u2029]*\\S)?$"
             },
             "source": {
               "$ref": "#/$defs/topicCitation"
@@ -3250,7 +3250,8 @@ export const releaseSchema: Record<string, unknown> = {
                     "pattern": "^[A-Z]{3}$"
                   }
                 }
-              }
+              },
+              "minItems": 3
             }
           }
         },
@@ -3271,7 +3272,7 @@ export const releaseSchema: Record<string, unknown> = {
       "type": "string",
       "minLength": 1,
       "maxLength": 60,
-      "pattern": "^[^\\s.!?]([^.!?\\n]*[^\\s.!?])?$"
+      "pattern": "^[^\\s.!?]([^.!?\\n\\r\\u2028\\u2029]*[^\\s.!?])?$"
     },
     "topicRelation": {
       "description": "How a Companion is related to the Topic's main Series. component: it measures a part of what the main Series measures. excludes_components: it measures the same thing with some parts left out. input: the main Series is computed from it. same_survey: both come from one survey of one agency. same_release: the agency publishes both in one release.",
@@ -3285,7 +3286,7 @@ export const releaseSchema: Record<string, unknown> = {
     },
     "topicCitation": {
       "title": "TopicCitation",
-      "description": "Where the quoted words stand: the publisher, the address, and an archived copy of it or the reason there is none.",
+      "description": "Where the quoted words stand: the publisher and the page, the address, and an archived copy of it or which of a closed list of reasons there is none. No field of it holds a sentence of the site's own.",
       "type": "object",
       "additionalProperties": false,
       "required": [
@@ -3316,10 +3317,11 @@ export const releaseSchema: Record<string, unknown> = {
       ],
       "properties": {
         "name": {
-          "description": "The publisher and the page: 'U.S. Bureau of Labor Statistics, Consumer Price Index: Overview'.",
+          "description": "The publisher and the name of the page the words stand on, as the page gives it: 'U.S. Bureau of Labor Statistics, Consumer Price Index'. One line. A name, held to the word list like a title.",
           "type": "string",
           "minLength": 1,
-          "maxLength": 160
+          "maxLength": 120,
+          "pattern": "^[^\\n\\r\\u2028\\u2029]+$"
         },
         "url": {
           "type": "string",
@@ -3330,9 +3332,12 @@ export const releaseSchema: Record<string, unknown> = {
           "pattern": "^https://\\S+$"
         },
         "no_archive": {
-          "description": "Why this citation has no archived copy.",
-          "type": "string",
-          "minLength": 10
+          "description": "Why this citation has no archived copy: one of a closed list, each with fixed words on the page. no_copy_found: the Internet Archive holds no copy of the address. archiving_refused: the publisher does not allow its pages to be archived. page_removed: the page is no longer at the address and no copy was kept.",
+          "enum": [
+            "no_copy_found",
+            "archiving_refused",
+            "page_removed"
+          ]
         }
       }
     },

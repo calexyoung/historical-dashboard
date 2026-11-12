@@ -105,7 +105,13 @@ is one entry per Series, Event and Claim, as words. Both are projections of the 
 Catalog and content and are made from no Observation; both validators hold a Release to the
 projection. A Withheld Series is named in both.
 
-**Not written yet.** Bulk files (M25) and Topics (M23). A local
+**Topics** (M23, ADR 0037; contract 0.6.0) are compiled with the rest of the content:
+`content/topics.json` holds the Topics of `content/topics`, each checked against the
+repository's Catalog and coverage matrices first (a dangling reference refuses the release,
+with the file and the line), with a range's members resolved and its Events limited to those
+the Release holds. `search.json` then has an entry for each (`docs/method/topics.md`).
+
+**Not written yet.** Bulk files (M25). A local
 Release carries v1's Derived series as the legacy converter writes them.
 
 ## Derived series and the Node step
