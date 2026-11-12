@@ -51,9 +51,10 @@ def test_every_v1_key_is_a_key_of_the_catalog_unchanged():
     assert [key for key in V1_KEYS if key not in catalog] == []
     new = sorted(set(catalog) - set(V1_KEYS))
     assert [key for key in new if not key.endswith(("_cpi", "_infl", "_fx"))] == [
-        "cpi_nsa", "net_worth", "outlays", "receipts"]
+        "cpi_nsa", "net_worth", "outlays", "receipts", "uk_cpi_imf", "uk_infl_imf"]
     # M14: the G20 rows. An index and its change for sixteen countries v1 had neither for, and
-    # a monthly dollar rate for fifteen currencies (Turkey's is v1's tryusd).
+    # a monthly dollar rate for fifteen currencies (Turkey's is v1's tryusd). The Fund's index
+    # for the United Kingdom is not the ONS index v1 showed, so it has a key of its own.
     assert [len([key for key in new if key.endswith(end)]) for end in ("_cpi", "_infl", "_fx")] == [16, 16, 15]
     recorded = json.loads((ROOT / "checks" / "v1-links.json").read_text())
     selected = {key for group in ("presets", "links") for item in recorded.get(group, [])
@@ -93,8 +94,8 @@ def test_the_fourteen_year_over_year_series_and_the_ratio_are_recipes():
     assert catalog["gold_eur"]["recipe"] == {"op": "ratio", "inputs": ["gold", "eurusd"],
                                              "order": "aggregate_then_compute"}
     assert catalog["gold_eur"]["freq"] == "monthly"  # month-end gold over the month's mean rate
-    m14 = [f"{c}_infl" for c in ("ar", "au", "br", "ca", "de", "fr", "id", "in", "it", "kr", "mx", "ru",
-                                 "sa", "tr", "us", "za")]  # not in v1: the rest of the G20 row
+    m14 = [*(f"{c}_infl" for c in ("ar", "au", "br", "ca", "de", "fr", "id", "in", "it", "kr", "mx", "ru",
+                                   "sa", "tr", "us", "za")), "uk_infl_imf"]  # not in v1: the rest of the G20 row
     for key in m14:
         assert catalog[key]["recipe"] == {"op": "pct_change", "inputs": [key.replace("_infl", "_cpi")],
                                           "order": "aggregate_then_compute", "params": {"lag": 12}}, key
@@ -110,7 +111,7 @@ def test_only_what_an_adapter_is_built_for_is_in_the_pipeline():
            "uk", "us", "za"]
     assert [k for k in live if "recipe" in catalog[k]] == sorted([
         "corecpi_yoy", "cpi_yoy", "m2_yoy", "rent_yoy", "t10y2y", "wages_yoy",
-        *(f"{c}_infl" for c in g20)])  # M14: inflation in the nineteen G20 countries
+        *(f"{c}_infl" for c in g20 if c != "uk"), "uk_infl_imf"])  # M14: inflation in the nineteen
     by_adapter: dict[str, list[str]] = {}
     for key in live:
         channel = catalog[key].get("source", {}).get("channel")
@@ -125,9 +126,12 @@ def test_only_what_an_adapter_is_built_for_is_in_the_pipeline():
                       "usd_broad"],
         # M14: the index of each of the nineteen, and the dollar rate of the fifteen with a
         # currency of their own that is not the dollar, and of the euro.
-        "imf_sdmx": sorted([*(f"{c}_cpi" for c in g20), "tryusd", "ez_fx",
+        "imf_sdmx": sorted([*(f"{c}_cpi" for c in g20 if c != "uk"), "uk_cpi_imf", "tryusd", "ez_fx",
                             *(f"{c}_fx" for c in g20 if c not in ("de", "fr", "it", "us", "tr"))]),
     }
+    # v1's UK index is the ONS's, which the Fund's is not: it stays a draft under its own key.
+    assert catalog["uk_cpi"]["status"] == catalog["uk_infl"]["status"] == "draft"
+    assert catalog["uk_cpi"]["source"]["origin"]["origin_id"] == "D7BT"
     assert catalog["ted"]["status"] == "retired" and catalog["ted"]["source"]["channel"] is None
     assert all(e["source"]["channel"] is None or "endpoint" not in e["source"]["channel"]
                for e in catalog.values() if e["status"] == "draft" and "source" in e)
@@ -253,7 +257,7 @@ def test_atlas_check_exits_zero_on_the_committed_catalog_and_names_each_layer(ca
     out = capsys.readouterr().out
     for layer in LAYERS:
         assert f"{layer}: ok" in out
-    assert "177 Series" in out
+    assert "179 Series" in out
 
 
 def test_atlas_check_exits_one_and_names_the_file_and_the_layers_not_run(tmp_path, capsys):
@@ -381,8 +385,8 @@ def test_a_series_frequency_is_the_one_its_imf_key_ends_in(tmp_path):
 def test_an_index_read_from_the_imf_has_its_reference_period_pinned(tmp_path):
     # Without the pin a rebase would go unseen and every figure would mean something else.
     assert failed(run(tmp_path, _imf(), register=_register_without_pins(tmp_path))) == {"references": [
-        "the endpoint imf-cpi-g20 does not pin the reference period the Fund gives "
-        "JPN.CPI._T.IX.M (its reference)"]}
+        ("the endpoint imf-cpi-g20 does not pin the reference period the Fund gives "
+         "JPN.CPI._T.IX.M (its reference)")]}
     # Only an index has a reference period: an exchange rate needs no pin.
     rate = stored("jp_fx", status="active", unit="Japanese yen per U.S. dollar", unit_kind="currency",
                   measure_kind="rate", source={

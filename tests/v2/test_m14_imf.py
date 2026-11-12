@@ -27,8 +27,9 @@ FIXTURES = ROOT / "fixtures" / "capture"
 NOW = datetime(2026, 11, 12, 15, 0, 0, tzinfo=UTC)
 G20 = ("ar", "au", "br", "ca", "cn", "de", "fr", "id", "in", "it", "jp", "kr", "mx", "ru", "sa", "tr", "uk",
        "us", "za")
-CPI = [f"{c}_cpi" for c in G20]
-INFLATION = [f"{c}_infl" for c in G20]
+# The Fund's index for the United Kingdom is not the ONS index v1 showed (uk_cpi): its own key.
+CPI = [f"{c}_cpi" if c != "uk" else "uk_cpi_imf" for c in G20]
+INFLATION = [f"{c}_infl" if c != "uk" else "uk_infl_imf" for c in G20]
 FX = sorted([*(f"{c}_fx" for c in G20 if c not in ("de", "fr", "it", "us", "tr")), "tryusd", "ez_fx"])
 
 

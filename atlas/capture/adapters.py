@@ -20,6 +20,7 @@ import json
 import re
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
+from types import MappingProxyType
 from urllib.parse import urlencode
 
 from .http import CaptureError, Fetch, Part, Request
@@ -828,10 +829,11 @@ class ImfSdmxAdapter:
     name = "imf_sdmx"
     version = 1
     BASE = "https://api.imf.org/external/sdmx/3.0/data/dataflow"
-    FREQUENCIES = {"M": ("monthly", "month"), "Q": ("quarterly", "quarter"), "A": ("annual", "year")}
+    FREQUENCIES = MappingProxyType({"M": ("monthly", "month"), "Q": ("quarterly", "quarter"),
+                                    "A": ("annual", "year")})
     #: What each derivation code makes of a value. Anything else is not read.
-    DERIVATION = {"O": "observed", "R": "observed", "SE": "estimate", "SEME": "estimate",
-                  "SEHI": "estimate", "SP": "projected"}
+    DERIVATION = MappingProxyType({"O": "observed", "R": "observed", "SE": "estimate", "SEME": "estimate",
+                                   "SEHI": "estimate", "SP": "projected"})
     _NAME = re.compile(r"[A-Za-z0-9_]+(\.[A-Za-z0-9_]+)*")
     _PART = re.compile(r"[A-Za-z0-9_]+")
 
@@ -1088,11 +1090,14 @@ class ImfSdmxAdapter:
         """The whole history is asked for, every time: a Period that has left it is gone."""
         return None, None
 
-    def parse(self, capture: RawCapture) -> NormalizedState:
-        scope = capture.evidence.scope
+    def read(self, scope: dict, bodies: list[bytes]) -> NormalizedState:
+        """What kept bytes say, under the scope they were asked for."""
         problems: list[str] = []
-        series, _ = self._read(scope, capture.bodies, problems)
+        series, _ = self._read(scope, bodies, problems)
         return NormalizedState(not problems, scope, series, list(dict.fromkeys(problems)))
+
+    def parse(self, capture: RawCapture) -> NormalizedState:
+        return self.read(capture.evidence.scope, capture.bodies)
 
 
 def _month_after(day: str) -> str | None:

@@ -71,7 +71,7 @@ def test_the_fund_says_what_is_observed_what_is_estimated_and_what_is_projected(
     spec = endpoint([key], flow="X")
     obs = [("2023", "2.9", "O"), ("2024", "2.8", "R"), ("2025", "2.0", "SE"), ("2026", "1.9", "SEHI"),
            ("2027", "2.1", "SP"), ("2031", "1.8", "SP")]
-    raw, state = read({key: {"obs": obs}}, spec, flow="X", dimensions=("COUNTRY", "INDICATOR", "FREQUENCY"))
+    _, state = read({key: {"obs": obs}}, spec, flow="X", dimensions=("COUNTRY", "INDICATOR", "FREQUENCY"))
     assert state.complete, state.problems
     assert [(o["period"], o["status"]) for o in state.series[key]] == [
         ("2023", "observed"), ("2024", "observed"), ("2025", "estimate"), ("2026", "estimate"),
@@ -84,16 +84,16 @@ def test_a_value_the_fund_does_not_call_observed_estimated_or_projected_is_not_g
     raw, state = read({JPN: {"obs": [("2026-M08", "114.3", "O"), ("2026-M09", "114.5", derivation)]}})
     assert raw.evidence.complete is False and state.complete is False
     assert raw.evidence.problems == [
-        f"{JPN} has {said} for 2026-09: whether that value is observed, an estimate or a "
-        "projection is not said, and it is not guessed"]
+        (f"{JPN} has {said} for 2026-09: whether that value is observed, an estimate or a "
+         "projection is not said, and it is not guessed")]
 
 
 @pytest.mark.parametrize("derivation", ["O", "SE"])
 def test_a_value_for_a_period_that_has_not_begun_is_whole_only_as_a_projection(derivation):
     # Fetched on 11 November 2026: December has not begun.
     raw, _ = read({JPN: {"obs": [("2026-M11", "114.6", "O"), ("2026-M12", "114.7", derivation)]}})
-    assert raw.evidence.problems == [f"{JPN} has a value for 2026-12, a Period that had not begun on "
-                                     "2026-11-11, and does not call it a projection"]
+    assert raw.evidence.problems == [(f"{JPN} has a value for 2026-12, a Period that had not begun on "
+                                      "2026-11-11, and does not call it a projection")]
     raw, state = read({JPN: {"obs": [("2026-M11", "114.6", "O"), ("2026-M12", "114.7", "SP")]}})
     assert raw.evidence.complete and state.series[JPN][-1]["status"] == "projected"
 
@@ -165,8 +165,8 @@ def test_a_mark_the_endpoint_accepts_rides_along_and_changes_nothing():
 def test_a_mark_nobody_has_looked_at_keeps_the_answer_from_being_whole(mark):
     # STATUS is free text with no list of codes behind it: a letter is never read for a meaning.
     raw, _ = read({JPN: {"obs": [("2026-M09", "114.5", "O", mark)]}})
-    assert raw.evidence.problems == [f"{JPN} carries the mark {mark!r} for 2026-09, which the endpoint "
-                                     "does not list among the marks it has seen (its marks)"]
+    assert raw.evidence.problems == [(f"{JPN} carries the mark {mark!r} for 2026-09, which the endpoint "
+                                      "does not list among the marks it has seen (its marks)")]
 
 
 def test_a_pinned_reference_period_that_has_changed_is_a_rebase_and_not_a_whole_answer():
@@ -175,8 +175,8 @@ def test_a_pinned_reference_period_that_has_changed_is_a_rebase_and_not_a_whole_
               USA: {"obs": [("2026-M09", "154.52", "O")], "reference": "2010A"}}
     raw, state = read(series, spec)
     assert not state.complete
-    assert raw.evidence.problems == [f"{JPN} is on the reference period '2025A'; '2020A' was expected "
-                                     "(a rebase: every figure means something else)"]
+    assert raw.evidence.problems == [(f"{JPN} is on the reference period '2025A'; '2020A' was expected "
+                                      "(a rebase: every figure means something else)")]
     series[JPN]["reference"] = "2020A"
     raw, _ = read(series, spec)
     assert raw.evidence.complete, raw.evidence.problems

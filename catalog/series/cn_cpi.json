@@ -35,7 +35,7 @@
   "migration": {
     "v1_source": "OECD CHN.CPI",
     "change": "representation",
-    "note": "The national all-items index as the Fund publishes it; v1 read the OECD's copy on a 2015 base.",
+    "note": "The national all-items index as the Fund publishes it, on the 2020 base where v1's (OECD) was on 2015: over the 322 months both hold, v1's figure is 1.1155 times the Fund's throughout, and the twelve-month changes agree to 0.001 of a point (compared in memory on 2026-11-11; nothing was kept).",
     "milestone": "M14"
   }
 }

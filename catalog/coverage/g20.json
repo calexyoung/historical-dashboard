@@ -379,10 +379,12 @@
       "name": "United Kingdom",
       "cells": {
         "cpi": {
-          "series": "uk_cpi"
+          "series": "uk_cpi_imf",
+          "note": "The Fund's index for the United Kingdom is not the Office for National Statistics' CPI (D7BT) that v1 showed, which stays the draft Series `uk_cpi`: the two drift apart by up to two percent over 2000 to 2026 (compared on 2026-11-11). Which national index the Fund carries is not established."
         },
         "inflation": {
-          "series": "uk_infl"
+          "series": "uk_infl_imf",
+          "note": "Computed from `uk_cpi_imf`, so it is not the rate v1 showed (`uk_infl`, from the ONS index, a draft): the two differed by more than a point in some months."
         },
         "fx": {
           "series": "uk_fx"

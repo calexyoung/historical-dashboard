@@ -38,7 +38,7 @@
   "migration": {
     "v1_source": "FRED CCUSMA02TRM618N",
     "change": "same",
-    "note": "Monthly average, as v1 showed (v1 read the OECD's figure through FRED).",
+    "note": "The month's average, as v1 showed, from another compiler: v1 read the OECD's figure through FRED. Over the 321 months both hold, the Fund's average is within half a percent of v1's in most, and up to 3.5 percent away in months of sharp moves (2006, 2018, 2021); 304 months differ by more than v1's rounding (compared in memory on 2026-11-11; nothing was kept).",
     "milestone": "M14"
   }
 }

@@ -117,7 +117,8 @@ def test_the_ingest_context_is_the_writer_the_engine_and_what_they_read():
         ["git", "ls-files"], cwd=ROOT, check=True, capture_output=True, text=True
     ).stdout.splitlines()
     in_context = [p for p in tracked if not docker_excludes(p, INGEST_IGNORE)]
-    allowed = ("atlas/", "schema/", "catalog/series/", "packages/core/src/", "packages/core/bin/")
+    # catalog/coverage (M14) declares which Series fills which cell of a matrix; it holds no value.
+    allowed = ("atlas/", "schema/", "catalog/series/", "catalog/coverage/", "packages/core/src/", "packages/core/bin/")
     single = {"pyproject.toml", "uv.lock", "checks/spot.json", "packages/core/package.json"}
     assert [p for p in in_context if not p.startswith(allowed) and p not in single] == []
     assert [p for p in in_context if p.endswith((".yaml", ".yml", ".csv", ".parquet", ".test.ts"))] == []

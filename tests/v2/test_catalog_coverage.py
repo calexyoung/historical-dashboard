@@ -59,7 +59,7 @@ def test_every_series_read_from_the_imf_has_its_cell():
     fund = {key for key, entry in catalog.items()
             if (entry.get("source", {}).get("channel") or {}).get("adapter") == "imf_sdmx"}
     assert len(fund) == 35 and fund <= placed
-    assert {f"{key[:-4]}_infl" for key in fund if key.endswith("_cpi")} <= placed
+    assert {key.replace("_cpi", "_infl") for key in fund if "_cpi" in key} <= placed
 
 
 def test_the_plans_two_rows_are_whole_cpi_for_all_nineteen_and_a_rate_for_every_currency():

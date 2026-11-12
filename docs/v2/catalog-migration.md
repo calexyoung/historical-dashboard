@@ -16,11 +16,11 @@ fixture by the milestone that builds the adapter.
 
 | Proposal | v1 series | Meaning |
 |---|---|---|
-| re-source from an Origin | 71 | An Origin publishes it over a direct Channel (or it is entered by hand from one) and the register proposes to allow that Origin's data to be shown. |
-| needs D2 | 22 | The route depends on a decision the register does not propose a yes to: an Origin with no row yet, a row whose proposal is no display, or an intermediary Channel. |
+| re-source from an Origin | 69 | An Origin publishes it over a direct Channel (or it is entered by hand from one) and the register proposes to allow that Origin's data to be shown. |
+| needs D2 | 24 | The route depends on a decision the register does not propose a yes to: an Origin with no row yet, a row whose proposal is no display, or an intermediary Channel. |
 | withheld | 33 | No route is known: a rights restriction, no route established yet, or discontinued. The Series stays in the Catalog by name. |
 
-51 Series were never in v1: `ar_cpi`, `ar_fx`, `ar_infl`, `au_cpi`, `au_fx`, `au_infl`, `br_cpi`, `br_fx`, `br_infl`, `ca_cpi`, `ca_fx`, `ca_infl`, `cn_fx`, `cpi_nsa`, `de_cpi`, `de_infl`, `ez_fx`, `fr_cpi`, `fr_infl`, `id_cpi`, `id_fx`, `id_infl`, `in_cpi`, `in_fx`, `in_infl`, `it_cpi`, `it_infl`, `jp_fx`, `kr_cpi`, `kr_fx`, `kr_infl`, `mx_cpi`, `mx_fx`, `mx_infl`, `net_worth`, `outlays`, `receipts`, `ru_cpi`, `ru_fx`, `ru_infl`, `sa_cpi`, `sa_fx`, `sa_infl`, `tr_cpi`, `tr_infl`, `uk_fx`, `us_cpi`, `us_infl`, `za_cpi`, `za_fx`, `za_infl`. `cpi_nsa` (M8) is what `cpi_yoy` is computed from (ADR 0025); the others arrived with the adapter that reads them (M13, ADR 0027). 177 Series in all.
+53 Series were never in v1: `ar_cpi`, `ar_fx`, `ar_infl`, `au_cpi`, `au_fx`, `au_infl`, `br_cpi`, `br_fx`, `br_infl`, `ca_cpi`, `ca_fx`, `ca_infl`, `cn_fx`, `cpi_nsa`, `de_cpi`, `de_infl`, `ez_fx`, `fr_cpi`, `fr_infl`, `id_cpi`, `id_fx`, `id_infl`, `in_cpi`, `in_fx`, `in_infl`, `it_cpi`, `it_infl`, `jp_fx`, `kr_cpi`, `kr_fx`, `kr_infl`, `mx_cpi`, `mx_fx`, `mx_infl`, `net_worth`, `outlays`, `receipts`, `ru_cpi`, `ru_fx`, `ru_infl`, `sa_cpi`, `sa_fx`, `sa_infl`, `tr_cpi`, `tr_infl`, `uk_cpi_imf`, `uk_fx`, `uk_infl_imf`, `us_cpi`, `us_infl`, `za_cpi`, `za_fx`, `za_infl`. `cpi_nsa` (M8) is what `cpi_yoy` is computed from (ADR 0025); the others arrived with the adapter that reads them (M13, ADR 0027). 179 Series in all.
 
 ## Origins the register has no row for
 
@@ -32,7 +32,7 @@ Each needs a row, with its terms read, before anything can be decided for the Se
 - **Federal Reserve Bank of New York**: `sofr`
 - **Freddie Mac**: `mortgage`
 - **National Bureau of Economic Research**: `usrec`
-- **Office for National Statistics (United Kingdom)**: `uk_unemp`
+- **Office for National Statistics (United Kingdom)**: `uk_cpi`, `uk_unemp`
 - **U.S. Department of Labor, Employment and Training Administration**: `claims`
 
 ## The table
@@ -226,8 +226,10 @@ Each needs a row, with its terms read, before anything can be decided for the Se
 | `tr_infl` | Turkey inflation (y/y) | not in v1 | Recipe: pct_change of `tr_cpi`, 12 Periods earlier | re-source from International Monetary Fund (computed from tr_cpi) | tr_cpi: 3 open questions on the register row |
 | `tr_rate` | Turkey short-term interest rate | FRED IRSTCI01TRM156N | Organisation for Economic Co-operation and Development: Monthly financial statistics: immediate interbank rate | needs D2: the register proposes no display for OECD (its terms are not read) | adapter not built (planned for v2.2); identifier not settled; 1 open question on the register row |
 | `tsx` | TSX (Canada) | Yahoo ^GSPTSE | S&P Dow Jones Indices (TMX): S&P/TSX Composite (`TSX`); no Channel | withheld (rights restriction): Index levels are licensed by their owner on every free channel found; the register's Yahoo row proposes no display (PLAN D5). | — |
-| `uk_cpi` | UK CPI (index) | ONS D7BT | International Monetary Fund: Consumer Price Index (`GBR.CPI._T.IX.M`) | re-source from International Monetary Fund | the same quantity in another representation than v1's; 3 open questions on the register row |
-| `uk_infl` | UK inflation (y/y) | Computed: uk_cpi y/y | Recipe: pct_change of `uk_cpi`, 12 Periods earlier | re-source from International Monetary Fund (computed from uk_cpi) | uk_cpi: the same quantity in another representation than v1's; uk_cpi: 3 open questions on the register row |
+| `uk_cpi` | UK CPI (index) | ONS D7BT | Office for National Statistics (United Kingdom): Consumer price inflation (MM23) (`D7BT`) | needs D2: the register has no row for Office for National Statistics (United Kingdom) | adapter not built (planned for M14) |
+| `uk_cpi_imf` | UK CPI (index), as the IMF publishes it | not in v1 | International Monetary Fund: Consumer Price Index (`GBR.CPI._T.IX.M`) | re-source from International Monetary Fund | 3 open questions on the register row |
+| `uk_infl` | UK inflation (y/y) | Computed: uk_cpi y/y | Recipe: pct_change of `uk_cpi`, 12 Periods earlier | needs D2: it is computed from uk_cpi (the register has no row for Office for National Statistics (United Kingdom)) | uk_cpi: adapter not built (planned for M14) |
+| `uk_infl_imf` | UK inflation (y/y), from the IMF's index | not in v1 | Recipe: pct_change of `uk_cpi_imf`, 12 Periods earlier | re-source from International Monetary Fund (computed from uk_cpi_imf) | uk_cpi_imf: 3 open questions on the register row |
 | `uk_unemp` | UK unemployment | FRED LRHUTTTTGBM156S | Office for National Statistics (United Kingdom): Labour market statistics (`MGSX`) | needs D2: the register has no row for Office for National Statistics (United Kingdom) | adapter not built (planned for v2.2) |
 | `us_cpi` | United States CPI (index) | not in v1 | International Monetary Fund: Consumer Price Index (`USA.CPI._T.IX.M`) | re-source from International Monetary Fund | 3 open questions on the register row |
 | `us_infl` | United States inflation (y/y) | not in v1 | Recipe: pct_change of `us_cpi`, 12 Periods earlier | re-source from International Monetary Fund (computed from us_cpi) | us_cpi: 3 open questions on the register row |
@@ -243,7 +245,7 @@ Each needs a row, with its terms read, before anything can be decided for the Se
 - `brl`: The identifier is the Data Download Program's, as its file printed it on 2026-11-11.
 - `cad`: The identifier is the Data Download Program's, as its file printed it on 2026-11-11.
 - `claims`: The agency's identifier for this series is settled, with a captured fixture, by the milestone that builds the adapter.
-- `cn_cpi`: The national all-items index as the Fund publishes it; v1 read the OECD's copy on a 2015 base.
+- `cn_cpi`: The national all-items index as the Fund publishes it, on the 2020 base where v1's (OECD) was on 2015: over the 322 months both hold, v1's figure is 1.1155 times the Fund's throughout, and the twelve-month changes agree to 0.001 of a point (compared in memory on 2026-11-11; nothing was kept).
 - `cny`: The identifier is the Data Download Program's, as its file printed it on 2026-11-11.
 - `copper`: The IMF's Primary Commodity Prices carry a monthly average copper price: a different quantity, which would take a new key.
 - `cpi_yoy`: v1 computed this from the seasonally adjusted index. Here it is the twelve-month change of the unadjusted index, the figure BLS publishes as the headline (ADR 0025, decision 2; open with Alex).
@@ -265,7 +267,7 @@ Each needs a row, with its terms read, before anything can be decided for the Se
 - `houst`: The agency's identifier for this series is settled, with a captured fixture, by the milestone that builds the adapter.
 - `income`: The agency's identifier for this series is settled, with a captured fixture, by the milestone that builds the adapter. The base year of the real figure moves with each annual release.
 - `inr`: The identifier is the Data Download Program's, as its file printed it on 2026-11-11.
-- `jp_cpi`: v1's series (OECD, through FRED) ends in June 2021. The Fund carries the national all-items index to date, on the 2020 base where v1's was on 2015.
+- `jp_cpi`: v1's series (OECD, through FRED) ends in June 2021. The Fund carries the national all-items index to date, on the 2020 base where v1's was on 2015: over the 258 months both hold, v1's figure is 1.017 to 1.019 times the Fund's, and the twelve-month changes agree to within 0.14 of a point (compared in memory on 2026-11-11; nothing was kept).
 - `jp_rate`: The register has no proposal to allow OECD data until its terms are read. A central bank policy rate from the BIS (v2.2) is a different quantity and would take a new key.
 - `jpy`: The identifier is the Data Download Program's, as its file printed it on 2026-11-11. v1's range was for the years since 2000; the Board's file is daily since 1971, and the range now covers it.
 - `medhome`: The agency's identifier for this series is settled, with a captured fixture, by the milestone that builds the adapter.
@@ -277,8 +279,7 @@ Each needs a row, with its terms read, before anything can be decided for the Se
 - `t10y2y`: v1 took the spread FRED computes. Here it is the same difference, computed by the engine from the two yields the Board publishes.
 - `tr_rate`: The register has no proposal to allow OECD data until its terms are read. A central bank policy rate from the BIS (v2.2) is a different quantity and would take a new key.
 - `trade`: The agency's identifier for this series is settled, with a captured fixture, by the milestone that builds the adapter.
-- `tryusd`: Monthly average, as v1 showed (v1 read the OECD's figure through FRED).
-- `uk_cpi`: v1 read the Office for National Statistics' series D7BT. This is the Fund's copy of the same index; the ONS series is kept as a fallback.
+- `tryusd`: The month's average, as v1 showed, from another compiler: v1 read the OECD's figure through FRED. Over the 321 months both hold, the Fund's average is within half a percent of v1's in most, and up to 3.5 percent away in months of sharp moves (2006, 2018, 2021); 304 months differ by more than v1's rounding (compared in memory on 2026-11-11; nothing was kept).
 - `usd_broad`: The identifier is the Data Download Program's, as its file printed it on 2026-11-11.
 - `usepu`: The agency's identifier for this series is settled, with a captured fixture, by the milestone that builds the adapter.
 - `usrec`: v1 took a monthly 0/1 indicator from FRED, which computes it from the NBER's dates. The dates themselves are entered by hand, each with its citation, when recessions become an Annotation layer.

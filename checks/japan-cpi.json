@@ -1,0 +1,13 @@
+{
+  "format": 1,
+  "about": "The comparison M14 owes for Japan's consumer price index (PLAN M14: \"Japan CPI matches the e-Stat file for the 25 months research 02 checked\"). `python -m atlas crosscheck japan-cpi` reads the IMF's all-items index for Japan and the Statistics Bureau of Japan's 2020-base file and compares them month by month over first to last. The two agree in a month when the Fund's figure, rounded half up to the Bureau's number of decimals, is the Bureau's figure. The Bureau's file is held to its base first: its twelve months of base_year must average 100. Nothing here is data.",
+  "imf": { "agency": "IMF.STA", "flow": "CPI", "series": "JPN.CPI._T.IX.M", "reference": "2020A" },
+  "estat": {
+    "url": "https://www.e-stat.go.jp/en/stat-search/file-download?statInfId=000032103842&fileKind=1",
+    "item": "0001",
+    "base_year": 2020
+  },
+  "first": "2024-09",
+  "last": "2026-09",
+  "decimals": 1
+}

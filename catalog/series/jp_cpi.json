@@ -36,7 +36,7 @@
   "migration": {
     "v1_source": "FRED JPNCPIALLMINMEI",
     "change": "representation",
-    "note": "v1's series (OECD, through FRED) ends in June 2021. The Fund carries the national all-items index to date, on the 2020 base where v1's was on 2015.",
+    "note": "v1's series (OECD, through FRED) ends in June 2021. The Fund carries the national all-items index to date, on the 2020 base where v1's was on 2015: over the 258 months both hold, v1's figure is 1.017 to 1.019 times the Fund's, and the twelve-month changes agree to within 0.14 of a point (compared in memory on 2026-11-11; nothing was kept).",
     "milestone": "M14"
   }
 }

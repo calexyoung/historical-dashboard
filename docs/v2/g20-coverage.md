@@ -30,7 +30,7 @@ is the rights gate's answer, from rows Alex has signed; that answer for today is
 | Saudi Arabia | `sa_cpi` | `sa_infl` | `sa_fx` | — | — | — | — |
 | South Africa | `za_cpi` | `za_infl` | `za_fx` | — | — | — | — |
 | Turkey | `tr_cpi` | `tr_infl` | `tryusd` | `tr_rate` (draft) | — | — | — |
-| United Kingdom | `uk_cpi` | `uk_infl` | `uk_fx` | `boe` (draft) | `uk_unemp` (draft) | — | `ftse` (withheld) |
+| United Kingdom | `uk_cpi_imf` | `uk_infl_imf` | `uk_fx` | `boe` (draft) | `uk_unemp` (draft) | — | `ftse` (withheld) |
 | United States | `us_cpi` | `us_infl` | — | `fedfunds` | `unrate` | `gdp_yoy` (draft) | `spx` (withheld) |
 | Euro area | `ez_hicp` (draft) | `ez_infl` (draft) | `ez_fx` | `ecb` (draft) | `ez_unemp` (draft) | `ez_gdp_yoy` (draft) | `stoxx` (withheld) |
 
@@ -131,6 +131,8 @@ A Series is shown only when the register row of every Origin it rests on is sign
 - `cn_gdp_yoy` (China, GDP growth): Annual, and of nominal GDP in U.S. dollars: not the real growth rate the other cells of this column are meant to hold.
 - `jp_cpi` (Japan, Consumer prices (index)): Replaces v1's series, which ended in June 2021. Checked against the Statistics Bureau of Japan's file: docs/v2/japan-cpi-check.md.
 - `ru_fx` (Russia, Currency per U.S. dollar (monthly)): No entries between January 1994 and May 1995 (as the Fund's file stood on 2026-11-11); the release shows those months as missing.
+- `uk_cpi_imf` (United Kingdom, Consumer prices (index)): The Fund's index for the United Kingdom is not the Office for National Statistics' CPI (D7BT) that v1 showed, which stays the draft Series `uk_cpi`: the two drift apart by up to two percent over 2000 to 2026 (compared on 2026-11-11). Which national index the Fund carries is not established.
+- `uk_infl_imf` (United Kingdom, Inflation (y/y)): Computed from `uk_cpi_imf`, so it is not the rate v1 showed (`uk_infl`, from the ONS index, a draft): the two differed by more than a point in some months.
 - `us_cpi` (United States, Consumer prices (index)): The Fund's copy of the U.S. index, read so that the row has one source; the Bureau of Labor Statistics' own index is `cpi_nsa`. It has no entry for October 2025 (as the Fund's file stood on 2026-11-11), which the Bureau did not publish.
 - `us_infl` (United States, Inflation (y/y)): Computed from the Fund's copy, so it has no figure for October 2025 or October 2026. The Bureau of Labor Statistics' figure is `cpi_yoy`.
 - `ez_fx` (Euro area, Currency per U.S. dollar (monthly)): From January 1999, when the euro began.
