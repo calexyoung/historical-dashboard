@@ -27,14 +27,16 @@ from jsonschema import Draft202012Validator, ValidationError, validators
 from atlas.period import next_period, period_bounds
 
 SCHEMA_PATH = Path(__file__).resolve().parents[1] / "schema" / "release.schema.json"
-SCHEMA_VERSION = "0.6.0"
+SCHEMA_VERSION = "0.7.0"
 #: Every version this reader knows; a writer writes ``SCHEMA_VERSION``. 0.2.0 (M10) added
 #: ``vintages/`` and ``vintages_sha256``, so a 0.1.0 Release is one that holds neither. 0.3.0
 #: (M19) added ``content/events.json``: a 0.3.0 Release must have it, an earlier one may not.
 #: 0.4.0 (M20) added ``content/claims.json`` (required), ``locks/`` and ``evidence/latest.json``.
 #: 0.5.0 (M22) added ``content/highlights.json`` and ``search.json`` (both required).
 #: 0.6.0 (M23) added ``content/topics.json`` (required) and the Topics' entries of ``search.json``.
-SCHEMA_VERSIONS = ("0.1.0", "0.2.0", "0.3.0", "0.4.0", "0.5.0", SCHEMA_VERSION)
+#: 0.7.0 (M25) added ``downloads/``: bulk files and their ``datapackage.json``, in a public-profile
+#: Release only, and optional there (a Release with nothing that may be redistributed has none).
+SCHEMA_VERSIONS = ("0.1.0", "0.2.0", "0.3.0", "0.4.0", "0.5.0", "0.6.0", SCHEMA_VERSION)
 #: The versions that have no ``content/events.json``.
 _BEFORE_EVENTS = ("0.1.0", "0.2.0")
 #: The versions that have no Claims, locks or latest Evidence rows.
@@ -43,6 +45,8 @@ _BEFORE_CLAIMS = ("0.1.0", "0.2.0", "0.3.0")
 _BEFORE_SEARCH = ("0.1.0", "0.2.0", "0.3.0", "0.4.0")
 #: The versions that have no Topics.
 _BEFORE_TOPICS = (*_BEFORE_SEARCH, "0.5.0")
+#: The versions that have no bulk files.
+_BEFORE_BULK = (*_BEFORE_TOPICS, "0.6.0")
 #: The six Segments, in the order of the Overview (CONTEXT.md, Segment).
 SEGMENTS = ("economy_jobs", "markets_money", "infrastructure", "governance_politics", "disasters_health",
             "us_in_the_world")
@@ -59,11 +63,18 @@ LATEST = "evidence/latest.json"
 HIGHLIGHTS = "content/highlights.json"
 SEARCH = "search.json"
 TOPICS = "content/topics.json"
-_OPTIONAL_FILES = (EVENTS, CLAIMS, LATEST, HIGHLIGHTS, SEARCH, TOPICS)
+DATAPACKAGE = "downloads/datapackage.json"
+_OPTIONAL_FILES = (EVENTS, CLAIMS, LATEST, HIGHLIGHTS, SEARCH, TOPICS, DATAPACKAGE)
 REQUIRED_FILES = (MANIFEST, CATALOG, ANNOTATIONS)
 _SERIES_FILE = re.compile(r"(series|derived|vintages)/([a-z][a-z0-9_]{0,63})\.json")
 _LOCK_FILE = re.compile(r"locks/([0-9]{4}-[0-9]{2}-[0-9]{2}-[a-z0-9]+(?:-[a-z0-9]+)*\.v[1-9][0-9]{0,3})\.lock\.json")
 VINTAGES = "vintages"
+#: The licence classes, as ``$defs/rightsStatus`` lists them: a bulk file may be for one of them.
+_LICENCE = "public_domain|cc_by|citation_required|permission_required|no_redistribution|unknown"
+#: A bulk data file (ADR 0039): the Observations in three formats, the versions in one, each
+#: whole or for one licence class.
+_BULK_FILE = re.compile(rf"downloads/(?:observations(?:\.({_LICENCE}))?\.(?:parquet|csv\.gz|ndjson\.gz)"
+                        rf"|vintages(?:\.({_LICENCE}))?\.parquet)")
 _KIND_OF_FOLDER = {"series": "stored", "derived": "derived"}
 LEGACY = "legacy_monthly_rounded"
 
@@ -125,8 +136,13 @@ def validate_release(directory: Path) -> list[Issue]:
     return validate_files(directory.name, load_release(directory))
 
 
-def validate_files(release_id: str, files: Mapping[str, bytes]) -> list[Issue]:
+def validate_files(release_id: str, files: Mapping[str, bytes],
+                   digests: Mapping[str, Mapping[str, object]] | None = None) -> list[Issue]:
     """As ``validate_release``, for a Release already read into memory.
+
+    ``digests`` is for a reader that does not hold a bulk data file in memory: the file's path
+    with its ``bytes`` and ``sha256``, worked out as it was read. Such a path is in ``files``
+    with any value; a path that is not in ``digests`` is hashed here.
 
     Checks run in stages and stop at the first stage that finds something, so a reader is never
     shown consequences of a problem instead of the problem: files present and named by the
@@ -135,6 +151,7 @@ def validate_files(release_id: str, files: Mapping[str, bytes]) -> list[Issue]:
     issues: list[Issue] = []
     series_paths: dict[str, dict[str, str]] = {"series": {}, "derived": {}, VINTAGES: {}}  # folder -> key -> path
     lock_paths: dict[str, str] = {}  # the lock's name (ID.vN) -> path
+    bulk_paths: list[str] = []  # bulk data files; they are not JSON and are never parsed here
     for path in sorted(files):
         match = _SERIES_FILE.fullmatch(path)
         lock = _LOCK_FILE.fullmatch(path)
@@ -142,6 +159,8 @@ def validate_files(release_id: str, files: Mapping[str, bytes]) -> list[Issue]:
             series_paths[match[1]][match[2]] = path
         elif lock:
             lock_paths[lock[1]] = path
+        elif _BULK_FILE.fullmatch(path):
+            bulk_paths.append(path)
         elif path not in REQUIRED_FILES and path not in _OPTIONAL_FILES:
             issues.append(Issue("unknown_file", path, "the release contract does not name this file"))
     for path in REQUIRED_FILES:
@@ -199,6 +218,9 @@ def validate_files(release_id: str, files: Mapping[str, bytes]) -> list[Issue]:
         issues.append(Issue("unknown_file", TOPICS, f"schema_version {version} does not name this file"))
     elif version is not None and version not in _BEFORE_TOPICS and TOPICS not in files:
         issues.append(Issue("missing_file", TOPICS, "a release must have this file"))
+    if version in _BEFORE_BULK:
+        for path in sorted(p for p in (DATAPACKAGE, *bulk_paths) if p in files):
+            issues.append(Issue("unknown_file", path, f"schema_version {version} does not name this file"))
     if issues:
         return issues
 
@@ -223,6 +245,8 @@ def validate_files(release_id: str, files: Mapping[str, bytes]) -> list[Issue]:
         bundle["search"] = parsed[SEARCH]
     if TOPICS in parsed:
         bundle["topics"] = parsed[TOPICS]
+    if DATAPACKAGE in parsed:
+        bundle["datapackage"] = parsed[DATAPACKAGE]
     for error in sorted(_validator().iter_errors(bundle), key=lambda e: list(map(str, e.absolute_path))):
         path, pointer = _locate(list(error.absolute_path))
         issues.append(Issue("schema", path, f"{pointer}: {error.message}"[:400]))
@@ -236,6 +260,8 @@ def validate_files(release_id: str, files: Mapping[str, bytes]) -> list[Issue]:
         issues.extend(_vintage_rules(bundle, files, vintage_paths))
     if not issues:  # and the headline Series and the search index against a Catalog and content that are
         issues.extend(_reading_rules(bundle))
+    if not issues:  # last of all: the bulk files, against a Release that is otherwise sound
+        issues.extend(_bulk_rules(bundle, files, bulk_paths, digests or {}))
     return issues
 
 
@@ -280,8 +306,64 @@ def _locate(parts: list) -> tuple:
         return f"locks/{rest[0]}.lock.json", "/" + "/".join(map(str, rest[1:]))
     file = {"manifest": MANIFEST, "catalog": CATALOG, "annotations": ANNOTATIONS, "events": EVENTS,
             "claims": CLAIMS, "latest": LATEST, "highlights": HIGHLIGHTS, "search": SEARCH,
-            "topics": TOPICS}.get(head, str(head))
+            "topics": TOPICS, "datapackage": DATAPACKAGE}.get(head, str(head))
     return file, "/" + "/".join(map(str, rest))
+
+
+def _bulk_rules(bundle, files, bulk_paths: list[str], digests) -> list[Issue]:
+    """0.7.0 (M25; ADR 0039): bulk files are a public-profile Release's alone; the datapackage
+    names every data file once, with its size and hash, and no file it does not name is there;
+    it is this Release's; and a Series it lists is one this Release publishes, natively, under
+    the licence class a file for one class says. What a table's rows are cannot be read here
+    (the validators read no Parquet): that is the writer's own check."""
+    issues: list[Issue] = []
+    package = bundle.get("datapackage")
+    if package is None and not bulk_paths:
+        return issues
+    manifest = bundle["manifest"]
+
+    def add(path: str, message: str, code: str = "bulk_files") -> None:
+        issues.append(Issue(code, path, message))
+
+    if manifest["profile"] != "public":
+        add(DATAPACKAGE if package is not None else bulk_paths[0],
+            "bulk files are written only for a public-profile release")
+    if package is None:
+        for path in bulk_paths:
+            add(path, "there is no downloads/datapackage.json to name it")
+        return issues
+    if package["release_id"] != manifest["release_id"]:
+        add(DATAPACKAGE, f"it is release {package['release_id']}'s, not this one's")
+    statuses = {entry["key"]: entry["rights"]["status"] for entry in bundle["catalog"]["series"]}
+    named: set[str] = set()
+    for resource in package["resources"]:
+        path = f"downloads/{resource['path']}"
+        match = _BULK_FILE.fullmatch(path)
+        if path in named:
+            add(DATAPACKAGE, f"{resource['path']} is named twice")
+            continue
+        named.add(path)
+        if match is None or path not in files:
+            add(DATAPACKAGE, f"{resource['path']} is not a bulk file of this release")
+            continue
+        digest = digests.get(path)
+        size = digest["bytes"] if digest else len(files[path])
+        sha = digest["sha256"] if digest else hashlib.sha256(files[path]).hexdigest()
+        if resource["bytes"] != size or resource["hash"] != f"sha256:{sha}":
+            add(path, "the file's bytes do not match the datapackage's bytes and hash", "hash_mismatch")
+        licence = match[1] or match[2]
+        if resource.get("licence") != licence:
+            add(DATAPACKAGE, f"{resource['path']}: its licence is not the one its name says")
+        for key in resource["series"]:
+            row = manifest["series"].get(key)
+            if row is None or row["representation"] != "native":
+                add(DATAPACKAGE, f"{resource['path']} lists {key}, which this release does not publish natively")
+            elif licence is not None and path.startswith("downloads/observations") and statuses.get(key) != licence:
+                add(DATAPACKAGE, f"{resource['path']} lists {key}, whose licence class is not {licence}")
+    for path in bulk_paths:
+        if path not in named:
+            add(path, "the datapackage does not name this file")
+    return issues
 
 
 def _cross_file_rules(release_id, bundle, files, series_paths) -> list[Issue]:

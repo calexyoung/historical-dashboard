@@ -78,7 +78,8 @@ def test_every_series_the_three_adapters_read_passes_the_release_gate(released):
         "staleness": "pass", "withdrawn series stay out": "pass",
         "rights: every Series and every input is permitted for display": "pass", "vintages": "pass",
         "engine: derived series": "pass", "content": "pass", "content: claims": "pass", "content: topics": "pass", "content: headline series": "pass",
-            "content: search index": "pass", "release contract": "pass"}
+            "content: search index": "pass", "release contract": "pass", "bulk files": "pass",
+            "bulk files: every row is one that may be redistributed, in every format": "pass"}
     assert {source["outcome"] for source in manifest["sources"]} == {"ok"}
 
 

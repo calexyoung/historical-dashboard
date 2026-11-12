@@ -30,6 +30,8 @@ type Step =
   | { op: "copy_file" | "move_file"; from: string; to: string }
   | { op: "raw"; file: string; text: string }
   | { op: "rename_release"; id: string }
+  /** Every file under downloads/: for a case about a Release that may have none. */
+  | { op: "remove_bulk" }
   /** search.json written again as the projection: for a case about another rule that changes what the index is made from. */
   | { op: "project_search" };
 type Case = { name: string; steps: Step[]; expect: string[]; rehash?: boolean };
@@ -73,6 +75,9 @@ function applyCase(c: Pick<Case, "steps" | "rehash">): { id: string; files: Rele
         break;
       case "raw":
         files[step.file] = new TextEncoder().encode(step.text);
+        break;
+      case "remove_bulk":
+        for (const path of Object.keys(files)) if (path.startsWith("downloads/")) delete files[path];
         break;
       case "rename_release":
         id = step.id;

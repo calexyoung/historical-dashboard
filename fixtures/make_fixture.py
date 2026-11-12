@@ -19,6 +19,8 @@ import sys
 from pathlib import Path
 
 RELEASE_ID = "20260101T000000Z-0000000"
+#: The fixture's bulk files, as bulk/make_bulk.py wrote them with the real bulk writer.
+BULK = Path(__file__).resolve().parent / "bulk" / "downloads"
 CREATED = "2026-01-01T00:00:00Z"
 
 SYNTHETIC_ORIGIN = "Macro Atlas fixture (synthetic)"
@@ -759,10 +761,12 @@ def dump(obj) -> bytes:
     return (json.dumps(obj, indent=2, ensure_ascii=False) + "\n").encode("utf-8")
 
 
-def build(root: Path, claims: bool = True) -> Path:
+def build(root: Path, claims: bool = True, bulk: bool = True) -> Path:
     """Write the fixture in PUBLIC layout under root: releases/{id}/ and CURRENT. ``claims``
     False leaves the Claim out: the data files alone, which is what make_claim.py computes
-    the Claim's lock from."""
+    the Claim's lock from. ``bulk`` False leaves the bulk files out, which is what
+    bulk/make_bulk.py makes them from; otherwise they are copied in as that script wrote them
+    (0.7.0, M25)."""
     release = root / "releases" / RELEASE_ID
     if release.exists():
         shutil.rmtree(release)
@@ -790,7 +794,7 @@ def build(root: Path, claims: bool = True) -> Path:
         rows[key]["vintages_sha256"] = hashlib.sha256(data).hexdigest()
 
     manifest = {
-        "schema_version": "0.6.0",
+        "schema_version": "0.7.0",
         "semantics_version": "0",
         "release_id": RELEASE_ID,
         "profile": "public",
@@ -821,6 +825,10 @@ def build(root: Path, claims: bool = True) -> Path:
     (release / "content" / "highlights.json").write_bytes(dump(HIGHLIGHTS))
     (release / "content" / "topics.json").write_bytes(dump(TOPICS))
     (release / "search.json").write_bytes(dump(search_document(CATALOG, manifest["withheld"], EVENTS, listed, TOPICS)))
+    if bulk and BULK.is_dir():
+        (release / "downloads").mkdir()
+        for path in sorted(BULK.iterdir()):
+            (release / "downloads" / path.name).write_bytes(path.read_bytes())
     (root / "CURRENT").write_text(RELEASE_ID + "\n")
     return release
 

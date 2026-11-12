@@ -72,3 +72,31 @@ def test_the_fixture_lock_and_latest_rows_are_what_the_engine_answers_today():
     # What was public then is not what the Release holds: November was 109.5 preliminary, and is 109.3.
     first = json.loads(lock)["readings"][0]
     assert first["then"]["figures"][0]["value"] == 109.5 and first["now_when_checked"]["figures"][0]["value"] == 109.3
+
+
+def test_the_fixture_bulk_files_hold_what_the_bulk_writer_gives():
+    # M25: the committed bulk files are the real writer's, over the fixture's own Series. They
+    # are compared by their rows: compressed bytes may differ from one machine's zlib to another's.
+    from atlas.publish import bulk as B
+    from atlas.release import load_release, validate_release
+
+    make = _module("make_bulk", ROOT / "fixtures" / "bulk" / "make_bulk.py")
+    fresh = make.documents()
+    committed = {path.name: path.read_bytes() for path in (ROOT / "fixtures" / "bulk" / "downloads").iterdir()}
+    assert sorted(fresh) == sorted(committed)
+    for name in sorted(set(fresh) - {"datapackage.json"}):
+        assert B.read_table(name, committed[name]) == B.read_table(name, fresh[name]), name
+
+    def described(data: bytes) -> dict:
+        package = json.loads(data)
+        package["resources"] = [{k: v for k, v in r.items() if k not in ("bytes", "hash")} for r in package["resources"]]
+        return package
+
+    assert described(committed["datapackage.json"]) == described(fresh["datapackage.json"])
+    release = FIXTURE_ROOT / "releases" / (FIXTURE_ROOT / "CURRENT").read_text().strip()
+    assert validate_release(release) == []
+    files = load_release(release)
+    assert B.problems(files, make.gate(make.fixture_module())) == []
+    # The Withheld Series is in the Catalog by name and in no bulk file.
+    keys = {row[0] for name in committed if name != "datapackage.json" for row in B.read_table(name, committed[name])}
+    assert "fx_exchange_index" not in keys and "fx_price_index" in keys

@@ -68,7 +68,8 @@ export type IssueCode =
   | "topic"
   | "unsigned_register"
   | "legacy_in_public"
-  | "draft_in_public";
+  | "draft_in_public"
+  | "bulk_files";
 
 /** One way a Release breaks the contract. */
 export type Issue = { code: IssueCode; path: string; message: string };
@@ -82,7 +83,18 @@ const LATEST = "evidence/latest.json";
 const HIGHLIGHTS = "content/highlights.json";
 const SEARCH = "search.json";
 const TOPICS = "content/topics.json";
-const OPTIONAL_FILES: readonly string[] = [EVENTS, CLAIMS, LATEST, HIGHLIGHTS, SEARCH, TOPICS];
+const DATAPACKAGE = "downloads/datapackage.json";
+const OPTIONAL_FILES: readonly string[] = [EVENTS, CLAIMS, LATEST, HIGHLIGHTS, SEARCH, TOPICS, DATAPACKAGE];
+/** The versions that have no bulk files; from 0.7.0 (M25) a public-profile Release may have them. */
+const BEFORE_BULK: readonly unknown[] = ["0.1.0", "0.2.0", "0.3.0", "0.4.0", "0.5.0", "0.6.0"];
+const LICENCE = "public_domain|cc_by|citation_required|permission_required|no_redistribution|unknown";
+/** A bulk data file (ADR 0039): the Observations in three formats, the versions in one, each whole or for one licence class. */
+const BULK_FILE = new RegExp(`^downloads/(?:observations(?:\\.(${LICENCE}))?\\.(?:parquet|csv\\.gz|ndjson\\.gz)|vintages(?:\\.(${LICENCE}))?\\.parquet)$`);
+/**
+ * A bulk data file a reader did not hold in memory: its size and SHA-256, worked out as it was
+ * read. Its path is in the files with any value; a path with no digest is hashed here.
+ */
+export type BulkDigests = Record<string, { bytes: number; sha256: string }>;
 /** The versions that have no headline Series and no search index; from 0.5.0 (M22) a Release must have both files. */
 const BEFORE_SEARCH: readonly unknown[] = ["0.1.0", "0.2.0", "0.3.0", "0.4.0"];
 /** The versions that have no Topics; from 0.6.0 (M23) a Release must have content/topics.json. */
@@ -195,7 +207,7 @@ function locate(instancePath: string): [string, string] {
     return [`${head}/${rest[0]}.json`, "/" + rest.slice(1).join("/")];
   }
   if (head === "locks" && rest.length > 0) return [`locks/${rest[0]}.lock.json`, "/" + rest.slice(1).join("/")];
-  const named: Record<string, string> = { manifest: MANIFEST, catalog: CATALOG, annotations: ANNOTATIONS, events: EVENTS, claims: CLAIMS, latest: LATEST, highlights: HIGHLIGHTS, search: SEARCH, topics: TOPICS };
+  const named: Record<string, string> = { manifest: MANIFEST, catalog: CATALOG, annotations: ANNOTATIONS, events: EVENTS, claims: CLAIMS, latest: LATEST, highlights: HIGHLIGHTS, search: SEARCH, topics: TOPICS, datapackage: DATAPACKAGE };
   const file = named[head ?? ""] ?? MANIFEST;
   return [file, "/" + rest.join("/")];
 }
@@ -207,12 +219,13 @@ function locate(instancePath: string): [string, string] {
  * shown consequences of a problem instead of the problem: files present and named by the
  * contract, JSON, schema version, schema, the cross-file rules, then the vintage files.
  */
-export function validateRelease(releaseId: string, files: ReleaseFiles): Issue[] {
+export function validateRelease(releaseId: string, files: ReleaseFiles, digests: BulkDigests = {}): Issue[] {
   const issues: Issue[] = [];
   const has = (code: IssueCode): boolean => issues.some((i) => i.code === code);
   const seriesPaths: Record<Folder, Map<string, string>> = { series: new Map(), derived: new Map() };
   const vintagePaths = new Map<string, string>();
   const lockPaths = new Map<string, string>();
+  const bulkPaths: string[] = []; // bulk data files; they are not JSON and are never parsed here
 
   for (const path of Object.keys(files).sort()) {
     const match = SERIES_FILE.exec(path);
@@ -220,6 +233,7 @@ export function validateRelease(releaseId: string, files: ReleaseFiles): Issue[]
     if (match && match[1] === "vintages") vintagePaths.set(match[2]!, path);
     else if (match) seriesPaths[match[1] as Folder].set(match[2]!, path);
     else if (lock) lockPaths.set(lock[1]!, path);
+    else if (BULK_FILE.test(path)) bulkPaths.push(path);
     else if (!(REQUIRED_FILES as readonly string[]).includes(path) && !OPTIONAL_FILES.includes(path)) {
       issues.push({ code: "unknown_file", path, message: "the release contract does not name this file" });
     }
@@ -286,6 +300,11 @@ export function validateRelease(releaseId: string, files: ReleaseFiles): Issue[]
   } else if (version !== undefined && !BEFORE_TOPICS.includes(version) && !files[TOPICS]) {
     issues.push({ code: "missing_file", path: TOPICS, message: "a release must have this file" });
   }
+  if (BEFORE_BULK.includes(version)) {
+    for (const path of [DATAPACKAGE, ...bulkPaths].filter((p) => files[p]).sort()) {
+      issues.push({ code: "unknown_file", path, message: `schema_version ${String(version)} does not name this file` });
+    }
+  }
   if (issues.length > 0) return issues;
 
   const collect = (folder: Folder): Record<string, unknown> =>
@@ -303,6 +322,7 @@ export function validateRelease(releaseId: string, files: ReleaseFiles): Issue[]
     ...(parsed.has(HIGHLIGHTS) ? { highlights: parsed.get(HIGHLIGHTS) } : {}),
     ...(parsed.has(SEARCH) ? { search: parsed.get(SEARCH) } : {}),
     ...(parsed.has(TOPICS) ? { topics: parsed.get(TOPICS) } : {}),
+    ...(parsed.has(DATAPACKAGE) ? { datapackage: parsed.get(DATAPACKAGE) } : {}),
   };
   const validate = schemaValidator();
   if (!validate(bundle)) {
@@ -319,6 +339,55 @@ export function validateRelease(releaseId: string, files: ReleaseFiles): Issue[]
   // Series and the search index against a Catalog and content that are.
   if (issues.length === 0) issues.push(...vintageRules(bundle as Release, files, vintagePaths));
   if (issues.length === 0) issues.push(...readingRules(bundle as Release));
+  // Last of all: the bulk files, against a Release that is otherwise sound.
+  if (issues.length === 0) issues.push(...bulkRules(bundle as Release, files, bulkPaths, digests));
+  return issues;
+}
+
+/**
+ * 0.7.0 (M25; ADR 0039): bulk files are a public-profile Release's alone; the datapackage names
+ * every data file once, with its size and hash, and no file it does not name is there; it is
+ * this Release's; and a Series it lists is one this Release publishes, natively, under the
+ * licence class a file for one class says. What a table's rows are cannot be read here (the
+ * validators read no Parquet): that is the writer's own check.
+ */
+function bulkRules(release: Release, files: ReleaseFiles, bulkPaths: string[], digests: BulkDigests): Issue[] {
+  const issues: Issue[] = [];
+  const pack = release.datapackage;
+  if (pack === undefined && bulkPaths.length === 0) return issues;
+  const { manifest } = release;
+  const add = (path: string, message: string, code: IssueCode = "bulk_files"): void => void issues.push({ code, path, message });
+  if (manifest.profile !== "public") add(pack !== undefined ? DATAPACKAGE : bulkPaths[0]!, "bulk files are written only for a public-profile release");
+  if (pack === undefined) {
+    for (const path of bulkPaths) add(path, "there is no downloads/datapackage.json to name it");
+    return issues;
+  }
+  if (pack.release_id !== manifest.release_id) add(DATAPACKAGE, `it is release ${pack.release_id}'s, not this one's`);
+  const statuses = new Map(release.catalog.series.map((entry) => [entry.key, entry.rights.status as string]));
+  const named = new Set<string>();
+  for (const resource of pack.resources) {
+    const path = `downloads/${resource.path}`;
+    const match = BULK_FILE.exec(path);
+    if (named.has(path)) {
+      add(DATAPACKAGE, `${resource.path} is named twice`);
+      continue;
+    }
+    named.add(path);
+    if (match === null || !Object.hasOwn(files, path)) {
+      add(DATAPACKAGE, `${resource.path} is not a bulk file of this release`);
+      continue;
+    }
+    const digest = Object.hasOwn(digests, path) ? digests[path]! : { bytes: files[path]!.length, sha256: sha256(files[path]!) };
+    if (resource.bytes !== digest.bytes || resource.hash !== `sha256:${digest.sha256}`) add(path, "the file's bytes do not match the datapackage's bytes and hash", "hash_mismatch");
+    const licence = match[1] ?? match[2];
+    if (resource.licence !== licence) add(DATAPACKAGE, `${resource.path}: its licence is not the one its name says`);
+    for (const key of resource.series) {
+      const row = Object.hasOwn(manifest.series, key) ? manifest.series[key] : undefined;
+      if (row === undefined || row.representation !== "native") add(DATAPACKAGE, `${resource.path} lists ${key}, which this release does not publish natively`);
+      else if (licence !== undefined && path.startsWith("downloads/observations") && statuses.get(key) !== licence) add(DATAPACKAGE, `${resource.path} lists ${key}, whose licence class is not ${licence}`);
+    }
+  }
+  for (const path of bulkPaths) if (!named.has(path)) add(path, "the datapackage does not name this file");
   return issues;
 }
 

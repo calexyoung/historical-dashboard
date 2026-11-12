@@ -45,6 +45,7 @@ from ..staging import STAGING, PromotionRefused, _no_links, _write_current, prom
 from ..vintage.replay import SeriesTableError, load_derived, load_series
 from ..vintage.store import VintageStore
 from ..content.compile import add_reading_files
+from . import bulk as B
 from . import engine
 from . import root as R
 from . import saved as saved_queries
@@ -246,6 +247,10 @@ def _checks(run: _Run, built: Built, files: dict[str, bytes], created: datetime)
         report.append({"check": "rights: every Series and every input is permitted for display",
                        "outcome": "fail" if problems else "pass",
                        **({"detail": "; ".join(problems)[:2000]} if problems else {})})
+        problems = B.problems(files, run.gate)
+        report.append({"check": "bulk files: every row is one that may be redistributed, in every format",
+                       "outcome": "fail" if problems else "pass",
+                       **({"detail": "; ".join(problems)[:2000]} if problems else {})})
     return report + built.report
 
 
@@ -293,7 +298,19 @@ def _publish(run: _Run, built: Built, write: Callable[[Path, bytes], None],
         # Last of all, when the Catalog and the content are what the Release will hold: the
         # headline Series and the search index, both projections of them (M22; ADR 0036).
         built.report.extend(add_reading_files(built.files, built.withheld, built.highlights))
+    bulk = None
+    if stopped is None and run.profile == "public":
+        # Bulk files (PLAN 4.4 step 5, M25; ADR 0039): a public-profile Release's alone, made
+        # from the files it is about to hold, under the Permission to redistribute. The release
+        # id is made over the descriptor without its own name, then the descriptor is given it.
+        bulk = B.build(built.files, run.gate)
+        built.files.update(bulk.files)
+        built.report.append(B.report(bulk))
+        if bulk.files:
+            built.files[B.DATAPACKAGE] = bulk.datapackage("", f"{created:%Y-%m-%dT%H:%M:%SZ}", run.register)
     release_id = built.release_id(created)
+    if bulk is not None and bulk.files:
+        built.files[B.DATAPACKAGE] = bulk.datapackage(release_id, f"{created:%Y-%m-%dT%H:%M:%SZ}", run.register)
     if stopped is not None:
         report = [stopped]      # nothing else is worth checking in a Release that lacks files
     else:
