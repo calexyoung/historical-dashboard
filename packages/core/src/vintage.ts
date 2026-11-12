@@ -82,7 +82,7 @@ export type CaptureGap = {
 };
 
 export type VintageUnavailableReason =
-  /** The question is not a calendar date or an instant. */
+  /** The question is not a calendar date or an instant, or its UTC year is before 1900. */
   | "bad_as_of"
   /** The Release holds no vintages for the Series. */
   | "no_vintages"

@@ -108,6 +108,8 @@ The flag is set whether or not the version counts toward the answer.
 
 A question about a date before 1900 has no Cutoff (`bad_as_of`): New York's clock is taken as
 four or five hours behind UTC, which holds from 1883, and no record here reaches back so far.
+The floor is the year as written, which for an instant is its UTC year: `1900-01-01T00:00:00Z`
+is asked, though New York's day was still 31 December 1899.
 
 ## Metadata in force
 
@@ -137,7 +139,7 @@ v1's output is one state, rounded, with one date: when v1 generated it
 
 | `reason` | |
 |---|---|
-| `bad_as_of` | The question is not a calendar date or an instant |
+| `bad_as_of` | The question is not a calendar date or an instant, or is one before 1900 |
 | `no_vintages` | The Release holds no vintage file for the Series (this includes every Derived series until M11) |
 | `no_coverage` | The Cutoff is before the first Capture and outside the Origin's record |
 | `legacy_not_dated`, `legacy_held_after_cutoff` | As above |
