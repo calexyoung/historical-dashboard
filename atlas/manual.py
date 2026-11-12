@@ -294,6 +294,63 @@ def read_terms_file(body: bytes, problems: list[str], today: str | None = None) 
     return None if problems else document
 
 
+LAYERS = ("recession",)
+
+
+def read_spans_file(body: bytes, problems: list[str], today: str | None = None) -> dict | None:
+    """A spans file, checked (M19; ADR 0033): ``{layer, label, origin, spans}`` with each span
+    ``{start, end, citation}`` and, where it has a name of its own, ``label``. It is the dated
+    stretches of one Annotation layer that no Source serves as data: today, recessions. Spans
+    are in order, do not overlap, and only the last may still be running (``end: null``).
+    Dates are days, both ends inclusive. None, with the reasons in ``problems``, when the file
+    is not whole."""
+    document = _load(body, problems)
+    if document is None:
+        return None
+    if not _only(document, ("format", "kind", "about", "origin", "layer", "label", "spans"),
+                 ("format", "kind", "origin", "layer", "label", "spans"), "the file", problems):
+        return None
+    if document["format"] != FORMAT or isinstance(document["format"], bool) or document["kind"] != "spans":
+        problems.append(f"the file is not a hand-entered spans file of format {FORMAT}")
+        return None
+    origin = document["origin"]
+    if not (isinstance(origin, dict) and set(origin) == {"producer", "dataset"}
+            and all(isinstance(v, str) and v for v in origin.values())):
+        problems.append("the file does not name its Origin: a producer and a dataset")
+    if document["layer"] not in LAYERS:
+        problems.append(f"the file's layer is not one of {', '.join(LAYERS)}")
+    if not isinstance(document["label"], str) or not document["label"].strip():
+        problems.append("the file has no label for its spans")
+    spans = document["spans"]
+    if not isinstance(spans, list) or not spans:
+        problems.append("the file has no spans")
+        return None
+    previous_end: str | None = ""
+    for number, span in enumerate(spans, start=1):
+        what = f"span {number}"
+        if not isinstance(span, dict):
+            problems.append(f"{what} is not an object")
+            continue
+        if not _only(span, ("label", "start", "end", "citation", "note"), ("start", "end", "citation"), what, problems):
+            continue
+        if "label" in span and (not isinstance(span["label"], str) or not span["label"].strip()):
+            problems.append(f"{what} has an empty label")
+        if not _is_day(span["start"]) or not (span["end"] is None or _is_day(span["end"])):
+            problems.append(f"{what} does not give its start and end as days (an end still to come is null)")
+            continue
+        if span["end"] is not None and span["end"] < span["start"]:
+            problems.append(f"{what} ends before it starts")
+        if previous_end is None:
+            problems.append(f"{what} follows a span that has not ended")
+        elif span["start"] <= previous_end:
+            problems.append(f"{what} starts on {span['start']}, not after the span before it ended ({previous_end})")
+        previous_end = span["end"]
+        said = citation_problem(span["citation"], today)
+        if said:
+            problems.append(f"{what} {said}")
+    return None if problems else document
+
+
 def series_files(directory: Path | None = None) -> list[Path]:
     directory = MANUAL_DIR if directory is None else Path(directory)
     return sorted(directory.glob("*.json")) if directory.is_dir() else []
@@ -304,14 +361,19 @@ def terms_files(directory: Path | None = None) -> list[Path]:
     return sorted(directory.glob("*.json")) if directory.is_dir() else []
 
 
+def spans_files(directory: Path | None = None) -> list[Path]:
+    directory = (MANUAL_DIR if directory is None else Path(directory)) / "spans"
+    return sorted(directory.glob("*.json")) if directory.is_dir() else []
+
+
 def stray_files(directory: Path | None = None) -> list[Path]:
-    """Everything under ``catalog/manual`` that is neither a series file nor a terms file:
+    """Everything under ``catalog/manual`` that is not a series, a terms or a spans file:
     a file of another kind, or in another directory. Nothing else belongs there, and a file
     that no check reads could hold what no check has seen."""
     directory = MANUAL_DIR if directory is None else Path(directory)
     if not directory.is_dir():
         return []
-    known = {*series_files(directory), *terms_files(directory)}
+    known = {*series_files(directory), *terms_files(directory), *spans_files(directory)}
     return sorted(path for path in directory.rglob("*") if not path.is_dir() and path not in known)
 
 
@@ -328,5 +390,19 @@ def load_terms(directory: Path | None = None) -> list[dict]:
     return out
 
 
-__all__ = ["FILE", "FORMAT", "FREQUENCIES", "MANUAL_DIR", "citation_problem", "cited", "load_terms",
-           "read_series_file", "read_terms_file", "series_files", "stray_files", "terms_files", "working_problem"]
+def load_spans(directory: Path | None = None) -> list[dict]:
+    """Every spans file under ``catalog/manual/spans``, checked. Raises ``ValueError`` naming
+    the first file that is not whole."""
+    out = []
+    for path in spans_files(directory):
+        problems: list[str] = []
+        document = read_spans_file(path.read_bytes(), problems)
+        if document is None:
+            raise ValueError(f"{path}: {problems[0]}")
+        out.append(document)
+    return out
+
+
+__all__ = ["FILE", "FORMAT", "FREQUENCIES", "LAYERS", "MANUAL_DIR", "citation_problem", "cited", "load_spans",
+           "load_terms", "read_series_file", "read_spans_file", "read_terms_file", "series_files", "spans_files",
+           "stray_files", "terms_files", "working_problem"]

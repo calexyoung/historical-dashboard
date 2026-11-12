@@ -4,7 +4,7 @@ date: "2020-05-25"
 date_precision: day
 title: "George Floyd killed; nationwide protests"
 category: political
-status: public
+status: draft
 topics: []
 related_series: []
 sources:

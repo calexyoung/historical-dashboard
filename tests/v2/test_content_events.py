@@ -174,9 +174,10 @@ def test_the_migration_script_writes_exactly_the_committed_files(tmp_path):
 
 
 def test_a_v1_event_that_hits_the_word_list_is_a_draft_with_its_words_unchanged(migrated):
-    for event in migrated:
-        hit = bool(W.event_terms(event))
-        assert event["status"] == ("draft" if hit else "public"), event["id"]
+    hits = [event for event in migrated if W.event_terms(event)]
+    assert len(hits) == 26 and all(event["status"] == "draft" for event in hits)
+    # The review (below) lists more than the word list found: Codex's reading of all 83.
+    assert sum(1 for event in migrated if event["status"] == "public") == 48
 
 
 def test_the_migration_review_names_all_83_and_proposes_a_wording_for_each_one_listed(migrated):

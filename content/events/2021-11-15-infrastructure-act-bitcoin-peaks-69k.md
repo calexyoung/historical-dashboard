@@ -4,7 +4,7 @@ date: "2021-11-15"
 date_precision: day
 title: "Infrastructure Act; Bitcoin peaks ~$69k"
 category: policy
-status: public
+status: draft
 topics: []
 related_series: []
 sources:

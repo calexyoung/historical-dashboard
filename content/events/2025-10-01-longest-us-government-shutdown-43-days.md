@@ -4,7 +4,7 @@ date: "2025-10-01"
 date_precision: day
 title: "Longest US government shutdown (43 days)"
 category: political
-status: public
+status: draft
 topics: []
 related_series: []
 sources:

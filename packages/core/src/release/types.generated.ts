@@ -104,7 +104,7 @@ export type ObservationStatus =
 export type Anchor = DateAnchor | SpanAnchor | PeriodAnchor;
 
 /**
- * Macro Atlas release contract, v0 (schema_version 0.2.0). A Release is a directory; this schema describes it gathered into one object: manifest.json, catalog.json, series/{key}.json, derived/{key}.json, vintages/{key}.json and content/annotations.json. It is the seam between the writer and every reader (PLAN 4.2). Conventions the schema cannot express, and the cross-file rules, are in schema/README.md. Structural validity is not authorisation: whether a series may appear on a Surface is decided by permits() and the rights register.
+ * Macro Atlas release contract, v0 (schema_version 0.3.0). A Release is a directory; this schema describes it gathered into one object: manifest.json, catalog.json, series/{key}.json, derived/{key}.json, vintages/{key}.json, content/annotations.json and content/events.json. It is the seam between the writer and every reader (PLAN 4.2). Conventions the schema cannot express, and the cross-file rules, are in schema/README.md. Structural validity is not authorisation: whether a series may appear on a Surface is decided by permits() and the rights register.
  */
 export interface Release {
   manifest: Manifest;
@@ -128,6 +128,7 @@ export interface Release {
     [k: string]: VintageFile;
   };
   annotations: AnnotationsFile;
+  events?: EventsFile;
 }
 /**
  * manifest.json: what this Release is and what it holds. created is when the Release was written, and is also the fixed date against which staleness (max_lag) is judged, so a Release never changes state as the clock moves.
@@ -137,9 +138,9 @@ export interface Release {
  */
 export interface Manifest {
   /**
-   * Version of this contract. Readers refuse a version they do not know. 0.2.0 added vintages/ and vintages_sha256; a 0.1.0 Release holds neither. Writers write the last one listed.
+   * Version of this contract. Readers refuse a version they do not know. 0.2.0 added vintages/ and vintages_sha256; a 0.1.0 Release holds neither. 0.3.0 (M19) added content/events.json, which a 0.3.0 Release must have and an earlier one may not, and the rule that every Event is one Annotation. Writers write the last one listed.
    */
-  schema_version: "0.1.0" | "0.2.0";
+  schema_version: "0.1.0" | "0.2.0" | "0.3.0";
   /**
    * Version of the engine's behaviour that wrote derived/ (ADR 0003).
    */
@@ -550,7 +551,7 @@ export interface Annotation {
   series?: SeriesKey[];
   label: string;
   /**
-   * Path of the content record behind this Annotation (an Event or Claim), or null.
+   * Path of the content record behind this Annotation (an Event: content/events/{id}.md), or null. From 0.3.0 every Annotation of kind event names its Event here.
    */
   ref: string | null;
   source: Citation | null;
@@ -564,6 +565,7 @@ export interface Annotation {
   attributes?: {
     [k: string]: string | number | boolean;
   };
+  provenance?: AnnotationProvenance;
 }
 export interface DateAnchor {
   type: "date";
@@ -582,4 +584,93 @@ export interface Citation {
   name?: string;
   url: string;
   archive_url?: string;
+}
+/**
+ * Where an Annotation that is not Macro Atlas's own content came from (0.3.0): the Origin and dataset of the hand-entered file, or of v1's file, it was projected from. The rights check of a Release asks the gate about it. An Annotation in v1's legacy representation is never in a public-profile Release.
+ */
+export interface AnnotationProvenance {
+  producer: string;
+  dataset: string;
+  via: string;
+  representation: Representation;
+}
+/**
+ * content/events.json (0.3.0): the Events, in the order of time. A public-profile Release holds no draft.
+ *
+ * This interface was referenced by `Release`'s JSON-Schema
+ * via the `definition` "eventsFile".
+ */
+export interface EventsFile {
+  events: Event[];
+}
+/**
+ * One Event as a Release carries it (content/events/{id}.md compiled; schema/event.schema.json is the authoring form). There is no field for a finding, a rating or an effect.
+ *
+ * This interface was referenced by `Release`'s JSON-Schema
+ * via the `definition` "event".
+ */
+export interface Event {
+  /**
+   * Permanent. The date as written in `date`, then a slug. The file is named for it.
+   */
+  id: string;
+  /**
+   * When it happened, or began: a day, a month or a year, as date_precision says. No day is made up.
+   */
+  date: string;
+  /**
+   * The last day, month or year of an Event that spans time, inclusive, in the precision of `date`. An Event still running has no place here yet: it is recorded when it has ended.
+   */
+  end?: string;
+  date_precision: "day" | "month" | "year";
+  title: string;
+  /**
+   * v1's five, then disaster, infrastructure and legislation (PLAN 5).
+   */
+  category:
+    | "political"
+    | "financial"
+    | "geopolitical"
+    | "health"
+    | "policy"
+    | "disaster"
+    | "infrastructure"
+    | "legislation";
+  /**
+   * A draft is never in a public-profile Release.
+   */
+  status: "draft" | "public";
+  topics: string[];
+  /**
+   * Keys of Series in the Catalog that a reader may want beside this Event. Not a statement that the Event moved them.
+   */
+  related_series: string[];
+  /**
+   * A measured size where one is published (a cost, a count), with where it is published.
+   */
+  magnitude?: {
+    value: number;
+    unit: string;
+    source: EventCitation;
+  };
+  /**
+   * @minItems 1
+   */
+  sources: [EventCitation, ...EventCitation[]];
+  /**
+   * The Event's own text: what happened and when, supported by the cited sources. It does not evaluate and never says an Event caused a movement. May be empty.
+   */
+  description: string;
+}
+/**
+ * Where an Event can be checked: an address and an archived copy of it, or the reason there is none.
+ *
+ * This interface was referenced by `Release`'s JSON-Schema
+ * via the `definition` "eventCitation".
+ */
+export interface EventCitation {
+  name?: string;
+  url: string;
+  archive_url?: string;
+  no_archive?: string;
 }

@@ -4,7 +4,7 @@ date: "2021-01-06"
 date_precision: day
 title: "Jan 6 Capitol attack; GameStop squeeze"
 category: political
-status: public
+status: draft
 topics: []
 related_series: []
 sources:

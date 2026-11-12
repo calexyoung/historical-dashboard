@@ -143,12 +143,15 @@ def test_the_converter_does_not_write_through_a_link_into_the_store_or_a_public_
 
 
 def test_v1_files_are_read_in_place_and_left_as_they_were(tmp_path):
-    inputs = ["data/atlas.json", "atlas/catalog.yaml", "atlas/events.yaml", "atlas/politics.yaml", "atlas/approval.yaml"]
+    # Since M19 v1's Events are files of their own (content/events), read by the content compiler
+    # and recorded as one input; atlas/events.yaml is v1's and is no longer read here.
+    inputs = ["data/atlas.json", "atlas/catalog.yaml", "atlas/politics.yaml", "atlas/approval.yaml"]
     before = {p: hashlib.sha256((ROOT / p).read_bytes()).hexdigest() for p in inputs}
     release = legacy_release(out=tmp_path / "local", now=NOW)
     assert {p: hashlib.sha256((ROOT / p).read_bytes()).hexdigest() for p in inputs} == before
     recorded = {row["path"]: row for row in read(release, "manifest.json")["inputs"]}
-    assert set(recorded) == set(inputs)
+    assert set(recorded) == {*inputs, "content/events"}
+    assert "83 Events" in recorded.pop("content/events")["note"]
     for path, row in recorded.items():
         assert row["sha256"] == before[path]
         assert row["commit"] is None or len(row["commit"]) == 40

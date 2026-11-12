@@ -4,7 +4,7 @@ date: "2008-11-04"
 date_precision: day
 title: "Obama elected; Fed launches QE1"
 category: political
-status: public
+status: draft
 topics: []
 related_series: []
 sources:

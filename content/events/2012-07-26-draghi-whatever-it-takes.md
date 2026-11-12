@@ -4,7 +4,7 @@ date: "2012-07-26"
 date_precision: day
 title: "Draghi: 'whatever it takes'"
 category: policy
-status: public
+status: draft
 topics: []
 related_series: []
 sources:

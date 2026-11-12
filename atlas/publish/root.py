@@ -27,7 +27,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 from ..capture import store as S
-from ..release import CATALOG, LEGACY, MANIFEST, validate_files
+from ..release import ANNOTATIONS, CATALOG, LEGACY, MANIFEST, validate_files
 from ..rights import RightsGate
 from ..staging import RELEASE_ID, STAGING
 from .export import history_lineages, lineage
@@ -257,6 +257,44 @@ def rights_problems(files: dict[str, bytes], gate: RightsGate, surface: str = "p
         decision = gate.permits(lineages, surface)
         if not decision.allowed:
             problems.append(f"{key}: its history: {decision.reason}")
+    problems.extend(annotation_problems(files, gate, surface))
+    return problems
+
+
+#: The kinds of Annotation that are Macro Atlas's own content, or belong to a Series the
+#: checks above have already asked about. Every other kind was typed in from somebody's record.
+_OWN_KINDS = ("event", "claim", "data_note")
+
+
+def annotation_problems(files: dict[str, bytes], gate: RightsGate, surface: str = "production") -> list[str]:
+    """Why the Annotations a Release holds may not all be displayed on a public Surface (M19;
+    ADR 0033). A term of government or a recession was typed in from a published record, so it
+    says where from (``provenance``) and the gate is asked about that Origin; one that is v1's
+    is never public. Asked for as long as the Release is kept, like everything else here."""
+    problems = []
+    try:
+        annotations = json.loads(files[ANNOTATIONS])["annotations"]
+    except (KeyError, ValueError, TypeError):
+        return ["its Annotations cannot be read"]
+    from_events = json.loads(files[MANIFEST]).get("schema_version") not in ("0.1.0", "0.2.0")
+    asked: dict[tuple, str | None] = {}
+    for annotation in annotations:
+        provenance = annotation.get("provenance")
+        if provenance is None:
+            if from_events and annotation.get("kind") not in _OWN_KINDS:
+                problems.append(f"the Annotation {annotation.get('id')}: does not say where it came from")
+            continue
+        if provenance.get("representation") == LEGACY:
+            problems.append(f"the Annotation {annotation.get('id')}: is v1's, which is never public")
+            continue
+        key = (provenance.get("producer"), provenance.get("dataset"), provenance.get("via"))
+        if key not in asked:
+            decision = gate.permits([{"origin": key[0], "dataset": key[1], "channel": key[2],
+                                      "representation": provenance.get("representation"),
+                                      "permission": "display"}], surface)
+            asked[key] = None if decision.allowed else decision.reason
+        if asked[key]:
+            problems.append(f"the Annotation {annotation.get('id')}: {asked[key]}")
     return problems
 
 

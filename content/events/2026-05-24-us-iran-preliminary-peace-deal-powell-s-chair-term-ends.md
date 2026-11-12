@@ -4,7 +4,7 @@ date: "2026-05-24"
 date_precision: day
 title: "US–Iran preliminary peace deal; Powell's chair term ends"
 category: geopolitical
-status: public
+status: draft
 topics: []
 related_series: []
 sources:

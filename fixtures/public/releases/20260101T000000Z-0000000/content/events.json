@@ -1,0 +1,99 @@
+{
+  "events": [
+    {
+      "id": "2023-fixture-bridge-programme",
+      "date": "2023",
+      "date_precision": "year",
+      "title": "Fixture bridge programme begins",
+      "category": "infrastructure",
+      "status": "public",
+      "topics": [],
+      "related_series": [],
+      "sources": [
+        {
+          "name": "Fixture gazette (synthetic)",
+          "url": "https://example.org/fixture-gazette",
+          "archive_url": "https://example.org/archive/2026/fixture-gazette"
+        }
+      ],
+      "description": ""
+    },
+    {
+      "id": "2024-09-18-fixture-rate-decision",
+      "date": "2024-09-18",
+      "date_precision": "day",
+      "title": "Fixture central bank changes its rate",
+      "category": "policy",
+      "status": "public",
+      "topics": [
+        "inflation"
+      ],
+      "related_series": [
+        "fx_price_index",
+        "fx_exchange_index",
+        "fx_not_in_this_release"
+      ],
+      "sources": [
+        {
+          "name": "Fixture gazette (synthetic)",
+          "url": "https://example.org/fixture-gazette",
+          "archive_url": "https://example.org/archive/2026/fixture-gazette"
+        },
+        {
+          "name": "Fixture harbour board (synthetic)",
+          "url": "https://example.org/fixture-harbour",
+          "no_archive": "The fixture harbour board's pages cannot be archived (synthetic reason)."
+        }
+      ],
+      "description": "The fixture central bank announced a new policy rate on 18 September 2024.\n\nThe announcement was published in the fixture gazette the same day."
+    },
+    {
+      "id": "2025-03-fixture-statute",
+      "date": "2025-03",
+      "date_precision": "month",
+      "title": "Fixture statute takes effect",
+      "category": "legislation",
+      "status": "public",
+      "topics": [],
+      "related_series": [],
+      "sources": [
+        {
+          "name": "Fixture gazette (synthetic)",
+          "url": "https://example.org/fixture-gazette",
+          "archive_url": "https://example.org/archive/2026/fixture-gazette"
+        }
+      ],
+      "description": ""
+    },
+    {
+      "id": "2025-08-04-fixture-storm",
+      "date": "2025-08-04",
+      "end": "2025-08-09",
+      "date_precision": "day",
+      "title": "Fixture storm crosses the fixture coast",
+      "category": "disaster",
+      "status": "public",
+      "topics": [],
+      "related_series": [
+        "fx_payrolls_break"
+      ],
+      "magnitude": {
+        "value": 12,
+        "unit": "fixture districts under a warning",
+        "source": {
+          "name": "Fixture harbour board (synthetic)",
+          "url": "https://example.org/fixture-harbour",
+          "no_archive": "The fixture harbour board's pages cannot be archived (synthetic reason)."
+        }
+      },
+      "sources": [
+        {
+          "name": "Fixture gazette (synthetic)",
+          "url": "https://example.org/fixture-gazette",
+          "archive_url": "https://example.org/archive/2026/fixture-gazette"
+        }
+      ],
+      "description": "A storm crossed the fixture coast between 4 and 9 August 2025."
+    }
+  ]
+}

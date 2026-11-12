@@ -18,7 +18,7 @@ import { Ajv2020, type ErrorObject, type ValidateFunction } from "ajv/dist/2020.
 import addFormats from "ajv-formats";
 import { nextPeriod, periodBounds } from "../period";
 import { releaseSchema, SCHEMA_VERSION, SCHEMA_VERSIONS } from "./schema.generated";
-import type { CatalogEntry, Release, SeriesFile, VintageRow } from "./types.generated";
+import type { Anchor, CatalogEntry, Event, Release, SeriesFile, VintageRow } from "./types.generated";
 
 export type * from "./types.generated";
 export { SCHEMA_VERSION, SCHEMA_VERSIONS };
@@ -56,6 +56,9 @@ export type IssueCode =
   | "duplicate_annotation_id"
   | "unknown_series_ref"
   | "bad_anchor"
+  | "duplicate_event_id"
+  | "bad_event_date"
+  | "event_projection"
   | "unsigned_register"
   | "legacy_in_public"
   | "draft_in_public";
@@ -66,7 +69,10 @@ export type Issue = { code: IssueCode; path: string; message: string };
 const MANIFEST = "manifest.json";
 const CATALOG = "catalog.json";
 const ANNOTATIONS = "content/annotations.json";
+const EVENTS = "content/events.json";
 const REQUIRED_FILES = [MANIFEST, CATALOG, ANNOTATIONS] as const;
+/** The versions that have no content/events.json; from 0.3.0 (M19) a Release must have it. */
+const BEFORE_EVENTS: readonly unknown[] = ["0.1.0", "0.2.0"];
 const SERIES_FILE = /^(series|derived|vintages)\/([a-z][a-z0-9_]{0,63})\.json$/;
 const FOLDERS = ["series", "derived"] as const;
 type Folder = (typeof FOLDERS)[number];
@@ -155,7 +161,7 @@ function locate(instancePath: string): [string, string] {
     return [`${head}/${rest[0]}.json`, "/" + rest.slice(1).join("/")];
   }
   const file =
-    head === "manifest" ? MANIFEST : head === "catalog" ? CATALOG : head === "annotations" ? ANNOTATIONS : MANIFEST;
+    head === "manifest" ? MANIFEST : head === "catalog" ? CATALOG : head === "annotations" ? ANNOTATIONS : head === "events" ? EVENTS : MANIFEST;
   return [file, "/" + rest.join("/")];
 }
 
@@ -176,7 +182,7 @@ export function validateRelease(releaseId: string, files: ReleaseFiles): Issue[]
     const match = SERIES_FILE.exec(path);
     if (match && match[1] === "vintages") vintagePaths.set(match[2]!, path);
     else if (match) seriesPaths[match[1] as Folder].set(match[2]!, path);
-    else if (!(REQUIRED_FILES as readonly string[]).includes(path)) {
+    else if (!(REQUIRED_FILES as readonly string[]).includes(path) && path !== EVENTS) {
       issues.push({ code: "unknown_file", path, message: "the release contract does not name this file" });
     }
   }
@@ -186,7 +192,7 @@ export function validateRelease(releaseId: string, files: ReleaseFiles): Issue[]
   if (has("missing_file")) return issues;
 
   const parsed = new Map<string, unknown>();
-  const known = [...REQUIRED_FILES, ...FOLDERS.flatMap((f) => [...seriesPaths[f].values()]), ...vintagePaths.values()];
+  const known = [...REQUIRED_FILES, ...FOLDERS.flatMap((f) => [...seriesPaths[f].values()]), ...vintagePaths.values(), ...(files[EVENTS] ? [EVENTS] : [])];
   for (const path of known) {
     try {
       parsed.set(path, parseStrictJson(decoder.decode(files[path]!)));
@@ -213,8 +219,14 @@ export function validateRelease(releaseId: string, files: ReleaseFiles): Issue[]
     for (const path of [...vintagePaths.values()].sort()) {
       issues.push({ code: "unknown_file", path, message: "schema_version 0.1.0 does not name this file" });
     }
-    if (issues.length > 0) return issues;
   }
+  if (BEFORE_EVENTS.includes(version) && files[EVENTS]) {
+    issues.push({ code: "unknown_file", path: EVENTS, message: `schema_version ${String(version)} does not name this file` });
+  }
+  if (version === SCHEMA_VERSION && !files[EVENTS]) {
+    issues.push({ code: "missing_file", path: EVENTS, message: "a release must have this file" });
+  }
+  if (issues.length > 0) return issues;
 
   const collect = (folder: Folder): Record<string, unknown> =>
     Object.fromEntries([...seriesPaths[folder]].map(([key, path]) => [key, parsed.get(path)]));
@@ -225,6 +237,7 @@ export function validateRelease(releaseId: string, files: ReleaseFiles): Issue[]
     derived: collect("derived"),
     vintages: Object.fromEntries([...vintagePaths].map(([key, path]) => [key, parsed.get(path)])),
     annotations: parsed.get(ANNOTATIONS),
+    ...(parsed.has(EVENTS) ? { events: parsed.get(EVENTS) } : {}),
   };
   const validate = schemaValidator();
   if (!validate(bundle)) {
@@ -372,6 +385,7 @@ function crossFileRules(
       add("bad_anchor", ANNOTATIONS, `${annotation.id} ends before it starts`);
     }
   }
+  issues.push(...eventRules(bundle));
 
   // Profile rules (PLAN 6.1): a second line of defence, not the rights gate.
   if (manifest.profile === "public") {
@@ -390,6 +404,78 @@ function crossFileRules(
     for (const [key, entry] of entries) {
       if (entry.status === "draft") add("draft_in_public", CATALOG, `${key} is a draft`);
     }
+    for (const event of bundle.events?.events ?? []) {
+      if (event.status === "draft") add("draft_in_public", EVENTS, `${event.id} is a draft`);
+    }
+    for (const annotation of bundle.annotations.annotations) {
+      if (annotation.provenance?.representation === LEGACY) {
+        add("legacy_in_public", ANNOTATIONS, `${annotation.id} is v1's, which is never public`);
+      }
+    }
+  }
+  return issues;
+}
+
+/**
+ * Where an Event sits on a time axis: a day is a date, a month or a year is that Period, and an
+ * Event with an end is a span of whole days. Null when its dates are not ones a calendar has, or
+ * are not as precise as it says.
+ */
+export function eventAnchor(event: Pick<Event, "date" | "end" | "date_precision">): Anchor | null {
+  const freq = { year: "annual", month: "monthly", day: "daily" }[event.date_precision];
+  const start = periodBounds(freq, event.date);
+  if (!start) return null;
+  if (event.end !== undefined) {
+    const end = periodBounds(freq, event.end);
+    return end ? { type: "span", start: start.start, end: end.end } : null;
+  }
+  return event.date_precision === "day" ? { type: "date", date: event.date } : { type: "period", period: event.date };
+}
+
+/**
+ * 0.3.0: every Event is drawn as exactly one Annotation that says what the Event says, and every
+ * Annotation of kind `event` is the projection of an Event.
+ */
+function eventRules(bundle: Release): Issue[] {
+  if (!bundle.events) return [];
+  const issues: Issue[] = [];
+  const events = new Map<string, Event>();
+  for (const event of bundle.events.events) {
+    if (events.has(event.id)) issues.push({ code: "duplicate_event_id", path: EVENTS, message: `${event.id} appears more than once` });
+    events.set(event.id, event);
+    const anchor = eventAnchor(event);
+    if (anchor === null) {
+      issues.push({ code: "bad_event_date", path: EVENTS, message: `${event.id}: its date or end is not a ${event.date_precision} of the calendar` });
+    } else if (anchor.type === "span" && anchor.end !== null && anchor.end < anchor.start) {
+      issues.push({ code: "bad_event_date", path: EVENTS, message: `${event.id} ends before it starts` });
+    }
+  }
+  const same = (a: unknown, b: unknown): boolean => {
+    const sorted = (value: unknown): unknown =>
+      value !== null && typeof value === "object" && !Array.isArray(value)
+        ? Object.fromEntries(Object.entries(value).sort(([x], [y]) => (x < y ? -1 : 1)).map(([k, v]) => [k, sorted(v)]))
+        : value;
+    return JSON.stringify(sorted(a)) === JSON.stringify(sorted(b));
+  };
+  const projected = new Set<string>();
+  for (const annotation of bundle.annotations.annotations) {
+    if (annotation.kind !== "event") continue;
+    const ref = annotation.ref ?? "";
+    const id = ref.startsWith("content/events/") && ref.endsWith(".md") ? ref.slice("content/events/".length, -".md".length) : null;
+    const event = id === null ? undefined : events.get(id);
+    if (!event || annotation.id !== `event-${id}`) {
+      issues.push({ code: "event_projection", path: ANNOTATIONS, message: `${annotation.id} is not the Annotation of an Event in ${EVENTS}` });
+      continue;
+    }
+    projected.add(event.id);
+    const first = event.sources[0]!;
+    const source = Object.fromEntries((["name", "url", "archive_url"] as const).filter((n) => first[n] !== undefined).map((n) => [n, first[n]]));
+    if (!same([annotation.label, annotation.category ?? null, annotation.anchor, annotation.source], [event.title, event.category, eventAnchor(event), source])) {
+      issues.push({ code: "event_projection", path: ANNOTATIONS, message: `${annotation.id} does not say what its Event says (title, category, date or first citation)` });
+    }
+  }
+  for (const id of events.keys()) {
+    if (!projected.has(id)) issues.push({ code: "event_projection", path: EVENTS, message: `${id} has no Annotation` });
   }
   return issues;
 }

@@ -148,7 +148,7 @@ def test_a_public_release_leaves_out_a_layer_whose_origin_is_not_signed_and_says
     kinds = {a["kind"] for a in read(result, "annotations")}
     assert kinds == {"recession"}
     (line,) = [row for row in result.report if row["check"] == "content: hand-entered layers"]
-    assert line["outcome"] == "warn" and "invented-office" in line["detail"] and "not signed" in line["detail"]
+    assert line["outcome"] == "warn" and "invented-office" in line["detail"] and "not in the rights register" in line["detail"]
     assert b"A. Example" not in b"".join(result.files.values())
 
 

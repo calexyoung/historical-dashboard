@@ -1,6 +1,22 @@
 {
   "annotations": [
     {
+      "id": "event-2023-fixture-bridge-programme",
+      "kind": "event",
+      "anchor": {
+        "type": "period",
+        "period": "2023"
+      },
+      "label": "Fixture bridge programme begins",
+      "ref": "content/events/2023-fixture-bridge-programme.md",
+      "source": {
+        "name": "Fixture gazette (synthetic)",
+        "url": "https://example.org/fixture-gazette",
+        "archive_url": "https://example.org/archive/2026/fixture-gazette"
+      },
+      "category": "infrastructure"
+    },
+    {
       "id": "event-2024-09-18-fixture-rate-decision",
       "kind": "event",
       "anchor": {
@@ -8,12 +24,46 @@
         "date": "2024-09-18"
       },
       "label": "Fixture central bank changes its rate",
-      "ref": null,
+      "ref": "content/events/2024-09-18-fixture-rate-decision.md",
       "source": {
         "name": "Fixture gazette (synthetic)",
-        "url": "https://example.org/fixture-gazette"
+        "url": "https://example.org/fixture-gazette",
+        "archive_url": "https://example.org/archive/2026/fixture-gazette"
       },
       "category": "policy"
+    },
+    {
+      "id": "event-2025-03-fixture-statute",
+      "kind": "event",
+      "anchor": {
+        "type": "period",
+        "period": "2025-03"
+      },
+      "label": "Fixture statute takes effect",
+      "ref": "content/events/2025-03-fixture-statute.md",
+      "source": {
+        "name": "Fixture gazette (synthetic)",
+        "url": "https://example.org/fixture-gazette",
+        "archive_url": "https://example.org/archive/2026/fixture-gazette"
+      },
+      "category": "legislation"
+    },
+    {
+      "id": "event-2025-08-04-fixture-storm",
+      "kind": "event",
+      "anchor": {
+        "type": "span",
+        "start": "2025-08-04",
+        "end": "2025-08-09"
+      },
+      "label": "Fixture storm crosses the fixture coast",
+      "ref": "content/events/2025-08-04-fixture-storm.md",
+      "source": {
+        "name": "Fixture gazette (synthetic)",
+        "url": "https://example.org/fixture-gazette",
+        "archive_url": "https://example.org/archive/2026/fixture-gazette"
+      },
+      "category": "disaster"
     },
     {
       "id": "recession-2022-fixture",
@@ -28,6 +78,12 @@
       "source": {
         "name": "Fixture gazette (synthetic)",
         "url": "https://example.org/fixture-gazette"
+      },
+      "provenance": {
+        "producer": "Macro Atlas fixture (synthetic)",
+        "dataset": "fixture",
+        "via": "fixture",
+        "representation": "native"
       }
     },
     {
@@ -43,6 +99,12 @@
       "source": {
         "name": "Fixture gazette (synthetic)",
         "url": "https://example.org/fixture-gazette"
+      },
+      "provenance": {
+        "producer": "Macro Atlas fixture (synthetic)",
+        "dataset": "fixture",
+        "via": "fixture",
+        "representation": "native"
       },
       "attributes": {
         "office": "head of government",
@@ -63,6 +125,12 @@
         "name": "Fixture gazette (synthetic)",
         "url": "https://example.org/fixture-gazette"
       },
+      "provenance": {
+        "producer": "Macro Atlas fixture (synthetic)",
+        "dataset": "fixture",
+        "via": "fixture",
+        "representation": "native"
+      },
       "attributes": {
         "office": "head of government",
         "party": "Fixture Party B"
@@ -81,6 +149,12 @@
       "source": {
         "name": "Fixture gazette (synthetic)",
         "url": "https://example.org/fixture-gazette"
+      },
+      "provenance": {
+        "producer": "Macro Atlas fixture (synthetic)",
+        "dataset": "fixture",
+        "via": "fixture",
+        "representation": "native"
       }
     },
     {
