@@ -16,10 +16,13 @@
  */
 
 /**
- * The Transforms the Explorer offers: v1's six modes. The engine's allowlist is longer since
- * M11 (`chg`, `ch1`, `pch`, `pca`); they are answered by Query and reach the Explorer with M18.
+ * The Transforms the Explorer offers: v1's six modes, then the rest of the engine's allowlist
+ * (M18), in that order so that v1's six stay where a reader of v1 looks for them.
  */
-export const MODES = ["lin", "log", "rebase", "z", "pc1", "drawdown"] as const;
+export const MODES = ["lin", "log", "rebase", "z", "pc1", "drawdown", "chg", "ch1", "pch", "pca"] as const;
+/** The frequencies every finer Series can be brought to (`freq=`). */
+export const COMMON_FREQUENCIES = ["weekly", "monthly", "quarterly", "annual"] as const;
+export type CommonFrequency = (typeof COMMON_FREQUENCIES)[number];
 export type ExplorerMode = (typeof MODES)[number];
 
 export type ExplorerState = {
@@ -54,6 +57,14 @@ export type ExplorerState = {
   sy: string | null;
   /** The rolling correlation's span in months: 24, or 36 when not said. */
   roll: 24 | 36;
+  /** The Cutoff of an as-of view: a date (YYYY-MM-DD) or an instant (YYYY-MM-DDTHH:MM:SSZ). Null: today's values. */
+  asOf: string | null;
+  /** Every Series finer than this is combined to it, by its own declared rule. Null: each at its own frequency. */
+  freq: CommonFrequency | null;
+  /** The Release this view is pinned to (`pin=`). The gate fixes the request to it before the page runs. */
+  pin: string | null;
+  /** The address has a `pin` that is not a release id. The gate refuses such a request; the view never shows other data in its place. */
+  pinUnread: boolean;
   /** What the address said that could not be read, in words. Never the unread text itself. */
   notes: string[];
 };
@@ -61,6 +72,8 @@ export type ExplorerState = {
 const KEY = /^[a-z][a-z0-9_]{0,63}$/;
 const MONTH = /^\d{4}-(0[1-9]|1[0-2])$/;
 const LAYER = /^(rec|pol|(ev|gov)(\.[a-z0-9_]{1,40})?)$/;
+const PIN = /^[0-9]{8}T[0-9]{6}Z-[0-9a-f]{7,12}$/;
+const INSTANT = /^(\d{4}-\d{2}-\d{2})(T([01]\d|2[0-3]):[0-5]\d:[0-5]\dZ)?$/;
 const EVENT_ID = /^[a-z0-9][a-z0-9_.-]{0,127}$/;
 
 export const MAX_LAG = 24;
@@ -162,11 +175,33 @@ export function parseExplorerParams(input: URLSearchParams | Record<string, stri
     return value !== null && KEY.test(value) ? value : null;
   };
 
+  let asOf: string | null = null;
+  const askedAsOf = params.get("as_of");
+  if (askedAsOf !== null && askedAsOf !== "") {
+    const day = INSTANT.exec(askedAsOf)?.[1];
+    if (day !== undefined && isDate(day) && day >= "1900-01-01") asOf = askedAsOf;
+    else notes.push("The as-of date is not a date from 1900 on written YYYY-MM-DD (or an instant written YYYY-MM-DDTHH:MM:SSZ), so today's values are shown.");
+  }
+
+  let freq: CommonFrequency | null = null;
+  const askedFreq = params.get("freq");
+  if (askedFreq !== null && askedFreq !== "") {
+    if ((COMMON_FREQUENCIES as readonly string[]).includes(askedFreq)) freq = askedFreq as CommonFrequency;
+    else notes.push(`The frequency in the address is not one of ${COMMON_FREQUENCIES.join(", ")}, so each series is at its own.`);
+  }
+
+  const askedPin = params.get("pin");
+  const pin = askedPin !== null && PIN.test(askedPin) ? askedPin : null;
+
   return {
     series,
     mode,
     from,
     to,
+    asOf,
+    freq,
+    pin,
+    pinUnread: askedPin !== null && askedPin !== "" && pin === null,
     layers,
     at,
     event,
@@ -188,12 +223,14 @@ export function parseExplorerParams(input: URLSearchParams | Record<string, stri
  * The view as a query string, without the "?". Every value is made of characters that need no
  * escaping (keys, months, dates, tokens), so the address stays readable.
  */
-export function explorerQuery(state: Omit<ExplorerState, "notes">): string {
+export function explorerQuery(state: Omit<ExplorerState, "notes" | "asOf" | "freq" | "pin" | "pinUnread"> & Partial<Pick<ExplorerState, "asOf" | "freq" | "pin">>): string {
   const parts: string[] = [];
   if (state.series !== null) parts.push(`s=${state.series.join(",")}`);
   if (state.mode !== null) parts.push(`mode=${state.mode}`);
   if (state.from !== null) parts.push(`from=${state.from}`);
   if (state.to !== null) parts.push(`to=${state.to}`);
+  if (state.freq) parts.push(`freq=${state.freq}`);
+  if (state.asOf) parts.push(`as_of=${state.asOf}`);
   if (state.layers !== null) parts.push(`layers=${state.layers.length > 0 ? state.layers.join(",") : "none"}`);
   if (state.at !== null) parts.push(`at=${state.at}`);
   if (state.event !== null) parts.push(`event=${state.event}`);
@@ -207,6 +244,7 @@ export function explorerQuery(state: Omit<ExplorerState, "notes">): string {
   if (state.ext) parts.push("ext=1");
   if (state.table) parts.push("table=1");
   if (state.pick) parts.push("pick=1");
+  if (state.pin) parts.push(`pin=${state.pin}`);
   return parts.join("&");
 }
 

@@ -4,11 +4,11 @@
  * only through Query, so the rights gate decides.
  */
 import { beforeAll, describe, expect, it } from "vitest";
-import type { Surface } from "@macro-atlas/core";
+import { createRightsGate, type Surface } from "@macro-atlas/core";
 import type { SvgNode } from "../figure";
 import { textOf, walk } from "../figure/svg";
 import { createReleaseReader, type OpenedRelease } from "../release/reader";
-import { FIXTURE_ROOT } from "../release/testing";
+import { FIXTURE_ROOT, fixtureRegister } from "../release/testing";
 import { readoutAt } from "./readout";
 import { explorerQuery, parseExplorerParams } from "./state";
 import { explorerView, type ExplorerView } from "./view";
@@ -618,5 +618,118 @@ describe("relationships", () => {
   it("does not depend on the mode or on a second range", () => {
     const plain = JSON.stringify(view(pairQ).relationships.matrix.map((row) => row.map((c) => c.r)));
     expect(JSON.stringify(view(`${pairQ}&mode=log&cmp=2025-01&from=2024-01&to=2025-12`).relationships.matrix.map((row) => row.map((c) => c.r)))).toBe(plain);
+  });
+});
+
+// --- M18 ------------------------------------------------------------------------------------------
+
+describe("M18: as of a date", () => {
+  it("answers with what was held before the date, says the Basis of each series, and keeps as_of in every address", () => {
+    const v = view("s=fx_price_index&as_of=2025-12-10");
+    expect(v.asOf).toMatchObject({ date: "2025-12-10", basis: "atlas_observed" });
+    expect(v.selection[0]).toMatchObject({ state: "drawn", basis: "atlas_observed" });
+    // November was first held on 10 December, after the Cutoff: it is not in the answer.
+    expect(v.runs[0]!.rows.at(-1)!.period).toBe("2025-10");
+    expect(v.resolvedQuery).toContain("as_of=2025-12-10");
+    expect(v.selection[0]!.removeQuery).toContain("as_of=2025-12-10");
+    expect(v.asOf!.offQuery).not.toContain("as_of");
+  });
+
+  it("claims the weakest Basis among what is drawn", () => {
+    const v = view("s=fx_price_index,fx_output_quarterly&as_of=2025-12-13");
+    expect(v.selection.map((s) => s.basis)).toEqual(["uncertain", "provider"]);
+    expect(v.asOf!.basis).toBe("uncertain");
+  });
+
+  it("an unavailable answer is never filled with today's figure: the series is named, with the reason, and has no value", () => {
+    const v = view("s=fx_price_index&as_of=2025-01-01&cmp=2024-01&from=2025-01&to=2025-06");
+    expect(v.selection[0]).toMatchObject({ state: "not_drawn", basis: "unavailable" });
+    expect(v.selection[0]!.reason).toMatch(/held nothing|no coverage|not know/i);
+    expect(v.figure).toBeNull();
+    expect(v.runs).toEqual([]);
+    expect(v.readout.series[0]!.rows).toEqual([]);
+    expect(v.snapshot[0]!.first).toBeNull();
+  });
+
+  it("names a series by the unit in force then, and says which periods were still held under other metadata", () => {
+    const before = view("s=fx_poverty_rate_annual&as_of=2025-12-09");
+    const today = view("s=fx_poverty_rate_annual");
+    expect(before.selection[0]!.unit).not.toBe(today.selection[0]!.unit);
+    const after = view("s=fx_poverty_rate_annual&as_of=2025-12-13");
+    expect(after.selection[0]!.unit).toBe(today.selection[0]!.unit);
+    expect(after.notes.join(" ")).toMatch(/2012, 2013, 2014 and 2015/);
+  });
+
+  it("says nothing of today in an as-of view: no stale mark and no latest value", () => {
+    const v = view("s=fx_permits_stale&as_of=2025-12-13");
+    expect(v.figure?.plots.flatMap((p) => p.series).every((s) => !("stale" in s) || !s.stale)).not.toBe(false);
+    expect(v.snapshot[0]!.latest).toBeNull();
+  });
+
+  it("an as-of date Query cannot read is refused in words, not answered with today", () => {
+    const v = view("s=fx_price_index&as_of=1850-01-01");
+    expect(v.asOf).toBeNull();
+    expect(v.notes.join(" ")).toMatch(/as-of date/);
+  });
+});
+
+describe("M18: a common frequency", () => {
+  it("combines every finer series by its own declared rule and leaves a slower one as it is, saying both", () => {
+    const v = view("s=fx_price_index,fx_output_quarterly,fx_poverty_rate_annual&freq=quarterly");
+    const byKey = Object.fromEntries(v.runs.map((r) => [r.series, r]));
+    expect(byKey.fx_price_index!.freq).toBe("quarterly");
+    expect(byKey.fx_price_index!.rows[0]!.period).toMatch(/^\d{4}-Q[1-4]$/);
+    expect(byKey.fx_output_quarterly!.freq).toBe("quarterly");
+    expect(byKey.fx_poverty_rate_annual!.freq).toBe("annual");
+    expect(v.selection[0]!.combined).toMatchObject({ from: "monthly", to: "quarterly", method: "mean" });
+    expect(v.notes.join(" ")).toMatch(/Fixture price index.*monthly.*averaged over each quarter/);
+    expect(v.notes.join(" ")).toMatch(/annual.*drawn as it is/i);
+    expect(v.resolvedQuery).toContain("freq=quarterly");
+  });
+
+  it("a quarterly mean of a monthly index is the mean of its three months", () => {
+    const monthly = view("s=fx_price_index&from=2025-04&to=2025-06").runs[0]!.rows.map((r) => r.value!);
+    const quarterly = view("s=fx_price_index&from=2025-04&to=2025-06&freq=quarterly").runs[0]!.rows;
+    expect(monthly).toHaveLength(3);
+    expect(quarterly).toHaveLength(1);
+    expect(quarterly[0]!.value).toBeCloseTo((monthly[0]! + monthly[1]! + monthly[2]!) / 3, 9);
+  });
+
+  it("a series that does not say how its periods combine is not drawn, with the reason", () => {
+    const v = view("s=fx_price_index_yoy&freq=annual");
+    expect(v.selection[0]).toMatchObject({ state: "not_drawn" });
+    expect(v.selection[0]!.reason).toMatch(/combine|aggregat/i);
+  });
+});
+
+describe("M18: a series the release does not hold, a gate handed in, a pin", () => {
+  it("names a Catalog series this release does not hold, with the Catalog's reason", () => {
+    const v = view("s=fx_price_index,spx,no_such_series");
+    expect(v.absent).toEqual([expect.objectContaining({ key: "spx", name: "S&P 500" })]);
+    expect(v.absent[0]!.reason).toMatch(/licensed/);
+    expect(v.notes.join(" ")).toContain("no_such_series");
+    expect(v.resolved.series).toEqual(["fx_price_index"]);
+  });
+
+  it("asks the gate it is handed (a test's own register), for values and for the picker", () => {
+    const gate = createRightsGate(fixtureRegister({ display: true, redistribute: false }));
+    const v = explorerView(release, "production", parseExplorerParams(new URLSearchParams("s=fx_price_index")), { gate });
+    expect(v.selection[0]!.state).toBe("drawn");
+    expect(v.picker.flatMap((g) => g.series).find((s) => s.key === "fx_price_index")!.available).toBe(true);
+    // The committed register signs nothing: without the argument nothing is shown.
+    expect(view("s=fx_price_index", "production").selection[0]!.state).toBe("not_permitted");
+  });
+
+  it("carries a pin through every address the page links to", () => {
+    const pin = "20260101T000000Z-0000000";
+    const v = view(`s=fx_price_index,fx_output_quarterly&pin=${pin}`);
+    for (const query of [v.query, v.resolvedQuery, v.selection[0]!.removeQuery, v.queryWith({ mode: "z" }), v.queryWith({ table: true })]) expect(query).toContain(`pin=${pin}`);
+  });
+
+  it("offers the engine's other changes, each in a unit of its own", () => {
+    const v = view("s=fx_price_index&mode=pch");
+    expect(v.mode).toBe("pch");
+    expect(v.figure!.plots[0]!.unitLine).toMatch(/percent change from the period before/i);
+    expect(view("s=fx_price_index&mode=chg").figure!.plots[0]!.unitLine).toMatch(/change from the period before/i);
   });
 });
