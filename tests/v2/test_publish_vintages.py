@@ -184,3 +184,21 @@ def test_a_second_metadata_under_a_hash_already_used_does_not_hide_where_values_
     held["metadata"] = [forged, *held["metadata"]]
     problems = R.rights_problems({**files, "vintages/fx_price.json": json.dumps(held).encode()}, gate)
     assert len(problems) == 1 and "its history" in problems[0] and "An Origin with no row" in problems[0]
+
+
+def test_history_that_does_not_say_where_it_came_from_is_left_out_not_a_crash(tmp_path, register):
+    """An early line of the metadata history names no dataset. What is current is whole and is
+    published; the history cannot be asked about, so it is not written."""
+    store = tmp_path / "store"
+    nameless = metadata()
+    nameless["source"]["origin"]["dataset"] = ""
+    record(store, 0, [("2026-01", "99.123", "final")], meta=nameless)
+    record(store, 1, [("2026-01", "100.000", "final"), ("2026-02", "100.400", "final")])
+    result = publish(tmp_path, register, store)
+
+    assert result.outcome == "promoted", result.lines
+    directory = directory_of(tmp_path, result)
+    assert not (directory / "vintages").exists()
+    (line,) = [c for c in read_json(directory / "manifest.json")["checks"]["report"] if c["check"] == "vintages"]
+    assert line["outcome"] == "warn" and "does not name its Origin" in line["detail"]
+    assert b"99.123" not in all_bytes(tmp_path / "public")

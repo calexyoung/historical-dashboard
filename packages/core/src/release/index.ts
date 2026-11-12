@@ -569,9 +569,12 @@ function vintageRules(bundle: Release, files: ReleaseFiles, vintagePaths: Map<st
       }
     }
     if (!sorted(doc.metadata.map((line) => instantKey(line.recorded_from)))) bad("the metadata history is not oldest first");
+    const captured = new Set(doc.captures.map((capture) => instantKey(capture.retrieved_at)));
     const channelOf = new Map<string, string>();
+    const since = new Map<string, string>(); // metadata hash -> when it was first recorded
     const said = new Map<string, string>();
     for (const line of doc.metadata) {
+      if (!since.has(line.hash)) since.set(line.hash, instantKey(line.recorded_from));
       const text = canonical(line.metadata);
       if (!said.has(line.hash)) said.set(line.hash, text);
       else if (said.get(line.hash) !== text) bad(`two different metadata share the hash ${line.hash.slice(0, 12)}`);
@@ -581,6 +584,7 @@ function vintageRules(bundle: Release, files: ReleaseFiles, vintagePaths: Map<st
     const current = new Map<string, VintageRow>();
     const seen = new Set<string>();
     let before: VintageRow | null = null;
+    let dated: VintageRow | null = null; // the last version of this Period that the Origin dated
     for (const version of doc.rows) {
       const { period } = version;
       const bounds = periodBounds(doc.freq, period);
@@ -590,6 +594,20 @@ function vintageRules(bundle: Release, files: ReleaseFiles, vintagePaths: Map<st
       const start = instantKey(version.recorded_from);
       if (version.recorded_to !== null && instantKey(version.recorded_to) < start) {
         bad(`${period}: a version is replaced before it was first held`);
+      }
+      if (!captured.has(start) || (version.recorded_to !== null && !captured.has(instantKey(version.recorded_to)))) {
+        bad(`${period}: a version is held from or to a time that is no Capture's`);
+      }
+      const recorded = since.get(version.metadata);
+      if (recorded !== undefined && start < recorded) {
+        bad(`${period}: a version is held before the metadata it names was recorded`);
+      }
+      if (before === null || before.period !== period) dated = null;
+      if (version.provider_from !== null) {
+        if (dated !== null && (dated.provider_to === null || instantKey(dated.provider_to) > instantKey(version.provider_from))) {
+          bad(`${period}: two versions the Origin dated were in force at once`);
+        }
+        dated = version;
       }
       if (version.provider_from === null) {
         if (version.provider_to !== null || version.provider_precision !== null) {

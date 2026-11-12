@@ -306,7 +306,7 @@ export function resolve(series: ResolveSeries, asOf: string | null, release: { r
     // a version that only restates the one before under new metadata.
     const firstCapture = captures[0]!.at;
     answer.same_day_release = rows.some((timed, i) => {
-      if (timed.provider !== null) return providerDay(timed) === cutoff.day;
+      if (timed.provider !== null && providerDay(timed) === cutoff.day) return true;
       const heldFrom = instantMs(timed.row.recorded_from);
       if (timed.from === firstCapture || heldFrom === null || newYork(heldFrom).day !== cutoff.day) return false;
       const earlier = i > 0 && rows[i - 1]!.row.period === timed.row.period ? rows[i - 1]!.row : null;

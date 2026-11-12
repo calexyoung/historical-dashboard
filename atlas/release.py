@@ -486,9 +486,12 @@ def _vintage_rules(bundle, files, vintage_paths: dict[str, str]) -> list[Issue]:
         times = [instant_key(line["recorded_from"]) for line in doc["metadata"]]
         if times != sorted(times):
             bad("the metadata history is not oldest first")
+        captured = {instant_key(capture["retrieved_at"]) for capture in doc["captures"]}
         channel_of: dict[str, str] = {}
+        since: dict[str, str] = {}  # metadata hash -> when it was first recorded
         said: dict[str, str] = {}
         for line in doc["metadata"]:
+            since.setdefault(line["hash"], instant_key(line["recorded_from"]))
             text = json.dumps(line["metadata"], sort_keys=True)
             if said.setdefault(line["hash"], text) != text:
                 bad(f"two different metadata share the hash {line['hash'][:12]}")
@@ -497,6 +500,7 @@ def _vintage_rules(bundle, files, vintage_paths: dict[str, str]) -> list[Issue]:
         current: dict[str, dict] = {}
         seen: set = set()
         before = None
+        dated = None
         for version in doc["rows"]:
             period = version["period"]
             if period_bounds(doc["freq"], period) != (version["period_start"], version["period_end"]):
@@ -504,6 +508,17 @@ def _vintage_rules(bundle, files, vintage_paths: dict[str, str]) -> list[Issue]:
             start, stop = instant_key(version["recorded_from"]), version["recorded_to"]
             if stop is not None and instant_key(stop) < start:
                 bad(f"{period}: a version is replaced before it was first held")
+            if start not in captured or (stop is not None and instant_key(stop) not in captured):
+                bad(f"{period}: a version is held from or to a time that is no Capture's")
+            if version["metadata"] in since and start < since[version["metadata"]]:
+                bad(f"{period}: a version is held before the metadata it names was recorded")
+            if before is None or before["period"] != period:
+                dated = None  # the last version of this Period that the Origin dated
+            if version["provider_from"] is not None:
+                if dated is not None and (dated["provider_to"] is None or instant_key(
+                        dated["provider_to"]) > instant_key(version["provider_from"])):
+                    bad(f"{period}: two versions the Origin dated were in force at once")
+                dated = version
             if version["provider_from"] is None:
                 if version["provider_to"] is not None or version["provider_precision"] is not None:
                     bad(f"{period}: a version the Origin did not date carries a provider time")

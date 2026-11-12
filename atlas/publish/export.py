@@ -382,9 +382,13 @@ def build(*, profile: str, store: Path, table: object, gate: RightsGate, series:
                            "rights_status": entry["rights"]["status"], "representation": NATIVE}
         history = _vintage_file(key, spec["freq"], vintages)
         if not isinstance(history, str) and profile == "public":
-            decision = gate.permits(history_lineages(history), "production")
-            if not decision.allowed:
-                history = decision.reason
+            try:
+                decision = gate.permits(history_lineages(history), "production")
+                if not decision.allowed:
+                    history = decision.reason
+            except (ValueError, KeyError, TypeError, AttributeError):
+                # A line of history that does not say where it came from cannot be asked about.
+                history = "a line of its history does not name its Origin, dataset and Channel"
         if isinstance(history, str):
             no_history.append(f"{key} ({history})")
         else:

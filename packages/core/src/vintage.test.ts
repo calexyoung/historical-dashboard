@@ -362,6 +362,12 @@ describe("a provider vintage: what the Origin had published before the cutoff", 
       row("quarterly", "2025-Q4", 705.0, "revised", K2, null, { provider_from: "2026-01-08T13:30:00Z", provider_precision: "datetime" }),
     ],
   };
+  it("past the Origin's record, a version it dated long ago but first held on the cutoff's day is flagged", () => {
+    // The Origin dated the revision to 8 January; Macro Atlas first held it on 1 March.
+    const noted = { ...late, provider_coverage: null };
+    expect(resolve(native(noted), "2026-03-01", RELEASE).same_day_release).toBe(true);
+    expect(resolve(native(noted), "2026-03-02", RELEASE).same_day_release).toBe(false);
+  });
   it("the two clocks are never mixed: inside the Origin's record only versions it dated take part", () => {
     expect(table(resolve(native(late), "2026-01-11", RELEASE))).toEqual([["2025-Q4", 705.0, "revised", "provider"]]);
     expect(table(resolve(native(late), "2026-01-08", RELEASE))).toEqual([]); // published later that morning

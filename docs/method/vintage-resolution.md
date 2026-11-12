@@ -106,6 +106,9 @@ day. On Macro Atlas's clock it is also a version first held that day, except
 
 The flag is set whether or not the version counts toward the answer.
 
+A question about a date before 1900 has no Cutoff (`bad_as_of`): New York's clock is taken as
+four or five hours behind UTC, which holds from 1883, and no record here reaches back so far.
+
 ## Metadata in force
 
 A change of unit, definition, adjustment, Source or Rights is a Revision (ADR 0005). The answer

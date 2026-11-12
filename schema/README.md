@@ -159,7 +159,7 @@ the last stage: they are judged against Series files already known to be sound.
 | vintages | `orphan_vintage_file` | a vintage file for a key with no file under `series/` |
 | vintages | `withheld_present` | a withheld Series has a vintage file |
 | vintages | `manifest_mismatch`, `hash_mismatch` | a vintage file and the manifest's `vintages_sha256` do not match one to one, or the bytes differ |
-| vintages | `vintage_mismatch` | the file is not for that Series (key, frequency, a legacy Series); a version's dates are not its Period's; versions out of Period order, two held at once, or two current; a provider time without precision or the other way round; a version that names metadata the file lacks or a Channel that is not its metadata's; two different metadata under one hash; Captures or metadata not oldest first; a scope or coverage that ends before it begins; the versions current now are not the Series' own file |
+| vintages | `vintage_mismatch` | the file is not for that Series (key, frequency, a legacy Series); a version's dates are not its Period's; versions out of Period order, two held at once, or two current; a provider time without precision or the other way round; a version that names metadata the file lacks or a Channel that is not its metadata's; two different metadata under one hash; a version held from or to a time that is no Capture's, or before the metadata it names was recorded; two versions the Origin dated in force at once; Captures or metadata not oldest first; a scope or coverage that ends before it begins; the versions current now are not the Series' own file |
 
 ## What this contract does not decide
 
