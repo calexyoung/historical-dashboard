@@ -91,3 +91,43 @@ def test_each_part_of_a_long_window_must_be_whole_and_stay_in_its_own_years():
 
 def test_a_window_is_at_most_a_hundred_years():
     assert BLS.problem({"series": ["A"], "years": 101}) == "years is not between 1 and 100"
+
+
+def test_a_year_that_has_only_begun_has_no_data_yet_and_that_is_whole():
+    # Verified 2026-11-11 by asking for 2027: under REQUEST_SUCCEEDED the Bureau says "No Data
+    # Available for Series X Year: 2027". Each January that is true of this year, until the
+    # first figure of the year is out (for a quarterly series, until spring).
+    transport = Scripted({URL: [(200, answer(
+        {"A": [row(2026, "M12", "1")], "B": [row(2026, "Q04", "2")]},
+        message=["No Data Available for Series A Year: 2027", "No Data Available for Series B Year: 2027"]))]},
+        start="2027-01-15T15:00:00")
+    raw = capture(endpoint(["A", "B"], years=2), Fetch(Session(transport, sleep=lambda s: None)))
+    assert raw.evidence.complete, raw.evidence.problems
+    assert raw.evidence.checks["no_data_yet"] == {"2027": ["A", "B"]}
+    assert BLS.parse(raw).complete is True
+
+
+@pytest.mark.parametrize("message, problem", [
+    ("No Data Available for Series A Year: 2026", "BLS says: No Data Available for Series A Year: 2026"),
+    ("No Data Available for Series Z Year: 2027", "BLS says: No Data Available for Series Z Year: 2027"),
+    ("No Data Available for Series A Year: 2027 ", "BLS says: No Data Available for Series A Year: 2027 "),
+    ("Series does not exist for Series A", "BLS says: Series does not exist for Series A"),
+])
+def test_no_other_message_is_excused(message, problem):
+    transport = Scripted({URL: [(200, answer({"A": [row(2026, "M12", "1")]}, message=[message]))]},
+                         start="2027-01-15T15:00:00")
+    raw = capture(endpoint(["A"], years=2), Fetch(Session(transport, sleep=lambda s: None)))
+    assert problem in raw.evidence.problems
+
+
+def test_no_data_yet_is_not_believed_of_a_year_the_answer_has_rows_for():
+    transport = Scripted({URL: [(200, answer({"A": [row(2027, "M01", "1")]},
+                                             message=["No Data Available for Series A Year: 2027"]))]},
+                         start="2027-02-15T15:00:00")
+    raw = capture(endpoint(["A"], years=1), Fetch(Session(transport, sleep=lambda s: None)))
+    assert "BLS says there is no data for series A in 2027 and lists some" in raw.evidence.problems
+
+
+def test_the_newest_request_is_a_full_ten_years_whatever_the_window():
+    spans = BLS._requests({"start_year": 2006, "end_year": 2027})
+    assert spans == [(2006, 2007), (2008, 2017), (2018, 2027)]

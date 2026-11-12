@@ -149,10 +149,13 @@ class BlsAdapter:
         return None
 
     def _requests(self, scope: dict) -> list[tuple[int, int]]:
-        """The years of each request, oldest first: ten at a time, the last ending the window."""
+        """The years of each request, oldest first: ten at a time counted back from the end of
+        the window, so the newest request never holds this year alone (in January it would
+        come back with no rows at all)."""
         first, last = scope["start_year"], scope["end_year"]
-        return [(start, min(start + self.REQUEST_YEARS - 1, last))
-                for start in range(first, last + 1, self.REQUEST_YEARS)]
+        spans = [(max(end - self.REQUEST_YEARS + 1, first), end)
+                 for end in range(last, first - 1, -self.REQUEST_YEARS)]
+        return spans[::-1]
 
     def fetch(self, endpoint: Endpoint, fetch: Fetch) -> Evidence:
         end = fetch.now().astimezone(RELEASE_ZONE).year
@@ -165,16 +168,21 @@ class BlsAdapter:
                                              body.encode("utf-8"))).body)
         return self.examine(scope, bodies)
 
-    def _read(self, scope: dict, bodies: list[bytes], problems: list[str]) -> tuple[dict[str, list[dict]], dict[str, int]]:
-        """Each series' Observations over every part, in order, and how many rows it had."""
+    def _read(self, scope: dict, bodies: list[bytes], problems: list[str]) -> tuple[dict[str, list[dict]], dict]:
+        """Each series' Observations over every part, in order, and the checks: how many rows
+        each had, and which have no figure yet this year."""
         requests = self._requests(scope)
         if len(bodies) != len(requests):
             problems.append(f"{len(requests)} parts were asked for and {len(bodies)} were kept")
         series: dict[str, list[dict]] = {}
         counts: dict[str, int] = {}
+        waiting: dict[str, list[str]] = {}
         for number, (body, (first, last)) in enumerate(zip(bodies, requests, strict=False), start=1):
             said: list[str] = []
-            for name, rows in self._rows(scope, [body], said).items():
+            found, not_yet = self._rows(scope, [body], said)
+            if not_yet:
+                waiting[str(scope["end_year"])] = not_yet
+            for name, rows in found.items():
                 counts[name] = counts.get(name, 0) + len(rows)
                 series.setdefault(name, []).extend(self._observations(
                     name, rows, {"start_year": first, "end_year": last}, said))
@@ -184,17 +192,32 @@ class BlsAdapter:
             observations.sort(key=lambda o: o["period"])
             if len({"Q" in o["period"] for o in observations}) > 1:
                 problems.append(f"series {name} gives both months and quarters")
-        return series, counts
+        checks: dict = {"series": {name: {"rows": counts[name],
+                                          "first": observations[0]["period"] if observations else None,
+                                          "last": observations[-1]["period"] if observations else None}
+                                   for name, observations in series.items()}}
+        if waiting:
+            checks["no_data_yet"] = waiting
+        return series, checks
 
-    def _rows(self, scope: dict, bodies: list[bytes], problems: list[str]) -> dict[str, list[dict]]:
+    def _rows(self, scope: dict, bodies: list[bytes], problems: list[str]) -> tuple[dict[str, list[dict]], list[str]]:
+        """The rows of each series in one answer, and the series the Bureau says have no
+        figure yet for the last year asked about."""
         answer = _json(bodies[0], problems, "the answer")
         if answer is None:
-            return {}
+            return {}, []
         if answer.get("status") != "REQUEST_SUCCEEDED":
             problems.append(f"the status is {answer.get('status')!r}, not 'REQUEST_SUCCEEDED'")
         messages = answer.get("message") or []
+        not_yet: list[str] = []
         if isinstance(messages, list):
-            problems.extend(f"BLS says: {message}" for message in messages)
+            # The one message that is not a fault: this year has no figure yet. Exactly that,
+            # of a series asked for and of the last year asked about, and nothing like it.
+            excused = {f"No Data Available for Series {name} Year: {scope['end_year']}": name
+                       for name in scope["series"]}
+            not_yet = [excused[m] for m in messages if isinstance(m, str) and m in excused]
+            problems.extend(f"BLS says: {message}" for message in messages
+                            if not (isinstance(message, str) and message in excused))
         else:
             problems.append("the message is not a list")
         results = answer.get("Results")
@@ -219,7 +242,12 @@ class BlsAdapter:
         for series in found:
             if series not in scope["series"]:
                 problems.append(f"series {series} was not asked for")
-        return found
+        for series in not_yet:
+            if any(isinstance(row, dict) and str(row.get("year")) == str(scope["end_year"])
+                   for row in found.get(series, [])):
+                problems.append(f"BLS says there is no data for series {series} in "
+                                f"{scope['end_year']} and lists some")
+        return found, sorted(set(not_yet))
 
     def _observations(self, series: str, rows: list[dict], scope: dict, problems: list[str]) -> list[dict]:
         out, seen = [], set()
@@ -268,12 +296,8 @@ class BlsAdapter:
 
     def examine(self, scope: dict, bodies: list[bytes]) -> Evidence:
         problems: list[str] = []
-        series, counts = self._read(scope, bodies, problems)
-        checks = {name: {"rows": counts[name],
-                         "first": observations[0]["period"] if observations else None,
-                         "last": observations[-1]["period"] if observations else None}
-                  for name, observations in series.items()}
-        return _evidence(scope, {"series": checks}, problems)
+        _, checks = self._read(scope, bodies, problems)
+        return _evidence(scope, checks, problems)
 
     def coverage(self, scope: dict) -> tuple[str, str]:
         """The first and last calendar day a scope asked about. A Period inside them that the
