@@ -262,14 +262,15 @@ export function exportView(release: OpenedRelease, surface: string, state: Explo
   }
 
   // The view as the page shows it: what it selects, its window, and every address in it.
-  const whole = explorerView(release, surface as Surface, { ...state, pick: false }, { gate });
+  // Its layers go into a file that leaves the site: each is asked for `redistribute`, as each Series is below.
+  const whole = explorerView(release, surface as Surface, { ...state, pick: false }, { gate, layers: "redistribute" });
   const candidates = whole.selection.filter((s) => s.state !== "withheld").map((s) => s.key);
   if (candidates.length === 0) return refuse(422, "There is nothing to export: no series that may be shown is selected.");
   const asked = askEach(release, surface, candidates, { gate, history: state.asOf !== null });
   if (asked.permitted.length === 0) return refusedAll(asked);
   // The file is the same view over the Series that may be handed out, on the view's own window.
   const may = asked.permitted.map((p) => p.key);
-  const view = asked.refused.length === 0 ? whole : explorerView(release, surface as Surface, { ...state, pick: false, series: may, from: whole.resolved.from, to: whole.resolved.to }, { gate });
+  const view = asked.refused.length === 0 ? whole : explorerView(release, surface as Surface, { ...state, pick: false, series: may, from: whole.resolved.from, to: whole.resolved.to }, { gate, layers: "redistribute" });
   if (view.figure === null || view.runs.length === 0) return refuse(422, "There is nothing to export: nothing is drawn in this view.");
 
   const address = `${options.address}?${whole.resolvedQuery.replace(/&(table|pick)=1/g, "")}`;

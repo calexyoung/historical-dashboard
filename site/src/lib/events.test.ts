@@ -11,7 +11,9 @@ import { explorerView } from "./explorer/view";
 import { eventPageView, eventsIndexView, parseEventFilters } from "./events";
 import { createReleaseReader, refusal, type OpenedRelease } from "./release/reader";
 import { addRelease, FIXTURE_ROOT, fixtureRegister, tempRoot } from "./release/testing";
+import { exportView } from "./export";
 import { breadcrumb, tabsFor } from "./nav";
+import { seriesTwin } from "./twin";
 import { seriesPageView } from "./series-page";
 
 let fixture: OpenedRelease;
@@ -241,6 +243,48 @@ describe("layers typed in from a record are under the rights gate, on every requ
     expect(annotationsFor(held, "production", signed).annotations).toEqual([]);
     expect(annotationsFor(held, "staging", signed).withheld.map((w) => w.count)).toEqual([1, 1]);
     expect(annotationsFor(held, "local").annotations).toHaveLength(2);
+  });
+});
+
+const twinText = (response: { body: unknown }): string => (typeof response.body === "string" ? response.body : JSON.stringify(response.body));
+
+describe("every other reader of the Annotations asks the gate too", () => {
+  const OTHER = "Another fixture origin (synthetic)";
+  /** The fixture's own Origin may be shown and handed out; another Origin's record as `other` says. */
+  const gateWith = (other: { display: boolean; redistribute: boolean }) => {
+    const table = fixtureRegister({ display: true, redistribute: true }) as { rows: Record<string, unknown>[] };
+    table.rows.push({ ...table.rows[0]!, id: "another-fixture", origins: [OTHER], decision: { ...other, store: false, ml_use: false, signed_by: "Alex", signed_on: "2026-01-01" } });
+    return createRightsGate(table);
+  };
+  const provenance = { producer: OTHER, dataset: "fixture", via: "hand_entered", representation: "native" as const };
+  const NOTE: Annotation = { id: "data-note-from-a-record", kind: "data_note", anchor: { type: "period", period: "2025-01" }, series: ["fx_price_index"], label: "A NOTE FROM SOMEBODY'S RECORD", ref: null, source: null, provenance };
+  const RECESSION: Annotation = { id: "recession-2024-01-01", kind: "recession", anchor: { type: "span", start: "2024-01-01", end: "2024-06-30" }, label: "Another recession", ref: null, source: null, provenance };
+  const held = (): OpenedRelease => ({ ...fixture, annotations: { annotations: [...fixture.annotations.annotations.filter((a) => a.kind !== "recession"), NOTE, RECESSION] } });
+  const notesOf = (surface: Surface, gate: ReturnType<typeof createRightsGate>) => {
+    const found = seriesPageView(held(), surface, "fx_price_index", { search: new URLSearchParams(), address: "https://example.org/macro-atlas", gate });
+    if (found.kind !== "page") throw new Error(found.kind);
+    return found.view.notes.map((n) => n.text);
+  };
+
+  it("a series page, and so its twins, leaves out a note whose Origin may not be displayed", () => {
+    expect(notesOf("production", gateWith({ display: true, redistribute: false }))).toContain("A NOTE FROM SOMEBODY'S RECORD");
+    expect(notesOf("production", gateWith({ display: false, redistribute: false }))).not.toContain("A NOTE FROM SOMEBODY'S RECORD");
+    expect(twinText(seriesTwin(held(), "production", "fx_price_index", "md", new URLSearchParams(), { address: "https://example.org/macro-atlas/data/fx_price_index", gate: gateWith({ display: true, redistribute: true }) }))).toContain("SOMEBODY'S RECORD");
+    expect(twinText(seriesTwin(held(), "production", "fx_price_index", "md", new URLSearchParams(), { address: "https://example.org/macro-atlas/data/fx_price_index", gate: gateWith({ display: false, redistribute: false }) }))).not.toContain("SOMEBODY'S RECORD");
+  });
+
+  it("an export leaves out a layer that may be displayed and may not be handed out", () => {
+    const query = "s=fx_price_index&from=2023-01&to=2025-12&layers=rec";
+    const svg = (gate: ReturnType<typeof createRightsGate>) => {
+      const file = exportView(held(), "production", parseExplorerParams(new URLSearchParams(query)), "svg", { address: "https://example.org/macro-atlas/explore", gate });
+      if (!file.ok) throw new Error(file.message);
+      return file.body;
+    };
+    expect(svg(gateWith({ display: true, redistribute: true }))).toContain('data-layer="recession"');
+    expect(svg(gateWith({ display: true, redistribute: false }))).not.toContain('data-layer="recession"');
+    // ...while the page itself may still draw it.
+    const page = explorerView(held(), "production", parseExplorerParams(new URLSearchParams(query)), { gate: gateWith({ display: true, redistribute: false }) });
+    expect(page.recessions).toHaveLength(1);
   });
 });
 

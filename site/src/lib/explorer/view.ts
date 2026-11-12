@@ -254,6 +254,11 @@ export type ExplorerOptions = {
    * the app always uses; only a test passes another (ADR 0031, point 12).
    */
   gate?: Pick<RightsGate, "permits">;
+  /**
+   * What the layers are for. Left out, they are drawn on a page (`display`). An Export puts
+   * them in a file a reader takes away, so it asks for `redistribute` (ADR 0033).
+   */
+  layers?: "display" | "redistribute";
 };
 
 export function explorerView(release: OpenedRelease, surface: Surface, state: ExplorerState, options: ExplorerOptions = {}): ExplorerView {
@@ -421,7 +426,7 @@ export function explorerView(release: OpenedRelease, surface: Surface, state: Ex
 
   // --- layers the Release's Annotations offer ---
   // The gate is asked about every layer typed in from a record, as it is about every Series.
-  const { annotations, withheld: layersWithheld } = annotationsFor(release, surface, gate);
+  const { annotations, withheld: layersWithheld } = annotationsFor(release, surface, gate, options.layers ?? "display");
   for (const kept of layersWithheld) {
     notes.push(`${kept.count === 1 ? "One span of a layer is" : `${kept.count} spans of the layers are`} not drawn here: ${kept.reason}.`);
   }

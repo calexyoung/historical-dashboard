@@ -7,7 +7,9 @@
  * about that Origin here, on every request, exactly as it is asked about a Series. So a layer
  * whose permission is taken away stops being drawn at once, whatever Release is being served.
  * One that does not say where it came from is not drawn on a public Surface at all. The local
- * Surface asks for no signature (PLAN 6.1).
+ * Surface asks for no signature (PLAN 6.1). Every reader of a Release's Annotations goes through
+ * here: the Explorer, a series page's notes (and so its twins), and an Export, which asks for
+ * `redistribute` because its file leaves the site.
  */
 import { permits, type RightsGate, type Surface } from "@macro-atlas/core";
 import type { Annotation } from "@macro-atlas/core/release";
@@ -21,7 +23,13 @@ export type ShownAnnotations = {
   withheld: { reason: string; count: number }[];
 };
 
-export function annotationsFor(release: Pick<OpenedRelease, "annotations">, surface: Surface, gate?: Pick<RightsGate, "permits">): ShownAnnotations {
+export function annotationsFor(
+  release: Pick<OpenedRelease, "annotations">,
+  surface: Surface,
+  gate?: Pick<RightsGate, "permits">,
+  /** What is being done with them: drawn on a page (`display`), or put in a file a reader takes away (`redistribute`). */
+  permission: "display" | "redistribute" = "display",
+): ShownAnnotations {
   const ask = gate ? gate.permits.bind(gate) : permits;
   const decided = new Map<string, string | null>();
   const withheld = new Map<string, number>();
@@ -31,7 +39,7 @@ export function annotationsFor(release: Pick<OpenedRelease, "annotations">, surf
       const p = a.provenance;
       const key = JSON.stringify([p.producer, p.dataset, p.via, p.representation]);
       if (!decided.has(key)) {
-        const decision = ask([{ origin: p.producer, dataset: p.dataset, channel: p.via, representation: p.representation, permission: "display" }], surface);
+        const decision = ask([{ origin: p.producer, dataset: p.dataset, channel: p.via, representation: p.representation, permission }], surface);
         decided.set(key, decision.allowed ? null : decision.reason);
       }
       reason = decided.get(key)!;

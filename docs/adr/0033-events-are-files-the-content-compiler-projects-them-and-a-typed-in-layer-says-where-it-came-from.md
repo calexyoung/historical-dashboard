@@ -95,7 +95,9 @@ the choices the plan left open. The contract for a person who writes content is
     a Series. The site asks too, on every request (`site/src/lib/annotations.ts`): on a public
     Surface a typed-in Annotation is drawn only while the gate permits display of its Origin
     and Channel, one with no provenance is never drawn, and the Explorer says how many spans
-    it left out and why. The local Surface asks for no signature.
+    it left out and why. Every reader of a Release's Annotations goes through that one door:
+    the Explorer, a series page's notes (and so its twins), and an Export, which asks for
+    `redistribute` because its file leaves the site. The local Surface asks for no signature.
 12. **v1's bands and recessions stay on a local Release, marked as v1's, until a hand-entered
     file replaces the set.** This is the one place the converter's projection survives, and it
     is the exception to "the Explorer's layers now read compiled content": no register row is

@@ -118,7 +118,8 @@ An Annotation projected from a hand-entered file carries `provenance` (the file'
 dataset, `via: hand_entered`), and the gate is asked about it twice over: by the rights check
 of a Release every time the Release is checked, and by the site on every request
 (`site/src/lib/annotations.ts`), so a layer whose permission is taken away stops being drawn
-at once, whatever Release is being served. A recession span is named for the day it starts. v1's carry `representation: legacy_monthly_rounded` and are in no
+at once, whatever Release is being served. An Export asks for `redistribute`: a layer that may
+be shown and not handed out is on the page and not in the file. A recession span is named for the day it starts. v1's carry `representation: legacy_monthly_rounded` and are in no
 public-profile Release.
 
 `python -m atlas release --profile P --reuse-data` writes the content afresh on the current
