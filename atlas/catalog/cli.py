@@ -10,6 +10,7 @@ from . import add as A
 from . import check as C
 from . import coverage as G
 from . import table as T
+from . import v1coverage as V
 from .load import CatalogError, load_catalog
 
 FREQUENCIES = ("daily", "business_daily", "weekly", "monthly", "quarterly", "annual", "irregular")
@@ -86,10 +87,11 @@ def catalog_main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(
         prog="atlas catalog",
         description="What is proposed for every Series, and what the rights gate would show today. "
-                    "--write regenerates docs/v2/catalog-migration.md and docs/v2/g20-coverage.md.")
+                    "--write regenerates docs/v2/catalog-migration.md, docs/v2/v1-coverage.md and "
+                    "docs/v2/g20-coverage.md.")
     parser.add_argument("--write", action="store_true",
-                        help="write docs/v2/catalog-migration.md and docs/v2/g20-coverage.md")
-    parser.add_argument("--check", action="store_true", help="exit 1 if either file is out of date")
+                        help="write the three generated pages under docs/v2")
+    parser.add_argument("--check", action="store_true", help="exit 1 if a generated page is out of date")
     parser.add_argument("--list", action="store_true", help="one line per Series")
     args = parser.parse_args(argv)
     try:
@@ -105,10 +107,12 @@ def catalog_main(argv: list[str]) -> int:
         return 1
     if args.write:
         print(f"wrote {T.write_table(entries, table)}")
+        print(f"wrote {V.write_v1_coverage(entries, table)}")
         if g20:
             print(f"wrote {G.write_coverage(entries, table, g20)}")
     if args.check:
-        pages = [(T.TABLE_PATH, T.render_table(entries, table))]
+        pages = [(T.TABLE_PATH, T.render_table(entries, table)),
+                 (V.COVERAGE_PATH, V.render_v1_coverage(entries, table))]
         if g20:
             pages.append((G.COVERAGE_PAGE, G.render_coverage(entries, table, g20)))
         for path, text in pages:
