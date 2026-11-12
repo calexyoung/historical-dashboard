@@ -205,6 +205,14 @@ that scrolls on a phone), View, Chart, Layers, Events in the window.
   always one per Series, so the strip never changes height as the date moves. The pointer
   previews with a dashed ink line; a click, a tap or the arrow keys pin, with a solid Plot Navy
   line (the one place navy is drawn on a chart: it marks the reader's own choice).
+- **Pinned, and as of a date** (ADR 0032). Both are notes, not alerts: a line of text with a
+  rule at its left edge, there on every load, never moving. The pinned note sits above the
+  first panel and names the Release, when it was made, that today's engine draws it, and the
+  way to the current Release. The as-of note sits under the controls: the date, the view's
+  Basis as a mark and a word (the weakest among what is drawn), "Show today's values", and one
+  line per Series with its own Basis. "Frequency" and "As known before" are fields of the view
+  form like the window. A Series the Release does not hold is a line under the chart ("Not in
+  this release · name: reason · Remove"), never a chip: it was not selected from this Release.
 - **Small multiples.** One plot per unit, stacked, on one time axis and one left edge, each with
   its Series named under it. No second axis.
 - **Layers.** Recessions are ink at 10%. A set of bands (terms of government, policy periods) is

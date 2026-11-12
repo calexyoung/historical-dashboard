@@ -511,7 +511,7 @@ test.describe("accessibility and small screens", () => {
     }
   });
 
-  test("keyboard order follows reading order through the view: picker, copy, export, series, mode, window, compare, marks, chart", async ({ page, atlas }) => {
+  test("keyboard order follows reading order through the view: picker, copy, export, series, mode, window, compare, frequency, as-of, marks, chart", async ({ page, atlas }) => {
     await page.goto(atlas.url("/explore?s=fx_price_index"));
     await page.getByRole("link", { name: /Choose series/ }).focus();
     const stops: string[] = [];
@@ -523,7 +523,7 @@ test.describe("accessibility and small screens", () => {
       });
       if (stop !== stops.at(-1)) stops.push(stop); // a month field is several stops in some browsers
     }
-    expect(stops).toEqual(["Copy linkCopied", "Download CSV", "Copy CSVCopied", "Save chart as PNGSaved", "Every series in this rel", "Fixture price index", "Remove", "mode", "from", "to", "cmp", "ext", "Show", "Chart.", "Preliminary", "Missing", "How to read this"]);
+    expect(stops).toEqual(["Copy linkCopied", "Download CSV", "Copy CSVCopied", "Save chart as PNGSaved", "Every series in this rel", "Fixture price index", "Remove", "mode", "from", "to", "cmp", "freq", "as_of", "ext", "Show", "Chart.", "Preliminary", "Missing", "How to read this"]);
   });
 
   test("the chart's focus ring is drawn inside it", async ({ page, atlas }) => {

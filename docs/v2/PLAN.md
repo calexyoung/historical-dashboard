@@ -1031,6 +1031,8 @@ AC: on a public-profile release each v1 preset and recorded hash link opens the 
 the withheld series; a pinned link to a retained release shows the same data after a newer release
 is promoted and returns 410 once pruned; export of a display-only series is refused with the
 reason; no Explorer test from track A is deleted to make this pass.
+(Built: ADR 0032, `docs/method/explorer.md`. Saved queries are kept in the local root only; one
+for a public Surface waits for Alex, since a note is a person's own text.)
 
 ### v2.0 — Track C: content and claims
 

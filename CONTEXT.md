@@ -380,5 +380,6 @@ The same answer a page shows, in a machine-readable form at the same address wit
 _Avoid_: Export, endpoint
 
 **Saved query**:
-An Explorer view kept with a Pin and a note.
+An Explorer view kept with a Pin and a note. It is its own Pin: retention keeps the Release it
+names for as long as it exists. Kept in a local release root only (`atlas save`, ADR 0032).
 _Avoid_: Bookmark, notebook
