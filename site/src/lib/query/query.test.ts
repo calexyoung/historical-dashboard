@@ -89,7 +89,7 @@ describe("the one request shape", () => {
     ["a date that is not one", { ...base, from: "2024-02-30" }],
     ["a month where a date is wanted", { ...base, from: "2024-02" }],
     ["a window that ends before it starts", { ...base, from: "2024-06-01", to: "2024-01-01" }],
-    ["a field the shape does not have", { ...base, as_of: "2024-01-01" }],
+    ["a field the shape does not have", { ...base, pin: "20260101T000000Z-0000000" }],
   ])("refuses %s with 400", (_, request) => {
     expect(ask(request)).toMatchObject({ ok: false, status: 400, code: "bad_request" });
   });
