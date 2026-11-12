@@ -7,6 +7,11 @@ transport: one request at a time, a pause between requests to one host, retries 
 5xx, 429 and network errors, and a breaker that stops asking a host that keeps answering 429.
 A ``Fetch`` records every final answer of one Capture, including the answer that made it fail.
 
+Hand-entered files (M16; ADR 0030). A request whose method is ``READ`` asks no one: the live
+transport answers it with the bytes of a file under ``catalog/manual`` in the repository, and a
+replay answers it from a recording, so a hand-entered value is captured, kept and replayed like
+any other.
+
 API keys (M15; ADR 0029). A request that needs a key says which (``Request.key``) and never
 holds it. On a live run the ``Session`` adds the key to the URL it hands the transport, and
 takes every key of the run out of what comes back (the body, the headers, the text of a network
@@ -22,6 +27,7 @@ import time
 from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 from typing import Protocol
 from urllib.parse import unquote, urlsplit
 
@@ -40,6 +46,12 @@ REDACTED = "REDACTED"
 #: so the one literal search below finds every copy of it. A key of any other shape is not used.
 _KEY_SHAPE = re.compile(r"[A-Za-z0-9-]{16,128}")
 _JSON_ESCAPE = re.compile(r"\\u([0-9a-fA-F]{4})")
+
+
+#: The method of a request that asks no one: it reads a hand-entered file of the repository.
+READ = "READ"
+READ_SCHEME = "repo:"
+READ_PATH = re.compile(r"catalog/manual/[a-z0-9][a-z0-9_-]{0,63}\.json")
 
 
 def usable_key(value: object) -> bool:
@@ -100,17 +112,42 @@ class LiveTransport:
     kind = "live"
     real = True
 
-    def __init__(self, timeout: float = TIMEOUT_SECONDS):
-        import requests
-
-        self._requests = requests
-        self._http = requests.Session()
+    def __init__(self, timeout: float = TIMEOUT_SECONDS, root: Path | None = None):
+        self._requests = None
+        self._http = None
         self._timeout = timeout
+        #: Where a hand-entered file is read from: the repository this code is in.
+        self._root = Path(root) if root is not None else Path(__file__).resolve().parents[2]
 
     def now(self) -> datetime:
         return _whole_second_not_before(datetime.now(UTC))
 
+    def _read(self, request: Request) -> Response:
+        """A hand-entered file, as it is in the working tree now (M16; ADR 0030). Only a file
+        directly under ``catalog/manual`` is read, by a name of the expected shape, and never
+        through a link that leads out of that directory. A file that is not there is a 404:
+        an answer, not a network failure, so nothing is tried again."""
+        where = request.url.removeprefix(READ_SCHEME)
+        directory = (self._root / "catalog" / "manual").resolve()
+        path = (self._root / where).resolve() if READ_PATH.fullmatch(where) else None
+        if path is None or path.parent != directory:
+            raise TransportError(f"{request.url} is not a file under catalog/manual")
+        try:
+            body = path.read_bytes()
+        except (FileNotFoundError, IsADirectoryError):
+            return Response(404, [], b"", self.now())
+        except OSError as error:
+            raise TransportError(f"{type(error).__name__}: {where}") from error
+        return Response(200, [["Content-Type", "application/json"]], body, self.now())
+
     def send(self, request: Request) -> Response:
+        if request.method == READ:
+            return self._read(request)
+        if self._http is None:
+            import requests
+
+            self._requests = requests
+            self._http = requests.Session()
         try:
             answer = self._http.request(
                 request.method, request.url, headers=dict(request.headers), data=request.body,
@@ -210,6 +247,13 @@ class Session:
         ``CaptureError`` only when no answer arrived at all or the host is being left alone;
         ``Fetch.send`` decides what a bad status means. ``again`` is the adapter's word on a
         200: a reason to ask once more (the answer is not one yet), or None."""
+        if request.method == READ:
+            # A file of the repository: no host to be polite to, no key, nothing to try again.
+            try:
+                response, removed = self._without_keys(self.transport.send(request))
+            except TransportError as error:
+                raise CaptureError(redact(str(error), self._secrets)) from error
+            return Part(request, response, [], removed)
         host = urlsplit(request.url).netloc
         if self._rate_limited.get(host, 0) >= BREAKER:
             raise CaptureError(f"{host} answered HTTP 429 earlier in this run; it is left alone")
@@ -287,6 +331,16 @@ class Fetch:
             again: Callable[[Response], str | None] | None = None,
             key: tuple[str, str] | None = None) -> Response:
         return self.send(Request("GET", url, tuple(headers), key=key), again)
+
+    def read(self, path: str) -> Response:
+        """The bytes of a hand-entered file of the repository (``catalog/manual/x.json``), kept
+        as a part like any answer. A live run reads the working tree; a replay answers from
+        its recording and never looks at today's files."""
+        part = self._session.send(Request(READ, READ_SCHEME + path))
+        self.parts.append(part)
+        if part.response.status != 200:
+            raise CaptureError(f"the hand-entered file {path} is not in the repository")
+        return part.response
 
 
 def redact(text: str, secrets: Iterable[str]) -> str:

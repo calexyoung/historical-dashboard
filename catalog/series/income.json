@@ -32,7 +32,7 @@
   "migration": {
     "v1_source": "FRED MEHOINUSA672N",
     "change": "same",
-    "note": "The agency's identifier for this series is settled, with a captured fixture, by the milestone that builds the adapter. The base year of the real figure moves with each annual release.",
-    "milestone": "M16"
+    "note": "The Bureau publishes this annual figure in its historical income tables, a workbook of another shape than the two M16 reads; no reader reads it yet. The base year of the real figure moves with each annual release.",
+    "milestone": "v2.1"
   }
 }

@@ -1,5 +1,6 @@
 // Does a Series fetched from its Origin say what v1 said? (PLAN M13: "each matches v1's value
-// for the overlap within a stated tolerance or the difference is explained".)
+// for the overlap within a stated tolerance or the difference is explained"; M16: "the
+// comparison table is attached with every difference explained", for every live v1 series.)
 //
 //   make v2-legacy-release                                   v1's values, as a local release
 //   node scripts/v1-overlap.mjs --native ROOT --legacy var/local
@@ -173,7 +174,7 @@ for (const item of statement.series) {
   }
   row.max = worst;
   row.over = over;
-  row.tolerance = [item.abs !== undefined ? `${item.abs}` : null, item.rel !== undefined ? `${item.rel * 100}%` : null].filter(Boolean).join(" + ") || "0";
+  row.tolerance = [item.abs !== undefined ? `${item.abs}` : null, item.rel !== undefined ? `${Number((item.rel * 100).toPrecision(6))}%` : null].filter(Boolean).join(" + ") || "0";
   const stale = Object.keys(explained).filter((period) => !theirs.observations.some((o) => o.period === period));
   const gaps = row.only_v1 + row.only_native;
   if (stale.length) {
@@ -200,7 +201,7 @@ if (markdown) {
 } else {
   for (const r of rows) {
     const detail = r.max === undefined ? "" : `  n=${r.compared} max=${digits(r.max)} at ${r.at ?? "-"} tolerance=${r.tolerance || "0"} beyond=${r.over} explained=${r.explained} v1-only=${r.only_v1} native-only=${r.only_native} partial=${r.partial}`;
-    console.log(`${r.key.padEnd(14)}${r.verdict}${detail}`);
+    console.log(`${r.key.padEnd(14)} ${r.verdict}${detail}`);
   }
 }
 process.exitCode = failed ? 1 : 0;

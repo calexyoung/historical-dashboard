@@ -3,7 +3,7 @@
 
 export const RIGHTS_REGISTER: unknown = {
   "format": 1,
-  "version": "2026-11-11.draft-5",
+  "version": "2026-11-11.draft-6",
   "cleared_intermediaries": [],
   "rows": [
     {
@@ -237,6 +237,15 @@ export const RIGHTS_REGISTER: unknown = {
       "origins": [
         "Wikipedia election infoboxes",
         "Wikipedia"
+      ],
+      "datasets": "*",
+      "decision": null
+    },
+    {
+      "id": "fec",
+      "kind": "origin",
+      "origins": [
+        "Federal Election Commission"
       ],
       "datasets": "*",
       "decision": null

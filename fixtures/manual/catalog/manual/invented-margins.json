@@ -1,0 +1,49 @@
+{
+  "format": 1,
+  "kind": "series",
+  "about": "Invented. No election had these votes; the citations lead nowhere.",
+  "origin": {
+    "producer": "An Invented Election Office",
+    "dataset": "Official results, invented"
+  },
+  "frequency": "irregular",
+  "series": {
+    "margin": {
+      "unit": "percentage points",
+      "entries": [
+        {
+          "period": "2020-11-03",
+          "value": "4.00",
+          "working": {
+            "formula": "two_party_margin",
+            "democratic": "5200",
+            "republican": "4800"
+          },
+          "citation": {
+            "publisher": "An Invented Election Office",
+            "title": "Official Results 2020 (invented)",
+            "url": "https://elections.invalid/results-2020.pdf",
+            "accessed": "2026-11-10",
+            "locator": "page 5, table A, the row \"Total\""
+          }
+        },
+        {
+          "period": "2024-11-05",
+          "value": "-1.50",
+          "working": {
+            "formula": "two_party_margin",
+            "democratic": "98500",
+            "republican": "101500"
+          },
+          "citation": {
+            "publisher": "An Invented Election Office",
+            "title": "Official Results 2024 (invented)",
+            "url": "https://elections.invalid/results-2024.pdf",
+            "accessed": "2026-11-10",
+            "locator": "page 6, table A, the row \"Total\""
+          }
+        }
+      ]
+    }
+  }
+}

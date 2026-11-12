@@ -1,7 +1,7 @@
 """``scripts/v1-overlap.mjs`` (PLAN M13): does a Series fetched from its Origin say what v1
 said, within a stated tolerance, or is the difference explained? Run as Alex runs it, on two
 small release roots whose values are invented here, and once on the committed statement to
-see that it covers every Series the three adapters read."""
+see that it covers every series of v1's that is live (M16)."""
 from __future__ import annotations
 
 import json
@@ -10,7 +10,6 @@ from datetime import date, timedelta
 from pathlib import Path
 
 from atlas.catalog import load_catalog
-from atlas.catalog.load import leaves
 from atlas.period import period_bounds
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -139,26 +138,55 @@ def test_a_series_missing_from_a_release_or_not_v1s_own_values_fails(tmp_path):
     assert code == 1 and "not in the legacy release" in lines["a"]
 
 
-def test_the_committed_statement_covers_every_series_the_three_adapters_read():
+def test_the_committed_statement_covers_every_v1_series_that_is_live():
+    """M13 stated the Series of BLS, the Treasury and the Board; M16 the rest (PLAN M16: "the
+    comparison table is attached with every difference explained"). Every series of v1's that
+    the coverage report calls live is stated, and nothing withheld is."""
+    from atlas.catalog.v1coverage import CLASSES, account
+    from atlas.rights import load_register
+
     statement = json.loads((ROOT / "checks" / "v1-overlap.json").read_text())
     stated = {item["key"]: item for item in statement["series"]}
+    assert len(stated) == len(statement["series"])  # no Series is stated twice
     catalog = load_catalog()
+    rows = account(catalog, load_register())
+    live = {key for key, row in rows.items() if row.klass != CLASSES[2]}
+    v1 = {*json.loads((ROOT / "data" / "atlas.json").read_text())["series"], "approval", "pres_margin", "house_margin"}
+    assert len(live) == 51 and live <= v1
+    assert {key for key, item in stated.items() if "v1" not in item} == live
+    # Every Series of the three agencies M13 covered is still stated, in v1 or not.
     agencies = ("bls", "treasury_fiscal_data", "fed_board")
     stored = {key for key, entry in catalog.items() if entry["status"] == "active"
               and (entry.get("source", {}).get("channel") or {}).get("adapter") in agencies}
-    # A Derived series belongs to this statement when everything it rests on does. The IMF's
-    # Series (M14) are not M13's to state: what was found for them is in their Catalog notes.
-    derived = {key for key, entry in catalog.items() if entry["status"] == "active" and "recipe" in entry
-               and set(leaves(key, catalog)) <= stored}
-    assert set(stated) == stored | derived
-    v1 = set(json.loads((ROOT / "data" / "atlas.json").read_text())["series"])
+    assert stored <= set(stated)
     for key, item in stated.items():
-        assert item.get("why"), key
+        assert len(item.get("why", "")) > 15, key
         if "v1" in item:
-            assert item["v1"] is None and key not in v1, key
+            assert item["v1"] is None and key not in v1 and catalog[key]["status"] == "active", key
         else:
-            assert key in v1 and item["abs"] > 0, key
+            assert item.get("abs", 0) > 0, key
+        for period, found in item.get("exceptions", {}).items():
+            assert period_bounds(catalog[key]["freq"], period) or period_bounds("quarterly", period), (key, period)
+            assert len(found) > 40, (key, period)  # each exception says what was found
+    # A Series that is another quantity than v1's says so in the Catalog too.
+    assert {key for key, item in stated.items() if item.get("different")} == {
+        key for key in live if catalog[key]["migration"].get("change") == "different"} == {"cpi_yoy"}
     assert statement["min_overlap"] >= 100
+
+
+def test_the_written_comparison_has_a_row_for_every_stated_series_and_no_agency_figure():
+    """docs/v2/v1-overlap.md is what the check found when it was run on real captures. It
+    holds counts and differences. The table is the script's own (--markdown)."""
+    import re
+
+    text = (ROOT / "docs" / "v2" / "v1-overlap.md").read_text()
+    statement = json.loads((ROOT / "checks" / "v1-overlap.json").read_text())
+    table = re.findall(r"^\| `([a-z0-9_]+)` \| .* \| ([a-z0-9 ]+) \|$", text, re.MULTILINE)
+    assert [key for key, _ in table] == [item["key"] for item in statement["series"]]
+    verdicts = {key: verdict for key, verdict in table}
+    assert set(verdicts.values()) == {"matches", "different by design", "no v1 counterpart"}
+    assert [key for key, verdict in verdicts.items() if verdict == "different by design"] == ["cpi_yoy"]
+    assert "No figure fetched from an agency is on this page or in the repository" in text
 
 
 def test_a_period_v1_holds_and_the_origin_does_not_inside_the_common_span_is_a_gap(tmp_path):

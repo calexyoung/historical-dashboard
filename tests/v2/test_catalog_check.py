@@ -8,6 +8,7 @@ from pathlib import Path
 import pytest
 import yaml
 
+from atlas.capture.run import endpoints_from_register
 from atlas.catalog import load_catalog
 from atlas.catalog.check import LAYERS, check
 from atlas.cli import main as atlas_main
@@ -51,6 +52,7 @@ def test_every_v1_key_is_a_key_of_the_catalog_unchanged():
     assert [key for key in V1_KEYS if key not in catalog] == []
     new = sorted(set(catalog) - set(V1_KEYS))
     assert [key for key in new if not key.endswith(("_cpi", "_infl", "_fx"))] == [
+        "construction_private", "construction_public", "construction_total",  # M16: the C30 totals
         "cpi_nsa", "elec_gen", "gdp_nominal", "net_worth", "outlays", "pce", "personal_income",
         "real_dpi", "receipts", "trade_q", "uk_cpi_imf", "uk_infl_imf"]  # M15 added six
     # M14: the G20 rows. An index and its change for sixteen countries v1 had neither for, and
@@ -133,10 +135,16 @@ def test_only_what_an_adapter_is_built_for_is_in_the_pipeline():
         "bea": ["gdp", "gdp_nominal", "gdp_qoq", "pce", "personal_income", "profits", "real_dpi", "saving",
                 "trade_q"],
         "eia": ["brent", "elec_gen", "gas", "natgas", "wti"],
+        # M16: three flat files of the Census Bureau's Economic Indicators, and its construction workbook.
+        "census_eits": ["houst", "retail", "trade"],
+        "census_c30": ["construction_private", "construction_public", "construction_total"],
     }
     assert all(catalog[key]["source"]["channel"]["auth"] == "api_key" for key in (*by_adapter["bea"], *by_adapter["eia"]))
-    # The monthly balance v1 showed is not in the BEA's API: it waits for the Census files.
-    assert catalog["trade"]["status"] == "draft" and catalog["trade"]["migration"]["milestone"] == "M16"
+    # The monthly balance v1 showed is not in the BEA's API: it is read from the Census Bureau's file.
+    assert catalog["trade"]["source"]["origin"]["producer"] == "U.S. Census Bureau"
+    assert catalog["trade"]["migration"]["milestone"] == "M16" and catalog["trade_q"]["status"] == "active"
+    # The hand-entered Series wait for a signed row: the adapter is built, no value is entered.
+    assert {catalog[key]["status"] for key in ("approval", "pres_margin", "house_margin")} == {"draft"}
     # v1's UK index is the ONS's, which the Fund's is not: it stays a draft under its own key.
     assert catalog["uk_cpi"]["status"] == catalog["uk_infl"]["status"] == "draft"
     assert catalog["uk_cpi"]["source"]["origin"]["origin_id"] == "D7BT"
@@ -265,7 +273,7 @@ def test_atlas_check_exits_zero_on_the_committed_catalog_and_names_each_layer(ca
     out = capsys.readouterr().out
     for layer in LAYERS:
         assert f"{layer}: ok" in out
-    assert "185 Series" in out
+    assert "188 Series" in out
 
 
 def test_atlas_check_exits_one_and_names_the_file_and_the_layers_not_run(tmp_path, capsys):
@@ -427,3 +435,138 @@ def test_a_series_bound_to_an_eia_route_is_one_of_its_series_at_the_routes_frequ
     assert failed(run(tmp_path, _keyed("gas", *eia, "EMM_EPMR_PTE_NUS_DPG", freq="weekly"))) == {}
     assert failed(run(tmp_path, _keyed("gas", *eia, "EMM_EPMR_PTE_NUS_DPG", freq="monthly"))) == {"references": [
         "it is monthly, and the endpoint eia-gasoline-retail asks the Administration for weekly figures"]}
+
+
+# --- what a Census endpoint must say of a Series bound to it (M16) -----------------------------
+
+
+def _census(key, adapter, endpoint, dataset, origin_id, **changes):
+    source = {"origin": {"producer": "U.S. Census Bureau", "dataset": dataset, "origin_id": origin_id, "url": None},
+              "channel": {"via": "direct", "adapter": adapter, "endpoint": endpoint}}
+    return stored(key, status="active", source=source, **changes)
+
+
+def test_a_series_bound_to_a_census_file_is_one_of_the_series_it_reads_and_is_monthly(tmp_path):
+    flat = ("census_eits", "census-marts", "Advance Monthly Sales for Retail and Food Services")
+    assert failed(run(tmp_path, _census("retail", *flat, "44X72:SM:US:SA"))) == {}
+    assert failed(run(tmp_path, _census("retail", *flat, "44000:SM:US:SA"))) == {"references": [
+        "the endpoint census-marts does not ask for 44000:SM:US:SA"]}
+    assert failed(run(tmp_path, _census("retail", *flat, "44X72:SM:US:SA", freq="quarterly"))) == {"references": [
+        "it is quarterly, and the endpoint census-marts reads a file of monthly figures"]}
+    book = ("census_c30", "census-c30-total", "Value of Construction Put in Place")
+    assert failed(run(tmp_path / "book", _census("construction_total", *book, "Total Construction1"))) == {}
+    assert failed(run(tmp_path / "book", _census("construction_total", *book, "Total Construction1", freq="annual"))) == {
+        "references": ["it is annual, and the endpoint census-c30-total reads a file of monthly figures"]}
+
+
+# --- hand-entered files and the Series bound to them (M16) -------------------------------------
+
+MANUAL_FIXTURE = ROOT / "fixtures" / "manual" / "catalog" / "manual"
+OFFICE = "An Invented Election Office"
+
+
+def _manual_register(tmp_path, *, signed=True, record=True, **grants) -> Path:
+    """The committed register with a row for the invented office and its hand-entered file, and
+    the public-record row decided or not."""
+    table = load_register()
+    decision = {"display": True, "redistribute": True, "store": True, "ml_use": True,
+                "signed_by": "Alex", "signed_on": "2026-11-11", **grants}
+    table["rows"].append({
+        "id": "office", "kind": "origin", "name": "An invented office", "origins": [OFFICE], "datasets": "*",
+        "used_for": "test", "terms": [], "terms_note": "invented", "licence_class": "public_domain",
+        "attribution": None, "open_questions": [],
+        "proposal": {"display": True, "redistribute": True, "store": True, "ml_use": True, "note": "an invented row for a test"},
+        "decision": decision if signed else None,
+        "capture": [{"id": "office-margins", "adapter": "manual", "channel": "hand_entered",
+                     "datasets": ["Official results, invented"],
+                     "params": {"file": "catalog/manual/invented-margins.json", "frequency": "irregular",
+                                "series": ["margin"], "units": {"margin": "percentage points"}}}]})
+    if record:
+        next(r for r in table["rows"] if r["id"] == "public-record")["decision"] = decision
+    path = tmp_path / "register.json"
+    path.write_text(json.dumps(table))
+    return path
+
+
+def _margin(**changes):
+    source = {"origin": {"producer": OFFICE, "dataset": "Official results, invented", "origin_id": "margin", "url": None},
+              "channel": {"via": "hand_entered", "adapter": "manual", "endpoint": "office-margins"}}
+    return stored("fx_margin", **{
+        "status": "active", "unit": "percentage points", "unit_kind": "percentage_points", "measure_kind": "rate",
+        "agg": "none", "freq": "irregular", "continuity": "held", "seasonal_adjustment": "not_applicable",
+        "refresh": "irregular", "source": source, **changes})
+
+
+def _with_files(tmp_path, *, series=True, terms=True) -> Path:
+    """A catalog directory with the invented hand-entered files beside it, as in the repository."""
+    import shutil
+
+    if series:
+        (tmp_path / "manual").mkdir(parents=True, exist_ok=True)
+        shutil.copy(MANUAL_FIXTURE / "invented-margins.json", tmp_path / "manual")
+    if terms:
+        (tmp_path / "manual" / "terms").mkdir(parents=True, exist_ok=True)
+        shutil.copy(MANUAL_FIXTURE / "terms" / "invented-office.json", tmp_path / "manual" / "terms")
+    return tmp_path / "series"
+
+
+def run_in(directory, *entries, register):
+    return check(write(directory, *entries), register=register)
+
+
+def test_a_series_bound_to_a_hand_entered_file_has_its_frequency_and_its_unit(tmp_path):
+    register = _manual_register(tmp_path)
+    assert failed(run_in(_with_files(tmp_path / "a"), _margin(), register=register)) == {}
+    assert failed(run_in(_with_files(tmp_path / "b"), _margin(freq="annual", agg="mean"), register=register)) == {
+        "references": ["it is annual, and the hand-entered file of office-margins is irregular"]}
+    assert failed(run_in(_with_files(tmp_path / "c"), _margin(unit="percent"), register=register)) == {
+        "references": ["its unit is 'percent', and the hand-entered file of office-margins gives margin in 'percentage points'"]}
+
+
+def test_a_hand_entered_file_is_held_to_its_endpoint_and_to_its_format(tmp_path):
+    register = _manual_register(tmp_path)
+    directory = _with_files(tmp_path)
+    (tmp_path / "manual" / "stray.json").write_text((tmp_path / "manual" / "invented-margins.json").read_text())
+    text = (tmp_path / "manual" / "invented-margins.json").read_text()
+    (tmp_path / "manual" / "invented-margins.json").write_text(text.replace('"locator": "page 5, table A, the row \\"Total\\""', '"locator": ""'))
+    (tmp_path / "manual" / "terms" / "invented-office.json").write_text(
+        (tmp_path / "manual" / "terms" / "invented-office.json").read_text().replace('"end": "2021-01-31"', '"end": "2021-02-01"'))
+    report = run_in(directory, _margin(), register=register)
+    assert failed(report) == {"references": [
+        "series margin, 2020-11-03, has a citation with no locator",
+        "no endpoint of the rights register reads it: a hand-entered file is read through the capture kit or not kept",
+        "term 2 (B. Sample) starts on 2021-02-01, not after the term before it ended (2021-02-01)"]}
+    assert [Path(p.path).name for p in report.layers[1].problems] == ["invented-margins.json", "stray.json", "invented-office.json"]
+
+
+def test_nothing_else_is_kept_under_catalog_manual(tmp_path):
+    """A file the checks do not read could hold what no check has seen."""
+    directory = _with_files(tmp_path)
+    (tmp_path / "manual" / "results.csv").write_text("2020,5200,4800\n")
+    (tmp_path / "manual" / "archive").mkdir()
+    (tmp_path / "manual" / "archive" / "old.json").write_text("{}")
+    (tmp_path / "manual" / "terms" / "notes.txt").write_text("x")
+    report = run_in(directory, _margin(), register=_manual_register(tmp_path))
+    assert [Path(p.path).name for p in report.layers[1].problems] == ["old.json", "results.csv", "notes.txt"]
+    assert all("nothing else is kept there" in p.message for p in report.layers[1].problems)
+
+
+def test_a_hand_entered_file_may_be_in_the_repository_only_when_its_origins_row_allows_a_public_copy(tmp_path):
+    """No value is typed into the repository ahead of a decision: a committed file is a copy
+    anyone can read, so its Origin's row must be signed for store and for redistribute."""
+    directory = _with_files(tmp_path)
+    assert failed(run_in(directory, _margin(), register=_manual_register(tmp_path))) == {}
+    assert failed(run_in(directory, _margin(), register=_manual_register(tmp_path, signed=False, record=False))) == {"rights": [
+        ("it holds values entered by hand from An Invented Election Office, and the rights register row for "
+        "An Invented Election Office (office) is not signed: a committed file is a public copy"),
+        ("it holds terms entered by hand from Macro Atlas, from the public record, and the rights register row for "
+        "Macro Atlas, from the public record (public-record) is not signed: a committed file is a public copy")]}
+    said = failed(run_in(directory, _margin(), register=_manual_register(tmp_path, redistribute=False)))["rights"]
+    assert len(said) == 2 and all("does not allow redistribute" in line for line in said)
+
+
+def test_the_repository_holds_no_hand_entered_file_while_no_row_is_signed():
+    from atlas import manual
+
+    assert manual.series_files() == [] and manual.terms_files() == []
+    assert not any(e.adapter == "manual" for e in endpoints_from_register(load_register()))

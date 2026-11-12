@@ -56,6 +56,11 @@ def endpoints_from_register(table: object) -> list[Endpoint]:
                 raise RegisterError(f"{where}: it does not name its datasets")
             if not isinstance(channel, str) or not channel:
                 raise RegisterError(f"{where}: its channel is not a name")
+            if (adapter.name == "manual") != (channel == "hand_entered"):
+                # A hand-entered file is the one thing that comes by that Channel, and it comes
+                # by no other: the gate treats the Channel as Macro Atlas's own work.
+                raise RegisterError(f"{where}: the hand_entered channel and the manual adapter go "
+                                    "together, and neither goes with anything else")
             if row["datasets"] != "*" and not set(datasets) <= set(row["datasets"]):
                 # Otherwise an endpoint on an unsigned row could be cleared by another row
                 # that happens to cover the dataset it names.

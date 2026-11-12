@@ -20,11 +20,15 @@ import csv
 import io
 import json
 import re
+import zipfile
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
 from types import MappingProxyType
 from urllib.parse import urlencode
+from xml.etree import ElementTree
+from xml.parsers import expat
 
+from .. import manual
 from .http import CaptureError, Fetch, Part, Request
 from .store import RELEASE_ZONE
 
@@ -1590,6 +1594,580 @@ class EiaAdapter:
         return NormalizedState(not problems, capture.evidence.scope, series if not problems else {}, problems)
 
 
+_MONTH_NAMES = ("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
+
+
+def _unzipped(body: bytes, problems: list[str]) -> zipfile.ZipFile | None:
+    try:
+        return zipfile.ZipFile(io.BytesIO(body))
+    except (zipfile.BadZipFile, ValueError, OSError):
+        problems.append("the answer is not a zip file")
+        return None
+
+
+def _member(archive: zipfile.ZipFile, name: str, limit: int, problems: list[str]) -> bytes | None:
+    """One named member of a zip, read in memory and never written out. A member that says it
+    is larger than ``limit``, or turns out to be, is not read: no file an agency publishes for
+    these endpoints is a tenth of it."""
+    found = [info for info in archive.infolist() if info.filename == name]
+    if len(found) != 1:
+        return None
+    megabytes = limit // 2**20
+    if found[0].file_size > limit:
+        problems.append(f"{name} is larger than {megabytes} MB and was not opened")
+        return None
+    try:
+        with archive.open(found[0]) as member:
+            data = member.read(limit + 1)
+    except (zipfile.BadZipFile, ValueError, OSError, EOFError, NotImplementedError, RuntimeError) as error:
+        problems.append(f"{name} cannot be read out of the zip ({type(error).__name__})")
+        return None
+    if len(data) > limit:
+        problems.append(f"{name} is larger than {megabytes} MB and was not opened")
+        return None
+    return data
+
+
+class _DocumentType(Exception):
+    pass
+
+
+def _declares_a_document_type(data: bytes) -> bool:
+    """Whether XML has a DOCTYPE, asked of the parser itself so that the answer does not
+    depend on how the bytes are encoded (a search for the letters misses UTF-16). Entities are
+    declared only inside one. XML that is not well formed has none to act on; the reader that
+    follows says so."""
+    def refuse(*_):
+        raise _DocumentType
+
+    parser = expat.ParserCreate()
+    parser.StartDoctypeDeclHandler = refuse
+    try:
+        parser.Parse(data, True)
+    except _DocumentType:
+        return True
+    except expat.ExpatError:
+        return False
+    return False
+
+
+class CensusEitsAdapter:
+    """A flat file of the Census Bureau's Economic Indicators: one program (``MARTS``, the
+    advance monthly retail report; ``RESCONST``, new residential construction; ``FTD``,
+    international trade), every series and every month it has, as a CSV in a zip, with no key
+    (verified 2026-11-11; the Bureau's data API wants a key and is not used).
+
+    The CSV is tables under headings, parted by blank lines: ``CATEGORIES``, ``DATA TYPES``,
+    ``ERROR TYPES`` (where a program publishes sampling error), ``GEO LEVELS``, ``TIME
+    PERIODS``, ``NOTES``, ``DATA UPDATED ON`` and ``DATA``, whose rows point into the others by
+    index. A series is named here by the Bureau's own codes, joined:
+    ``category:data type:geography:SA`` or ``:NSA`` (``44X72:SM:US:SA``). Only an estimate is
+    read, never a row of sampling error. The endpoint pins the words the file gives each code
+    (the category, the data type, its unit, the geography), so a code that comes to mean
+    something else stops the capture instead of changing a Series.
+
+    A value is the file's text. A month the file lists and gives a series no row for is no
+    Observation. The file does not mark an advance or preliminary estimate, so every value is
+    ``observed`` and a later estimate is a revision (as with the BEA)."""
+
+    name = "census_eits"
+    version = 1
+    URL = "https://www.census.gov/econ_getzippedfile/?programCode="
+    MAX_BYTES = 64 * 2**20
+    SECTIONS = MappingProxyType({
+        "CATEGORIES": ("cat_idx", "cat_code", "cat_desc", "cat_indent"),
+        "DATA TYPES": ("dt_idx", "dt_code", "dt_desc", "dt_unit"),
+        "ERROR TYPES": None, "GEO LEVELS": ("geo_idx", "geo_code", "geo_desc"),
+        "TIME PERIODS": ("per_idx", "per_name"), "NOTES": None, "DATA UPDATED ON": None, "DATA": None})
+    REQUIRED = ("CATEGORIES", "DATA TYPES", "GEO LEVELS", "TIME PERIODS", "DATA")
+    LABELS = ("category", "data_type", "unit", "geo")
+    _PROGRAM = re.compile(r"[A-Z][A-Z0-9]{1,11}")
+    _CODE = re.compile(r"[A-Za-z0-9_]+")
+    _MONTH = re.compile(r"(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)-([0-9]{4})")
+
+    def _codes(self, series: object) -> tuple[str, str, str, bool] | None:
+        parts = series.split(":") if isinstance(series, str) else []
+        if len(parts) != 4 or parts[3] not in ("SA", "NSA") or not all(self._CODE.fullmatch(p) for p in parts[:3]):
+            return None
+        return parts[0], parts[1], parts[2], parts[3] == "SA"
+
+    def problem(self, params: dict) -> str | None:
+        program, series, labels = params.get("program"), params.get("series"), params.get("labels")
+        if not isinstance(program, str) or not self._PROGRAM.fullmatch(program):
+            return "its program is not a code"
+        if not isinstance(series, list) or not series:
+            return "it names no series"
+        for name in series:
+            if self._codes(name) is None:
+                return f"{name} is not category:data type:geography:SA or NSA"
+        if len(set(series)) != len(series):
+            return "it names a series twice"
+        for name in series:
+            pinned = labels.get(name) if isinstance(labels, dict) else None
+            if not (isinstance(pinned, dict) and set(pinned) == set(self.LABELS)
+                    and all(isinstance(v, str) and v for v in pinned.values())):
+                return f"it does not pin the labels of {name} (category, data_type, unit, geo)"
+        return None
+
+    def fetch(self, endpoint: Endpoint, fetch: Fetch) -> Evidence:
+        params = endpoint.params
+        scope = {"program": params["program"], "series": list(params["series"]),
+                 "labels": {name: dict(params["labels"][name]) for name in params["series"]},
+                 "asked_on": fetch.now().astimezone(RELEASE_ZONE).date().isoformat()}
+        return self.examine(scope, [fetch.get(self.URL + scope["program"]).body])
+
+    def _sections(self, text: str, problems: list[str]) -> dict[str, list[str]] | None:
+        """The lines under each heading. A heading is one of the names the Bureau's README
+        lists, alone on a line, first in the file or after a blank line."""
+        sections: dict[str, list[str]] = {}
+        current, blank = None, True
+        for line in text.splitlines():
+            if blank and line in self.SECTIONS:
+                if line in sections:
+                    problems.append(f"the file has two {line} sections")
+                    return None
+                current = sections.setdefault(line, [])
+            elif line.strip() and current is not None:
+                current.append(line)
+            elif line.strip():
+                problems.append("the file does not begin with a section heading")
+                return None
+            blank = not line.strip()
+        for name in self.REQUIRED:
+            if name not in sections:
+                problems.append(f"the file has no {name} section")
+        return None if problems else sections
+
+    def _table(self, sections: dict, name: str, header: tuple[str, ...], problems: list[str]) -> list[list[str]] | None:
+        try:
+            rows = list(csv.reader(sections[name]))
+        except csv.Error:
+            problems.append(f"the {name} section is not a table")
+            return None
+        if not rows or tuple(rows[0]) != header:
+            problems.append(f"the {name} section does not begin with {','.join(header)}")
+            return None
+        for row in rows[1:]:
+            if len(row) != len(header):
+                what = "a row of data" if name == "DATA" else f"a row of the {name} section"
+                problems.append(f"{what} has {len(row)} cells, not {len(header)}")
+                return None
+        return rows[1:]
+
+    def _listed(self, sections: dict, name: str, problems: list[str]) -> dict[str, list[str]] | None:
+        """A table of codes by its index column. An index or a code given twice is a fault."""
+        rows = self._table(sections, name, self.SECTIONS[name], problems)
+        if rows is None:
+            return None
+        by_index = {row[0]: row for row in rows}
+        if len(by_index) != len(rows) or len({row[1] for row in rows}) != len(rows):
+            problems.append(f"the {name} section gives an index or a code twice")
+            return None
+        return by_index
+
+    def _read(self, scope: dict, bodies: list[bytes], problems: list[str]) -> tuple[dict[str, list[dict]], dict]:
+        checks: dict = {}
+        name = f"{scope['program']}-mf.csv"
+        archive = _unzipped(bodies[0], problems) if len(bodies) == 1 else None
+        if len(bodies) != 1:
+            problems.append(f"1 part was asked for and {len(bodies)} were kept")
+        if archive is None:
+            return {}, checks
+        data = _member(archive, name, self.MAX_BYTES, problems)
+        if data is None:
+            if not problems:
+                problems.append(f"the zip does not hold {name}")
+            return {}, checks
+        checks["member"] = name
+        try:
+            text = data.decode("utf-8")
+        except UnicodeDecodeError:
+            problems.append("the file is not UTF-8 text")
+            return {}, checks
+        sections = self._sections(text, problems)
+        if sections is None:
+            return {}, checks
+        tables = {section: self._listed(sections, section, problems)
+                  for section in ("CATEGORIES", "DATA TYPES", "GEO LEVELS", "TIME PERIODS")}
+        errors = "ERROR TYPES" in sections
+        header = ("per_idx", "cat_idx", "dt_idx", *(("et_idx",) if errors else ()), "geo_idx", "is_adj", "val")
+        rows = self._table(sections, "DATA", header, problems)
+        if rows is None or any(table is None for table in tables.values()):
+            return {}, checks
+        if sections.get("DATA UPDATED ON"):
+            checks["updated"] = sections["DATA UPDATED ON"][0].strip()
+        checks["rows"] = len(rows)
+        months: dict[str, str] = {}
+        for index, (_, label) in tables["TIME PERIODS"].items():
+            match = self._MONTH.fullmatch(label)
+            if not match:
+                problems.append(f"the file lists the time period {label!r}, which is not a month")
+                return {}, checks
+            months[index] = f"{match[2]}-{_MONTH_NAMES.index(match[1]) + 1:02d}"
+        # Which rows are each series': by the indexes its codes have in this file, today.
+        wanted: dict[tuple[str, str, str, str], str] = {}
+        for series in scope["series"]:
+            category, data_type, geo, adjusted = self._codes(series)
+            found = {}
+            for what, section, code in (("category", "CATEGORIES", category), ("data type", "DATA TYPES", data_type),
+                                        ("geography", "GEO LEVELS", geo)):
+                row = next((r for r in tables[section].values() if r[1] == code), None)
+                if row is None:
+                    problems.append(f"{series}: the file has no {what} {code}")
+                found[what] = row
+            if None in found.values():
+                continue
+            printed = {"category": found["category"][2], "data_type": found["data type"][2],
+                       "unit": found["data type"][3], "geo": found["geography"][2]}
+            for label in self.LABELS:
+                if printed[label] != scope["labels"][series][label]:
+                    problems.append(f"{series}: the file labels its {label.replace('_', ' ')} "
+                                    f"{printed[label]!r}, and the endpoint expects "
+                                    f"{scope['labels'][series][label]!r}")
+            wanted[(found["category"][0], found["data type"][0], found["geography"][0],
+                    "1" if adjusted else "0")] = series
+        series_rows: dict[str, dict[str, str]] = {name: {} for name in wanted.values()}
+        asked_month = scope["asked_on"][:7]
+        position = {name: n for n, name in enumerate(header)}
+        for row in rows:
+            period, category, data_type, geo, adjusted, value = (
+                row[position[c]] for c in ("per_idx", "cat_idx", "dt_idx", "geo_idx", "is_adj", "val"))
+            error = row[position["et_idx"]] if errors else "0"
+            if period not in months:
+                problems.append(f"a row of data names period {period}, which the file does not list")
+                break
+            if adjusted not in ("0", "1"):
+                problems.append(f"a row of data says is_adj is {adjusted!r}")
+                break
+            if error != "0":
+                continue  # sampling error of an estimate, never the estimate
+            if category not in tables["CATEGORIES"] or data_type not in tables["DATA TYPES"] \
+                    or geo not in tables["GEO LEVELS"]:
+                problems.append("a row of data names a category, data type or geography the file does not list")
+                break
+            series = wanted.get((category, data_type, geo, adjusted))
+            if series is None:
+                continue
+            month = months[period]
+            if month in series_rows[series]:
+                problems.append(f"{series} gives {month} twice")
+            elif not _is_number(value):
+                problems.append(f"{series} has a value that is not a number for {month}: {value!r}")
+            elif month > asked_month:
+                problems.append(f"{series} has a value for {month}, a Period that had not begun on "
+                                f"{scope['asked_on']}")
+            series_rows[series].setdefault(month, value)
+        out: dict[str, list[dict]] = {}
+        for series in scope["series"]:
+            listed = series_rows.get(series)
+            if listed is None:
+                continue
+            if not listed:
+                problems.append(f"{series} has no rows")
+                continue
+            out[series] = [{"period": month, "value": listed[month], "status": "observed", "footnotes": []}
+                           for month in sorted(listed)]
+            checks.setdefault("series", {})[series] = {"rows": len(listed), "first": min(listed), "last": max(listed)}
+        return out, checks
+
+    def examine(self, scope: dict, bodies: list[bytes]) -> Evidence:
+        problems: list[str] = []
+        _, checks = self._read(scope, bodies, problems)
+        return _evidence(scope, checks, list(dict.fromkeys(problems)))
+
+    def coverage(self, scope: dict) -> tuple[None, None]:
+        """The whole file is asked for, every time: a month that has left it is gone."""
+        return None, None
+
+    def parse(self, capture: RawCapture) -> NormalizedState:
+        problems: list[str] = []
+        series, _ = self._read(capture.evidence.scope, capture.bodies, problems)
+        problems = list(dict.fromkeys(problems))
+        return NormalizedState(not problems, capture.evidence.scope, series if not problems else {}, problems)
+
+
+class CensusC30Adapter:
+    """A workbook of the Census Bureau's construction spending release (C30, "Value of
+    Construction Put in Place"): ``totsatime.xlsx``, the seasonally adjusted annual rate by
+    type of construction, every month since 1993, with no key (verified 2026-11-11). The
+    Bureau's flat file for this program holds only the unadjusted monthly figures, so the
+    headline rate is read here.
+
+    One sheet: a title, a line on units, a row of column headings that begins ``Date``, then a
+    row a month, the newest first, named ``Sep-26p``: a month, a two-digit year and the
+    Bureau's mark, ``p`` for preliminary or ``r`` for revised. Under the table are the notes.
+    A series is the heading of its column as the workbook prints it, with its line break taken
+    out and its footnote number left in (``Total Private Construction2``). The endpoint pins
+    the title and the line on units, so the unadjusted workbook or a change of unit stops the
+    capture.
+
+    The century of a two-digit year is not in the file. The newest row is the latest month of
+    that name and year that had begun on the day asked (New York), which is kept in the scope,
+    and every row above the notes must then be the month before the row over it. An .xlsx is a
+    zip of XML: the sheet and its strings are read from memory, by cell reference."""
+
+    name = "census_c30"
+    version = 1
+    URL = "https://www.census.gov/construction/c30/xlsx/"
+    MAX_BYTES = 32 * 2**20
+    SHEET, STRINGS = "xl/worksheets/sheet1.xml", "xl/sharedStrings.xml"
+    _NS = "{http://schemas.openxmlformats.org/spreadsheetml/2006/main}"
+    _FILE = re.compile(r"[a-z0-9]+\.xlsx")
+    _CELL = re.compile(r"([A-Z]{1,3})([1-9][0-9]{0,6})")
+    _DATE = re.compile(r"(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)-([0-9]{2})([pr]?)")
+
+    def problem(self, params: dict) -> str | None:
+        series = params.get("series")
+        if not isinstance(params.get("file"), str) or not self._FILE.fullmatch(params["file"]):
+            return "its file is not the name of a workbook"
+        if not isinstance(series, list) or not series or not all(isinstance(s, str) and s for s in series):
+            return "it names no series"
+        if len(set(series)) != len(series):
+            return "it names a series twice"
+        if not all(isinstance(params.get(name), str) and params[name] for name in ("title", "units")):
+            return "it does not pin the title and the line on units"
+        return None
+
+    def fetch(self, endpoint: Endpoint, fetch: Fetch) -> Evidence:
+        params = endpoint.params
+        scope = {"file": params["file"], "series": list(params["series"]), "title": params["title"],
+                 "units": params["units"],
+                 "asked_on": fetch.now().astimezone(RELEASE_ZONE).date().isoformat()}
+        return self.examine(scope, [fetch.get(self.URL + scope["file"]).body])
+
+    @staticmethod
+    def _plain(text: str) -> str:
+        """A cell's text on one line: Excel's escape for a carriage return and the line break
+        itself give way to a single space."""
+        return " ".join(text.replace("_x000D_", " ").split())
+
+    def _cells(self, bodies: list[bytes], problems: list[str]) -> dict[int, dict[str, tuple[str, str]]] | None:
+        """Every cell of the one sheet that holds something, by row number and column letters:
+        ("text", its words) or ("number", the characters the file prints)."""
+        archive = _unzipped(bodies[0], problems) if len(bodies) == 1 else None
+        if len(bodies) != 1:
+            problems.append(f"1 part was asked for and {len(bodies)} were kept")
+        if archive is None:
+            return None
+        sheets = [n for n in archive.namelist() if re.fullmatch(r"xl/worksheets/[^/]+\.xml", n)]
+        if self.SHEET not in sheets:
+            problems.append(f"the workbook has no {self.SHEET}")
+            return None
+        if len(sheets) != 1:
+            problems.append(f"the workbook has {len(sheets)} sheets, not one")
+            return None
+        sheet = _member(archive, self.SHEET, self.MAX_BYTES, problems)
+        shared = _member(archive, self.STRINGS, self.MAX_BYTES, problems) if sheet is not None else None
+        if sheet is None or problems:
+            return None
+        if any(_declares_a_document_type(part) for part in (sheet, shared or b"")):
+            # A spreadsheet's XML declares no document type. One that does is not read: an
+            # entity is the one way XML of this size could be made to expand without end.
+            problems.append("the workbook's XML declares a document type or an entity; it was not read")
+            return None
+        try:
+            strings = [] if shared is None else [
+                "".join(t.text or "" for t in item.iter(f"{self._NS}t"))
+                for item in ElementTree.fromstring(shared).findall(f"{self._NS}si")]
+            root = ElementTree.fromstring(sheet)
+        except ElementTree.ParseError:
+            problems.append("the workbook's sheet or its strings are not XML")
+            return None
+        cells: dict[int, dict[str, tuple[str, str]]] = {}
+        for cell in root.iter(f"{self._NS}c"):
+            where = self._CELL.fullmatch(cell.get("r", ""))
+            value = cell.find(f"{self._NS}v")
+            if where is None:
+                problems.append("the sheet has a cell with no reference")
+                return None
+            if value is None or value.text is None:
+                continue
+            kind = cell.get("t", "n")
+            if kind == "s":
+                try:
+                    found = ("text", strings[int(value.text)])
+                except (ValueError, IndexError):
+                    problems.append(f"cell {cell.get('r')} names a string the workbook does not have")
+                    return None
+            elif kind == "n":
+                found = ("number", value.text)
+            else:
+                found = ("text", value.text)
+            row = cells.setdefault(int(where[2]), {})
+            if where[1] in row:
+                problems.append(f"the sheet gives cell {cell.get('r')} twice")
+                return None
+            row[where[1]] = found
+        return cells
+
+    def _read(self, scope: dict, bodies: list[bytes], problems: list[str]) -> tuple[dict[str, list[dict]], dict]:
+        checks: dict = {}
+        cells = self._cells(bodies, problems)
+        if cells is None:
+            return {}, checks
+
+        def text(row: int, column: str) -> str | None:
+            found = cells.get(row, {}).get(column)
+            return self._plain(found[1]) if found and found[0] == "text" else None
+
+        if text(1, "A") != scope["title"]:
+            problems.append(f"its title is {text(1, 'A')!r}, and the endpoint expects {scope['title']!r}")
+        if text(2, "A") != scope["units"]:
+            problems.append(f"the line under its title is {text(2, 'A')!r}, and the endpoint expects "
+                            f"{scope['units']!r}")
+        head = next((row for row in sorted(cells) if text(row, "A") == "Date"), None)
+        if head is None:
+            problems.append("it has no row of column headings (a row that begins 'Date')")
+            return {}, checks
+        headings: dict[str, list[str]] = {}
+        for column, (kind, words) in cells[head].items():
+            if kind == "text" and column != "A":
+                headings.setdefault(self._plain(words), []).append(column)
+        columns = {}
+        for series in scope["series"]:
+            found = headings.get(series, [])
+            if not found:
+                problems.append(f"it has no column headed {series!r}")
+            elif len(found) > 1:
+                problems.append(f"it has two columns headed {series!r}")
+            else:
+                columns[series] = found[0]
+        # The table: rows named for a month, from the row under the headings to the first row
+        # that is not. Nothing below that may be a month.
+        table, ended = [], False
+        for row in sorted(r for r in cells if r > head):
+            match = self._DATE.fullmatch(text(row, "A") or "")
+            if match and ended:
+                problems.append(f"{text(row, 'A')!r} is a month below the end of the table")
+            elif match and row == head + 1 + len(table):
+                table.append((row, match))
+            else:
+                ended = True
+                if any(kind == "number" for kind, _ in cells[row].values()):
+                    # A row of figures whose first cell is not a month is not a note: read
+                    # as one, the months from it down would silently leave the Series.
+                    problems.append(f"row {row} holds numbers and is not named for a month "
+                                    f"({text(row, 'A')!r})")
+        if not table:
+            problems.append("the table has no rows")
+            return {}, checks
+        # The newest row's century, from the day asked; then each row is the month before.
+        asked = scope["asked_on"][:7]
+        first = table[0][1]
+        month = _MONTH_NAMES.index(first[1]) + 1
+        years = [year for year in range(int(asked[:4]) // 100 * 100 + int(first[2]), 0, -100)
+                 if f"{year:04d}-{month:02d}" <= asked]
+        if not years or years[0] < int(asked[:4]) - 50:
+            # A month of that name and year in the last century is not what a current release
+            # begins with: the row is for a month that has not come.
+            problems.append(f"its newest row, {first[0]!r}, is for a Period that had not begun on {scope['asked_on']}")
+            return {}, checks
+        year = years[0]
+        periods, marks = [], []
+        for n, (row, match) in enumerate(table):
+            if n:
+                year, month = (year - 1, 12) if month == 1 else (year, month - 1)
+                expected = f"{_MONTH_NAMES[month - 1]}-{year % 100:02d}"
+                if match[0][:6] != expected:
+                    problems.append(f"{match[0]!r} follows {table[n - 1][1][0]!r}; the month before it is {expected}")
+                    return {}, checks
+            periods.append(f"{year:04d}-{month:02d}")
+            marks.append({"p": "preliminary", "r": "revised", "": "observed"}[match[3]])
+        checks.update(rows=len(table), first=periods[-1], last=periods[0],
+                      preliminary=marks.count("preliminary"), revised=marks.count("revised"))
+        out: dict[str, list[dict]] = {}
+        for series, column in columns.items():
+            observations = []
+            for (row, _), period, status in zip(table, periods, marks, strict=True):
+                found = cells[row].get(column)
+                if found is None:
+                    problems.append(f"{series} has no number for {period}")
+                elif found[0] != "number" or not _is_number(found[1]):
+                    problems.append(f"{series} has a value that is not a number for {period}: {found[1]!r}")
+                else:
+                    observations.append({"period": period, "value": found[1], "status": status, "footnotes": []})
+            out[series] = observations[::-1]
+        return out, checks
+
+    def examine(self, scope: dict, bodies: list[bytes]) -> Evidence:
+        problems: list[str] = []
+        _, checks = self._read(scope, bodies, problems)
+        return _evidence(scope, checks, list(dict.fromkeys(problems)))
+
+    def coverage(self, scope: dict) -> tuple[None, None]:
+        """The whole workbook is asked for, every time: a month that has left it is gone."""
+        return None, None
+
+    def parse(self, capture: RawCapture) -> NormalizedState:
+        problems: list[str] = []
+        series, _ = self._read(capture.evidence.scope, capture.bodies, problems)
+        problems = list(dict.fromkeys(problems))
+        return NormalizedState(not problems, capture.evidence.scope, series if not problems else {}, problems)
+
+
+class ManualAdapter:
+    """A hand-entered file of the repository (``atlas/manual.py``): figures that no source
+    serves as data, typed in from a published record, each with its citation. Read through the
+    capture kit like any source, so that what was entered on a day is kept as it was and a
+    correction is a revision with a retrieval time. No request leaves the machine.
+
+    The endpoint is on the register row of the Origin whose record was read and pins the file,
+    the frequency of its Periods, the series read and the unit of each. Its Channel is
+    ``hand_entered``. A series is named by the file's own name for it. Whole = strict JSON of
+    the format, for this Origin and dataset, exactly the series pinned, every entry a Period of
+    the frequency with a number written as text and a citation that says who published the
+    record, what it is called, its address, the day it was read and where in it the figure is;
+    and where an entry shows its working, the value is what the working gives."""
+
+    name = "manual"
+    version = 1
+    channel = "hand_entered"
+
+    def problem(self, params: dict) -> str | None:
+        series, units = params.get("series"), params.get("units")
+        if not isinstance(params.get("file"), str) or not manual.FILE.fullmatch(params["file"]):
+            return "its file is not a file directly under catalog/manual"
+        if params.get("frequency") not in manual.FREQUENCIES:
+            return "it does not say the frequency of the file's Periods"
+        if not isinstance(series, list) or not series or not all(isinstance(s, str) and s for s in series):
+            return "it names no series"
+        if len(set(series)) != len(series):
+            return "it names a series twice"
+        if not isinstance(units, dict) or set(units) != set(series) \
+                or not all(isinstance(u, str) and u for u in units.values()):
+            return "it does not pin the unit of each series"
+        return None
+
+    def fetch(self, endpoint: Endpoint, fetch: Fetch) -> Evidence:
+        params = endpoint.params
+        scope = {"file": params["file"], "origin": endpoint.origin, "datasets": list(endpoint.datasets),
+                 "frequency": params["frequency"], "series": list(params["series"]),
+                 "units": dict(params["units"]),
+                 "asked_on": fetch.now().astimezone(RELEASE_ZONE).date().isoformat()}
+        return self.examine(scope, [fetch.read(scope["file"]).body])
+
+    def _read(self, scope: dict, bodies: list[bytes], problems: list[str]) -> tuple[dict[str, list[dict]], dict]:
+        if len(bodies) != 1:
+            problems.append(f"1 part was asked for and {len(bodies)} were kept")
+            return {}, {}
+        return manual.read_series_file(bodies[0], scope, problems)
+
+    def examine(self, scope: dict, bodies: list[bytes]) -> Evidence:
+        problems: list[str] = []
+        _, checks = self._read(scope, bodies, problems)
+        return _evidence(scope, checks, list(dict.fromkeys(problems)))
+
+    def coverage(self, scope: dict) -> tuple[None, None]:
+        """The whole file is read, every time: an entry taken out of it is gone."""
+        return None, None
+
+    def parse(self, capture: RawCapture) -> NormalizedState:
+        problems: list[str] = []
+        series, _ = self._read(capture.evidence.scope, capture.bodies, problems)
+        problems = list(dict.fromkeys(problems))
+        return NormalizedState(not problems, capture.evidence.scope, series if not problems else {}, problems)
+
+
 def _month_after(day: str) -> str | None:
     """The month (YYYY-MM) of the day after ``day``; None after the calendar's last day."""
     try:
@@ -1607,7 +2185,8 @@ def _is_day(text: str) -> bool:
 
 ADAPTERS = {adapter.name: adapter for adapter in
             (FixtureAdapter(), BlsAdapter(), TreasuryFiscalDataAdapter(), FedBoardAdapter(),
-             ImfSdmxAdapter(), BeaAdapter(), EiaAdapter())}
+             ImfSdmxAdapter(), BeaAdapter(), EiaAdapter(), CensusEitsAdapter(),
+             CensusC30Adapter(), ManualAdapter())}
 
 
 def key_of(endpoint: Endpoint) -> tuple[str, str] | None:

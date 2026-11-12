@@ -1,13 +1,14 @@
 """Writes the capture kit's committed fixtures: one recorded exchange for every endpoint the
 rights register lists (BLS, Treasury Fiscal Data, the Federal Reserve Board, the IMF, the BEA,
-the EIA).
+the EIA, the Census Bureau).
 
 Every value in them is invented. The *shape* of each answer (field names, header rows, the way
 BLS prints an unpublished month or a quarter, the paging block of Fiscal Data, the statements
 of the Monthly Treasury Statement, the Board's label rows, time cells and "ND", the IMF's
 SDMX-JSON with its positions and unordered times, the BEA's echo of what it was asked and its
-commas, the EIA's nulls and its prices printed without a leading zero) was copied from the
-answers the six sources gave on 2026-11-11; none of their numbers was. The two sources that
+commas, the EIA's nulls and its prices printed without a leading zero, the Census Bureau's
+flat file with its tables of codes and its workbook with its marks) was copied from the
+answers the seven sources gave on 2026-11-11; none of their numbers was. The two sources that
 want a key are asked without one here, as a replay asks them: no key was used to make these
 files and none is in them (where the BEA would repeat it, the file says REDACTED). The repository is
 public and no row of the rights register is signed, so real agency bytes may not be committed
@@ -22,11 +23,14 @@ of the shape that request would get, so a fixture always matches what the adapte
 """
 from __future__ import annotations
 
+import io
 import json
 import sys
+import zipfile
 from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
+from xml.sax.saxutils import escape
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
@@ -486,6 +490,126 @@ def eia_body(params: dict, offset: int, length: int) -> bytes:
     return json.dumps(answer, separators=(",", ":")).encode()
 
 
+CENSUS_STAMP = (2026, 11, 2, 9, 0, 20)  # every member of an invented zip is dated the same
+CENSUS_MONTHS = ("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
+#: Invented levels and steps for the Census series: value = level + step * (months since the start).
+CENSUS_SHAPE = {
+    "44X72:SM:US:SA": (150000, 1400, 0), "ASTARTS:TOTAL:US:SA": (1500, -0.4, 0), "BOPGS:BAL:US:SA": (-9000, -160, 0),
+    "Total Construction1": (460000, 4250, 0), "Total Private Construction2": (330000, 3200, 0),
+    "Total Public Construction3": (130000, 1050, 0),
+}
+
+
+def _zip(members: dict[str, bytes]) -> bytes:
+    """A zip whose bytes depend on nothing but its members: fixed dates, fixed order, and
+    stored, not deflated, so that no version of a compression library can change them. (The
+    Bureau's own zips are deflated; a reader does not care.)"""
+    out = io.BytesIO()
+    with zipfile.ZipFile(out, "w", zipfile.ZIP_STORED) as archive:
+        for name, data in members.items():
+            archive.writestr(zipfile.ZipInfo(name, CENSUS_STAMP), data)
+    return out.getvalue()
+
+
+def _census_value(series: str, age: int) -> str:
+    level, step, places = CENSUS_SHAPE[series]
+    return f"{level + age * step:.{places}f}"
+
+
+def census_flat_body(params: dict) -> bytes:
+    """One flat file of the Economic Indicators, in a zip with its README: the tables of codes
+    under their headings, CR LF line ends with a bare line feed between sections, a section of
+    sampling error where the program has one, months listed to the end of the year with no
+    figure after September, one other category with a value that is a code, and a row of
+    sampling error for a month that is read."""
+    program = params["program"]
+    first = 2012  # the Bureau's files begin in 1992 or 1959; an invented one need not be so long
+    begins = {"FTD": (2013, 1)}.get(program, (first, 1))  # as the Bureau's balance begins later than its file
+    codes = [dict(zip(("category", "data_type", "geo", "adjusted"), name.split(":"), strict=True))
+             for name in params["series"]]
+    labels = [params["labels"][name] for name in params["series"]]
+    categories = [(c["category"], l["category"]) for c, l in zip(codes, labels, strict=True)] + [("OTHER", "Another Category")]
+    data_types = [(c["data_type"], l["data_type"], l["unit"]) for c, l in zip(codes, labels, strict=True)] \
+        + [("MPC", "Monthly Percent Change", "PCT")]
+    geos = [(codes[0]["geo"], labels[0]["geo"])]
+    errors = program != "FTD"
+    months = [(year, month) for year in range(first, 2027) for month in range(1, 13)]
+    sections = [
+        ["CATEGORIES", "cat_idx,cat_code,cat_desc,cat_indent",
+         *(f'{n},{code},"{text}",0' for n, (code, text) in enumerate(categories, start=1))],
+        ["DATA TYPES", "dt_idx,dt_code,dt_desc,dt_unit",
+         *(f'{n},{code},"{text}",{unit}' for n, (code, text, unit) in enumerate(data_types, start=1))],
+        *([["ERROR TYPES", "et_idx,err_code,err_desc,err_unit", '1,E_X,"An invented measure of sampling error",PCT']]
+          if errors else []),
+        ["GEO LEVELS", "geo_idx,geo_code,geo_desc", *(f'{n},{code},"{text}"' for n, (code, text) in enumerate(geos, start=1))],
+        ["TIME PERIODS", "per_idx,per_name",
+         *(f"{n},{CENSUS_MONTHS[month - 1]}-{year}" for n, (year, month) in enumerate(months, start=1))],
+        ["NOTES", '"An invented file in the shape of the Bureau\'s. No figure in it is a measurement."'],
+        ["DATA UPDATED ON", "Thursday, 15-Oct-26 07:31:23 EDT"],
+    ]
+    data = ["DATA", "per_idx,cat_idx,dt_idx,et_idx,geo_idx,is_adj,val" if errors else "per_idx,cat_idx,dt_idx,geo_idx,is_adj,val"]
+
+    def row(period, category, data_type, adjusted, value, error="0"):
+        cells = [str(period), str(category), str(data_type), *([error] if errors else []), "1", adjusted, value]
+        data.append(",".join(cells))
+
+    for n, (year, month) in enumerate(months, start=1):
+        if (year, month) > (2026, 9) or (year, month) < begins:
+            continue
+        age = (year - begins[0]) * 12 + month - begins[1]
+        for index, (name, code) in enumerate(zip(params["series"], codes, strict=True), start=1):
+            adjusted = "1" if code["adjusted"] == "SA" else "0"
+            row(n, index, index, adjusted, _census_value(name, age))
+            row(n, index, len(data_types), adjusted, "Z" if age % 40 == 0 else f"{(age % 7 - 3) / 10:.1f}")
+            if errors and age % 12 == 0:
+                row(n, index, 0, adjusted, "0.5", error="1")
+        row(n, len(categories), 1, "0", str(1000 + age))
+    text = "\r\n\n\n".join("\r\n".join(section) for section in sections[:-1] + [sections[-1], data]) + "\r\n"
+    readme = b"Economic Measures Time Series Dataset\n\nAn invented README: see fixtures/capture/README.md.\n"
+    return _zip({f"{program}-mf.csv": text.encode(), "/README": readme})
+
+
+def census_c30_body(params: dict) -> bytes:
+    """The construction workbook: a title, a line on units, the row of headings (each with its
+    line break as Excel writes it, and the footnote number at its end), a row a month from
+    September 2026 back to January 2012 (the Bureau's goes back to 1993) with the Bureau's marks on the newest three, then the
+    notes under the table."""
+    main = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
+    strings: list[str] = []
+
+    def text_cell(reference: str, text: str) -> str:
+        if text not in strings:
+            strings.append(text)
+        return f'<c r="{reference}" s="1" t="s"><v>{strings.index(text)}</v></c>'
+
+    headings = ["Total\r\n_x000D_Residential", *(f"Total\r\n_x000D_{name.removeprefix('Total ')}" for name in params["series"])]
+    letters = "BCDEFGH"
+    rows = [f'<row r="1">{text_cell("A1", params["title"])}</row>', f'<row r="2">{text_cell("A2", params["units"])}</row>',
+            '<row r="3"><c r="A3" s="11"/></row>',
+            '<row r="4">' + text_cell("A4", "Date")
+            + "".join(text_cell(f"{letters[n]}4", heading) for n, heading in enumerate(headings)) + "</row>"]
+    months = [(year, month) for year in range(2026, 2011, -1) for month in range(12, 0, -1) if (year, month) <= (2026, 9)]
+    for n, (year, month) in enumerate(months):
+        r = 5 + n
+        age = (year - 2012) * 12 + month - 1
+        mark = "p" if n == 0 else "r" if n < 3 else ""
+        cells = [text_cell(f"A{r}", f"{CENSUS_MONTHS[month - 1]}-{year % 100:02d}{mark}"),
+                 f'<c r="B{r}" s="4"><v>{200000 + age * 1900}</v></c>',
+                 *(f'<c r="{letters[i + 1]}{r}" s="4"><v>{_census_value(name, age)}</v></c>'
+                   for i, name in enumerate(params["series"]))]
+        rows.append(f'<row r="{r}">' + "".join(cells) + "</row>")
+    last = 5 + len(months)
+    for n, note in enumerate(["p Preliminary r Revised", "1An invented note.", "Source: an invented workbook."]):
+        rows.append(f'<row r="{last + n}">{text_cell(f"A{last + n}", note)}</row>')
+    head = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n'
+    sheet = f'{head}<worksheet xmlns="{main}"><sheetData>{"".join(rows)}</sheetData></worksheet>'
+    shared = (f'{head}<sst xmlns="{main}" count="{len(strings)}" uniqueCount="{len(strings)}">'
+              + "".join(f"<si><t>{escape(text)}</t></si>" for text in strings) + "</sst>")
+    book = f'{head}<workbook xmlns="{main}"><sheets><sheet name="Sheet1" sheetId="1"/></sheets></workbook>'
+    return _zip({"[Content_Types].xml": b"<Types/>", "xl/workbook.xml": book.encode(),
+                 "xl/worksheets/sheet1.xml": sheet.encode(), "xl/sharedStrings.xml": shared.encode()})
+
+
 class Synthetic:
     """Answers each request of a real adapter with invented bytes of the shape that request
     would get, and remembers nothing else."""
@@ -517,6 +641,15 @@ class Synthetic:
             route = url.path.removeprefix("/v2/").removesuffix("/data/")
             endpoint = next(e for e in self._endpoints if e.adapter == "eia" and e.params["route"] == route)
             return "application/json", eia_body(endpoint.params, int(query["offset"][0]), int(query["length"][0]))
+        if url.netloc == "www.census.gov" and url.path == "/econ_getzippedfile/":
+            endpoint = next(e for e in self._endpoints if e.adapter == "census_eits"
+                            and e.params["program"] == query["programCode"][0])
+            return "application/octet-stream", census_flat_body(endpoint.params)
+        if url.netloc == "www.census.gov":
+            endpoint = next(e for e in self._endpoints if e.adapter == "census_c30"
+                            and url.path.endswith("/" + e.params["file"]))
+            return ("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    census_c30_body(endpoint.params))
         if url.netloc == "api.imf.org":
             agency, flow = url.path.split("/")[-4:-2]
             endpoint = next(e for e in self._endpoints if e.adapter == "imf_sdmx"
@@ -550,8 +683,10 @@ def build(out: Path) -> list[str]:
     written = []
     transport = Synthetic(endpoints)
     # The invented clock ticks once a request. The sources that came with M15 are asked last,
-    # so the times recorded for the others are the ones they have always had.
-    for endpoint in sorted(endpoints, key=lambda e: e.adapter in ("bea", "eia")):
+    # and the Census files of M16 after them, so the times recorded for the others are the
+    # ones they have always had.
+    order = {"bea": 1, "eia": 1, "census_eits": 2, "census_c30": 2}  # M15's, then M16's
+    for endpoint in sorted(endpoints, key=lambda e: order.get(e.adapter, 0)):
         raw = capture(endpoint, Fetch(Session(transport, sleep=lambda seconds: None)))
         assert raw.evidence.complete, (endpoint.id, raw.evidence.problems)
         parts = [{"request": {"method": p.request.method, "url": p.request.url,

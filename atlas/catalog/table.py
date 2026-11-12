@@ -44,10 +44,15 @@ def _stored(entry: dict, table: object, gate: RightsGate) -> Proposal:
         said = source["no_channel"]
         return Proposal("withheld", f"withheld ({NO_CHANNEL_WORDS[said['kind']]}): {said['reason']}")
     still = []
-    if not channel.get("endpoint"):
+    by_hand = channel["via"] == "hand_entered"
+    if not channel.get("endpoint") and by_hand:
+        # The reader of hand-entered files exists (M16). What is missing is the file: nothing
+        # is typed in ahead of a decision on the row of the record it would be typed from.
+        still.append("nothing entered yet: a hand-entered file waits for a decision on its register row")
+    elif not channel.get("endpoint"):
         planned = entry.get("migration", {}).get("milestone")
         still.append(f"adapter not built (planned for {planned})" if planned else "adapter not built")
-    if origin["origin_id"] is None:
+    if origin["origin_id"] is None and not by_hand:
         still.append("identifier not settled")
     change = entry.get("migration", {}).get("change")
     if change == "representation":
@@ -177,7 +182,8 @@ def render_table(entries: dict[str, dict], table: object) -> str:
         (f"{len(new)} Series were never in v1: {', '.join(f'`{key}`' for key in new)}. `cpi_nsa` (M8) is "
          "what `cpi_yoy` is computed from (ADR 0025); the others arrived with the adapter that "
          "reads them (M13, ADR 0027; the G20 consumer price, inflation and exchange-rate Series "
-         f"with the IMF adapter, M14, ADR 0028; the BEA's and the EIA's with theirs, M15, ADR 0029). {len(entries)} Series in all."),
+         f"with the IMF adapter, M14, ADR 0028; the BEA's and the EIA's with theirs, M15, ADR 0029; "
+         f"the three construction totals with the Census readers, M16, ADR 0030). {len(entries)} Series in all."),
         "",
     ]
     if missing:

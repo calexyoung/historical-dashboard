@@ -32,7 +32,7 @@
   "migration": {
     "v1_source": "FRED MSPUS",
     "change": "same",
-    "note": "The agency's identifier for this series is settled, with a captured fixture, by the milestone that builds the adapter.",
-    "milestone": "M16"
+    "note": "v1 showed the quarterly median price of new houses sold (FRED MSPUS). The Bureau's flat file of new home sales, which the M16 reader can read, holds the monthly median, a different quantity that would take a new key; the quarterly figure is in a workbook of another shape (an .xls), which no reader reads yet.",
+    "milestone": "v2.1"
   }
 }

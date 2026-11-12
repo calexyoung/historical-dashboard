@@ -1,0 +1,48 @@
+{
+  "format": 1,
+  "source": "census",
+  "endpoint": "census-ftd",
+  "recorded_at": "2026-11-11T15:50:00Z",
+  "provenance": {
+    "synthetic": true,
+    "transport": "synthetic",
+    "origin": "U.S. Census Bureau",
+    "datasets": [
+      "U.S. International Trade in Goods and Services (FT-900)"
+    ],
+    "retrieved_at": "2026-11-11T15:50:35Z",
+    "capture_id": null,
+    "note": "Invented values in the shape of the source's answer of 2026-11-11. Not a measurement of anything and not a capture: written by fixtures/capture/make_fixtures.py."
+  },
+  "exchanges": [
+    {
+      "request": {
+        "method": "GET",
+        "url": "https://www.census.gov/econ_getzippedfile/?programCode=FTD",
+        "body": null
+      },
+      "status": 200,
+      "headers": [
+        [
+          "Content-Type",
+          "application/octet-stream"
+        ],
+        [
+          "Date",
+          "Wed, 11 Nov 2026 15:50:35 GMT"
+        ],
+        [
+          "Content-Length",
+          "12107"
+        ],
+        [
+          "Set-Cookie",
+          "(not kept)"
+        ]
+      ],
+      "received_at": "2026-11-11T15:50:35Z",
+      "body_file": "part-1.bin",
+      "sha256": "07b7448da4a294a1209b396a1261dc070eeac6fd0427e4593f43357e46058d8c"
+    }
+  ]
+}

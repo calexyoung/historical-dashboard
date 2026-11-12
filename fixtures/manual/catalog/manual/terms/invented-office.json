@@ -1,0 +1,39 @@
+{
+  "format": 1,
+  "kind": "terms",
+  "about": "Invented. No such office and no such people.",
+  "origin": {
+    "producer": "Macro Atlas, from the public record",
+    "dataset": "Terms of government"
+  },
+  "office": "invented_office",
+  "label": "Keeper of the Invented Office",
+  "terms": [
+    {
+      "holder": "A. Example",
+      "start": "2017-02-01",
+      "end": "2021-01-31",
+      "party": "R",
+      "citation": {
+        "publisher": "An Invented Office",
+        "title": "Past keepers (invented)",
+        "url": "https://office.invalid/history",
+        "accessed": "2026-11-10",
+        "locator": "the table \"Keepers\", row 12"
+      }
+    },
+    {
+      "holder": "B. Sample",
+      "start": "2021-02-01",
+      "end": null,
+      "party": "D",
+      "citation": {
+        "publisher": "An Invented Office",
+        "title": "Past keepers (invented)",
+        "url": "https://office.invalid/history",
+        "accessed": "2026-11-10",
+        "locator": "the table \"Keepers\", row 13"
+      }
+    }
+  ]
+}

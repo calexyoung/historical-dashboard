@@ -32,6 +32,6 @@
     "v1_source": "Hand-entered: atlas/approval.yaml",
     "change": "same",
     "milestone": "M16",
-    "note": "The register proposes no display for Gallup's figures: read its terms, or choose a source with clear terms, before M16."
+    "note": "The register proposes no display for Gallup's figures and its terms are not read. The hand-entered file format and its adapter exist (M16); no value is entered until Alex has decided a row for the source of the figures."
   }
 }

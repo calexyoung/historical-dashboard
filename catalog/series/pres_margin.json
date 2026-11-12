@@ -32,6 +32,6 @@
     "v1_source": "Hand-entered: atlas/politics.yaml (Wikipedia election infoboxes)",
     "change": "same",
     "milestone": "M16",
-    "note": "v1's votes were read from Wikipedia. The register's Wikipedia row says to enter them from the official record instead, each with its citation; that record needs a row of its own."
+    "note": "v1's votes were read from Wikipedia. The register's Wikipedia row says to enter them from the official record instead, each with its citation. The hand-entered file format and its adapter exist (M16) and the register has a proposed row for the Federal Election Commission; no value is entered until Alex has decided that row."
   }
 }
