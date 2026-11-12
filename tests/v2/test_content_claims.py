@@ -266,7 +266,7 @@ def test_a_lock_in_the_repository_needs_display_and_redistribution_of_everything
     assert layer(content)[0] == []
     unsigned = RightsGate(fixture_table(decision=None))
     assert "rights register" in str(layer(content, unsigned)[0][0])
-    display_only = RightsGate(fixture_table(decision={"store": True, "display": True, "redistribute": False, "ml_use": False}))
+    display_only = RightsGate(fixture_table(decision={**MAKE.register()["rows"][0]["decision"], "redistribute": False}))
     assert "redistribut" in str(layer(content, display_only)[0][0])
     # The committed register signs no row at all, so no real lock can be committed yet.
     assert layer(content, gate=None)[0] != []
@@ -283,7 +283,7 @@ def test_a_lock_computed_on_a_local_release_is_never_committed(tmp_path):
 
 ADD = ["--name", "An Invented Official", "--role", "Secretary of Examples", "--party", "none",
        "--venue", "A press conference that did not happen", "--quote", "The jobless rate was 4.1 percent in January.",
-       "--selection-note", "Recorded as a test of the record format.", "--checked-on", "2031-03-06"]
+       "--selection-note", "Kept as a test of the file format.", "--checked-on", "2031-03-06"]
 TWO = ["--source", "https://video.example.org/briefing", "--kind", "recording", "--archive-url", ARCHIVE + "a", "--locator", "at 12:40",
        "--source", "https://example.org/transcript", "--kind", "transcript", "--archive-url", ARCHIVE + "b", "--locator", "paragraph 9"]
 

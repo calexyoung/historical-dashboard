@@ -6,6 +6,7 @@ import sys
 from pathlib import Path
 
 from ..content import add as X
+from ..content import claims as K
 from ..rights import RightsGate, load_register
 from . import add as A
 from . import check as C
@@ -93,11 +94,44 @@ def add_main(argv: list[str]) -> int:
     n.add_argument("--about", required=True, metavar="KIND:ID", help="claim:ID, series:KEY or topic:SLUG")
     n.add_argument("--date", help="the day it was written (default today)")
     n.add_argument("--notes", help="the directory of User notes (default notes)")
-    if argv[:1] and argv[0] in ("event", "note"):
+    c = kinds.add_parser("claim", help="a draft Claim in content/claims/{said_on}-{slug}.md",
+                         description="Write a draft Claim: the record, and at most one Reading. More Readings are "
+                                     "an edit to the file. There is no option for a finding: a Claim carries none.")
+    c.add_argument("said_on", help="the New York day the statement was made (YYYY-MM-DD)")
+    c.add_argument("title", help="a few plain words to name the Claim by; they make its id")
+    c.add_argument("--name", required=True, help="who said it")
+    c.add_argument("--role", required=True, help="the office or position held at the time")
+    c.add_argument("--party", required=True, help="the party at the time, or none")
+    c.add_argument("--venue", required=True, help="where it was said")
+    c.add_argument("--quote", required=True, help="the statement, verbatim")
+    c.add_argument("--said-at", help="the instant it was made, UTC (YYYY-MM-DDTHH:MM:SSZ), when known")
+    c.add_argument("--source", action="append", help="an address where the statement can be checked (https); twice or more")
+    c.add_argument("--kind", dest="source_kind", action="append", choices=["recording", "transcript", "own_publication", "report"],
+                   help="what kind of record that source is; once per --source")
+    c.add_argument("--archive-url", action="append", help="an archived copy of that source; once per --source")
+    c.add_argument("--locator", action="append", help="where in that source the words are; once per --source")
+    c.add_argument("--selection-note", required=True, help="why this statement was recorded")
+    c.add_argument("--checked-on", help="the day the Claim is recorded (default today)")
+    c.add_argument("--not-measured", action="append", help="another way the words could be read, not measured here")
+    c.add_argument("--topic", action="append", help="a topic slug; may be given more than once")
+    c.add_argument("--series", help="one Reading: the Series key")
+    c.add_argument("--freq", choices=["weekly", "monthly", "quarterly", "annual"], help="a slower frequency to bring it to first")
+    c.add_argument("--transform", default="lin", choices=list(K.TRANSFORMS))
+    c.add_argument("--measure", choices=list(K.MEASURES))
+    c.add_argument("--period", action="append", help="value_at, rank: the Period; difference: give it twice")
+    c.add_argument("--from", dest="window_from", help="change, extreme, rank: the window's first day")
+    c.add_argument("--to", dest="window_to", help="the window's last day")
+    c.add_argument("--which", choices=["max", "min"], help="extreme")
+    c.add_argument("--order", choices=["highest", "lowest"], help="rank")
+    c.add_argument("--alt-window", action="append", metavar="FROM:TO", help="an alternative window; may be given more than once")
+    c.add_argument("--content", help="the content directory (default content)")
+    if argv[:1] and argv[0] in ("event", "note", "claim"):
         args = parser.parse_args(argv)   # a mistake in the options exits, as argparse does
         try:
             if args.kind == "event":
                 _, said = X.add_event(args, set(load_catalog()))
+            elif args.kind == "claim":
+                _, said = X.add_claim(args, load_catalog())
             else:
                 _, said = X.add_note(args, set(load_catalog()))
         except (X.AddRefused, CatalogError) as refused:
