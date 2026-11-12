@@ -609,7 +609,8 @@ def add_content(built: Built, *, profile: str, gate: RightsGate, content: Path |
                                    manual=MANUAL_DIR if manual is None else manual, gate=gate,
                                    legacy_annotations=layers if profile == "local" else None,
                                    local_locks=local_locks, withdrawn=withdrawn)
-    except ContentError as error:
+    except (ContentError, OSError) as error:
+        # A file that cannot be read is named by its path, which may be a draft's id.
         raise ContentRefused(f"the content cannot be compiled: {error}") from None
     built.files.update(compiled.files)
     built.report.extend(compiled.report)

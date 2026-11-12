@@ -301,6 +301,17 @@ def test_a_failed_build_leaves_nothing_of_a_draft_in_the_public_root(world):
         assert seed not in everything
 
 
+def test_a_draft_that_cannot_be_read_is_not_named_in_the_public_root_either(world):
+    path = world["content"] / "claims" / f"{ID}.md"
+    path.chmod(0)
+    try:
+        refused = publish(world, "public", reuse_data=True, now=CHECKED)
+    finally:
+        path.chmod(0o644)
+    assert refused.exit_code == 1 and refused.outcome == "refused"
+    assert ID.encode() not in all_bytes(world["tmp"] / "public")
+
+
 def test_a_release_whose_only_engine_work_is_a_claim_says_the_engines_version_and_what_it_cannot_measure(world):
     assert compute(world, "local").exit_code == 0
     # The next Release is written from a table with no Recipe: nothing to materialise, and the
