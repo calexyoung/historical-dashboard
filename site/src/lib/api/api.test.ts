@@ -274,6 +274,15 @@ describe("GET /api/v1/series/{key}", () => {
     expect(apiVintages(opened.release, "local", "fx_old_permits", q("period=2024-06"), o())).toMatchObject({ status: 308, location: "/api/v1/series/fx_permits_stale/vintages?period=2024-06" });
     // A question that would be refused is refused, not sent on.
     expect(apiSeries(opened.release, "local", "fx_old_permits", q("transform=cube"), o()).status).toBe(400);
+    for (const search of ["page=two", "page=0", "period=%3Cb%3E", "nope=1"]) expect(apiVintages(opened.release, "local", "fx_old_permits", q(search), o()).status, search).toBe(400);
+    expect(apiVintages(opened.release, "local", "fx_old_permits", q("page=3"), o())).toMatchObject({ status: 308, location: "/api/v1/series/fx_permits_stale/vintages?page=3" });
+    // A redirect is a body of the API like any other: it carries the four fields.
+    for (const answer of [apiSeries(opened.release, "local", "fx_old_permits", q(), o()), apiVintages(opened.release, "local", "fx_old_permits", q(), o())]) {
+      const body = read(answer);
+      expect(body).toMatchObject({ release_id: "20260201T000000Z-2222222", semantics_version: SEMANTICS_VERSION, provenance: { publisher: "Macro Atlas" }, rights: { permission: "none", permitted: true } });
+      expect(body.moved_to).toBe(`${ADDRESS}${answer.location}`);
+      expect(answer.cacheable).toBe(false);
+    }
   });
 
   it("an answer too large to send is 422, and says to narrow it", () => {

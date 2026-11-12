@@ -104,6 +104,20 @@ describe("how many addresses are remembered", () => {
   });
 });
 
+describe("an address that leaves the shared bucket", () => {
+  it("does not get a new burst for it: it starts with what the shared bucket had left", () => {
+    const clock = clockAt();
+    const limiter = createRateLimiter({ address: { burst: 2, perSecond: 1 }, global: { burst: 1000, perSecond: 1000 }, maxAddresses: 1, clock: clock.read });
+    limiter.take("a"); // remembered, one of two spent
+    clock.now = 500;
+    expect([limiter.take("d").ok, limiter.take("d").ok, limiter.take("d").ok]).toEqual([true, true, false]); // the shared bucket, spent
+    clock.now = 1_000; // "a" has refilled, so there is room for "d"; half a second has earned it half a token
+    expect(limiter.take("d").ok).toBe(false);
+    clock.now = 1_500;
+    expect([limiter.take("d").ok, limiter.take("d").ok]).toEqual([true, false]);
+  });
+});
+
 describe("the limits in force", () => {
   it("are the ones docs/method/api.md states", () => {
     expect(LIMITS).toEqual({ address: { burst: 120, perSecond: 2 }, global: { burst: 600, perSecond: 20 }, maxAddresses: 10_000 });
@@ -131,7 +145,7 @@ describe("whose request it is", () => {
   });
 
   it("is one shared bucket when there is no header or it holds no address", () => {
-    for (const header of [null, undefined, "", "unknown", "not an address", "999.1.1.1", "1.2.3", "a".repeat(500), "203.0.113.7, <script>"]) {
+    for (const header of [null, undefined, "", "unknown", "not an address", "999.1.1.1", "1.2.3", "a".repeat(500), "203.0.113.7, <script>", "1:2:3:4:5::6:7:8:9", "1:2:3:4:5:6:7::8", "1:2:3:4:5:6:7:8:9", "1::2::3", ":::", "::", "1:2:3", "12345::1", "[::1", "::ffff:999.1.1.1"]) {
       expect(addressOf(header)).toBe("direct");
     }
   });
