@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import { breadcrumb, tabsFor } from "./nav";
 
 describe("navigation: only tabs whose pages exist are shown (PLAN section 3)", () => {
-  it("shows Explore and Data, in the plan's order, from M2", () => {
-    expect(tabsFor("/explore").map((t) => t.label)).toEqual(["Explore", "Data"]);
+  it("shows Explore, Events (from M19) and Data, in the plan's order", () => {
+    expect(tabsFor("/explore").map((t) => t.label)).toEqual(["Explore", "Events", "Data"]);
     expect(tabsFor("/data").find((t) => t.current)?.label).toBe("Data");
     expect(tabsFor("/data/fx_price_index").find((t) => t.current)?.label).toBe("Data");
   });

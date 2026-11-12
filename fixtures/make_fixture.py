@@ -358,17 +358,47 @@ CATALOG = {
 }
 
 CITATION = {"name": "Fixture gazette (synthetic)", "url": "https://example.org/fixture-gazette"}
+ARCHIVED = {**CITATION, "archive_url": "https://example.org/archive/2026/fixture-gazette"}
+NOT_ARCHIVED = {"name": "Fixture harbour board (synthetic)", "url": "https://example.org/fixture-harbour",
+                "no_archive": "The fixture harbour board's pages cannot be archived (synthetic reason)."}
+
+# Events (0.3.0, M19): one, invented, with everything an Event may carry but an end. Written
+# out by hand beside the Annotation it is drawn as, independently of atlas/content. (One only:
+# the Explorer's tests from M4 count this Release's Events. The other ways an Event is dated
+# are in the tests that need them.)
+EVENTS = {
+    "events": [
+        {
+            "id": "2024-09-18-fixture-rate-decision",
+            "date": "2024-09-18",
+            "date_precision": "day",
+            "title": "Fixture central bank changes its rate",
+            "category": "policy",
+            "status": "public",
+            "topics": ["inflation"],
+            "related_series": ["fx_price_index", "fx_exchange_index", "fx_not_in_this_release"],
+            "sources": [ARCHIVED, NOT_ARCHIVED],
+            "description": "The fixture central bank announced a new policy rate on 18 September 2024.\n\n"
+                           "The announcement was published in the fixture gazette the same day.",
+        },
+    ]
+}
+
+
+# A term of government, a recession and a policy period are typed in from somebody's record,
+# so each says where from (0.3.0); the rights check of a Release asks the gate about it.
+TYPED_IN = {"producer": SYNTHETIC_ORIGIN, "dataset": "fixture", "via": "fixture", "representation": "native"}
+
+
+def _event_annotation(event_id: str, anchor: dict) -> dict:
+    event = next(e for e in EVENTS["events"] if e["id"] == event_id)
+    return {"id": f"event-{event_id}", "kind": "event", "anchor": anchor, "label": event["title"],
+            "ref": f"content/events/{event_id}.md", "source": ARCHIVED, "category": event["category"]}
+
+
 ANNOTATIONS = {
     "annotations": [
-        {
-            "id": "event-2024-09-18-fixture-rate-decision",
-            "kind": "event",
-            "anchor": {"type": "date", "date": "2024-09-18"},
-            "label": "Fixture central bank changes its rate",
-            "ref": None,
-            "source": CITATION,
-            "category": "policy",
-        },
+        _event_annotation("2024-09-18-fixture-rate-decision", {"type": "date", "date": "2024-09-18"}),
         {
             "id": "recession-2022-fixture",
             "kind": "recession",
@@ -376,6 +406,7 @@ ANNOTATIONS = {
             "label": "Fixture recession",
             "ref": None,
             "source": CITATION,
+            "provenance": TYPED_IN,
         },
         {
             "id": "governance-2021-fixture-term",
@@ -384,6 +415,7 @@ ANNOTATIONS = {
             "label": "Fixture head of government, first term",
             "ref": None,
             "source": CITATION,
+            "provenance": TYPED_IN,
             "attributes": {"office": "head of government", "party": "Fixture Party A"},
         },
         {
@@ -393,6 +425,7 @@ ANNOTATIONS = {
             "label": "Fixture head of government, second term",
             "ref": None,
             "source": CITATION,
+            "provenance": TYPED_IN,
             "attributes": {"office": "head of government", "party": "Fixture Party B"},
         },
         {
@@ -402,6 +435,7 @@ ANNOTATIONS = {
             "label": "Fixture tariff schedule in force",
             "ref": None,
             "source": CITATION,
+            "provenance": TYPED_IN,
         },
         {
             "id": "data-note-fx-payrolls-break-2025-01",
@@ -585,7 +619,7 @@ def build(root: Path) -> Path:
         rows[key]["vintages_sha256"] = hashlib.sha256(data).hexdigest()
 
     manifest = {
-        "schema_version": "0.2.0",
+        "schema_version": "0.3.0",
         "semantics_version": "0",
         "release_id": RELEASE_ID,
         "profile": "public",
@@ -604,6 +638,7 @@ def build(root: Path) -> Path:
     (release / "manifest.json").write_bytes(dump(manifest))
     (release / "catalog.json").write_bytes(dump(CATALOG))
     (release / "content" / "annotations.json").write_bytes(dump(ANNOTATIONS))
+    (release / "content" / "events.json").write_bytes(dump(EVENTS))
     (root / "CURRENT").write_text(RELEASE_ID + "\n")
     return release
 

@@ -8,10 +8,11 @@
         "date": "2024-09-18"
       },
       "label": "Fixture central bank changes its rate",
-      "ref": null,
+      "ref": "content/events/2024-09-18-fixture-rate-decision.md",
       "source": {
         "name": "Fixture gazette (synthetic)",
-        "url": "https://example.org/fixture-gazette"
+        "url": "https://example.org/fixture-gazette",
+        "archive_url": "https://example.org/archive/2026/fixture-gazette"
       },
       "category": "policy"
     },
@@ -28,6 +29,12 @@
       "source": {
         "name": "Fixture gazette (synthetic)",
         "url": "https://example.org/fixture-gazette"
+      },
+      "provenance": {
+        "producer": "Macro Atlas fixture (synthetic)",
+        "dataset": "fixture",
+        "via": "fixture",
+        "representation": "native"
       }
     },
     {
@@ -43,6 +50,12 @@
       "source": {
         "name": "Fixture gazette (synthetic)",
         "url": "https://example.org/fixture-gazette"
+      },
+      "provenance": {
+        "producer": "Macro Atlas fixture (synthetic)",
+        "dataset": "fixture",
+        "via": "fixture",
+        "representation": "native"
       },
       "attributes": {
         "office": "head of government",
@@ -63,6 +76,12 @@
         "name": "Fixture gazette (synthetic)",
         "url": "https://example.org/fixture-gazette"
       },
+      "provenance": {
+        "producer": "Macro Atlas fixture (synthetic)",
+        "dataset": "fixture",
+        "via": "fixture",
+        "representation": "native"
+      },
       "attributes": {
         "office": "head of government",
         "party": "Fixture Party B"
@@ -81,6 +100,12 @@
       "source": {
         "name": "Fixture gazette (synthetic)",
         "url": "https://example.org/fixture-gazette"
+      },
+      "provenance": {
+        "producer": "Macro Atlas fixture (synthetic)",
+        "dataset": "fixture",
+        "via": "fixture",
+        "representation": "native"
       }
     },
     {

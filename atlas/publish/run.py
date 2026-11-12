@@ -47,7 +47,7 @@ from ..vintage.store import VintageStore
 from . import engine
 from . import root as R
 from . import saved as saved_queries
-from .export import AGE_NOTE, Built, ExportError, add_derived, build, dump, lag_limit
+from .export import AGE_NOTE, Built, ExportError, add_content, add_derived, build, dump, lag_limit
 
 REJECTED, RETIRED = "rejected", "retired"
 
@@ -341,7 +341,8 @@ def _legacy_files(repo: Path | None, now: datetime) -> dict[str, bytes]:
                        "is asked for with legacy=False (--no-legacy)") from None
 
 
-def _reuse(run: _Run, legacy: dict[str, bytes] | None, drop: dict[str, str] | None = None) -> Built:
+def _reuse(run: _Run, legacy: dict[str, bytes] | None, drop: dict[str, str] | None = None,
+           content: Path | None = None, manual: Path | None = None) -> Built:
     """A Release that keeps the current one's data files as they are (hard links) and writes
     its content afresh. ``drop`` takes Series out, with the reason, and with them whatever is
     computed from them. The source is always this root's own CURRENT."""
@@ -397,10 +398,10 @@ def _reuse(run: _Run, legacy: dict[str, bytes] | None, drop: dict[str, str] | No
             built.links[path] = run.root / "releases" / source / path
     built.rows = {key: row for key, row in manifest["series"].items() if key not in gone}
     built.files[CATALOG] = files[CATALOG]
-    known = {entry["key"] for entry in entries}
-    annotations = json.loads((legacy or files)[ANNOTATIONS])["annotations"]
-    built.files[ANNOTATIONS] = dump({"annotations": [
-        a for a in annotations if set(a.get("series", [])) <= known]})
+    # The content is written afresh from its files. v1's bands and recessions come from the
+    # converter when it ran, else from the Release being reused.
+    add_content(built, profile=run.profile, gate=run.gate, content=content, manual=manual,
+                v1=json.loads((legacy or files)[ANNOTATIONS])["annotations"])
     return built
 
 
@@ -418,7 +419,8 @@ def _with_what_rests_on(entries: list[dict], keys: set[str]) -> set[str]:
 def release(*, profile: str, root: Path, store: Path, register: Path | None = None,
             series: Path | None = None, now: datetime | None = None, legacy: bool | None = None,
             legacy_repo: Path | None = None, reuse_data: bool = False, keep: int = R.KEEP,
-            write: Callable[[Path, bytes], None] = _write, spot: Path | None = None) -> Result:
+            write: Callable[[Path, bytes], None] = _write, spot: Path | None = None,
+            content: Path | None = None, manual: Path | None = None) -> Result:
     """Write, check and promote one Release of ``profile`` into ``root`` from the vintage
     store at ``store``. ``legacy`` (local profile only; default yes) adds v1's Series for the
     keys the store does not hold. ``reuse_data`` keeps the current Release's data files and
@@ -430,12 +432,13 @@ def release(*, profile: str, root: Path, store: Path, register: Path | None = No
         return _refused(f"REFUSED: there is nothing to release: {store} holds no Series")
     def command() -> Result:
         with _opened("release", profile=profile, root=root, store=store, register=register, now=now) as run:
-            return _release(run, series, legacy, legacy_repo, reuse_data, keep, write, spot)
+            return _release(run, series, legacy, legacy_repo, reuse_data, keep, write, spot, content, manual)
 
     return _guarded(command)
 
 
-def _release(run: _Run, series, legacy, legacy_repo, reuse_data, keep, write, spot=None) -> Result:
+def _release(run: _Run, series, legacy, legacy_repo, reuse_data, keep, write, spot=None, content=None,
+             manual=None) -> Result:
     vintages = VintageStore(run.store)
     real = vintages.holds_real_bytes()
     with_legacy = run.profile == "local" and (legacy if legacy is not None else real is not False)
@@ -452,12 +455,12 @@ def _release(run: _Run, series, legacy, legacy_repo, reuse_data, keep, write, sp
     try:
         legacy_files = _legacy_files(legacy_repo, run.now) if with_legacy else None
         if reuse_data:
-            built = _reuse(run, legacy_files)
+            built = _reuse(run, legacy_files, content=content, manual=manual)
         else:
             table = load_series(series)
             built = build(profile=run.profile, store=run.store, table=run.table, gate=run.gate,
                           series=table, created=run.now, withdrawn=R.withdrawn(run.root),
-                          legacy=legacy_files, derived=load_derived(series))
+                          legacy=legacy_files, derived=load_derived(series), content=content, manual=manual)
         for row in built.withheld:
             run.lines.append(f"WITHHELD {row['key']}: {row['reason']}")
         if not built.rows and not built.materialise and not _may_be_empty(run):

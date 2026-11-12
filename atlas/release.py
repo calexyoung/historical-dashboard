@@ -18,6 +18,7 @@ import json
 import re
 from collections.abc import Mapping
 from dataclasses import dataclass
+from datetime import date
 from functools import cache, lru_cache
 from pathlib import Path
 
@@ -26,14 +27,18 @@ from jsonschema import Draft202012Validator, ValidationError, validators
 from atlas.period import next_period, period_bounds
 
 SCHEMA_PATH = Path(__file__).resolve().parents[1] / "schema" / "release.schema.json"
-SCHEMA_VERSION = "0.2.0"
+SCHEMA_VERSION = "0.3.0"
 #: Every version this reader knows; a writer writes ``SCHEMA_VERSION``. 0.2.0 (M10) added
-#: ``vintages/`` and ``vintages_sha256``, so a 0.1.0 Release is one that holds neither.
-SCHEMA_VERSIONS = ("0.1.0", SCHEMA_VERSION)
+#: ``vintages/`` and ``vintages_sha256``, so a 0.1.0 Release is one that holds neither. 0.3.0
+#: (M19) added ``content/events.json``: a 0.3.0 Release must have it, an earlier one may not.
+SCHEMA_VERSIONS = ("0.1.0", "0.2.0", SCHEMA_VERSION)
+#: The versions that have no ``content/events.json``.
+_BEFORE_EVENTS = ("0.1.0", "0.2.0")
 
 MANIFEST = "manifest.json"
 CATALOG = "catalog.json"
 ANNOTATIONS = "content/annotations.json"
+EVENTS = "content/events.json"
 REQUIRED_FILES = (MANIFEST, CATALOG, ANNOTATIONS)
 _SERIES_FILE = re.compile(r"(series|derived|vintages)/([a-z][a-z0-9_]{0,63})\.json")
 VINTAGES = "vintages"
@@ -111,7 +116,7 @@ def validate_files(release_id: str, files: Mapping[str, bytes]) -> list[Issue]:
         match = _SERIES_FILE.fullmatch(path)
         if match:
             series_paths[match[1]][match[2]] = path
-        elif path not in REQUIRED_FILES:
+        elif path not in REQUIRED_FILES and path != EVENTS:
             issues.append(Issue("unknown_file", path, "the release contract does not name this file"))
     for path in REQUIRED_FILES:
         if path not in files:
@@ -121,6 +126,8 @@ def validate_files(release_id: str, files: Mapping[str, bytes]) -> list[Issue]:
 
     parsed: dict[str, object] = {}
     known = list(REQUIRED_FILES) + [p for folder in series_paths.values() for p in folder.values()]
+    if EVENTS in files:
+        known.append(EVENTS)
     for path in known:
         try:
             parsed[path] = json.loads(
@@ -149,8 +156,12 @@ def validate_files(release_id: str, files: Mapping[str, bytes]) -> list[Issue]:
     if version == "0.1.0":
         for path in sorted(series_paths[VINTAGES].values()):
             issues.append(Issue("unknown_file", path, "schema_version 0.1.0 does not name this file"))
-        if issues:
-            return issues
+    if version in _BEFORE_EVENTS and EVENTS in files:
+        issues.append(Issue("unknown_file", EVENTS, f"schema_version {version} does not name this file"))
+    if version == SCHEMA_VERSION and EVENTS not in files:
+        issues.append(Issue("missing_file", EVENTS, "a release must have this file"))
+    if issues:
+        return issues
 
     bundle = {
         "manifest": manifest,
@@ -160,6 +171,8 @@ def validate_files(release_id: str, files: Mapping[str, bytes]) -> list[Issue]:
         "vintages": {key: parsed[path] for key, path in series_paths[VINTAGES].items()},
         "annotations": parsed[ANNOTATIONS],
     }
+    if EVENTS in parsed:
+        bundle["events"] = parsed[EVENTS]
     for error in sorted(_validator().iter_errors(bundle), key=lambda e: list(map(str, e.absolute_path))):
         path, pointer = _locate(list(error.absolute_path))
         issues.append(Issue("schema", path, f"{pointer}: {error.message}"[:400]))
@@ -210,7 +223,7 @@ def _locate(parts: list) -> tuple:
     head, rest = parts[0], parts[1:]
     if head in ("series", "derived", VINTAGES) and rest:
         return f"{head}/{rest[0]}.json", "/" + "/".join(map(str, rest[1:]))
-    file = {"manifest": MANIFEST, "catalog": CATALOG, "annotations": ANNOTATIONS}.get(head, str(head))
+    file = {"manifest": MANIFEST, "catalog": CATALOG, "annotations": ANNOTATIONS, "events": EVENTS}.get(head, str(head))
     return file, "/" + "/".join(map(str, rest))
 
 
@@ -319,6 +332,7 @@ def _cross_file_rules(release_id, bundle, files, series_paths) -> list[Issue]:
         anchor = annotation["anchor"]
         if anchor["type"] == "span" and anchor["end"] is not None and anchor["end"] < anchor["start"]:
             add("bad_anchor", ANNOTATIONS, f"{annotation['id']} ends before it starts")
+    issues.extend(_event_rules(bundle))
 
     # Profile rules (PLAN 6.1): a second line of defence, not the rights gate.
     if manifest["profile"] == "public":
@@ -332,6 +346,84 @@ def _cross_file_rules(release_id, bundle, files, series_paths) -> list[Issue]:
         for key, entry in entries.items():
             if entry["status"] == "draft":
                 add("draft_in_public", CATALOG, f"{key} is a draft")
+        for event in bundle.get("events", {}).get("events", []):
+            if event["status"] == "draft":
+                add("draft_in_public", EVENTS, f"{event['id']} is a draft")
+        for annotation in bundle["annotations"]["annotations"]:
+            if annotation.get("provenance", {}).get("representation") == LEGACY:
+                add("legacy_in_public", ANNOTATIONS,
+                    f"{annotation['id']} is v1's, which is never public")
+    return issues
+
+
+def _last_day(text: str) -> str:
+    if len(text) == 4:
+        return f"{text}-12-31"
+    if len(text) == 7:
+        return period_bounds("monthly", text)[1]
+    return text
+
+
+def _event_anchor(event: dict) -> dict | None:
+    """Where an Event sits on a time axis: a day is a date, a month or a year is that Period,
+    and an Event with an end is a span of whole days. None when its dates are not ones a
+    calendar has, or are not as precise as it says."""
+    length = {"year": 4, "month": 7, "day": 10}[event["date_precision"]]
+    values = [event["date"], *([event["end"]] if "end" in event else [])]
+    try:
+        for value in values:
+            if len(value) != length:
+                return None
+            date.fromisoformat({4: f"{value}-01-01", 7: f"{value}-01"}.get(length, value))
+    except ValueError:
+        return None
+    if "end" in event:
+        start = {4: f"{event['date']}-01-01", 7: f"{event['date']}-01"}.get(length, event["date"])
+        return {"type": "span", "start": start, "end": _last_day(event["end"])}
+    if length == 10:
+        return {"type": "date", "date": event["date"]}
+    return {"type": "period", "period": event["date"]}
+
+
+def _event_rules(bundle: dict) -> list[Issue]:
+    """0.3.0: every Event is drawn as exactly one Annotation that says what the Event says,
+    and every Annotation of kind ``event`` is the projection of an Event."""
+    if "events" not in bundle:
+        return []
+    issues: list[Issue] = []
+    events: dict[str, dict] = {}
+    for event in bundle["events"]["events"]:
+        if event["id"] in events:
+            issues.append(Issue("duplicate_event_id", EVENTS, f"{event['id']} appears more than once"))
+        events[event["id"]] = event
+        anchor = _event_anchor(event)
+        if anchor is None:
+            issues.append(Issue("bad_event_date", EVENTS, f"{event['id']}: its date or end is not a "
+                                f"{event['date_precision']} of the calendar"))
+        elif anchor["type"] == "span" and anchor["end"] < anchor["start"]:
+            issues.append(Issue("bad_event_date", EVENTS, f"{event['id']} ends before it starts"))
+    projected: set[str] = set()
+    for annotation in bundle["annotations"]["annotations"]:
+        if annotation["kind"] != "event":
+            continue
+        ref = annotation["ref"] or ""
+        identifier = ref[len("content/events/"):-len(".md")] if ref.startswith("content/events/") and ref.endswith(".md") else None
+        event = events.get(identifier)
+        if event is None or annotation["id"] != f"event-{identifier}":
+            issues.append(Issue("event_projection", ANNOTATIONS,
+                                f"{annotation['id']} is not the Annotation of an Event in {EVENTS}"))
+            continue
+        projected.add(identifier)
+        first = event["sources"][0]
+        source = {name: first[name] for name in ("name", "url", "archive_url") if name in first}
+        if (annotation["label"], annotation.get("category"), annotation["anchor"], annotation["source"]) != (
+                event["title"], event["category"], _event_anchor(event), source):
+            issues.append(Issue("event_projection", ANNOTATIONS,
+                                f"{annotation['id']} does not say what its Event says "
+                                "(title, category, date or first citation)"))
+    for identifier in events:
+        if identifier not in projected:
+            issues.append(Issue("event_projection", EVENTS, f"{identifier} has no Annotation"))
     return issues
 
 

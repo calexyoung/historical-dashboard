@@ -286,6 +286,21 @@ export function SeriesPage({ view, basePath }: { view: SeriesPageView; basePath:
         </Panel>
       )}
 
+      {view.events.length > 0 && (
+        <Panel id="events" title="Events" meta="Set beside this series by an editor. An event is never said to have caused a movement.">
+          <ul className="flex max-w-[68ch] flex-col gap-1.5 text-sm">
+            {view.events.map((event) => (
+              <li key={event.id} data-series-event={event.id}>
+                <span className="num text-ink-2">{event.when} · </span>
+                <a href={`${basePath}${event.href}`} className={tap}>
+                  {event.title}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </Panel>
+      )}
+
       {view.state === "shown" && view.asOf && (
         <Panel id="revisions" title="Revisions">
           <p className="max-w-[68ch] text-sm text-ink-2">

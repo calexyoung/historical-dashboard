@@ -10,8 +10,10 @@
  */
 import { staleness, type RightsGate, type Surface, type VintageBasis } from "@macro-atlas/core";
 import type { CatalogEntry } from "@macro-atlas/core/release";
+import { annotationsFor } from "./annotations";
 import { FREQUENCIES, RIGHTS, SEGMENTS, VIAS } from "./catalog";
 import { citation } from "./citation";
+import { eventWhen } from "./event-words";
 import { NO_ANSWER, renderFigure, STATE_INFO, type Figure, type MarkName, type ShownSeries } from "./figure";
 import { stateOfStatus } from "./figure/states";
 import { dayWords, periodWords, together } from "./figure/words";
@@ -67,6 +69,8 @@ export type SeriesPageView = {
     lineage: { text: string; inputs: { key: string; name: string }[] } | null;
   };
   notes: { period: string; kind: "Break" | "Data note"; text: string }[];
+  /** Events an editor set beside this Series (M19), oldest first; each a door to its page. Never an effect. */
+  events: { id: string; when: string; title: string; href: string }[];
   /** Every version the Release holds of the Periods that changed; null where no history is shown. */
   revisions: Revisions | null;
   downloads: Downloads;
@@ -241,9 +245,14 @@ function provenance(release: OpenedRelease, entry: CatalogEntry): SeriesPageView
   return { origin: originFacts, channel: channelFacts, rights: rightsFacts, release: releaseFacts, lineage: lineage(release, entry) };
 }
 
-function notes(release: OpenedRelease, entry: CatalogEntry, labelOf: (period: string) => string): SeriesPageView["notes"] {
+function relatedEvents(release: OpenedRelease, key: string): SeriesPageView["events"] {
+  return release.events.events.filter((event) => event.related_series.includes(key)).map((event) => ({ id: event.id, when: eventWhen(event, "short"), title: event.title, href: `/events/${event.id}` }));
+}
+
+function notes(release: OpenedRelease, surface: Surface, gate: Pick<RightsGate, "permits"> | undefined, permission: "display" | "redistribute", entry: CatalogEntry, labelOf: (period: string) => string): SeriesPageView["notes"] {
   const out: SeriesPageView["notes"] = (entry.breaks ?? []).map((b) => ({ period: labelOf(b.period), kind: "Break", text: b.note }));
-  for (const a of release.annotations.annotations) {
+  // Through the one door for Annotations: a note that says it came from somebody's record is under the gate.
+  for (const a of annotationsFor(release, surface, gate, permission).annotations) {
     if (a.kind !== "data_note" || !a.series?.includes(entry.key)) continue;
     const period = a.anchor.type === "period" ? labelOf(a.anchor.period) : a.anchor.type === "date" ? dayWords(a.anchor.date, "short") : `${dayWords(a.anchor.start, "short")} on`;
     out.push({ period, kind: "Data note", text: a.label });
@@ -355,6 +364,11 @@ export type SeriesPageOptions = {
   address?: string;
   /** See `QueryOptions.gate`: only a test passes one. */
   gate?: Pick<RightsGate, "permits">;
+  /**
+   * What the notes are for. Left out, they are shown on the page (`display`). A twin puts them
+   * in a file a reader takes away, so it asks for `redistribute` (ADR 0033).
+   */
+  notes?: "display" | "redistribute";
   /** How many versions the revisions table lists at first (48). */
   revisionRows?: number;
 };
@@ -401,7 +415,8 @@ export function seriesPageView(release: OpenedRelease, surface: Surface, key: st
       asOf: null,
       latest: null,
       figure: renderFigure({ created }, state === "withheld" || state === "not_permitted" ? [{ key: entry.key, name: entry.name, heldBack: state, reason }] : []),
-      notes: notes(release, entry, (period) => period),
+      notes: notes(release, surface, gate, options.notes ?? "display", entry, (period) => period),
+      events: relatedEvents(release, entry.key),
       revisions: null,
       ...more,
     },
@@ -490,7 +505,8 @@ export function seriesPageView(release: OpenedRelease, surface: Surface, key: st
       asOf,
       latest,
       figure,
-      notes: notes(release, entry, labelOf),
+      notes: notes(release, surface, gate, options.notes ?? "display", entry, labelOf),
+      events: relatedEvents(release, entry.key),
       // Under an as-of question the list of every version, later ones included, is left to the plain page.
       revisions: vintage ? null : revisions(release, surface, entry, gate, options.search?.get("revisions") === "all", options.revisionRows, Number.parseInt(options.search?.get("revisions_page") ?? "1", 10) || 1),
     },

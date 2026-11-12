@@ -1,0 +1,35 @@
+{
+  "format": 1,
+  "kind": "spans",
+  "about": "Invented. No committee dated these; the citations lead nowhere.",
+  "origin": {
+    "producer": "An Invented Dating Committee",
+    "dataset": "Turning points, invented"
+  },
+  "layer": "recession",
+  "label": "Invented recession",
+  "spans": [
+    {
+      "start": "2018-03-01",
+      "end": "2018-11-30",
+      "citation": {
+        "publisher": "An Invented Dating Committee",
+        "title": "Turning points (invented)",
+        "url": "https://committee.invalid/turning-points",
+        "accessed": "2026-11-10",
+        "locator": "the table \"Peaks and troughs\", row 3"
+      }
+    },
+    {
+      "start": "2022-07-01",
+      "end": "2023-03-31",
+      "citation": {
+        "publisher": "An Invented Dating Committee",
+        "title": "Turning points (invented)",
+        "url": "https://committee.invalid/turning-points",
+        "accessed": "2026-11-10",
+        "locator": "the table \"Peaks and troughs\", row 4"
+      }
+    }
+  ]
+}

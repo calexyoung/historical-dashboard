@@ -277,3 +277,40 @@ def test_a_terms_file_says_who_held_an_office_and_when_each_with_a_citation():
 ])
 def test_what_makes_a_terms_file_unusable(change, said):
     assert said in terms_problems(change)
+
+
+# --- dated spans: a recession layer (M19) --------------------------------------------------------------
+
+SPANS = REPO / "catalog" / "manual" / "spans" / "invented-recessions.json"
+
+
+def spans_problems(change) -> str:
+    document = json.loads(SPANS.read_text())
+    change(document, document["spans"])
+    problems: list[str] = []
+    assert manual.read_spans_file(json.dumps(document).encode(), problems, today="2026-11-12") is None
+    return " | ".join(problems)
+
+
+def test_a_spans_file_says_when_each_stretch_ran_each_with_a_citation():
+    (document,) = manual.load_spans(REPO / "catalog" / "manual")
+    assert document["layer"] == "recession"
+    assert [(s["start"], s["end"]) for s in document["spans"]] == [("2018-03-01", "2018-11-30"), ("2022-07-01", "2023-03-31")]
+    assert all(manual.citation_problem(s["citation"]) is None for s in document["spans"])
+    assert manual.load_spans(ROOT / "catalog" / "manual") == []  # nothing is entered yet (no row is signed)
+    assert manual.stray_files(REPO / "catalog" / "manual") == []
+
+
+@pytest.mark.parametrize("change, said", [
+    (lambda d, s: s[1].update(start="2018-11-30"), "not after the span before it ended"),
+    (lambda d, s: s[0].update(end="2018-02-01"), "ends before it starts"),
+    (lambda d, s: s[0].update(end=None), "follows a span that has not ended"),
+    (lambda d, s: s[0].pop("citation"), "has no citation"),
+    (lambda d, s: s[0].update(cause="a rate rise"), "a field this format does not know: cause"),
+    (lambda d, s: d.update(layer="boom"), "layer is not one of recession"),
+    (lambda d, s: d.update(origin={"producer": "x"}), "does not name its Origin"),
+    (lambda d, s: d.update(spans=[]), "the file has no spans"),
+    (lambda d, s: d.update(kind="terms"), "the file is not a hand-entered spans file of format 1"),
+])
+def test_what_makes_a_spans_file_unusable(change, said):
+    assert said in spans_problems(change)

@@ -1,0 +1,33 @@
+{
+  "events": [
+    {
+      "id": "2024-09-18-fixture-rate-decision",
+      "date": "2024-09-18",
+      "date_precision": "day",
+      "title": "Fixture central bank changes its rate",
+      "category": "policy",
+      "status": "public",
+      "topics": [
+        "inflation"
+      ],
+      "related_series": [
+        "fx_price_index",
+        "fx_exchange_index",
+        "fx_not_in_this_release"
+      ],
+      "sources": [
+        {
+          "name": "Fixture gazette (synthetic)",
+          "url": "https://example.org/fixture-gazette",
+          "archive_url": "https://example.org/archive/2026/fixture-gazette"
+        },
+        {
+          "name": "Fixture harbour board (synthetic)",
+          "url": "https://example.org/fixture-harbour",
+          "no_archive": "The fixture harbour board's pages cannot be archived (synthetic reason)."
+        }
+      ],
+      "description": "The fixture central bank announced a new policy rate on 18 September 2024.\n\nThe announcement was published in the fixture gazette the same day."
+    }
+  ]
+}

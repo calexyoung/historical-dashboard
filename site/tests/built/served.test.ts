@@ -68,8 +68,23 @@ describe("the fixture release is served at both base paths", () => {
   it("shows only tabs whose pages exist, and marks the current one", async () => {
     const html = await (await get(servers[0]!.url("/explore"))).text();
     const nav = html.slice(html.indexOf('<nav aria-label="Sections"'), html.indexOf("</nav>", html.indexOf('<nav aria-label="Sections"')));
-    expect([...nav.matchAll(/<a [^>]*>([^<]+)<\/a>/g)].map((m) => m[1])).toEqual(["Explore", "Data"]);
+    expect([...nav.matchAll(/<a [^>]*>([^<]+)<\/a>/g)].map((m) => m[1])).toEqual(["Explore", "Events", "Data"]);
     expect(nav).toContain('aria-current="page"');
+  });
+
+  it("serves the Events of the Release: the index, one Event, and 404 for one it does not hold (M19)", async () => {
+    for (const server of servers) {
+      const index = await get(server.url("/events"));
+      expect(index.status).toBe(200);
+      const html = await index.text();
+      expect(html).toContain("Fixture central bank changes its rate");
+      expect(html).toContain(`href="${server.base}/events/2024-09-18-fixture-rate-decision"`);
+      const page = await get(server.url("/events/2024-09-18-fixture-rate-decision"));
+      expect(page.status).toBe(200);
+      expect(await page.text()).toContain("The fixture central bank announced a new policy rate on 18 September 2024.");
+      expect((await get(server.url("/events/2020-01-01-no-such-event"))).status).toBe(404);
+      expect((await get(server.url("/events/..%2F..%2Fmanifest"))).status).toBe(404);
+    }
   });
 
   it("answers an unknown page with 404, inside the shell", async () => {

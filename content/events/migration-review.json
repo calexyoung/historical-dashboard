@@ -1,0 +1,978 @@
+{
+ "about": "The review of v1's 83 Events when they became files (PLAN M19: every migrated description is checked against a word list of causal and evaluative terms and by Codex, and any that fails is listed for Alex with a proposed neutral rewording, not silently changed). v1 has titles only, so the titles were reviewed. A record of that one review: it is not edited when an Event's wording is later decided. Each Event listed here was written as a draft with its words unchanged; docs/v2/events-review.md is this file as a page.",
+ "reviewed_on": "2026-11-12",
+ "wordlist_version": 1,
+ "reviewers": {
+  "word list": "atlas/content/wordlist.py, version 1: a literal match of a closed list",
+  "Codex": "codex exec, read-only, given all 83 titles and asked which are causal, evaluative or otherwise not a plain statement of what happened"
+ },
+ "events": [
+  {
+   "id": "2000-03-10-dot-com-bubble-peaks-nasdaq-top-mar-10",
+   "title": "Dot-com bubble peaks (Nasdaq top, Mar 10)",
+   "reviewed_by": [
+    "word list",
+    "Codex"
+   ],
+   "terms": [
+    "bubble"
+   ],
+   "codex": "'Bubble' characterizes valuations; 'top' can be stated as an observed peak.",
+   "outcome": "listed",
+   "proposed": "Nasdaq peaks on March 10"
+  },
+  {
+   "id": "2000-11-07-bush-v-gore-disputed-election",
+   "title": "Bush v. Gore disputed election",
+   "reviewed_by": [
+    "word list",
+    "Codex"
+   ],
+   "terms": [
+    "disputed"
+   ],
+   "codex": "Conflates a court case with the election; 'disputed' itself is factual rather than evaluative.",
+   "outcome": "listed",
+   "proposed": "Bush–Gore election: result contested",
+   "codex_note": "Bush v. Gore is acceptable as the court case's name when referring to that case."
+  },
+  {
+   "id": "2001-01-03-fed-begins-cutting-rates",
+   "title": "Fed begins cutting rates",
+   "reviewed_by": [
+    "word list",
+    "Codex"
+   ],
+   "terms": [],
+   "outcome": "passed"
+  },
+  {
+   "id": "2001-03-us-recession-begins-dot-com-bust",
+   "title": "US recession begins (dot-com bust)",
+   "reviewed_by": [
+    "word list",
+    "Codex"
+   ],
+   "terms": [
+    "bust"
+   ],
+   "codex": "'Bust' is market colour; the parenthetical suggests an explanation for the recession.",
+   "outcome": "listed",
+   "proposed": "US recession begins"
+  },
+  {
+   "id": "2001-09-11-september-11-attacks",
+   "title": "September 11 attacks",
+   "reviewed_by": [
+    "word list",
+    "Codex"
+   ],
+   "terms": [],
+   "outcome": "passed"
+  },
+  {
+   "id": "2001-10-07-war-in-afghanistan-begins",
+   "title": "War in Afghanistan begins",
+   "reviewed_by": [
+    "word list",
+    "Codex"
+   ],
+   "terms": [],
+   "outcome": "passed"
+  },
+  {
+   "id": "2001-12-02-enron-bankruptcy",
+   "title": "Enron bankruptcy",
+   "reviewed_by": [
+    "word list",
+    "Codex"
+   ],
+   "terms": [],
+   "outcome": "passed"
+  },
+  {
+   "id": "2002-07-21-worldcom-collapse-sarbanes-oxley-signed",
+   "title": "WorldCom collapse; Sarbanes-Oxley signed",
+   "reviewed_by": [
+    "word list",
+    "Codex"
+   ],
+   "terms": [
+    "collapse"
+   ],
+   "codex": "'Collapse' is imprecise and dramatic; the title bundles separate events.",
+   "outcome": "listed",
+   "proposed": "Separate Events: \"WorldCom files for bankruptcy\"; \"Sarbanes-Oxley signed\"",
+   "codex_note": "Sarbanes-Oxley is an acceptable conventional name for the Act."
+  },
+  {
+   "id": "2003-03-20-iraq-war-begins",
+   "title": "Iraq War begins",
+   "reviewed_by": [
+    "word list",
+    "Codex"
+   ],
+   "terms": [],
+   "outcome": "passed"
+  },
+  {
+   "id": "2003-05-28-bush-tax-cuts-jgtrra",
+   "title": "Bush tax cuts (JGTRRA)",
+   "reviewed_by": [
+    "word list",
+    "Codex"
+   ],
+   "terms": [],
+   "outcome": "passed"
+  },
+  {
+   "id": "2004-11-02-bush-re-elected",
+   "title": "Bush re-elected",
+   "reviewed_by": [
+    "word list",
+    "Codex"
+   ],
+   "terms": [],
+   "outcome": "passed"
+  },
+  {
+   "id": "2005-08-29-hurricane-katrina",
+   "title": "Hurricane Katrina",
+   "reviewed_by": [
+    "word list",
+    "Codex"
+   ],
+   "terms": [],
+   "outcome": "passed"
+  },
+  {
+   "id": "2006-06-29-fed-ends-hiking-cycle-at-5-25",
+   "title": "Fed ends hiking cycle at 5.25%",
+   "reviewed_by": [
+    "word list",
+    "Codex"
+   ],
+   "terms": [],
+   "outcome": "passed"
+  },
+  {
+   "id": "2006-07-us-home-prices-peak",
+   "title": "US home prices peak",
+   "reviewed_by": [
+    "word list",
+    "Codex"
+   ],
+   "terms": [],
+   "outcome": "passed"
+  },
+  {
+   "id": "2007-08-09-subprime-crisis-bnp-freezes-funds-credit-seizes",
+   "title": "Subprime crisis: BNP freezes funds, credit seizes",
+   "reviewed_by": [
+    "word list",
+    "Codex"
+   ],
+   "terms": [
+    "crisis",
+    "seizes"
+   ],
+   "codex": "'Credit seizes' is a dramatic metaphor; 'crisis' supplies an interpretive frame.",
+   "outcome": "listed",
+   "proposed": "BNP freezes funds; credit availability decreases"
+  },
+  {
+   "id": "2007-12-great-recession-begins",
+   "title": "Great Recession begins",
+   "reviewed_by": [
+    "word list",
+    "Codex"
+   ],
+   "terms": [],
+   "outcome": "passed"
+  },
+  {
+   "id": "2008-03-16-bear-stearns-rescued",
+   "title": "Bear Stearns rescued",
+   "reviewed_by": [
+    "word list",
+    "Codex"
+   ],
+   "terms": [
+    "rescued"
+   ],
+   "codex": "'Rescued' frames assistance as a beneficial intervention.",
+   "outcome": "listed",
+   "proposed": "Bear Stearns receives financial assistance"
+  },
+  {
+   "id": "2008-07-11-oil-peaks-near-147",
+   "title": "Oil peaks near $147",
+   "reviewed_by": [
+    "word list",
+    "Codex"
+   ],
+   "terms": [],
+   "outcome": "passed"
+  },
+  {
+   "id": "2008-09-15-lehman-brothers-bankruptcy",
+   "title": "Lehman Brothers bankruptcy",
+   "reviewed_by": [
+    "word list",
+    "Codex"
+   ],
+   "terms": [],
+   "outcome": "passed"
+  },
+  {
+   "id": "2008-10-03-tarp-bank-bailout-signed",
+   "title": "TARP bank bailout signed",
+   "reviewed_by": [
+    "word list",
+    "Codex"
+   ],
+   "terms": [
+    "bailout"
+   ],
+   "codex": "'Bailout' is loaded shorthand for financial assistance.",
+   "outcome": "listed",
+   "proposed": "TARP legislation signed"
+  },
+  {
+   "id": "2008-11-04-obama-elected-fed-launches-qe1",
+   "title": "Obama elected; Fed launches QE1",
+   "reviewed_by": [
+    "word list",
+    "Codex"
+   ],
+   "terms": [],
+   "codex": "Bundles two distinct events as a single Event.",
+   "outcome": "listed",
+   "proposed": "Separate Events: \"Obama elected\"; \"Fed launches QE1\""
+  },
+  {
+   "id": "2009-02-17-arra-stimulus-signed",
+   "title": "ARRA stimulus signed",
+   "reviewed_by": [
+    "word list",
+    "Codex"
+   ],
+   "terms": [],
+   "outcome": "passed"
+  },
+  {
+   "id": "2009-03-09-stock-market-bottoms-s-p-666",
+   "title": "Stock market bottoms (S&P 666)",
+   "reviewed_by": [
+    "word list",
+    "Codex"
+   ],
+   "terms": [],
+   "outcome": "passed"
+  },
+  {
+   "id": "2009-06-great-recession-ends",
+   "title": "Great Recession ends",
+   "reviewed_by": [
+    "word list",
+    "Codex"
+   ],
+   "terms": [],
+   "outcome": "passed"
+  },
+  {
+   "id": "2010-03-23-affordable-care-act-signed",
+   "title": "Affordable Care Act signed",
+   "reviewed_by": [
+    "word list",
+    "Codex"
+   ],
+   "terms": [],
+   "outcome": "passed"
+  },
+  {
+   "id": "2010-04-20-deepwater-horizon-spill",
+   "title": "Deepwater Horizon spill",
+   "reviewed_by": [
+    "word list",
+    "Codex"
+   ],
+   "terms": [],
+   "outcome": "passed"
+  },
+  {
+   "id": "2010-05-06-flash-crash-greek-bailout-begins-euro-crisis",
+   "title": "Flash crash; Greek bailout begins euro crisis",
+   "reviewed_by": [
+    "word list",
+    "Codex"
+   ],
+   "terms": [
+    "bailout",
+    "crash",
+    "crisis"
+   ],
+   "codex": "'Begins euro crisis' asserts causation; 'bailout' is loaded shorthand, and separate events are bundled.",
+   "outcome": "listed",
+   "proposed": "Separate Events: \"Flash crash\"; \"Greek financial assistance agreed\"; \"Euro-area financial difficulties begin\"",
+   "keep": "\"Flash crash\" is the conventional name of the 6 May 2010 market event; if kept, accept \"crash\" for that Event."
+  },
+  {
+   "id": "2010-11-03-fed-launches-qe2",
+   "title": "Fed launches QE2",
+   "reviewed_by": [
+    "word list",
+    "Codex"
+   ],
+   "terms": [],
+   "outcome": "passed"
+  },
+  {
+   "id": "2011-03-11-fukushima-disaster-arab-spring",
+   "title": "Fukushima disaster; Arab Spring",
+   "reviewed_by": [
+    "word list",
+    "Codex"
+   ],
+   "terms": [
+    "disaster"
+   ],
+   "codex": "Bundles unrelated events; 'disaster' can be replaced with a more descriptive event category.",
+   "outcome": "listed",
+   "proposed": "Separate Events: \"Fukushima nuclear accident\"; \"Arab Spring\"",
+   "codex_note": "Arab Spring is a conventional historical name."
+  },
+  {
+   "id": "2011-05-02-bin-laden-killed",
+   "title": "Bin Laden killed",
+   "reviewed_by": [
+    "word list",
+    "Codex"
+   ],
+   "terms": [],
+   "outcome": "passed"
+  },
+  {
+   "id": "2011-08-05-s-p-downgrades-us-credit-rating",
+   "title": "S&P downgrades US credit rating",
+   "reviewed_by": [
+    "word list",
+    "Codex"
+   ],
+   "terms": [],
+   "outcome": "passed"
+  },
+  {
+   "id": "2012-07-26-draghi-whatever-it-takes",
+   "title": "Draghi: 'whatever it takes'",
+   "reviewed_by": [
+    "word list",
+    "Codex"
+   ],
+   "terms": [],
+   "codex": "An attributed quotation is not editorial evaluation, but the title leaves the action implicit.",
+   "outcome": "listed",
+   "proposed": "Draghi says 'whatever it takes'",
+   "codex_note": "'Whatever it takes' may be retained as an attributed quotation."
+  },
+  {
+   "id": "2012-09-13-fed-launches-qe3",
+   "title": "Fed launches QE3",
+   "reviewed_by": [
+    "word list",
+    "Codex"
+   ],
+   "terms": [],
+   "outcome": "passed"
+  },
+  {
+   "id": "2012-11-06-obama-re-elected",
+   "title": "Obama re-elected",
+   "reviewed_by": [
+    "word list",
+    "Codex"
+   ],
+   "terms": [],
+   "outcome": "passed"
+  },
+  {
+   "id": "2013-05-22-taper-tantrum",
+   "title": "Taper tantrum",
+   "reviewed_by": [
+    "word list",
+    "Codex"
+   ],
+   "terms": [
+    "tantrum"
+   ],
+   "codex": "'Tantrum' personifies and judges market behaviour; the nickname also embeds an explanatory association.",
+   "outcome": "listed",
+   "proposed": "Market movements during discussion of tapering"
+  },
+  {
+   "id": "2013-10-01-us-government-shutdown-16-days",
+   "title": "US government shutdown (16 days)",
+   "reviewed_by": [
+    "word list",
+    "Codex"
+   ],
+   "terms": [],
+   "outcome": "passed"
+  },
+  {
+   "id": "2014-03-18-russia-annexes-crimea",
+   "title": "Russia annexes Crimea",
+   "reviewed_by": [
+    "word list",
+    "Codex"
+   ],
+   "terms": [],
+   "outcome": "passed"
+  },
+  {
+   "id": "2014-06-oil-price-collapse-begins-to-2016",
+   "title": "Oil price collapse begins (to 2016)",
+   "reviewed_by": [
+    "word list",
+    "Codex"
+   ],
+   "terms": [
+    "collapse"
+   ],
+   "codex": "'Collapse' adds dramatic market colour.",
+   "outcome": "listed",
+   "proposed": "Oil price decline begins (through 2016)"
+  },
+  {
+   "id": "2014-10-29-fed-ends-qe3",
+   "title": "Fed ends QE3",
+   "reviewed_by": [
+    "word list",
+    "Codex"
+   ],
+   "terms": [],
+   "outcome": "passed"
+  },
+  {
+   "id": "2015-06-27-greek-referendum-bailout-crisis",
+   "title": "Greek referendum / bailout crisis",
+   "reviewed_by": [
+    "word list",
+    "Codex"
+   ],
+   "terms": [
+    "bailout",
+    "crisis"
+   ],
+   "codex": "'Bailout crisis' is loaded and vague; the slash leaves the relationship between the subjects unspecified.",
+   "outcome": "listed",
+   "proposed": "Separate Events: \"Greek referendum\"; \"Greek financial assistance difficulties\""
+  },
+  {
+   "id": "2015-08-11-china-devalues-yuan-global-selloff",
+   "title": "China devalues yuan; global selloff",
+   "reviewed_by": [
+    "word list",
+    "Codex"
+   ],
+   "terms": [
+    "selloff"
+   ],
+   "codex": "Pairs a policy action with a market movement in a way that suggests causation.",
+   "outcome": "listed",
+   "proposed": "Separate Events: \"China devalues yuan\"; \"Global market selling\""
+  },
+  {
+   "id": "2015-12-16-fed-s-first-hike-since-2006",
+   "title": "Fed's first hike since 2006",
+   "reviewed_by": [
+    "word list",
+    "Codex"
+   ],
+   "terms": [],
+   "outcome": "passed"
+  },
+  {
+   "id": "2016-06-23-brexit-referendum",
+   "title": "Brexit referendum",
+   "reviewed_by": [
+    "word list",
+    "Codex"
+   ],
+   "terms": [],
+   "outcome": "passed"
+  },
+  {
+   "id": "2016-11-08-trump-elected",
+   "title": "Trump elected",
+   "reviewed_by": [
+    "word list",
+    "Codex"
+   ],
+   "terms": [],
+   "outcome": "passed"
+  },
+  {
+   "id": "2017-12-22-tax-cuts-and-jobs-act",
+   "title": "Tax Cuts and Jobs Act",
+   "reviewed_by": [
+    "word list",
+    "Codex"
+   ],
+   "terms": [],
+   "outcome": "passed"
+  },
+  {
+   "id": "2018-02-05-volmageddon-vix-spike",
+   "title": "'Volmageddon' VIX spike",
+   "reviewed_by": [
+    "word list",
+    "Codex"
+   ],
+   "terms": [
+    "spike",
+    "volmageddon"
+   ],
+   "codex": "'Volmageddon' is a sensational nickname; 'spike' adds market colour.",
+   "outcome": "listed",
+   "proposed": "VIX rises sharply"
+  },
+  {
+   "id": "2018-03-22-us-china-trade-war-begins",
+   "title": "US–China trade war begins",
+   "reviewed_by": [
+    "word list",
+    "Codex"
+   ],
+   "terms": [],
+   "outcome": "passed"
+  },
+  {
+   "id": "2018-12-19-q4-selloff-fed-s-last-hike-of-cycle",
+   "title": "Q4 selloff; Fed's last hike of cycle",
+   "reviewed_by": [
+    "word list",
+    "Codex"
+   ],
+   "terms": [
+    "selloff"
+   ],
+   "codex": "Bundles market selling and a rate decision, inviting an explanatory connection.",
+   "outcome": "listed",
+   "proposed": "Separate Events: \"Q4 market selling\"; \"Fed's last rate increase of cycle\""
+  },
+  {
+   "id": "2019-08-14-yield-curve-inverts-fed-cuts",
+   "title": "Yield curve inverts; Fed cuts",
+   "reviewed_by": [
+    "word list",
+    "Codex"
+   ],
+   "terms": [],
+   "codex": "Bundles distinct financial events in a way that suggests a relationship.",
+   "outcome": "listed",
+   "proposed": "Separate Events: \"Yield curve inverts\"; \"Fed cuts rates\""
+  },
+  {
+   "id": "2019-12-31-first-covid-19-cases-reported",
+   "title": "First COVID-19 cases reported",
+   "reviewed_by": [
+    "word list",
+    "Codex"
+   ],
+   "terms": [],
+   "outcome": "passed"
+  },
+  {
+   "id": "2020-03-11-covid-19-pandemic-market-crash-cares-act",
+   "title": "COVID-19 pandemic; market crash; CARES Act",
+   "reviewed_by": [
+    "word list",
+    "Codex"
+   ],
+   "terms": [
+    "crash"
+   ],
+   "codex": "Bundles three events into an implied explanatory sequence; 'crash' adds market colour.",
+   "outcome": "listed",
+   "proposed": "Separate Events: \"COVID-19 pandemic\"; \"Market prices fall sharply\"; \"CARES Act\"",
+   "codex_note": "CARES Act is an acceptable legislative name."
+  },
+  {
+   "id": "2020-04-20-oil-futures-go-negative",
+   "title": "Oil futures go negative",
+   "reviewed_by": [
+    "word list",
+    "Codex"
+   ],
+   "terms": [],
+   "outcome": "passed"
+  },
+  {
+   "id": "2020-05-25-george-floyd-killed-nationwide-protests",
+   "title": "George Floyd killed; nationwide protests",
+   "reviewed_by": [
+    "word list",
+    "Codex"
+   ],
+   "terms": [],
+   "codex": "Combines a killing and protests into an implied causal sequence.",
+   "outcome": "listed",
+   "proposed": "Separate Events: \"George Floyd killed\"; \"Nationwide protests\""
+  },
+  {
+   "id": "2020-11-03-biden-elected",
+   "title": "Biden elected",
+   "reviewed_by": [
+    "word list",
+    "Codex"
+   ],
+   "terms": [],
+   "outcome": "passed"
+  },
+  {
+   "id": "2020-12-14-first-covid-vaccines-administered",
+   "title": "First COVID vaccines administered",
+   "reviewed_by": [
+    "word list",
+    "Codex"
+   ],
+   "terms": [],
+   "outcome": "passed"
+  },
+  {
+   "id": "2021-01-06-jan-6-capitol-attack-gamestop-squeeze",
+   "title": "Jan 6 Capitol attack; GameStop squeeze",
+   "reviewed_by": [
+    "word list",
+    "Codex"
+   ],
+   "terms": [],
+   "codex": "Bundles unrelated events; 'squeeze' is unexplained market shorthand.",
+   "outcome": "listed",
+   "proposed": "Separate Events: \"January 6 Capitol attack\"; \"GameStop trading squeeze\"",
+   "codex_note": "January 6 Capitol attack is a conventional descriptive event name."
+  },
+  {
+   "id": "2021-03-11-american-rescue-plan-1-9t",
+   "title": "American Rescue Plan ($1.9T)",
+   "reviewed_by": [
+    "word list",
+    "Codex"
+   ],
+   "terms": [
+    "rescue"
+   ],
+   "outcome": "listed",
+   "proposed": "American Rescue Plan (.9T)",
+   "keep": "\"Rescue\" is part of the Act's short title (American Rescue Plan Act of 2021). No rewording proposed: accept the term for this Event (accepted_terms)."
+  },
+  {
+   "id": "2021-08-30-us-withdrawal-from-afghanistan",
+   "title": "US withdrawal from Afghanistan",
+   "reviewed_by": [
+    "word list",
+    "Codex"
+   ],
+   "terms": [],
+   "outcome": "passed"
+  },
+  {
+   "id": "2021-11-15-infrastructure-act-bitcoin-peaks-69k",
+   "title": "Infrastructure Act; Bitcoin peaks ~$69k",
+   "reviewed_by": [
+    "word list",
+    "Codex"
+   ],
+   "terms": [],
+   "codex": "Bundles unrelated legislative and market events.",
+   "outcome": "listed",
+   "proposed": "Separate Events: \"Infrastructure Act\"; \"Bitcoin peaks near $69,000\""
+  },
+  {
+   "id": "2022-02-24-russia-invades-ukraine",
+   "title": "Russia invades Ukraine",
+   "reviewed_by": [
+    "word list",
+    "Codex"
+   ],
+   "terms": [],
+   "outcome": "passed"
+  },
+  {
+   "id": "2022-03-16-fed-begins-hiking-0-25-5-25-by-2023",
+   "title": "Fed begins hiking (0.25 → 5.25 by 2023)",
+   "reviewed_by": [
+    "word list",
+    "Codex"
+   ],
+   "terms": [],
+   "outcome": "passed"
+  },
+  {
+   "id": "2022-06-us-inflation-peaks-at-9-1",
+   "title": "US inflation peaks at 9.1%",
+   "reviewed_by": [
+    "word list",
+    "Codex"
+   ],
+   "terms": [],
+   "outcome": "passed"
+  },
+  {
+   "id": "2022-08-16-inflation-reduction-act-chips-act",
+   "title": "Inflation Reduction Act; CHIPS Act",
+   "reviewed_by": [
+    "word list",
+    "Codex"
+   ],
+   "terms": [],
+   "codex": "Bundles two distinct legislative events.",
+   "outcome": "listed",
+   "proposed": "Separate Events: \"Inflation Reduction Act\"; \"CHIPS Act\"",
+   "codex_note": "Both Act names are acceptable; 'Inflation Reduction' is part of a name, not an asserted outcome."
+  },
+  {
+   "id": "2022-09-23-uk-gilt-crisis-truss-mini-budget",
+   "title": "UK gilt crisis (Truss mini-budget)",
+   "reviewed_by": [
+    "word list",
+    "Codex"
+   ],
+   "terms": [
+    "crisis"
+   ],
+   "codex": "'Crisis' is interpretive; the parenthetical implies that the budget explains the gilt-market event.",
+   "outcome": "listed",
+   "proposed": "Separate Events: \"UK gilt-market disruption\"; \"Truss mini-budget\""
+  },
+  {
+   "id": "2022-11-11-ftx-collapse-chatgpt-released",
+   "title": "FTX collapse; ChatGPT released",
+   "reviewed_by": [
+    "word list",
+    "Codex"
+   ],
+   "terms": [
+    "collapse"
+   ],
+   "codex": "'Collapse' is dramatic and imprecise; the title bundles unrelated events.",
+   "outcome": "listed",
+   "proposed": "Separate Events: \"FTX files for bankruptcy\"; \"ChatGPT released\""
+  },
+  {
+   "id": "2023-03-10-silicon-valley-bank-collapse",
+   "title": "Silicon Valley Bank collapse",
+   "reviewed_by": [
+    "word list",
+    "Codex"
+   ],
+   "terms": [
+    "collapse"
+   ],
+   "codex": "'Collapse' is dramatic shorthand for a bank failure.",
+   "outcome": "listed",
+   "proposed": "Silicon Valley Bank closed by regulators"
+  },
+  {
+   "id": "2023-06-03-debt-ceiling-deal",
+   "title": "Debt ceiling deal",
+   "reviewed_by": [
+    "word list",
+    "Codex"
+   ],
+   "terms": [],
+   "outcome": "passed"
+  },
+  {
+   "id": "2023-10-07-israel-hamas-war-begins",
+   "title": "Israel–Hamas war begins",
+   "reviewed_by": [
+    "word list",
+    "Codex"
+   ],
+   "terms": [],
+   "outcome": "passed"
+  },
+  {
+   "id": "2024-03-19-bank-of-japan-ends-negative-rates",
+   "title": "Bank of Japan ends negative rates",
+   "reviewed_by": [
+    "word list",
+    "Codex"
+   ],
+   "terms": [],
+   "outcome": "passed"
+  },
+  {
+   "id": "2024-08-05-yen-carry-trade-unwind-selloff",
+   "title": "Yen carry-trade unwind selloff",
+   "reviewed_by": [
+    "word list",
+    "Codex"
+   ],
+   "terms": [
+    "selloff"
+   ],
+   "codex": "Labels market selling with an explanatory mechanism, implying causation.",
+   "outcome": "listed",
+   "proposed": "Separate Events: \"Yen carry-trade positions reduced\"; \"Market selling\""
+  },
+  {
+   "id": "2024-09-18-fed-s-first-cut-of-cycle-50-bp",
+   "title": "Fed's first cut of cycle (50 bp)",
+   "reviewed_by": [
+    "word list",
+    "Codex"
+   ],
+   "terms": [],
+   "outcome": "passed"
+  },
+  {
+   "id": "2024-11-05-trump-elected-second-term",
+   "title": "Trump elected (second term)",
+   "reviewed_by": [
+    "word list",
+    "Codex"
+   ],
+   "terms": [],
+   "outcome": "passed"
+  },
+  {
+   "id": "2025-01-20-trump-inaugurated-deepseek-ai-shock",
+   "title": "Trump inaugurated; DeepSeek AI shock",
+   "reviewed_by": [
+    "word list",
+    "Codex"
+   ],
+   "terms": [
+    "shock"
+   ],
+   "codex": "Bundles unrelated events; 'shock' characterizes a reaction without specifying what happened.",
+   "outcome": "listed",
+   "proposed": "Separate Events: \"Trump inaugurated\"; \"DeepSeek AI development\""
+  },
+  {
+   "id": "2025-04-02-liberation-day-tariffs-market-plunge-90-day-pause",
+   "title": "'Liberation Day' tariffs; market plunge & 90-day pause",
+   "reviewed_by": [
+    "word list",
+    "Codex"
+   ],
+   "terms": [
+    "plunge"
+   ],
+   "codex": "'Liberation Day' is a political slogan; 'plunge' adds market colour, and the bundle implies a causal sequence.",
+   "outcome": "listed",
+   "proposed": "Separate Events: \"Tariffs announced\"; \"Market prices fall sharply\"; \"90-day tariff pause\"",
+   "codex_note": "'Liberation Day' may be retained only as an explicitly attributed name for the announcement."
+  },
+  {
+   "id": "2025-05-16-moody-s-downgrades-us-credit-rating",
+   "title": "Moody's downgrades US credit rating",
+   "reviewed_by": [
+    "word list",
+    "Codex"
+   ],
+   "terms": [],
+   "outcome": "passed"
+  },
+  {
+   "id": "2025-06-13-israel-iran-12-day-war",
+   "title": "Israel–Iran 12-day war",
+   "reviewed_by": [
+    "word list",
+    "Codex"
+   ],
+   "terms": [],
+   "outcome": "passed"
+  },
+  {
+   "id": "2025-07-04-one-big-beautiful-bill-act",
+   "title": "One Big Beautiful Bill Act",
+   "reviewed_by": [
+    "word list",
+    "Codex"
+   ],
+   "terms": [
+    "beautiful"
+   ],
+   "outcome": "listed",
+   "proposed": "One Big Beautiful Bill Act",
+   "keep": "\"Beautiful\" is part of the Act's short title. No rewording proposed: accept the term for this Event (accepted_terms)."
+  },
+  {
+   "id": "2025-09-17-fed-resumes-rate-cuts",
+   "title": "Fed resumes rate cuts",
+   "reviewed_by": [
+    "word list",
+    "Codex"
+   ],
+   "terms": [],
+   "outcome": "passed"
+  },
+  {
+   "id": "2025-10-01-longest-us-government-shutdown-43-days",
+   "title": "Longest US government shutdown (43 days)",
+   "reviewed_by": [
+    "word list",
+    "Codex"
+   ],
+   "terms": [],
+   "codex": "'Longest' adds a historical superlative; the duration states the event without that ranking.",
+   "outcome": "listed",
+   "proposed": "US government shutdown (43 days)"
+  },
+  {
+   "id": "2026-01-21-greenland-crisis-strains-nato-ties",
+   "title": "Greenland crisis strains NATO ties",
+   "reviewed_by": [
+    "word list",
+    "Codex"
+   ],
+   "terms": [
+    "crisis",
+    "strains"
+   ],
+   "codex": "'Crisis' is interpretive; 'strains NATO ties' asserts an effect on relationships.",
+   "outcome": "listed",
+   "proposed": "Disagreement over Greenland involving NATO members"
+  },
+  {
+   "id": "2026-02-20-supreme-court-strikes-down-ieepa-tariffs",
+   "title": "Supreme Court strikes down IEEPA tariffs",
+   "reviewed_by": [
+    "word list",
+    "Codex"
+   ],
+   "terms": [],
+   "outcome": "passed"
+  },
+  {
+   "id": "2026-03-strait-of-hormuz-disruption-oil-spikes",
+   "title": "Strait of Hormuz disruption; oil spikes",
+   "reviewed_by": [
+    "word list",
+    "Codex"
+   ],
+   "terms": [
+    "spikes"
+   ],
+   "codex": "'Spikes' adds market colour; the pairing implies that the disruption caused the price movement.",
+   "outcome": "listed",
+   "proposed": "Separate Events: \"Strait of Hormuz disruption\"; \"Oil prices rise sharply\""
+  },
+  {
+   "id": "2026-05-24-us-iran-preliminary-peace-deal-powell-s-chair-term-ends",
+   "title": "US–Iran preliminary peace deal; Powell's chair term ends",
+   "reviewed_by": [
+    "word list",
+    "Codex"
+   ],
+   "terms": [],
+   "codex": "Bundles unrelated diplomatic and institutional events.",
+   "outcome": "listed",
+   "proposed": "Separate Events: \"US–Iran preliminary peace agreement\"; \"Powell's chair term ends\""
+  }
+ ]
+}

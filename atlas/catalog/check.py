@@ -18,7 +18,12 @@ reader is shown a problem and never its consequences:
    cannot state Rights or a Permission at all: the schema has no place for either. A
    hand-entered file is in the repository only if its Origin's row is signed for it.
 
-Claims, Events and Topics add their own layers when they arrive (M19, M20).
+5. **content** (M19): Macro Atlas's own content. Every file under ``content/events`` is an
+   Event with its citations archived or excused, about Series the Catalog has, and with no word
+   of the list of causal and evaluative terms in a public Event's text; every file under
+   ``notes/`` is one user's note (``atlas/content/check.py``).
+
+Claims and Topics add their own rules when they arrive (M20, M23).
 """
 from __future__ import annotations
 
@@ -34,7 +39,7 @@ from ..vintage.replay import recipe_cycle
 from .coverage import coverage_references, read_coverage
 from .load import CATALOG_DIR, Problem, read_catalog
 
-LAYERS = ("schema", "references", "semantics", "rights")
+LAYERS = ("schema", "references", "semantics", "rights", "content")
 #: What each Measure kind may be combined by: packages/core/src/aggregate.ts, ALLOWED_AGGREGATION.
 #: "none" (never combined) is allowed for any kind. A test keeps the two tables the same.
 ALLOWED_AGGREGATION = {"stock": ("last", "mean"), "flow": ("sum",), "rate": ("mean",),
@@ -64,6 +69,8 @@ class Report:
     directory: Path
     count: int
     layers: list[Layer]
+    #: What a person should know that is not wrong (a draft Event with a word of the list).
+    notes: list[str] = field(default_factory=list)
 
     @property
     def ok(self) -> bool:
@@ -197,14 +204,21 @@ def _manual_files(directory: Path, table: object) -> tuple[list[Problem], list[t
             held.append((path, "values", endpoint.origin, dataset))
     for path in manual.stray_files(directory):
         out.append(Problem("references", str(path), "it is under catalog/manual and is neither a series file "
-                                                    "(catalog/manual/NAME.json) nor a terms file "
-                                                    "(catalog/manual/terms/NAME.json): nothing else is kept there"))
+                                                    "(catalog/manual/NAME.json), a terms file "
+                                                    "(catalog/manual/terms/NAME.json) nor a spans file "
+                                                    "(catalog/manual/spans/NAME.json): nothing else is kept there"))
     for path in manual.terms_files(directory):
         problems: list[str] = []
         document = manual.read_terms_file(path.read_bytes(), problems, today)
         out.extend(Problem("references", str(path), said) for said in problems)
         if document is not None:
             held.append((path, "terms", document["origin"]["producer"], document["origin"]["dataset"]))
+    for path in manual.spans_files(directory):
+        problems = []
+        document = manual.read_spans_file(path.read_bytes(), problems, today)
+        out.extend(Problem("references", str(path), said) for said in problems)
+        if document is not None:
+            held.append((path, "dated spans", document["origin"]["producer"], document["origin"]["dataset"]))
     return out, held
 
 
@@ -332,9 +346,11 @@ def _rights(entries: dict[str, dict], directory: Path, table: object, register: 
     return [*out, *_manual_rights(held or [], gate)]
 
 
-def check(directory: Path | None = None, register: Path | None = None) -> Report:
+def check(directory: Path | None = None, register: Path | None = None, content: Path | None = None,
+          notes: Path | None = None) -> Report:
     """Run the layers over a catalog directory (default ``catalog/series``) against a rights
-    register (default the committed one). Reads files; fetches and writes nothing."""
+    register (default the committed one), then over the content (default ``content`` and
+    ``notes``). Reads files; fetches and writes nothing."""
     directory = Path(directory) if directory else CATALOG_DIR
     entries, problems = read_catalog(directory)
     layers = [Layer(name) for name in LAYERS]
@@ -360,9 +376,16 @@ def check(directory: Path | None = None, register: Path | None = None) -> Report
         return [*_references(entries, directory, table),
                 *coverage_references(matrices, entries, coverage_dir), *found]
 
+    def own_content() -> list[Problem]:
+        from ..content.check import check_content
+
+        found, report.notes = check_content(set(entries), content, notes)
+        return found
+
     steps = (references,
              lambda: _semantics(entries, directory),
-             lambda: _rights(entries, directory, table, register, held))
+             lambda: _rights(entries, directory, table, register, held),
+             own_content)
     for layer, step in zip(layers[1:], steps, strict=True):
         layer.ran, layer.problems = True, step()
         if layer.problems:
@@ -379,5 +402,6 @@ def render(report: Report) -> str:
         n = len(layer.problems)
         lines.append(f"{layer.name}: ok" if not n else f"{layer.name}: {n} error{'s' if n > 1 else ''}")
         lines.extend(f"  ERROR {problem}" for problem in layer.problems)
+    lines.extend(f"  NOTE {note}" for note in report.notes)
     lines.append("check: nothing wrong" if report.ok else "check: failed")
     return "\n".join(lines)

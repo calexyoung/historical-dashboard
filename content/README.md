@@ -2,6 +2,11 @@
 
 The Catalog of Series is not here: it is `catalog/series/{key}.json` (`docs/method/catalog.md`).
 
-Macro Atlas's own content as files: Events (M19), Claims (M20), Topics (M23), data notes.
-Empty until then. No opinion, no verdicts and no explanations of the site's own (ADR 0011).
-User notes are kept outside this directory and never enter a public Release.
+Macro Atlas's own content as files: Events (`events/`, since M19), Claims (M20), Topics (M23),
+data notes. No opinion, no verdicts and no explanations of the site's own (ADR 0011). How an
+Event is written, checked and compiled into a Release: `docs/method/content.md` (ADR 0033).
+
+`events/migration-review.json` is the record of the review of v1's 83 Events; the page for Alex
+is `docs/v2/events-review.md`.
+
+User notes are kept outside this directory (`notes/{user}/`) and never enter a Release.

@@ -1,15 +1,15 @@
 // GENERATED from schema/release.schema.json by scripts/gen-schema.mjs. Do not edit.
 
-export const SCHEMA_VERSION = "0.2.0";
+export const SCHEMA_VERSION = "0.3.0";
 
 /** Every version this reader knows; a writer writes the last. */
-export const SCHEMA_VERSIONS: readonly string[] = ["0.1.0","0.2.0"];
+export const SCHEMA_VERSIONS: readonly string[] = ["0.1.0","0.2.0","0.3.0"];
 
 export const releaseSchema: Record<string, unknown> = {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://mydashboards.co/macro-atlas/schema/release.schema.json",
   "title": "Release",
-  "description": "Macro Atlas release contract, v0 (schema_version 0.2.0). A Release is a directory; this schema describes it gathered into one object: manifest.json, catalog.json, series/{key}.json, derived/{key}.json, vintages/{key}.json and content/annotations.json. It is the seam between the writer and every reader (PLAN 4.2). Conventions the schema cannot express, and the cross-file rules, are in schema/README.md. Structural validity is not authorisation: whether a series may appear on a Surface is decided by permits() and the rights register.",
+  "description": "Macro Atlas release contract, v0 (schema_version 0.3.0). A Release is a directory; this schema describes it gathered into one object: manifest.json, catalog.json, series/{key}.json, derived/{key}.json, vintages/{key}.json, content/annotations.json and content/events.json. It is the seam between the writer and every reader (PLAN 4.2). Conventions the schema cannot express, and the cross-file rules, are in schema/README.md. Structural validity is not authorisation: whether a series may appear on a Surface is decided by permits() and the rights register.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -59,6 +59,9 @@ export const releaseSchema: Record<string, unknown> = {
     },
     "annotations": {
       "$ref": "#/$defs/annotationsFile"
+    },
+    "events": {
+      "$ref": "#/$defs/eventsFile"
     }
   },
   "$defs": {
@@ -165,10 +168,11 @@ export const releaseSchema: Record<string, unknown> = {
       ],
       "properties": {
         "schema_version": {
-          "description": "Version of this contract. Readers refuse a version they do not know. 0.2.0 added vintages/ and vintages_sha256; a 0.1.0 Release holds neither. Writers write the last one listed.",
+          "description": "Version of this contract. Readers refuse a version they do not know. 0.2.0 added vintages/ and vintages_sha256; a 0.1.0 Release holds neither. 0.3.0 (M19) added content/events.json, which a 0.3.0 Release must have and an earlier one may not, and the rule that every Event is one Annotation. Writers write the last one listed.",
           "enum": [
             "0.1.0",
-            "0.2.0"
+            "0.2.0",
+            "0.3.0"
           ]
         },
         "semantics_version": {
@@ -1423,7 +1427,7 @@ export const releaseSchema: Record<string, unknown> = {
           "minLength": 1
         },
         "ref": {
-          "description": "Path of the content record behind this Annotation (an Event or Claim), or null.",
+          "description": "Path of the content record behind this Annotation (an Event: content/events/{id}.md), or null. From 0.3.0 every Annotation of kind event names its Event here.",
           "type": [
             "string",
             "null"
@@ -1470,6 +1474,35 @@ export const releaseSchema: Record<string, unknown> = {
               "boolean"
             ]
           }
+        },
+        "provenance": {
+          "title": "AnnotationProvenance",
+          "description": "Where an Annotation that is not Macro Atlas's own content came from (0.3.0): the Origin and dataset of the hand-entered file, or of v1's file, it was projected from. The rights check of a Release asks the gate about it. An Annotation in v1's legacy representation is never in a public-profile Release.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "producer",
+            "dataset",
+            "via",
+            "representation"
+          ],
+          "properties": {
+            "producer": {
+              "type": "string",
+              "minLength": 1
+            },
+            "dataset": {
+              "type": "string",
+              "minLength": 1
+            },
+            "via": {
+              "type": "string",
+              "minLength": 1
+            },
+            "representation": {
+              "$ref": "#/$defs/representation"
+            }
+          }
         }
       }
     },
@@ -1486,6 +1519,169 @@ export const releaseSchema: Record<string, unknown> = {
           "type": "array",
           "items": {
             "$ref": "#/$defs/annotation"
+          }
+        }
+      }
+    },
+    "eventCitation": {
+      "title": "EventCitation",
+      "description": "Where an Event can be checked: an address and an archived copy of it, or the reason there is none. One or the other, never both and never neither.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "url"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "url": {
+          "type": "string",
+          "minLength": 1
+        },
+        "archive_url": {
+          "type": "string",
+          "minLength": 1
+        },
+        "no_archive": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "oneOf": [
+        {
+          "properties": {
+            "archive_url": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "archive_url"
+          ]
+        },
+        {
+          "properties": {
+            "no_archive": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "no_archive"
+          ]
+        }
+      ]
+    },
+    "event": {
+      "title": "Event",
+      "description": "One Event as a Release carries it (content/events/{id}.md compiled; schema/event.schema.json is the authoring form). There is no field for a finding, a rating or an effect.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "date",
+        "date_precision",
+        "title",
+        "category",
+        "status",
+        "topics",
+        "related_series",
+        "sources",
+        "description"
+      ],
+      "properties": {
+        "id": {
+          "description": "Permanent. The date as written in `date`, then a slug. The file is named for it.",
+          "type": "string",
+          "maxLength": 100,
+          "pattern": "^[0-9]{4}(-[0-9]{2}(-[0-9]{2})?)?-[a-z0-9]+(-[a-z0-9]+)*$"
+        },
+        "date": {
+          "description": "When it happened, or began: a day, a month or a year, as date_precision says. No day is made up.",
+          "type": "string",
+          "pattern": "^(?!0000)[0-9]{4}(-[0-9]{2}(-[0-9]{2})?)?$"
+        },
+        "end": {
+          "description": "The last day, month or year of an Event that spans time, inclusive, in the precision of `date`. An Event still running has no place here yet: it is recorded when it has ended.",
+          "type": "string",
+          "pattern": "^(?!0000)[0-9]{4}(-[0-9]{2}(-[0-9]{2})?)?$"
+        },
+        "date_precision": {
+          "enum": [
+            "day",
+            "month",
+            "year"
+          ]
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160,
+          "pattern": "^\\S(.*\\S)?$"
+        },
+        "category": {
+          "description": "v1's five, then disaster, infrastructure and legislation (PLAN 5).",
+          "enum": [
+            "political",
+            "financial",
+            "geopolitical",
+            "health",
+            "policy",
+            "disaster",
+            "infrastructure",
+            "legislation"
+          ]
+        },
+        "status": {
+          "description": "A draft is never in a public-profile Release.",
+          "enum": [
+            "draft",
+            "public"
+          ]
+        },
+        "topics": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+          }
+        },
+        "related_series": {
+          "description": "Keys of Series in the Catalog that a reader may want beside this Event. Not a statement that the Event moved them.",
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]{0,63}$"
+          }
+        },
+        "sources": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/eventCitation"
+          }
+        },
+        "description": {
+          "description": "The Event's own text: what happened and when, supported by the cited sources. It does not evaluate and never says an Event caused a movement. May be empty.",
+          "type": "string"
+        }
+      }
+    },
+    "eventsFile": {
+      "title": "EventsFile",
+      "description": "content/events.json (0.3.0): the Events, in the order of time. A public-profile Release holds no draft.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "events"
+      ],
+      "properties": {
+        "events": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/event"
           }
         }
       }

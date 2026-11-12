@@ -690,6 +690,14 @@ export default async function ExplorePage({ searchParams }: PageProps<"/explore"
                         {e.label}
                       </Link>
                       {e.chosen && <span className="text-ink-2"> · marked on the chart</span>}
+                      {e.page && (
+                        <>
+                          {" "}
+                          <a href={`${BASE_PATH}${e.page}`} className="press hover-ink inline-flex min-h-6 items-center whitespace-nowrap text-xs text-ink-3 underline underline-offset-2">
+                            page<span className="sr-only"> for {e.label}</span>
+                          </a>
+                        </>
+                      )}
                       {e.url && (
                         <>
                           {" "}

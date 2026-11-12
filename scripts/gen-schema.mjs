@@ -15,7 +15,11 @@ const banner = "// GENERATED from schema/release.schema.json by scripts/gen-sche
 const schemaText = readFileSync(schemaPath, "utf8");
 const schema = JSON.parse(schemaText);
 
-const types = await compile(schema, "Release", {
+// An Event's citation says "an archived copy or the reason there is none, never both" with
+// oneOf over required, which only a validator can enforce; the type lists the fields.
+const typed = JSON.parse(JSON.stringify(schema));
+delete typed.$defs.eventCitation.oneOf;
+const types = await compile(typed, "Release", {
   bannerComment: banner.trimEnd(),
   additionalProperties: false,
   unreachableDefinitions: true,

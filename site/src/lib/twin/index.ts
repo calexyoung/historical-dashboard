@@ -271,7 +271,8 @@ function markdown(
   search: URLSearchParams,
   o: TwinOptions & { unit: string; shown: string | null; when: string[]; cite: string; page: string; tail: string; stamped: boolean },
 ): string {
-  const found = seriesPageView(release, surface, entry.key, { search, address: o.address, gate: o.gate });
+  // The file leaves the site: a note typed in from somebody's record is asked for `redistribute`.
+  const found = seriesPageView(release, surface, entry.key, { search, address: o.address, gate: o.gate, notes: "redistribute" });
   const view = found.kind === "page" ? found.view : null;
   const out: string[] = [`# ${md(entry.name)}`, ""];
   if (o.stamped) out.push(`> ${STAMP} · ${localNote(release)}`, "");

@@ -37,9 +37,14 @@ in one step.
 | Lineage | v1's computed series carry a Recipe naming their inputs (ADR 0016) |
 | Segment, measure kind | v2's words, assigned by fixed tables in `atlas/legacy.py`; v1's own category is kept as a topic |
 
-Annotations: each event with its date (a month where v1 has no day), category and citation;
-presidential terms and v1's five band sets as governance spans at v1's month resolution;
-recessions as spans read from v1's 0/1 recession series.
+Annotations: presidential terms and v1's five band sets as governance spans at v1's month
+resolution; recessions as spans read from v1's 0/1 recession series. Each is marked as v1's
+(`provenance.representation: legacy_monthly_rounded`), which no public-profile Release may hold.
+
+Events are no longer the converter's (M19, ADR 0033). v1's 83 are files (`content/events`), and
+the content compiler projects them, drafts included, with the ids the converter gave them
+before. `atlas/events.yaml` is v1's own and is not read here; the manifest records
+`content/events` among the inputs instead.
 
 The manifest records each input's path, hash and commit, the conversion time as `created`, and
 `atlas.json`'s own `generated` time separately.

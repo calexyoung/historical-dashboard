@@ -53,6 +53,9 @@ def main(argv: list[str] | None = None) -> int:
                    help="keep the current Release's data files (hard links); rewrite only its content")
     p.add_argument("--no-legacy", action="store_true",
                    help="local profile: do not add v1's legacy Series")
+    p.add_argument("--content", help="the content directory, which holds events/ (default content)")
+    p.add_argument("--manual", help="the hand-entered directory, which holds terms/ and spans/ "
+                                    "(default catalog/manual)")
     for name, what in (("rollback", "name an earlier Release of the root in CURRENT"),
                        ("pin", "keep a Release through retention"), ("unpin", "let retention take it")):
         p = sub.add_parser(name, help=what)
@@ -90,7 +93,9 @@ def main(argv: list[str] | None = None) -> int:
         if args.no_legacy and args.profile == "public":
             parser.error("--no-legacy goes with --profile local: a public release never holds v1's Series")
         result = release(series=Path(args.series) if args.series else None, reuse_data=args.reuse_data,
-                         legacy=False if args.no_legacy else None, **common)
+                         legacy=False if args.no_legacy else None,
+                         content=Path(args.content) if args.content else None,
+                         manual=Path(args.manual) if args.manual else None, **common)
     elif args.command == "rollback":
         result = rollback(release_id=args.release_id, **common)
     elif args.command == "pin":

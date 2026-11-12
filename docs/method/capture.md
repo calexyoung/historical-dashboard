@@ -256,6 +256,7 @@ format is `atlas/manual.py`).
 ```
 catalog/manual/{name}.json           a series file: Observations of one or more Series
 catalog/manual/terms/{office}.json   a terms file: who held an office and when
+catalog/manual/spans/{name}.json     a spans file: the dated stretches of a layer (M19)
 ```
 
 **A series file** names its Origin (the producer of the record and the dataset), the
@@ -295,8 +296,11 @@ list of entries:
 **A terms file** names an office and lists its terms: holder, start and end as days (both
 inclusive; an end still to come is `null`), the party where the record states it, and a
 citation each. Terms are in order and do not overlap. A term of government is an Annotation,
-not a Series, so a terms file is not captured; `atlas.manual.load_terms` reads it, and M19
-projects it into a Release's annotations.
+not a Series, so a terms file is not captured; `atlas.manual.load_terms` reads it, and the
+content compiler projects it into a Release's Annotations (M19; `docs/method/content.md`).
+
+**A spans file** (M19) is the same for a layer of dated stretches, today recessions: a layer,
+a label, and spans of days in order, each with a citation. It is not captured either.
 
 To enter a Series by hand, once its Origin's row is signed: write the file; add its endpoint
 to that row; name the endpoint in the Series file and make it active; run `atlas check`.

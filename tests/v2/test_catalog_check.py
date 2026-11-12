@@ -40,7 +40,7 @@ def run(tmp_path, *entries, register=None):
 def test_the_committed_catalog_passes_every_layer():
     report = check()
     assert failed(report) == {}
-    assert [layer.name for layer in report.layers] == list(LAYERS) == ["schema", "references", "semantics", "rights"]
+    assert [layer.name for layer in report.layers] == list(LAYERS) == ["schema", "references", "semantics", "rights", "content"]
     assert all(layer.ran for layer in report.layers) and report.ok
 
 
@@ -169,7 +169,7 @@ def test_a_country_is_three_capital_letters_or_a_group_code(tmp_path, country, v
 def test_schema_layer_a_field_the_schema_does_not_know(tmp_path):
     report = run(tmp_path, stored(), stored("fx_other", ml_use=True))
     assert list(failed(report)) == ["schema"]
-    assert [layer.ran for layer in report.layers] == [True, False, False, False] and not report.ok
+    assert [layer.ran for layer in report.layers] == [True, False, False, False, False] and not report.ok
 
 
 @pytest.mark.parametrize("entries, said", [
@@ -191,7 +191,7 @@ def test_references_layer(tmp_path, entries, said):
     report = run(tmp_path, *entries)
     assert list(failed(report)) == ["references"]
     assert any(said in message for message in failed(report)["references"])
-    assert [layer.ran for layer in report.layers] == [True, True, False, False]
+    assert [layer.ran for layer in report.layers] == [True, True, False, False, False]
 
 
 def ring(*keys):
@@ -236,7 +236,7 @@ def test_semantics_layer(tmp_path, entries, said):
     report = run(tmp_path, *entries)
     assert list(failed(report)) == ["semantics"], failed(report)
     assert any(said in message for message in failed(report)["semantics"]), failed(report)
-    assert [layer.ran for layer in report.layers] == [True, True, True, False]
+    assert [layer.ran for layer in report.layers] == [True, True, True, False, False]
 
 
 def test_rights_layer_an_active_series_through_an_intermediary_nobody_cleared(tmp_path):

@@ -45,6 +45,8 @@ from pathlib import Path
 from ..capture import store as S
 from ..legacy import offered_transforms
 from ..period import next_period, period_bounds
+from ..content.compile import ContentError, compile_content
+from ..manual import MANUAL_DIR
 from ..release import ANNOTATIONS, CATALOG, LEGACY
 from ..rights import RightsGate
 from ..vintage.store import VintageStore
@@ -481,11 +483,13 @@ def add_derived(built: Built, outcome: engine.Outcome) -> None:
 
 def build(*, profile: str, store: Path, table: object, gate: RightsGate, series: list[dict],
           created: datetime, withdrawn: dict[str, dict] | None = None,
-          legacy: dict[str, bytes] | None = None, derived: list[dict] | None = None) -> Built:
+          legacy: dict[str, bytes] | None = None, derived: list[dict] | None = None,
+          content: Path | None = None, manual: Path | None = None) -> Built:
     """The files of a Release from what the store holds now, without its Derived series:
     ``Built.materialise`` lists those the engine is to compute (``add_derived``). ``legacy`` is
     the file set of v1's converted Release (local profile only); ``derived`` the series
-    table's Recipes. Raises ``ExportError``."""
+    table's Recipes; ``content`` and ``manual`` the directories the content compiler reads
+    (default the repository's ``content`` and ``catalog/manual``). Raises ``ExportError``."""
     if profile not in ("public", "local"):
         raise ExportError(f"unknown profile {profile!r}")
     if profile == "public" and legacy is not None:
@@ -571,13 +575,30 @@ def build(*, profile: str, store: Path, table: object, gate: RightsGate, series:
                        + "; ".join(no_history))[:2000]})
     _decide_derived(built, entries, derived or [], profile=profile, gate=gate, withdrawn=withdrawn,
                     legacy=legacy)
-    annotations = {"annotations": []}
+    v1_annotations = None
     if legacy is not None:
-        annotations = _add_legacy(built, entries, legacy, withdrawn)
+        v1_annotations = _add_legacy(built, entries, legacy, withdrawn)["annotations"]
     built.entries = entries
     built.files[CATALOG] = dump({"series": entries})
-    built.files[ANNOTATIONS] = dump(annotations)
+    add_content(built, profile=profile, gate=gate, content=content, manual=manual, v1=v1_annotations)
     return built
+
+
+def add_content(built: Built, *, profile: str, gate: RightsGate, content: Path | None = None,
+                manual: Path | None = None, v1: list[dict] | None = None) -> None:
+    """Write a Release's content afresh (M19; ADR 0033): Events from their files, the
+    hand-entered layers, and on a local Profile v1's bands and recessions out of ``v1`` (the
+    Annotations of a converted or an earlier local Release; only those marked as v1's are
+    taken, so no Event and no hand-entered layer is carried from one Release to the next)."""
+    layers = [a for a in v1 or [] if a.get("provenance", {}).get("representation") == LEGACY]
+    try:
+        compiled = compile_content(profile=profile, content=content,
+                                   manual=MANUAL_DIR if manual is None else manual, gate=gate,
+                                   legacy_annotations=layers if profile == "local" else None)
+    except ContentError as error:
+        raise ExportError(f"the content cannot be compiled: {error}") from None
+    built.files.update(compiled.files)
+    built.report.extend(compiled.report)
 
 
 def _add_legacy(built: Built, entries: list[dict], legacy: dict[str, bytes], withdrawn: dict) -> dict:

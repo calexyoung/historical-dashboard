@@ -30,6 +30,7 @@ from pathlib import Path
 import yaml
 
 from atlas.capture.store import StoreLocked, locked
+from atlas.content.compile import ContentError, compile_content
 from atlas.period import next_period, period_bounds
 from atlas.release import LEGACY, SCHEMA_VERSION
 from atlas.staging import promote, stage
@@ -41,7 +42,11 @@ CATALOG_YAML = "atlas/catalog.yaml"
 EVENTS_YAML = "atlas/events.yaml"
 POLITICS_YAML = "atlas/politics.yaml"
 APPROVAL_YAML = "atlas/approval.yaml"
-INPUTS = (ATLAS_JSON, CATALOG_YAML, EVENTS_YAML, POLITICS_YAML, APPROVAL_YAML)
+#: v1's files the converter reads. Not ``atlas/events.yaml``: since M19 v1's Events are files
+#: of their own (``content/events``) that the content compiler reads (ADR 0033).
+INPUTS = (ATLAS_JSON, CATALOG_YAML, POLITICS_YAML, APPROVAL_YAML)
+#: Where the Events are, relative to the repository; recorded among a Release's inputs.
+CONTENT_EVENTS = "content/events"
 
 SEMANTICS_VERSION = "v1-legacy"  # v1 computed what is in derived/; the v2 engine did not
 NOT_RECORDED = "Not recorded by v1"
@@ -260,7 +265,7 @@ HAND_ENTERED = {"via": "hand_entered"}
 # --- the conversion ----------------------------------------------------------------------------
 
 
-def _load(repo: Path) -> tuple[dict[str, bytes], dict, list, list, dict, dict]:
+def _load(repo: Path) -> tuple[dict[str, bytes], dict, list, dict, dict]:
     raw: dict[str, bytes] = {}
     for path in INPUTS:
         try:
@@ -268,10 +273,10 @@ def _load(repo: Path) -> tuple[dict[str, bytes], dict, list, list, dict, dict]:
         except OSError as error:
             raise LegacyRefused(f"v1 input {path} cannot be read ({error.strerror})") from error
     data = json.loads(raw[ATLAS_JSON])
-    catalog, events, politics, approval = (
-        yaml.safe_load(raw[p].decode("utf-8")) for p in (CATALOG_YAML, EVENTS_YAML, POLITICS_YAML, APPROVAL_YAML)
+    catalog, politics, approval = (
+        yaml.safe_load(raw[p].decode("utf-8")) for p in (CATALOG_YAML, POLITICS_YAML, APPROVAL_YAML)
     )
-    return raw, data, catalog, events, politics, approval
+    return raw, data, catalog, politics, approval
 
 
 def _base_entry(key: str, name: str, unit: str, category: str, freq: str, continuity: str = "discrete") -> dict:
@@ -404,7 +409,15 @@ def _hand_entered_series(politics: dict, approval: dict) -> tuple[list[dict], di
     return entries, files
 
 
-def _annotations(data: dict, events: list, politics: dict, approval: dict) -> list[dict]:
+def _v1(dataset: str, via: str = "hand_entered") -> dict:
+    """Where one of v1's own Annotations came from. It is marked as the legacy representation,
+    which no public-profile Release may hold (schema/README.md)."""
+    return {"producer": "Macro Atlas v1", "dataset": dataset, "via": via, "representation": LEGACY}
+
+
+def _annotations(data: dict, politics: dict, approval: dict) -> list[dict]:
+    """v1's bands and recessions as Annotations. Its Events are not here: they are files
+    (``content/events``), and the content compiler projects them (M19)."""
     out: list[dict] = []
     seen: set[str] = set()
 
@@ -415,25 +428,6 @@ def _annotations(data: dict, events: list, politics: dict, approval: dict) -> li
             candidate = f"{identifier}-{n}"
         seen.add(candidate)
         return candidate
-
-    for event in events:
-        month = event["month"]
-        if event.get("day"):
-            day = f"{month}-{int(event['day']):02d}"
-            anchor, when = {"type": "date", "date": day}, day
-        else:  # v1 knows the month only; no day is made up
-            anchor, when = {"type": "period", "period": month}, month
-        out.append(
-            {
-                "id": unique(f"event-{when}-{_slug(event['title'])}"),
-                "kind": "event",
-                "anchor": anchor,
-                "label": event["title"],
-                "ref": None,
-                "source": {"url": event["url"]} if event.get("url") else None,
-                "category": event["cat"],
-            }
-        )
 
     # Terms of government and office holders. v1 keeps these to the month, end month exclusive.
     sets = {"pres": {"source": None, "rows": approval["terms"]}, **politics["bands"]}
@@ -450,6 +444,7 @@ def _annotations(data: dict, events: list, politics: dict, approval: dict) -> li
                     "source": {"url": band["source"]} if band.get("source") else None,
                     "category": name,
                     "attributes": {**attributes, "date_precision": "month"},
+                    "provenance": _v1(f"{APPROVAL_YAML} terms" if name == "pres" else f"{POLITICS_YAML} bands.{name}"),
                 }
             )
 
@@ -483,6 +478,7 @@ def _annotations(data: dict, events: list, politics: dict, approval: dict) -> li
                     "ref": None,
                     "source": {"name": "v1 series usrec (FRED USREC)", "url": "https://fred.stlouisfed.org/series/USREC"},
                     "attributes": {"date_precision": "month"},
+                    "provenance": _v1("usrec (FRED USREC)", "fred"),
                 }
             )
     return out
@@ -552,7 +548,7 @@ def build_release(repo: Path = ROOT, now: datetime | None = None) -> tuple[str, 
     """The Release's id and files, in memory. Reads v1's files; writes nothing."""
     repo = Path(repo)
     created = _as_utc(now)
-    raw, data, catalog, events, politics, approval = _load(repo)
+    raw, data, catalog, politics, approval = _load(repo)
 
     entries, files = _atlas_json_series(data, catalog)
     more_entries, more_files = _hand_entered_series(politics, approval)
@@ -577,9 +573,16 @@ def build_release(repo: Path = ROOT, now: datetime | None = None) -> tuple[str, 
             "rights_status": entry["rights"]["status"],
             "representation": entry["representation"],
         }
-    annotations = _annotations(data, events, politics, approval)
+    # The content: Events from their files (drafts too: this is a local-profile Release), and
+    # v1's bands and recessions for every set no hand-entered file provides.
+    try:
+        content = compile_content(profile="local", content=repo / "content", manual=repo / "catalog" / "manual",
+                                  legacy_annotations=_annotations(data, politics, approval))
+    except ContentError as error:
+        raise LegacyRefused(f"the content cannot be compiled: {error}") from None
     out["catalog.json"] = _dump({"series": entries})
-    out["content/annotations.json"] = _dump({"annotations": annotations})
+    out.update(content.files)
+    n_events = len(json.loads(content.files["content/events.json"])["events"])
 
     generated = data.get("generated")
     inputs = []
@@ -587,12 +590,16 @@ def build_release(repo: Path = ROOT, now: datetime | None = None) -> tuple[str, 
         row = {"path": path, "sha256": hashlib.sha256(raw[path]).hexdigest(), "commit": _commit_of(repo, path)}
         row["generated"] = generated if path == ATLAS_JSON else None
         inputs.append(row)
+    digest = hashlib.sha256()
+    for name, body in sorted((name, body) for name, body in content.read if name.startswith("events/")):
+        digest.update(name.encode() + b"\0" + hashlib.sha256(body).digest())
+    inputs.append({"path": CONTENT_EVENTS, "sha256": digest.hexdigest(), "commit": _commit_of(repo, CONTENT_EVENTS),
+                   "generated": None, "note": f"{n_events} Events, as files (M19); the hash is over their names and bytes"})
 
     digest = hashlib.sha256()
     for path in sorted(out):
         digest.update(path.encode() + b"\0" + hashlib.sha256(out[path]).digest())
     release_id = f"{created:%Y%m%dT%H%M%SZ}-{digest.hexdigest()[:7]}"
-    n_events = sum(1 for a in annotations if a["kind"] == "event")
     out["manifest.json"] = _dump(
         {
             "schema_version": SCHEMA_VERSION,
@@ -609,7 +616,8 @@ def build_release(repo: Path = ROOT, now: datetime | None = None) -> tuple[str, 
                     {
                         "check": "legacy conversion",
                         "outcome": "pass",
-                        "detail": f"{len(entries)} series and {n_events} events carried over from v1's committed output",
+                        "detail": f"{len(entries)} series carried over from v1's committed output; "
+                                  f"{n_events} events compiled from {CONTENT_EVENTS}",
                     }
                 ],
             },
@@ -697,8 +705,7 @@ def main() -> int:
         print(f"legacy-release refused: {refused}")
         return 1
     catalog = json.loads((promoted / "catalog.json").read_text(encoding="utf-8"))["series"]
-    annotations = json.loads((promoted / "content" / "annotations.json").read_text(encoding="utf-8"))["annotations"]
-    events = sum(1 for a in annotations if a["kind"] == "event")
+    events = len(json.loads((promoted / "content" / "events.json").read_text(encoding="utf-8"))["events"])
     print(f"Promoted {promoted.name} (local profile, not for publication): {len(catalog)} series, {events} events")
     print(f"  {promoted}")
     return 0

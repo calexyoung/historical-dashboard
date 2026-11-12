@@ -343,6 +343,12 @@ before taking the Derived files in; spot values are `checks/spot.json`; a Derive
 published only when everything it rests on is, and carries the most restrictive rights status
 of its inputs; `semantics_version` is 0.6.0; `deploy/ingest.Dockerfile` is the ingest image.
 
+As built in M19 (ADR 0033, `docs/method/content.md`): the release contract is 0.3.0 and
+`content/events.json` holds the Events whole; the content compiler (`atlas/content/`) writes it
+and projects `content/annotations.json` for every writer; an Annotation typed in from a record
+carries its `provenance` and is under the rights check; Events are `content/events/{id}.md`,
+User notes `notes/{user}/{id}.md` (in no Release); `atlas check` has a fifth layer, `content`.
+
 Rules:
 
 - **A release is immutable once promoted.** Promotion is one atomic replacement of `CURRENT`. A
@@ -1046,6 +1052,10 @@ a listed exception; every migrated description is checked against a word list of
 evaluative terms and by Codex, and any that fails is listed for Alex with a proposed neutral
 rewording, not silently changed; `atlas add` writes drafts only and its output passes `atlas
 check`; the Explorer's annotation tests from M4 pass unchanged.
+(Built: ADR 0033, `docs/method/content.md`. 48 of v1's 83 Events are public and 35 are drafts
+listed for Alex in `docs/v2/events-review.md`; 5 citations have no archived copy and say so.
+v1's bands and recessions stay on local Releases, marked as v1's, until a hand-entered file
+replaces them: none can be committed while no register row is signed.)
 
 **M20 · Claim engine and claim authoring (10 h). Needs Alex: — (D7 defaults apply; claims stay
 draft).** Needs M11, M19.
