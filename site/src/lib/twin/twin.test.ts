@@ -192,6 +192,10 @@ describe("text from a Release is text in every file", () => {
     expect(md).not.toMatch(/<img|<script|<b>/);
     expect(md).not.toMatch(/(^|[^\\])\[click\]\(javascript:|(^|[^\\])\[Injected link\]/);
     expect(md).not.toMatch(/^# Heading/m);
+    const listy = { ...release, catalog: { series: release.catalog.series.map((e) => (e.key === "fx_payrolls_break" ? { ...e, description: "- a list item ~~struck~~", name: "1. numbered" } : e)) } };
+    const plain = seriesTwin(listy, "local", "fx_payrolls_break", "md", new URLSearchParams(), { address: ADDRESS }).body;
+    expect(plain).toContain("\\- a list item \\~\\~struck\\~\\~");
+    expect(plain).toMatch(/^# \\1\. numbered$/m);
     expect(md.split("\n").filter((line) => /^#+ /.test(line)).map((line) => line.replace(/^#+ /, "").slice(0, 12))).toEqual(["&lt;img src=", "Definition", "Provenance", "Breaks and n", "Values", "Cite and dow"]);
     // The table of values keeps its three columns: nothing from the Catalog opened a cell.
     const table = md.slice(md.indexOf("| Period | Value | Status |"));

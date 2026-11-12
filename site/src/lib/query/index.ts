@@ -314,13 +314,9 @@ const historyTooLong = (max: number): QueryFailure => fail(422, "too_large", `th
 /** Transforms that set a Period beside the one before it, and beside the one a year earlier. */
 const PERIOD_BEFORE = new Set<string>(["chg", "pch", "pca"]);
 const YEAR_BEFORE = new Set<string>(["ch1", "pc1"]);
-const yearBefore = (date: string): string => {
-  const year = String(Number(date.slice(0, 4)) - 1).padStart(4, "0");
-  // 29 February has no day a year earlier; the 28th is inside the same month.
-  return `${year}${date.slice(4) === "-02-29" ? "-02-28" : date.slice(4)}`;
-};
 /** A stretch of calendar days, both inclusive. */
 type Span = { from: string; to: string };
+/** The same stretch `months` earlier, from the same day of the month to the last day of the month it ends in. */
 const shifted = (span: Span, months: number): Span => {
   const move = (date: string, end: boolean): string => {
     const total = Number(date.slice(0, 4)) * 12 + Number(date.slice(5, 7)) - 1 - months;
@@ -347,10 +343,11 @@ function spansUsed(shown: readonly TransformObservation[], sequence: readonly Tr
     const at = sequence.findIndex((o) => o.period === first.period);
     if (at > 0) span.from = sequence[at - 1]!.period_start;
     // Not in the sequence: the Transform brought it to months itself. A year back covers any Period before.
-    else if (at < 0) span.from = yearBefore(span.from);
+    else if (at < 0) span.from = shifted(span, 12).from;
     return [span];
   }
-  if (YEAR_BEFORE.has(name)) return [span, { from: yearBefore(span.from), to: yearBefore(span.to) }];
+  // Whole months a year earlier, to their last day: February's comparison ends on the 29th in a leap year.
+  if (YEAR_BEFORE.has(name)) return [span, shifted(span, 12)];
   return [span];
 }
 const within = (spans: readonly Span[], o: { period_start: string; period_end: string }): boolean => spans.some((span) => o.period_end >= span.from && o.period_start <= span.to);
@@ -436,7 +433,9 @@ function derivedBasis(release: OpenedRelease, entry: CatalogEntry, spans: readon
   const recipe = entry.recipe;
   if (!recipe || spans.length === 0) return null;
   const entries = new Map(release.catalog.series.map((e) => [e.key, e]));
-  if (recipe.inputs.some((input) => entries.get(input)?.recipe)) return null;
+  // The look-back is counted in Periods of the frequency the Recipe computes at. Where an input
+  // is at another frequency than the Series, that depends on the Recipe's order: not worked out here.
+  if (recipe.inputs.some((input) => entries.get(input)?.recipe || entries.get(input)?.freq !== entry.freq)) return null;
   let all = [...spans];
   if (recipe.op === "pct_change") {
     const months = MONTHS_PER_PERIOD[entry.freq];

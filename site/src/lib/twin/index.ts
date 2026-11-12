@@ -245,7 +245,8 @@ function metadata(release: OpenedRelease, surface: Surface, entry: CatalogEntry,
 
 /**
  * Text from a Release (a name, a description, a note), written so that Markdown and anything
- * that renders it take it as text: no markup, no link, no heading, no table cell of its own.
+ * that renders it take it as text: no HTML, no link or image, no emphasis, no heading, list or
+ * rule, no table cell of its own.
  * A Catalog is not written by readers, but a file is opened by people who did not write it.
  */
 const md = (text: string | number | null | undefined): string =>
@@ -255,7 +256,9 @@ const md = (text: string | number | null | undefined): string =>
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
-    .replace(/([\\`*_[\]#|])/g, "\\$1");
+    .replace(/([\\`*_[\]#|~])/g, "\\$1")
+    // At the start of a line: no list, quotation, rule or underline of a heading.
+    .replace(/^([-+>=]|\d+[.)])/, "\\$1");
 const cell = md;
 
 /** The page in Markdown: the same facts, in the same order, with the values as a table. */

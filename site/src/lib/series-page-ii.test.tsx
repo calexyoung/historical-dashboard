@@ -142,9 +142,11 @@ describe("revisions: every version held of the periods that changed", () => {
     // Three would cut October's history in two: the cut moves to the next period.
     expect(of("", 3).revisions.rows.map((r) => r.period)).toEqual(["Nov 2025", "Nov 2025"]);
     const all = of("revisions=all", 2);
-    expect(all.revisions).toMatchObject({ more: 0, all: true });
+    expect(all.revisions).toMatchObject({ more: 0, all: true, page: 1, pages: 1 });
     expect(all.revisions.rows).toHaveLength(4);
     expect(all.html).not.toContain("data-revisions-more");
+    // A list shorter than one Period's history is cut where it must be, never left empty.
+    expect(of("", 1).revisions.rows.map((r) => r.value)).toEqual(["109.3"]);
   });
 
   it("says so when a Release holds no history, and is left off an as-of view", () => {

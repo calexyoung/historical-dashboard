@@ -153,6 +153,42 @@ describe("what was known before a date", () => {
   });
 });
 
+describe("the Basis never claims more than the Periods used allow", () => {
+  it("a year earlier means the whole month a year earlier, the 29th of February included", () => {
+    // Daily values for February 2024 and February 2025; only 29 February 2024 was last asked about a day early.
+    const day = (date: string, value: number) => ({ period: date, period_start: date, period_end: date, value, status: "final" });
+    const dates = (year: number, last: number) => Array.from({ length: last }, (_, i) => `${year}-02-${String(i + 1).padStart(2, "0")}`);
+    const feb24 = dates(2024, 29);
+    const feb25 = dates(2025, 28);
+    const row = (date: string, from: string) => ({ ...day(date, 100), deleted: false, recorded_from: from, recorded_to: null, provider_from: null, provider_to: null, provider_precision: null, channel: "fixture", metadata: "m" });
+    const entry = { ...release.catalog.series.find((e) => e.key === "fx_price_index")!, key: "fx_daily", freq: "daily" as const };
+    const metadata = [{ hash: "m", recorded_from: "2025-03-01T12:00:00Z", metadata: { name: "d", unit: "u", source: entry.source, rights: null } }];
+    const captures = [
+      { retrieved_at: "2025-03-01T12:00:00Z", scope: ["2024-02-01", "2025-02-28"], change: "first" },
+      { retrieved_at: "2025-03-02T12:00:00Z", scope: ["2024-02-01", "2025-02-28"], change: "none" },
+      // The last Capture before the Cutoff did not ask about the 29th.
+      { retrieved_at: "2025-03-03T12:00:00Z", scope: ["2024-02-01", "2024-02-28"], change: "none" },
+      { retrieved_at: "2025-03-03T12:01:00Z", scope: ["2025-02-01", "2025-02-28"], change: "none" },
+    ];
+    const made = {
+      ...release,
+      catalog: { series: [...release.catalog.series, entry] },
+      series: { ...release.series, fx_daily: { key: "fx_daily", freq: "daily", representation: "native", observations: [...feb24, ...feb25].map((d) => day(d, 100)) } },
+      vintages: { ...release.vintages, fx_daily: { key: "fx_daily", freq: "daily", representation: "native", provider_coverage: null, metadata, captures, rows: [...feb24, ...feb25].map((d) => row(d, "2025-03-01T12:00:00Z")) } },
+    } as unknown as OpenedRelease;
+    const basis = (request: object) => {
+      const answer = query(made, "local", { series: ["fx_daily"], transform: "lin", permission: "display", as_of: "2025-03-04", ...request });
+      if (!answer.ok) throw new Error(answer.message);
+      return answer.series[0]!.vintage!.basis;
+    };
+    expect(basis({ from: "2025-02-01" })).toBe("atlas_observed");
+    expect(basis({ from: "2024-02-29", to: "2024-02-29" })).toBe("uncertain");
+    // February 2025 beside February 2024, whose mean includes the 29th.
+    expect(basis({ from: "2025-02-01", transform: "pc1" })).toBe("uncertain");
+    expect(basis({ from: "2025-02-01", freq: "monthly", transform: "ch1" })).toBe("uncertain");
+  });
+});
+
 describe("a slower frequency", () => {
   it("combines by the Series' declared rule, then transforms (PLAN 4.5)", () => {
     const answer = ask({ freq: "quarterly", from: "2025-01-01" });

@@ -88,7 +88,7 @@ export type RevisionRow = {
 };
 export type Revisions =
   | { held: false; text: string }
-  | { held: true; lines: string[]; rows: RevisionRow[]; /** Earlier versions not listed; `?revisions=all` lists them, up to 5,000. */ more: number; /** Whether the address asked for all of them. */ all: boolean };
+  | { held: true; lines: string[]; rows: RevisionRow[]; /** Earlier versions not listed; `?revisions=all` lists them, up to 5,000. */ more: number; /** Whether the address asked for all of them. */ all: boolean; /** Of all of them: which page of 5,000 this is, newest first, and how many there are. */ page: number; pages: number };
 
 export type Downloads = {
   /** Whether the values may be handed out here (the Permission to redistribute). */
@@ -269,7 +269,7 @@ function revisionRow(freq: CatalogEntry["freq"], v: Version): RevisionRow {
   };
 }
 
-function revisions(release: OpenedRelease, surface: Surface, entry: CatalogEntry, gate: Pick<RightsGate, "permits"> | undefined, all: boolean, rows: number = REVISION_ROWS): Revisions | null {
+function revisions(release: OpenedRelease, surface: Surface, entry: CatalogEntry, gate: Pick<RightsGate, "permits"> | undefined, all: boolean, rows: number = REVISION_ROWS, page = 1): Revisions | null {
   const table = vintageTable(release, surface, entry.key, { gate });
   // What the gate refuses of a Series' past is said in one line; today's values are not affected.
   if (!table.ok) {
@@ -302,11 +302,22 @@ function revisions(release: OpenedRelease, surface: Surface, entry: CatalogEntry
   const changed = new Set(table.revised_periods);
   const listed = table.versions.filter((v) => changed.has(v.period));
   if (listed.length === 0) lines.push("No period has changed since Macro Atlas first held it.");
-  // The latest versions, and never part of one Period's history: a cut falls between Periods.
-  let from = Math.max(0, listed.length - (all ? ALL_REVISION_ROWS : rows));
+  if (all) {
+    // Every version, newest page first, in pages of a fixed size so that none is out of reach.
+    const pages = Math.max(1, Math.ceil(listed.length / ALL_REVISION_ROWS));
+    const at = Math.min(Math.max(1, page), pages);
+    const end = listed.length - (at - 1) * ALL_REVISION_ROWS;
+    const shown = listed.slice(Math.max(0, end - ALL_REVISION_ROWS), end);
+    return { held: true, lines, rows: shown.map((v) => revisionRow(table.freq, v)), more: Math.max(0, end - ALL_REVISION_ROWS), all, page: at, pages };
+  }
+  // The latest versions, and never part of one Period's history: a cut falls between Periods
+  // (unless one Period's history is longer than the list, which is then cut where it must be).
+  const cut = Math.max(0, listed.length - rows);
+  let from = cut;
   while (from > 0 && from < listed.length && listed[from]!.period === listed[from - 1]!.period) from++;
+  if (from >= listed.length) from = cut;
   const shown = listed.slice(from);
-  return { held: true, lines, rows: shown.map((v) => revisionRow(table.freq, v)), more: listed.length - shown.length, all };
+  return { held: true, lines, rows: shown.map((v) => revisionRow(table.freq, v)), more: listed.length - shown.length, all, page: 1, pages: 1 };
 }
 
 function downloads(release: OpenedRelease, surface: Surface, entry: CatalogEntry, request: SeriesRequest | null, search: string, address: string, gate: Pick<RightsGate, "permits"> | undefined): Downloads {
@@ -481,7 +492,7 @@ export function seriesPageView(release: OpenedRelease, surface: Surface, key: st
       figure,
       notes: notes(release, entry, labelOf),
       // Under an as-of question the list of every version, later ones included, is left to the plain page.
-      revisions: vintage ? null : revisions(release, surface, entry, gate, options.search?.get("revisions") === "all", options.revisionRows),
+      revisions: vintage ? null : revisions(release, surface, entry, gate, options.search?.get("revisions") === "all", options.revisionRows, Number.parseInt(options.search?.get("revisions_page") ?? "1", 10) || 1),
     },
   };
 }
