@@ -9,8 +9,8 @@ import { headers } from "next/headers";
 import { cache } from "react";
 import { siteAddress } from "../address";
 import { BASE_PATH, SURFACE } from "../config";
-import { HOST_HEADER, PATH_HEADER, REFRESH_FAILED_HEADER, RELEASE_HEADER } from "../gate";
-import { createReleaseReader, type Failure, type OpenedRelease, type ReleaseReader } from "./reader";
+import { CURRENT_HEADER, HOST_HEADER, PATH_HEADER, REFRESH_FAILED_HEADER, RELEASE_HEADER } from "../gate";
+import { createReleaseReader, RELEASE_ID, type Failure, type OpenedRelease, type ReleaseReader } from "./reader";
 
 const KEY = Symbol.for("macro-atlas.release-reader");
 type Holder = { [KEY]?: ReleaseReader };
@@ -38,6 +38,8 @@ export type RequestRelease = {
   now: number;
   /** The site's own address as the reader wrote it, with the base path and no trailing slash. */
   address: string;
+  /** A pinned view: the id of the Release CURRENT names, which may be this one or a newer one. Null when not pinned. */
+  pinnedFrom: string | null;
 };
 
 /** The Release this request was fixed to. Reading headers also makes the route render per request. */
@@ -58,5 +60,6 @@ export const releaseForRequest = cache(async (): Promise<RequestRelease> => {
     }
   }
   const address = siteAddress(incoming.get(HOST_HEADER) ?? incoming.get("host"), incoming.get("x-forwarded-proto"), BASE_PATH);
-  return { release: opened.release, refreshFailed, path: incoming.get(PATH_HEADER) ?? "/", now: Date.now(), address };
+  const current = incoming.get(CURRENT_HEADER);
+  return { release: opened.release, refreshFailed, path: incoming.get(PATH_HEADER) ?? "/", now: Date.now(), address, pinnedFrom: current && RELEASE_ID.test(current) ? current : null };
 });

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { gate, RELEASE_HEADER, REFRESH_FAILED_HEADER, TWIN_HEADER } from "./gate";
+import { CURRENT_HEADER, gate, RELEASE_HEADER, REFRESH_FAILED_HEADER, TWIN_HEADER } from "./gate";
 import type { Opened, OpenedRelease, ReleaseReader } from "./release/reader";
 
 const release = { id: "20260201T000000Z-aaaaaaa" } as OpenedRelease;
@@ -171,5 +171,82 @@ describe("gate: a twin's address goes to the twin handler, after every refusal (
     expect(none).toMatchObject({ action: "respond", status: 503 });
     const elsewhere = await gate({ ...local, twinToken: TOKEN, reader: readerOf(good) }, { host: "example.com", pathname: "/data/fx_price_index.csv" });
     expect(elsewhere).toMatchObject({ action: "respond", status: 421 });
+  });
+});
+
+describe("gate: a pinned view (M18)", () => {
+  const PIN = "20260115T000000Z-ccccccc";
+  const pinnedRelease = { id: PIN } as OpenedRelease;
+  const readerWith = (current: Opened, pinned: Opened): ReleaseReader & { asked: string[] } => {
+    const reader = { asked: [] as string[], current: async () => current, open: async () => current, pinned: async (id: string) => (reader.asked.push(id), pinned) };
+    return reader;
+  };
+  const config = { ...base, basePath: "/macro-atlas" };
+  const explore = { host: "mydashboards.co", pathname: "/explore", search: `?s=unrate&mode=z&pin=${PIN}` };
+
+  it("fixes the request to the Release the address names, and says which is current", async () => {
+    const reader = readerWith(good, { ok: true, release: pinnedRelease, refreshFailed: null });
+    const decision = await gate({ ...config, reader }, explore);
+    if (decision.action !== "forward") throw new Error("expected forward");
+    expect(reader.asked).toEqual([PIN]);
+    expect(decision.requestHeaders[RELEASE_HEADER]).toBe(PIN);
+    expect(decision.requestHeaders[CURRENT_HEADER]).toBe(release.id);
+  });
+
+  it("takes a pin on the Explorer and its export only; elsewhere the address is answered from CURRENT as before", async () => {
+    const reader = readerWith(good, { ok: true, release: pinnedRelease, refreshFailed: null });
+    const exported = await gate({ ...config, reader }, { ...explore, pathname: "/explore/export" });
+    expect(exported.action === "forward" && exported.requestHeaders[RELEASE_HEADER]).toBe(PIN);
+    for (const pathname of ["/data/unrate", "/data", "/api/health", "/"]) {
+      const decision = await gate({ ...config, reader }, { ...explore, pathname });
+      if (decision.action !== "forward") throw new Error("expected forward");
+      expect(decision.requestHeaders[RELEASE_HEADER]).toBe(release.id);
+      expect(decision.requestHeaders[CURRENT_HEADER]).toBeNull(); // null removes what a client sent
+    }
+    expect(reader.asked).toEqual([PIN]);
+  });
+
+  it("answers 410 Gone once retention no longer keeps the Release, with a link to the same view on the current one and no data", async () => {
+    const reader = readerWith(good, { ok: false, kind: "gone", id: PIN, reason: "no longer kept" });
+    const decision = await gate({ ...config, reader }, { ...explore, pathname: "/explore/export", search: `?format=csv&s=unrate&mode=z&pin=${PIN}` });
+    expect(decision).toMatchObject({ action: "respond", status: 410 });
+    if (decision.action !== "respond") return;
+    expect(decision.body).toContain('href="/macro-atlas/explore?s=unrate&#38;mode=z"');
+    expect(decision.body).toContain(PIN);
+    expect(decision.headers["cache-control"]).toBe("no-store");
+    expect(decision.headers["content-security-policy"]).toBeDefined();
+  });
+
+  it.each(["refused", "invalid", "unavailable"] as const)("answers 503, never CURRENT's data, when the pinned Release is %s", async (kind) => {
+    const decision = await gate({ ...config, reader: readerWith(good, { ok: false, kind, id: PIN, reason: "x" }) }, explore);
+    expect(decision).toMatchObject({ action: "respond", status: 503 });
+  });
+
+  it.each(["pin=latest", "pin=", `pin=${PIN}&pin=${PIN}`, `pin=${PIN}%0A`, "pin=../../etc"])("refuses %s with 400 and opens nothing", async (search) => {
+    const reader = readerWith(good, { ok: true, release: pinnedRelease, refreshFailed: null });
+    const decision = await gate({ ...config, reader }, { ...explore, search: `?s=unrate&${search}` });
+    expect(decision).toMatchObject({ action: "respond", status: 400 });
+    expect(reader.asked).toEqual([]);
+  });
+
+  it("still fails closed on CURRENT: a pin does not get a request past a root that may not be served", async () => {
+    const reader = readerWith(refused, { ok: true, release: pinnedRelease, refreshFailed: null });
+    expect(await gate({ ...config, reader }, explore)).toMatchObject({ action: "respond", status: 503 });
+    expect(reader.asked).toEqual([]);
+  });
+
+  it("a pin to the Release that is current is that Release, and still a pinned view", async () => {
+    const reader = readerWith(good, { ok: false, kind: "gone", id: release.id, reason: "" });
+    const decision = await gate({ ...config, reader }, { ...explore, search: `?pin=${release.id}` });
+    if (decision.action !== "forward") throw new Error("expected forward");
+    expect(decision.requestHeaders[RELEASE_HEADER]).toBe(release.id);
+    expect(decision.requestHeaders[CURRENT_HEADER]).toBe(release.id);
+  });
+
+  it("the failed-refresh state belongs to CURRENT and is not carried onto a pinned Release", async () => {
+    const refreshFailed = { kind: "invalid", id: "20260202T000000Z-bbbbbbb", reason: "x" } as const;
+    const reader = readerWith({ ok: true, release, refreshFailed }, { ok: true, release: pinnedRelease, refreshFailed: null });
+    const decision = await gate({ ...config, surface: "local", reader }, { ...explore, host: "localhost:3000" });
+    expect(decision.action === "forward" && decision.requestHeaders[REFRESH_FAILED_HEADER]).toBeNull();
   });
 });
