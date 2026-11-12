@@ -31,6 +31,7 @@ from atlas.capture.http import Fetch, Response, Session
 from atlas.capture.replay import write_exchange
 from atlas.capture.run import endpoints_from_register
 from atlas.capture.store import stamp
+from atlas.catalog import load_catalog
 from atlas.rights import load_register
 
 RECORDED_AT = datetime(2026, 11, 11, 15, 50, 0, tzinfo=UTC)
@@ -196,9 +197,11 @@ def mts_body() -> bytes:
     return json.dumps(answer, separators=(",", ":")).encode()
 
 
-def fed_body(params: dict, span: tuple[date, date] | None) -> bytes:
+def fed_body(params: dict, span: tuple[date, date] | None, ranges: dict[str, list]) -> bytes:
     """One file of the Data Download Program for an endpoint's package: the six label rows as
-    the Board writes them, then invented rows in the file's own kind of time cell."""
+    the Board writes them, then invented rows in the file's own kind of time cell. A column a
+    Series with a declared range is read from stays inside that range, as the release writer
+    will require of it."""
     expect, rel, kind = params["expect"], params["rel"], params.get("period", "day")
     labels = params.get("labels", {})
 
@@ -221,26 +224,30 @@ def fed_body(params: dict, span: tuple[date, date] | None) -> bytes:
         # The first column of a package begins late: the Board leaves the cell empty before a
         # series begins. One day (or its like) is listed with no number.
         out = [code or f"{1 + column * 0.1 + n * 0.01:.2f}" for column in range(len(expect))]
+        for name, (low, high) in ranges.items():
+            if not code:
+                out[expect.index(name)] = f"{low + (high - low) * (0.4 + 0.001 * n):.4f}"
         if n < 2 and len(expect) > 1 and (span is None or span[0].year == params["from_years"][0]):
             out[-1] = ""
         return out
 
     times: list[str] = []
     if kind == "day":
-        day = span[0] if span else date(2026, 10, 5)
-        end = min(span[1], date(2026, 11, 6)) if span else date(2026, 11, 6)
-        while day <= end and len(times) < 25:
-            if day.isoweekday() <= 5:
-                times.append(day.isoformat())
-            day += timedelta(days=1)
-        if span and span[1] < date(2026, 1, 1):
-            # A closed span also ends on its own last business days.
-            tail, day = [], span[1]
-            while len(tail) < 3:
+        def business_days(start: date, count: int, step: int) -> list[str]:
+            found, day = [], start
+            while len(found) < count:
                 if day.isoweekday() <= 5:
-                    tail.append(day.isoformat())
-                day -= timedelta(days=1)
-            times = sorted(set(times) | set(tail))
+                    found.append(day.isoformat())
+                day += timedelta(days=step)
+            return found
+
+        newest = date(2026, 11, 6)
+        if span is None:
+            times = business_days(date(2026, 10, 5), 25, 1)
+        else:
+            # A span is answered from its first business days to its last, or to the newest
+            # day the invented Board has published.
+            times = sorted({*business_days(span[0], 5, 1), *business_days(min(span[1], newest), 22, -1)})
     elif kind == "week":
         times = [(date(2026, 8, 19) + timedelta(weeks=n)).isoformat() for n in range(12)]
     elif kind == "month":
@@ -275,12 +282,17 @@ class Synthetic:
             return "application/json", bls_body(asked["seriesid"], int(asked["startyear"]), int(asked["endyear"]))
         if url.netloc == "api.fiscaldata.treasury.gov":
             return "application/json", mts_body() if url.path.endswith("mts_table_1") else treasury_body()
-        params = next(e.params for e in self._endpoints if e.adapter == "fed_board"
-                      and e.params["rel"] == query["rel"][0] and e.params["series"] == query["series"][0])
+        endpoint = next(e for e in self._endpoints if e.adapter == "fed_board"
+                        and e.params["rel"] == query["rel"][0] and e.params["series"] == query["series"][0])
+        params = endpoint.params
+        ranges = {entry["source"]["origin"]["origin_id"]: entry["range"]
+                  for entry in load_catalog().values()
+                  if (entry.get("source", {}).get("channel") or {}).get("endpoint") == endpoint.id
+                  and "range" in entry}
         span = None
         if query["from"][0]:
             span = tuple(datetime.strptime(query[name][0], "%m/%d/%Y").date() for name in ("from", "to"))
-        return "text/csv", fed_body(params, span)
+        return "text/csv", fed_body(params, span, ranges)
 
     def send(self, request):
         kind, body = self._answer(request)
