@@ -68,8 +68,8 @@ confirmations say nothing about it.
 ## Replay
 
 `atlas replay` reads the fetch log, takes the complete Captures in retrieval order, parses the
-kept bytes with today's adapter and records each Series the endpoint is bound to in
-`atlas/vintage/series.json`. It asks the rights gate first and writes nothing if any Series is
+kept bytes with today's adapter and records each Series the Catalog binds to the endpoint
+(`catalog/series`, see `docs/method/catalog.md`). It asks the rights gate first and writes nothing if any Series is
 refused. A Capture already recorded is passed by, so it can run after every capture run.
 
 Every time written is a Capture's retrieval time. Replaying a year of Captures today, or the
@@ -90,11 +90,14 @@ What it reports:
 
 ## The series table
 
-`atlas/vintage/series.json` stands in for the catalog until M12. Each entry binds one source
-identifier of one endpoint to a Series key and frequency, and lists the declared metadata as
-dated versions. To change a unit or a name, add a version with the instant it takes effect;
-do not edit a version that has been in force. Today it holds the four Series of the BLS
-endpoint: `cpi`, `cpi_nsa`, `unrate`, `payems`.
+Since M12 the series table is read from the Catalog (`catalog/series/{key}.json`,
+`docs/method/catalog.md`): every stored Series that names an Endpoint and is not a draft. Each
+binds one source identifier of one endpoint to a Series key and frequency, and carries the
+declared metadata as dated versions. To change a unit or a name, move the version that was in
+force into the entry's `earlier_metadata` and give the instant the new one takes effect in
+`metadata_from`; do not edit a version that has been in force. Today the table holds the four
+Series of the BLS endpoint: `cpi`, `cpi_nsa`, `unrate`, `payems`. `--series` takes another
+catalog directory, or a table file of the M8 shape (the fixtures use one).
 
 ## Commands
 

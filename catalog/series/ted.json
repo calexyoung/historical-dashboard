@@ -25,7 +25,7 @@
     "channel": null,
     "no_channel": {
       "kind": "discontinued",
-      "reason": "The series ended in January 2022 with LIBOR."
+      "reason": "FRED stopped computing it in January 2022, when its LIBOR input was withdrawn."
     }
   },
   "refresh": "none",

@@ -13,7 +13,7 @@ from atlas.rights import RightsGate, load_register
 from atlas.vintage.replay import load_derived, load_series
 
 from .catalog_helpers import derived, stored, write
-from .test_vintage_replay import register  # noqa: F401, F811  (a fixture)
+from .test_vintage_replay import register  # noqa: F401  (a fixture)
 
 ROOT = Path(__file__).resolve().parents[2]
 SCHEMA = json.loads((ROOT / "schema" / "series.schema.json").read_text())
@@ -117,13 +117,16 @@ def test_a_bound_series_is_projected_with_its_dated_metadata_and_a_draft_is_left
                            earlier_metadata=[
                                {"from": None, "name": "Old name", "unit": "index, 2010 = 100",
                                 "seasonal_adjustment": "sa"},
-                               {"from": "2026-02-01T00:00:00Z", "name": "Middle name", "unit": "index, 2010 = 100"}],
+                               {"from": "2026-02-01T00:00:00Z", "name": "Middle name", "unit": "index, 2010 = 100",
+                                "seasonal_adjustment": "not_applicable"}],
                            metadata_from="2026-04-01T00:00:00Z"),
         "fx_ended": stored("fx_ended", status="retired", source={**BOUND, "origin": {**BOUND["origin"], "origin_id": "FXENDED"}}),
         "fx_draft": stored("fx_draft", source={**BOUND, "origin": {**BOUND["origin"], "origin_id": "FXDRAFT"}}),
         "fx_unbound": stored("fx_unbound"),
         "fx_price_yoy": derived(status="active", seasonal_adjustment="nsa"),
         "fx_draft_yoy": derived("fx_draft_yoy", inputs=("fx_draft",)),
+        "fx_ended_yoy": derived("fx_ended_yoy", inputs=("fx_ended",), status="retired",
+                                seasonal_adjustment="not_applicable"),
     }
     table = series_table(entries)
     assert table["format"] == 1
@@ -133,14 +136,17 @@ def test_a_bound_series_is_projected_with_its_dated_metadata_and_a_draft_is_left
         "dataset": "Fixture prices", "url": "https://example.test/fx",
         "metadata": [
             {"from": None, "name": "Old name", "unit": "index, 2010 = 100", "seasonal_adjustment": "sa"},
-            {"from": "2026-02-01T00:00:00Z", "name": "Middle name", "unit": "index, 2010 = 100"},
+            {"from": "2026-02-01T00:00:00Z", "name": "Middle name", "unit": "index, 2010 = 100",
+             "seasonal_adjustment": "not_applicable"},
             {"from": "2026-04-01T00:00:00Z", "name": "Fixture price index", "unit": "index, 2020 = 100",
              "seasonal_adjustment": "nsa"}],
         "catalog": {"measure_kind": "index", "unit_kind": "index", "segment": "economy_jobs",
                     "continuity": "discrete", "agg": "mean", "max_lag": "P3M", "range": [50, 500],
                     "price_basis": "not_applicable", "country": "USA", "topics": ["prices"]},
     }
-    assert table["derived"] == [{
+    assert [e["key"] for e in table["derived"]] == ["fx_ended_yoy", "fx_price_yoy"]
+    assert table["derived"][0]["seasonal_adjustment"] == "not_applicable"
+    assert table["derived"][1:] == [{
         "key": "fx_price_yoy", "freq": "monthly", "name": "Fixture price index, change from a year earlier",
         "unit": "percent change from a year earlier", "seasonal_adjustment": "nsa",
         "recipe": {"op": "pct_change", "inputs": ["fx_price"], "order": "aggregate_then_compute",
@@ -157,7 +163,7 @@ def test_the_loaders_of_the_vintage_store_read_a_catalog_directory(tmp_path):
     assert [e["key"] for e in load_derived(directory)] == ["fx_price_yoy"]
 
 
-def test_a_replay_through_the_catalog_writes_the_store_a_series_table_writes(tmp_path, register):
+def test_a_replay_through_the_catalog_writes_the_store_a_series_table_writes(tmp_path, register):  # noqa: F811
     """The takeover changes where the table comes from and nothing a store holds: the vintage
     fixture replayed through a catalog directory, with a metadata version taking effect between
     its fetches, is byte for byte the store its own series table gives."""
@@ -200,3 +206,16 @@ def test_a_replay_through_the_catalog_writes_the_store_a_series_table_writes(tmp
     names = {json.loads(line)["metadata"]["name"]
              for line in stores[1]["metalog/fx_price.ndjson"].decode().splitlines()}
     assert names == {"Fixture price index", "Fixture price index (renamed)"}
+
+
+def test_moving_a_version_into_earlier_metadata_changes_nothing_it_recorded():
+    """The documented way to rename a Series: the version in force is moved, as it is, into
+    ``earlier_metadata``. What the store recorded under it must read the same afterwards, an
+    adjustment of "not_applicable" included."""
+    before = stored(status="active", source=BOUND, seasonal_adjustment="not_applicable")
+    after = {**before, "name": "Renamed", "metadata_from": "2026-06-01T00:00:00Z",
+             "earlier_metadata": [{"from": None, "name": before["name"], "unit": before["unit"],
+                                   "seasonal_adjustment": "not_applicable"}]}
+    first = series_table({"fx_price": before})["series"][0]["metadata"]
+    both = series_table({"fx_price": after})["series"][0]["metadata"]
+    assert both[0] == first[0] and len(both) == 2 and both[1]["name"] == "Renamed"

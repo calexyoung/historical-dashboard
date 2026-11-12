@@ -58,7 +58,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--store", help="the vintage store (default $ATLAS_STORE, else var/store)")
     parser.add_argument("--captures", help="the capture store to read (default: the same directory)")
     parser.add_argument("--register", help="a rights register file (default schema/rights-register.json)")
-    parser.add_argument("--series", help="a series table (default atlas/vintage/series.json)")
+    parser.add_argument("--series", help="a catalog directory or a series table file (default catalog/series)")
     parser.add_argument("--show", metavar="KEY", help="print the observation log of one Series")
     parser.add_argument("--as-of", metavar="TIME", help="with --show: the Vintage at this UTC instant")
     args = parser.parse_args(argv)

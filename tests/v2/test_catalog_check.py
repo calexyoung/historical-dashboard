@@ -103,6 +103,13 @@ def test_only_what_an_adapter_is_built_for_is_in_the_pipeline():
 # --- a seeded error in each layer --------------------------------------------------------------
 
 
+@pytest.mark.parametrize("country, valid", [("USA", True), ("EA", True), ("G20", True), ("US", False),
+                                            ("ZZZZ", False), ("usa", False)])
+def test_a_country_is_three_capital_letters_or_a_group_code(tmp_path, country, valid):
+    report = run(tmp_path, stored(country=country))
+    assert report.ok is valid
+
+
 def test_schema_layer_a_field_the_schema_does_not_know(tmp_path):
     report = run(tmp_path, stored(), stored("fx_other", ml_use=True))
     assert list(failed(report)) == ["schema"]
@@ -145,16 +152,28 @@ def ring(*keys):
       stored("fx_short", unit="percent", unit_kind="percent", measure_kind="rate"),
       derived("fx_gap", recipe={"op": "difference", "inputs": ["fx_long", "fx_short"],
                                 "order": "aggregate_then_compute"})], "percentage points"),
+    ([stored("fx_usd", unit="U.S. dollars", unit_kind="currency", measure_kind="stock"),
+      stored("fx_musd", unit="millions of U.S. dollars", unit_kind="currency", measure_kind="stock"),
+      derived("fx_gap", unit="U.S. dollars", unit_kind="currency", measure_kind="stock",
+              recipe={"op": "difference", "inputs": ["fx_usd", "fx_musd"],
+                      "order": "aggregate_then_compute"})], "in one unit"),
+    ([stored("fx_long", unit="percent", unit_kind="percent", measure_kind="rate"),
+      stored("fx_short", unit="percent", unit_kind="percent", measure_kind="rate"),
+      derived("fx_both", unit="index", unit_kind="index", measure_kind="rate",
+              recipe={"op": "sum", "inputs": ["fx_long", "fx_short"],
+                      "order": "aggregate_then_compute"})], "same kind of unit, not index"),
+    ([stored(), derived(status="retired")], "is retired and its input fx_price is a draft"),
+    ([stored(status="retired"), derived(status="active")], "its input fx_price names no Endpoint"),
     ([stored(freq="quarterly"), derived()], "finer than"),
     ([stored(status="active")], "names no Endpoint"),
     ([stored(), derived(status="active")], "is a draft"),
     ([stored(range=[5, 1])], "range"),
-    ([stored(earlier_metadata=[{"from": "2026-01-01T00:00:00Z", "name": "a", "unit": "b"}],
+    ([stored(earlier_metadata=[{"from": "2026-01-01T00:00:00Z", "name": "a", "unit": "b", "seasonal_adjustment": "nsa"}],
              metadata_from="2026-02-01T00:00:00Z")], "from the start"),
-    ([stored(earlier_metadata=[{"from": None, "name": "a", "unit": "b"}],
+    ([stored(earlier_metadata=[{"from": None, "name": "a", "unit": "b", "seasonal_adjustment": "nsa"}],
              metadata_from="2026-02-01T00:00:00Z"),
-      stored("fx_late", earlier_metadata=[{"from": None, "name": "a", "unit": "b"},
-                                          {"from": "2026-03-01T00:00:00Z", "name": "c", "unit": "b"}],
+      stored("fx_late", earlier_metadata=[{"from": None, "name": "a", "unit": "b", "seasonal_adjustment": "nsa"},
+                                          {"from": "2026-03-01T00:00:00Z", "name": "c", "unit": "b", "seasonal_adjustment": "nsa"}],
              metadata_from="2026-02-01T00:00:00Z")], "order of time"),
 ])
 def test_semantics_layer(tmp_path, entries, said):
@@ -210,9 +229,50 @@ def test_atlas_check_exits_one_and_names_the_file_and_the_layers_not_run(tmp_pat
 
 
 def test_v1s_data_check_is_still_there_under_its_own_flag(monkeypatch, capsys):
-    import atlas.cli as cli
+    from atlas import cli
 
     seen = []
     monkeypatch.setattr(cli, "cmd_check", lambda a: seen.append("v1") or 0)
     assert atlas_main(["check", "--v1"]) == 0 and seen == ["v1"]
     assert "check --v1" in (ROOT / "Makefile").read_text()
+
+
+# --- the boundary with v1's data (PLAN 6.1) ----------------------------------------------------
+
+
+def test_a_local_release_keeps_v1s_series_and_provenance_whatever_the_catalog_proposes(tmp_path):
+    """Draft entries propose agency Sources for v1's keys. None of that reaches a Release: a
+    local Release built with the committed Catalog still holds every v1 series whole, in the
+    legacy representation, under the Source v1 recorded, and nothing under a proposed one."""
+    from datetime import UTC, datetime
+
+    from atlas.legacy import build_release
+    from atlas.publish.export import build
+    from atlas.rights import RightsGate
+    from atlas.vintage.replay import load_derived, load_series
+
+    now = datetime(2026, 11, 12, tzinfo=UTC)
+    _, legacy = build_release(ROOT, now)
+    table = load_register()
+    store = tmp_path / "store"
+    store.mkdir()
+    built = build(profile="local", store=store, table=table, gate=RightsGate(table), series=load_series(),
+                  derived=load_derived(), created=now, legacy=legacy)
+    catalog = {e["key"]: e for e in json.loads(built.files["catalog.json"])["series"]}
+    assert sorted(catalog) == V1_KEYS
+    assert {e["representation"] for e in catalog.values()} == {"legacy_monthly_rounded"}
+    assert catalog["gs10"]["source"]["channel"] == {"via": "fred"} and catalog["gs10"]["freq"] == "monthly"
+    assert catalog["cpi"]["source"]["origin"]["origin_id"] == "CPIAUCSL"
+    assert catalog["spx"]["source"]["channel"] == {"via": "yahoo"}
+    assert built.files["series/gs10.json"] == legacy["series/gs10.json"]
+    assert not any(e["source"]["channel"]["via"] == "direct" and e["source"]["origin"]["producer"].startswith("Board")
+                   for e in catalog.values())
+
+
+def test_a_catalog_that_passes_the_check_gives_a_series_table_the_store_can_load():
+    from atlas.vintage.replay import load_derived, load_series
+
+    assert check().ok
+    stored_keys = {e["key"] for e in load_series()}
+    for row in load_derived():
+        assert set(row["recipe"]["inputs"]) <= stored_keys | {r["key"] for r in load_derived()}

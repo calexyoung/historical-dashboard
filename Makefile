@@ -11,8 +11,9 @@ fetch:
 build:
 	$(PY) -m atlas build
 
+# v1's data QA (refresh.yml on main). `python -m atlas check` alone is v2's Catalog check.
 check:
-	$(PY) -m atlas check
+	$(PY) -m atlas check --v1
 
 test:
 	$(PY) -m pytest -q -m "not smoke"
@@ -36,6 +37,7 @@ lint-py:
 
 # Everything CI runs on a pull request into v2 (.github/workflows/v2-ci.yml).
 v2-check: lint-py test
+	$(PY) -m atlas check && $(PY) -m atlas catalog --check
 	npm run gen:check && npm run lint && npm run typecheck && npm test
 
 # --- v2 on v1's data (M2). One command: convert v1's committed output into a local-profile

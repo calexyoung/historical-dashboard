@@ -66,7 +66,7 @@ def test_a_proposal_is_worked_out_from_the_entry_and_the_register_and_typed_nowh
 def test_the_table_lists_every_v1_series_under_one_of_three_proposals():
     catalog = load_catalog()
     text = render_table(catalog, load_register())
-    rows = {m[1]: m[0] for m in re.finditer(r"^\| `([a-z0-9_]+)` \|.*$", text, re.M)}
+    rows = {m[1]: m[0] for m in re.finditer(r"^\| `([a-z0-9_]+)` \|.*$", text, re.MULTILINE)}
     assert sorted(rows) == sorted(catalog)
     assert [key for key in V1_KEYS if key not in rows] == []
     for key, row in rows.items():
@@ -126,7 +126,7 @@ ADD = ["add", "series", "construction_total", "--name", "Total construction spen
 def test_add_series_writes_a_draft_that_passes_the_check_and_commits_nothing(tmp_path, capsys):
     directory = tmp_path / "series"
     directory.mkdir()
-    before = subprocess.run(["git", "status", "--porcelain"], cwd=ROOT, capture_output=True, text=True).stdout
+    before = subprocess.run(["git", "status", "--porcelain"], cwd=ROOT, capture_output=True, text=True, check=True).stdout
     assert atlas_main([*ADD, "--catalog", str(directory)]) == 0
     out = capsys.readouterr().out
     entry = json.loads((directory / "construction_total.json").read_text())
@@ -136,7 +136,7 @@ def test_add_series_writes_a_draft_that_passes_the_check_and_commits_nothing(tmp
     assert check(directory).ok
     assert "draft" in out and "python -m atlas check" in out
     assert "Census Bureau" in out and "not signed" in out  # what the register says, looked up
-    assert subprocess.run(["git", "status", "--porcelain"], cwd=ROOT, capture_output=True, text=True).stdout == before
+    assert subprocess.run(["git", "status", "--porcelain"], cwd=ROOT, capture_output=True, text=True, check=True).stdout == before
 
 
 def test_add_series_never_overwrites_and_refuses_what_is_not_a_series(tmp_path, capsys):

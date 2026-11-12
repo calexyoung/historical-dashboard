@@ -129,9 +129,21 @@
       }
     },
     "country": {
-      "description": "ISO 3166-1 alpha-3, or a group code: EA (euro area), EU, G20, WLD.",
-      "type": "string",
-      "pattern": "^[A-Z][A-Z0-9]{1,3}$"
+      "description": "ISO 3166-1 alpha-3 (three capital letters; the schema checks the shape, not the list), or a group code: EA (euro area), EU, G20, WLD.",
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^[A-Z]{3}$"
+        },
+        {
+          "enum": [
+            "EA",
+            "EU",
+            "G20",
+            "WLD"
+          ]
+        }
+      ]
     },
     "segment": {
       "enum": [
@@ -607,7 +619,8 @@
       "required": [
         "from",
         "name",
-        "unit"
+        "unit",
+        "seasonal_adjustment"
       ],
       "properties": {
         "from": {

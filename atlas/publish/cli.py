@@ -46,7 +46,7 @@ def main(argv: list[str] | None = None) -> int:
     sub = parser.add_subparsers(dest="command", required=True)
     p = sub.add_parser("release", help="write, check and promote a Release from the vintage store")
     _common(p)
-    p.add_argument("--series", help="a series table (default atlas/vintage/series.json)")
+    p.add_argument("--series", help="a catalog directory or a series table file (default catalog/series)")
     p.add_argument("--reuse-data", action="store_true",
                    help="keep the current Release's data files (hard links); rewrite only its content")
     p.add_argument("--no-legacy", action="store_true",

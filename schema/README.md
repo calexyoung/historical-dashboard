@@ -7,6 +7,12 @@ to it (locks, search, downloads) by raising the version. A reader refuses a vers
 not know. It still reads 0.1.0, the contract before vintages: such a Release holds no
 `vintages/` file, so every Release kept in a root stays readable (ADR 0024). Writers write 0.2.0.
 
+`series.schema.json` is a different contract: one entry of the Catalog, the file
+`catalog/series/{key}.json` that a person edits (ADR 0026, `docs/method/catalog.md`). It shares
+the definitions of key, frequency, Origin, Channel and Recipe with the release contract (a test
+keeps the copies equal) and has no Rights block: Rights are looked up in the register. The
+release writer turns Catalog entries into a Release's `catalog.json`.
+
 Three things write a Release: the committed fixture (`fixtures/public`), the legacy converter
 (M2) and the real writer (M9). Two validators read the contract and must agree:
 

@@ -117,10 +117,11 @@ def load_catalog(directory: Path | None = None) -> dict[str, dict]:
 
 
 def _versions(entry: dict) -> list[dict]:
-    own = {"from": entry.get("metadata_from"), **{n: entry[n] for n in RECORDED if n in entry}}
-    if own.get("seasonal_adjustment") == "not_applicable":
-        del own["seasonal_adjustment"]
-    return [*(dict(version) for version in entry.get("earlier_metadata", [])), own]
+    """Every version says the same three things, the current one exactly as an earlier one
+    does, so that moving a version into ``earlier_metadata`` changes nothing it recorded."""
+    own = {"from": entry.get("metadata_from"), **{name: entry[name] for name in RECORDED}}
+    return [*({"from": v["from"], **{name: v[name] for name in RECORDED}}
+              for v in entry.get("earlier_metadata", [])), own]
 
 
 def _release_block(entry: dict) -> dict:
@@ -129,19 +130,16 @@ def _release_block(entry: dict) -> dict:
 
 def series_table(entries: dict[str, dict]) -> dict:
     """The series table of M8 (``atlas.vintage.replay``), from the Catalog: every stored Series
-    that is bound to an Endpoint and is not a draft, and every active Derived series. A retired
-    Series stays, so that its history is still replayed and shown."""
+    that is bound to an Endpoint and is not a draft, and every Derived series that is not a
+    draft. A retired Series stays, so that its history is still replayed and shown."""
     series, derived = [], []
     for key in sorted(entries):
         entry = entries[key]
         if entry["status"] == "draft":
             continue
         if "recipe" in entry:
-            if entry["status"] != "active":
-                continue
-            row = {"key": key, "freq": entry["freq"], "name": entry["name"], "unit": entry["unit"]}
-            if entry["seasonal_adjustment"] != "not_applicable":
-                row["seasonal_adjustment"] = entry["seasonal_adjustment"]
+            row = {"key": key, "freq": entry["freq"], "name": entry["name"], "unit": entry["unit"],
+                   "seasonal_adjustment": entry["seasonal_adjustment"]}
             derived.append({**row, "recipe": entry["recipe"], "catalog": _release_block(entry)})
             continue
         channel = entry["source"]["channel"]

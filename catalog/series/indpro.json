@@ -8,7 +8,7 @@
   "freq": "monthly",
   "continuity": "discrete",
   "seasonal_adjustment": "sa",
-  "price_basis": "real",
+  "price_basis": "not_applicable",
   "base_period": "2017",
   "country": "USA",
   "segment": "economy_jobs",

@@ -32,7 +32,7 @@ import yaml
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from atlas.legacy import SEGMENT_OF_CATEGORY, _measure_kind, _slug, _unit_kind  # noqa: E402
+from atlas.legacy import SEGMENT_OF_CATEGORY, _measure_kind, _slug, _unit_kind
 
 OUT = ROOT / "catalog" / "series"
 
@@ -193,12 +193,12 @@ PROPOSALS: dict[str, dict] = {
                "https://www.eia.gov/dnav/pet/pet_pri_spt_s1_m.htm", sa="not_applicable", pb="nominal",
                country="USA", milestone="M15",
                note="The EIA publishes spot prices it takes from a commercial provider; whether "
-                    "the EIA row covers them is a question for the register before it is signed."),
+                    "the EIA row covers them is a question for the EIA row of the register."),
     "brent": src(EIA, "Petroleum and Other Liquids: Spot Prices", "RBRTE",
                  "https://www.eia.gov/dnav/pet/pet_pri_spt_s1_m.htm", sa="not_applicable", pb="nominal",
                  country="WLD", milestone="M15",
                  note="The EIA publishes spot prices it takes from a commercial provider; whether "
-                      "the EIA row covers them is a question for the register before it is signed."),
+                      "the EIA row covers them is a question for the EIA row of the register."),
     "gas": src(EIA, "Gasoline and Diesel Fuel Update", "EMM_EPMR_PTE_NUS_DPG",
                "https://www.eia.gov/petroleum/gasdiesel/", sa="not_applicable", pb="nominal",
                country="USA", milestone="M15", description="U.S. regular, all formulations, retail, weekly."),
@@ -206,7 +206,7 @@ PROPOSALS: dict[str, dict] = {
                   "https://www.eia.gov/dnav/ng/ng_pri_fut_s1_m.htm", sa="not_applicable", pb="nominal",
                   country="USA", milestone="M15",
                   note="The EIA publishes spot prices it takes from a commercial provider; whether "
-                       "the EIA row covers them is a question for the register before it is signed."),
+                       "the EIA row covers them is a question for the EIA row of the register."),
     "eggs": bls("Average Price Data", "APU0000708111", sa="nsa", pb="nominal", country="USA"),
     "food": src(IMF, "Primary Commodity Price System", None, "https://www.imf.org/en/Research/commodity-prices",
                 sa="not_applicable", pb="nominal", country="WLD", milestone="v2.2", note=UNSETTLED),
@@ -256,7 +256,7 @@ PROPOSALS: dict[str, dict] = {
                   "https://www.census.gov/retail/sales.html", sa="sa", pb="nominal", country="USA",
                   milestone="M16", agg="sum"),
     "indpro": fed("G.17 Industrial Production and Capacity Utilization", None,
-                  "https://www.federalreserve.gov/releases/g17/", sa="sa", pb="real", country="USA",
+                  "https://www.federalreserve.gov/releases/g17/", sa="sa", pb="not_applicable", country="USA",
                   unit="index, 2017 = 100", base="2017", note=UNSETTLED),
     "profits": src(BEA, "National Income and Product Accounts, Table 1.12", "A055RC",
                    "https://www.bea.gov/data/income-saving/corporate-profits", sa="saar", pb="nominal",
@@ -307,7 +307,7 @@ PROPOSALS: dict[str, dict] = {
                 pb="nominal", country="USA"),
     "ted": none("No single Origin (v1 used a spread the Federal Reserve Bank of St. Louis computed)",
                 "TED spread: three-month LIBOR less the three-month Treasury bill", "TEDRATE",
-                "discontinued", "The series ended in January 2022 with LIBOR.",
+                "discontinued", "FRED stopped computing it in January 2022, when its LIBOR input was withdrawn.",
                 sa="not_applicable", pb="not_applicable", country="USA", refresh="none", status="retired"),
     # --- housing ---
     "houst": src(CENSUS, "New Residential Construction", None,
