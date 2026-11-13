@@ -11,7 +11,7 @@
   "seasonal_adjustment": "nsa",
   "price_basis": "nominal",
   "country": "USA",
-  "segment": "economy_jobs",
+  "segment": "governance_politics",
   "topics": [
     "us-economy"
   ],
